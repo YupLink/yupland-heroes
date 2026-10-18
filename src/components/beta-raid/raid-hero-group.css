@@ -1,0 +1,84 @@
+/* Raid hero HUD: compact glass energy bar with the satiety portrait overlapping its edge. */
+.raid-hero-group {
+  position: absolute;
+  right: 24px;
+  top: 8px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  height: 58px;
+  padding: 6px 62px 6px 8px;
+  border: 1px solid #c6aa6c;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #302e26bf, #171d1bd4);
+  box-shadow: 0 4px 14px #0009, inset 0 1px #fff3;
+  -webkit-backdrop-filter: blur(12px) saturate(.8);
+  backdrop-filter: blur(12px) saturate(.8);
+  pointer-events: auto;
+}
+.raid-hero-group__energy {
+  position: relative;
+  z-index: 20;
+  flex: none;
+  width: max-content;
+  min-width: 0;
+  pointer-events: auto;
+}
+.raid-hero-group__energy > div { width: max-content; }
+.raid-hero-group .raid-energy {
+  display: grid;
+  grid-template-columns: 17px max-content 30px;
+  width: max-content;
+  max-width: none;
+  min-height: 44px;
+  height: 44px;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.raid-hero-group .raid-energy > img { width: 17px; height: 22px; margin: 0; }
+.raid-hero-group .raid-energy__value { flex: none; gap: 3px; min-width: 0; padding: 0; }
+.raid-hero-group .raid-energy__buy { width: 30px; height: 44px; margin: 0; }
+.raid-hero-group .raid-energy__buy::before { inset: 0 -7px; }
+.raid-hero-group .raid-energy__buy svg { width: 26px; height: 26px; padding: 4px; border-radius: 8px; }
+.raid-hero-group .raid-energy .castle-main-hud__recovery { margin-top: 0; font-size: 10px; }
+.raid-hero-group__portrait { position: absolute; top: -7px; right: -16px; width: 72px; height: 72px; }
+.raid-hero-group .raid-hero-group__portrait-button {
+  position: absolute;
+  inset: 0;
+  width: 72px;
+  height: 72px;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.raid-hero-group__portrait-button img,
+.raid-hero-group__portrait-button > svg {
+  width: 58px;
+  height: 58px;
+  border: 2px solid #d3b36a;
+  border-radius: 50%;
+  background: #0b1110;
+}
+.raid-hero-group__portrait-button img { object-fit: cover; }
+.raid-hero-group .satiety-bar--ring .satiety-bar__track {
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+}
+.raid-hero-group .satiety-bar--ring.satiety-bar--hungry::after {
+  top: -1px;
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+}
+.raid-hero-group__portrait-button:focus-visible { outline: 2px solid #fff4d8; outline-offset: 2px; }
+.raid-hero-group ~ .raid-right-menu { top: 74px; }

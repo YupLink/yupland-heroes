@@ -1,0 +1,42 @@
+// YUPLINK · Cron СВЕРКИ ВАЛЮТНОГО ЛЕДЖЕРА (раз в час).
+// Леджер наполняется триггерами БД; здесь проверяем, что он сходится с
+// источниками. Расхождение — это деньги, поэтому владельцу уходит алерт.
+import { createFileRoute } from "@tanstack/react-router";
+import { auditCurrencyLedger } from "@/server/api/ledger-audit";
+import { sendTgMessageToAdmins } from "@/server/tg";
+
+export const Route = createFileRoute("/api/cron/ledger-audit")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const secret = process.env.CRON_SECRET;
+        if (secret) {
+          const auth = request.headers.get("authorization");
+          if (auth !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
+        }
+        try {
+          const result = await auditCurrencyLedger();
+          if (!result.ok) {
+            const lines = result.drifts
+              .map(
+                (d) =>
+                  `• ${d.token}: леджер ${d.ledger}, ожидалось ${d.expected} (расхождение ${d.drift})`,
+              )
+              .join("\n");
+            await sendTgMessageToAdmins(
+              `⚠️ Валютный леджер разошёлся с источниками:\n${lines}`,
+            ).catch(() => {});
+          }
+          return new Response(JSON.stringify(result), {
+            headers: { "content-type": "application/json" },
+          });
+        } catch (e) {
+          return new Response(
+            JSON.stringify({ ok: false, error: e instanceof Error ? e.message : String(e) }),
+            { status: 500, headers: { "content-type": "application/json" } },
+          );
+        }
+      },
+    },
+  },
+});

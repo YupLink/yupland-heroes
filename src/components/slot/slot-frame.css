@@ -1,0 +1,44 @@
+/* Слот в стиле окон замка: рамки gear-slot-frame, тёмное стекло, золото #f3ca62. */
+[data-slot-frame] { background: #0c1014; }
+[data-slot-frame] button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+[data-slot-frame] .slot-panel {
+  border: 6px solid transparent;
+  border-image: url(/design-assets/gear-slot-frame.webp) 90 stretch;
+  border-radius: 0;
+  background: #101316;
+}
+[data-slot-frame] .slot-key {
+  border: 4px solid transparent;
+  border-image: url(/design-assets/gear-slot-frame.webp) 90 stretch;
+  border-radius: 0;
+  background: #101316;
+  color: #b4b0a7;
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+[data-slot-frame] .slot-key[data-on="true"] { color: #f3ca62; background: #2b2517; }
+[data-slot-frame] .slot-key:disabled { opacity: 0.55; }
+[data-slot-frame] .slot-start {
+  border: 5px solid transparent;
+  border-image: url(/design-assets/gear-slot-frame.webp) 90 stretch;
+  border-radius: 0;
+  background: #322818;
+  color: #f3ca62;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+[data-slot-frame] .slot-start:disabled { background: #24241f; color: #a9a395; opacity: 0.65; }
+[data-slot-frame] .slot-display {
+  border: 1px solid #655a43;
+  border-radius: 4px;
+  background: #0c1014;
+}
+[data-slot-frame] .slot-gold { color: #f3ca62; }
+[data-slot-frame] .slot-muted { color: #ada99f; }
+[data-slot-frame] .slot-reels {
+  border: 6px solid transparent;
+  border-image: url(/design-assets/gear-slot-frame.webp) 90 stretch;
+  border-radius: 0;
+  background: #0c1014;
+}

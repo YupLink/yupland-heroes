@@ -1,0 +1,4 @@
+.pack-notice-map,.barracks-pack-notice{display:grid;place-items:center;flex:none;min-width:22px;height:22px;padding:0 4px;border:1px solid #ffe183;border-radius:999px;background:#ffcb29;box-shadow:0 2px 7px #000b;color:#21180a;font:400 12px/1 var(--font-display,"Preview Russo",sans-serif);font-variant-numeric:tabular-nums}
+.pack-notice-map{position:fixed;z-index:35;pointer-events:none}
+.barracks-pack-notice{margin-left:2px}
+@media(min-width:600px){.barracks-pack-notice{min-width:28px;height:28px;font-size:14px}}

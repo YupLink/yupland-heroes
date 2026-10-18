@@ -1,0 +1,238 @@
+/* Castle Glory screen. The backplate contains no player data. */
+@font-face { font-family: 'Glory Russo'; src: url('../../assets/tavern/RussoOne.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Glory Golos'; src: url('../../assets/tavern/GolosText.ttf') format('truetype'); font-weight: 400 900; font-display: swap; }
+section[aria-labelledby="castle-window-title"]:has(.glory-screen) {
+  --glory-stage-width: min(74.535dvh, calc((100vw - 20px) * 1.6116));
+  background: #17151a;
+  color: #f8eedc;
+}
+section[aria-labelledby="castle-window-title"]:has(.glory-screen) > header {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 50%;
+  width: var(--glory-stage-width);
+  height: calc(var(--glory-stage-width) * 1.3416);
+  transform: translateX(-54.9%);
+  border: 0;
+  background: none;
+  pointer-events: none;
+}
+section[aria-labelledby="castle-window-title"]:has(.glory-screen) > header > button {
+  position: absolute;
+  top: 1.2%;
+  left: max(8%, calc(var(--glory-stage-width) * 0.549 - 50vw + 12px));
+  width: min(28%, 28vw);
+  height: 5.8%;
+  min-height: 38px;
+  padding: 0;
+  border: 2px ridge #b78643;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #613a1c, #2c180c 55%, #482711);
+  box-shadow: inset 0 0 0 2px #73471f, 0 4px 8px #000a;
+  color: #eed2a0;
+  font: 400 clamp(12px, 2.3dvh, 24px) 'Glory Russo', sans-serif;
+  text-shadow: 0 2px 2px #160c05;
+  pointer-events: auto;
+}
+section[aria-labelledby="castle-window-title"]:has(.glory-screen) > header > button:focus-visible {
+  outline: 2px solid #d8af66;
+  outline-offset: 2px;
+}
+section[aria-labelledby="castle-window-title"]:has(.glory-screen) > header > h1 {
+  position: absolute;
+  top: 10.3%;
+  left: 54.9%;
+  display: grid;
+  place-items: center;
+  width: 57%;
+  height: 8.8%;
+  margin: 0;
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #f8cd68;
+  text-align: center;
+  text-shadow: 0 2px #ad6e25, 0 4px #633714, 0 6px 4px #100904;
+  font: 400 clamp(26px, 5dvh, 55px) 'Glory Russo', sans-serif;
+}
+section[aria-labelledby="castle-window-title"]:has(.glory-screen) > div {
+  padding: 0;
+  overflow: hidden;
+}
+section[aria-labelledby="castle-window-title"]:has(.glory-screen) > div > div { max-width: none; }
+.glory-screen {
+  position: relative;
+  left: 50%;
+  container-type: inline-size;
+  width: var(--glory-stage-width);
+  aspect-ratio: 1083 / 1453;
+  margin: 0;
+  transform: translateX(-54.9%);
+  background: url('../../assets/glory/hall.webp') calc(var(--glory-stage-width) * 0.012) top / 100% 100% no-repeat;
+  font-family: 'Glory Golos', sans-serif;
+}
+.glory-screen__board {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  top: 22.6%;
+  left: 25.5%;
+  width: 58.8%;
+  height: 62.7%;
+  padding: 1.8cqw 2.8cqw 1cqw;
+  overflow: hidden;
+  color: #f4e7d0;
+}
+.glory-screen__board h2 {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  height: 8.4cqw;
+  margin: 0 0 1.2cqw;
+  transform: translateY(-1.5cqw);
+  background: transparent;
+  color: #f5e9d5;
+  text-align: center;
+  text-shadow: 0 2px 2px #100904;
+  font: 400 2.7cqw 'Glory Russo', sans-serif;
+}
+.glory-screen__participants {
+  position: absolute;
+  top: 16.8%;
+  left: 54.9%;
+  margin: 0;
+  transform: translateX(-50%);
+  color: #d9bd87;
+  white-space: nowrap;
+  font: 500 max(12px, 2.1cqw) 'Glory Golos', sans-serif;
+  text-shadow: 0 1px 2px #120904;
+}
+.glory-screen__participants strong { color: #f7d778; font-weight: 700; }
+.glory-screen__list {
+  min-height: 0;
+  flex: 1;
+  margin-inline: -1.8cqw;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: 5.5cqw;
+  scrollbar-width: none;
+  clip-path: inset(0);
+  contain: paint;
+  background: transparent;
+}
+.glory-screen__list::-webkit-scrollbar { display: none; }
+.glory-screen__table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  text-align: left;
+}
+.glory-screen__table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #24150d;
+}
+.glory-screen__table thead th {
+  height: 5.5cqw;
+  padding: 0 0.5cqw;
+  color: #cbb791;
+  font: 500 2.2cqw 'Glory Golos', sans-serif;
+}
+.glory-screen__table thead th:first-child { width: 25%; text-align: center; padding: 0; }
+.glory-screen__table thead th:last-child { width: 23%; text-align: right; }
+.glory-screen__table--wide-damage thead th:last-child { width: 42%; }
+.glory-screen__row > th:first-child { padding: 0; }
+.glory-screen__table thead th:last-child,
+.glory-screen__row > td:last-child { padding-right: 4.2cqw; }
+.glory-screen__row {
+  height: 7.6cqw;
+  scroll-snap-align: start;
+  border-top: 1px solid #bc925456;
+  background: transparent;
+}
+.glory-screen__row:nth-child(even) { background: #00000014; }
+.glory-screen__row--mine {
+  outline: 2px solid #d8a74d;
+  outline-offset: -2px;
+  background: linear-gradient(90deg, #623916e8, #493019d9) !important;
+  box-shadow: inset 0 0 1cqw #deaf5555;
+  color: #f8dfa0;
+}
+.glory-screen__row > th, .glory-screen__row > td { padding: 0.6cqw; vertical-align: middle; }
+.glory-screen__place {
+  background: none;
+  text-align: center;
+  font: 400 2.6cqw 'Glory Russo', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.glory-screen__place--1,
+.glory-screen__place--2,
+.glory-screen__place--3 {
+  background: url('../../assets/glory/laurel.webp') center / 6.2cqw 6.2cqw no-repeat;
+}
+.glory-screen__place--1 { color: #f4c552; }
+.glory-screen__place--2 { color: #d7dae0; filter: grayscale(1); }
+.glory-screen__place--3 { color: #df9b60; filter: sepia(1) saturate(1.5) hue-rotate(330deg); }
+.glory-screen__place--4 { color: #e1d5c3; }
+.glory-screen__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 2.5cqw;
+}
+.glory-screen__you { color: #f7d778; font-weight: 700; }
+.glory-screen__damage {
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 2.5cqw;
+  font-variant-numeric: tabular-nums;
+}
+.glory-screen__ellipsis td { height: 3cqw; text-align: center; color: #b8a17b; }
+.glory-screen__more, .glory-screen__state button {
+  display: block;
+  min-height: 44px;
+  margin: 1.2cqw auto;
+  padding: 0.6cqw 2cqw;
+  border: 1px solid #b58b4d;
+  border-radius: 4px;
+  background: #2d1c0d;
+  color: #f4dca9;
+  font: 400 max(12px, 1.8cqw) 'Glory Russo', sans-serif;
+}
+.glory-screen__state { padding: 2cqw; text-align: center; color: #e0d0b4; font-size: max(12px, 2cqw); }
+.glory-screen__state p { margin: 0; }
+.glory-screen__scroll {
+  position: absolute;
+  z-index: 2;
+  top: 84%;
+  left: 54.9%;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: max(4cqw, 44px);
+  min-height: 44px;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #f7d98d;
+  text-shadow: 0 2px 4px #000, 0 0 8px #000;
+  font: 400 max(22px, 3cqw) 'Glory Golos', sans-serif;
+  cursor: pointer;
+}
+.glory-screen__more:focus-visible,
+.glory-screen__state button:focus-visible,
+.glory-screen__scroll:focus-visible {
+  outline: 2px solid #f7d98d;
+  outline-offset: 2px;
+}

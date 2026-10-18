@@ -1,0 +1,251 @@
+@font-face{font-family:'Preview Russo';src:url('../../../assets/tavern/RussoOne.ttf') format('truetype');font-weight:400;font-display:swap}
+@font-face{font-family:'Preview Golos';src:url('../../../assets/tavern/GolosText.ttf') format('truetype');font-weight:400 900;font-display:swap}
+section:has(.market-preview)>header{position:relative;min-height:86px;border:0;justify-content:center;padding:12px 10px;background:linear-gradient(#17100955,transparent);z-index:3}
+section:has(.market-preview)>header>button{position:absolute;left:10px;top:12px;min-height:44px;padding:4px 10px;border:1px solid #79715f;border-radius:3px;background:#141716ed;color:#eee5d2;font:400 12px 'Preview Russo',sans-serif;box-shadow:0 3px 7px #0008}
+section:has(.market-preview)>header>h1{min-width:140px;padding:12px 24px;margin-left:35px;text-align:center;border:3px solid #634328;border-radius:3px;background:repeating-linear-gradient(0deg,#302419,#302419 5px,#35291e 7px,#211910 9px);box-shadow:0 4px 8px #0009;font:400 32px/1 'Preview Russo',sans-serif;text-shadow:0 2px 2px #000}
+section:has(.market-preview)>div:last-child{padding:0 8px 16px!important;scrollbar-color:#8c7958 #12151255;scrollbar-width:thin}
+.market-preview{max-width:960px;margin:auto;font-family:'Preview Golos',sans-serif;padding-bottom:12px}
+.market-preview.has-selection{padding-bottom:115px}
+.market-preview button,.market-preview select{min-height:44px;touch-action:manipulation}
+.market-preview button:focus-visible,.market-preview select:focus-visible{outline:2px solid #ffd32e;outline-offset:2px}
+.market-preview button:disabled{opacity:.45;cursor:default}
+.market-preview__scene{height:176px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10px 0 16px}
+.market-preview__balance{min-width:155px;padding:8px 18px;border:2px solid #716454;background:#141817ee;box-shadow:0 4px 9px #0007;text-align:center;font-size:12px}
+.market-preview__balance strong{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:3px;font:400 25px/1.2 'Preview Russo',sans-serif}
+.market-preview__balance img{width:21px;height:21px;object-fit:contain}
+.market-preview__balance-add{display:grid;place-items:center;flex:none;width:24px;height:24px;min-width:24px;padding:0;border:0;background:transparent;color:#f2cb65;cursor:pointer}
+.market-preview__balance-add svg{width:19px;height:19px;stroke-width:2.5}
+.market-preview__balance-add:focus-visible{outline:2px solid #ffd32e;outline-offset:2px;border-radius:5px}
+.market-preview__sell,.market-preview__buy{background:var(--gradient-gold);color:#161106;border:1px solid #f6d270;border-radius:5px;box-shadow:0 3px 5px #0006;font-family:'Preview Russo',sans-serif;font-weight:400}
+.market-preview__sell{width:min(78%,310px);font-size:19px;padding:6px 12px;box-shadow:0 3px 6px #0009,inset 0 0 0 2px #9e6e2633}
+.market-preview__filters{position:sticky;top:0;z-index:4;display:grid;grid-template-columns:auto 38px minmax(0,1fr) auto auto;gap:4px;padding:6px 0 8px;background:#151813ef;box-shadow:0 4px 7px #0006}
+.market-preview__filters:not(:has(.market-preview__select)){grid-template-columns:auto 38px minmax(0,1fr) auto}
+.market-preview__filters button,.market-preview__filters select{background:#171a19;border:1px solid #78694e;border-radius:3px;color:#e9dfcf;padding:4px 6px;min-width:0;font-size:11px;font-weight:400}
+.market-preview__filters button[aria-pressed=true]{border-color:#ffd32eaa;background:#40351c;color:#ffda6b}
+.market-preview__filters select{width:100%;text-overflow:ellipsis}
+.market-preview__select{display:flex;align-items:center;gap:4px}
+.market-preview__select svg{width:13px;height:13px;flex:none}
+.market-preview__selection-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0;color:#eee5d2;background:#131815ed;padding:2px 8px;font-size:12px}
+.market-preview__selection-heading button{font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.market-preview__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding-top:6px}
+.market-preview__card{min-width:0;display:flex;flex-direction:column;align-items:stretch;background:linear-gradient(#151a19f7,#111514f7);border:1px solid #8b6b40;border-radius:4px;padding:5px;box-shadow:0 3px 7px #0007}
+.market-preview__card.is-selected{border:2px solid #ffd32e;padding:4px;background:#30301bea;box-shadow:0 0 0 1px #a6843b}
+.market-preview__card.is-own{opacity:.6}
+.market-preview__chip{position:relative;width:100%;background:transparent;padding:0;text-align:center;border:0}
+.market-preview__serial{display:flex;justify-content:space-between;gap:2px;white-space:nowrap;margin-bottom:5px;font-size:9px;line-height:1.2;color:#c5bcae;font-variant-numeric:tabular-nums}
+.market-preview__check{position:absolute;right:2px;top:22px;z-index:2;background:#151a18;border:0;border-radius:3px;color:#ffd32e;padding:0;box-shadow:none}
+.market-preview__check svg{width:20px;height:20px}
+.market-preview__seller{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;font-size:10px;line-height:1.35;margin-top:4px;color:#beb8ab}
+.market-preview__price{display:flex;align-items:center;justify-content:center;gap:4px;font:400 14px/1.3 'Preview Russo',sans-serif;color:#f8dea0;margin:4px 0 2px}
+.market-preview__price img{width:13px;height:13px;object-fit:contain}
+.market-preview__card>.market-preview__buy,.market-preview__unlist{width:100%;font-size:11px;line-height:1.2;padding:5px 1px;min-height:44px;margin-top:auto;border-radius:3px}
+.market-preview__unlist{border:1px solid #785d45;background:#25211a;color:#dfcba4;font-family:'Preview Russo',sans-serif}
+.market-preview__choice{display:flex;justify-content:center;align-items:center;min-height:30px;color:#cdbb99;font-size:11px}
+.market-preview__notice{margin:6px 0;padding:12px;background:#111815ef;border:1px solid #6b624b;border-radius:4px;font-size:13px}
+.market-preview__notice button,.market-preview__more{padding:6px 10px;text-decoration:underline;text-underline-offset:4px}
+.market-preview__more{width:100%;margin-top:10px;background:#121714ef;color:#dfceaf;border:1px solid #6f5c42;border-radius:3px}
+.market-preview__basket{position:fixed;bottom:0;left:0;right:0;z-index:12;max-width:960px;margin:auto;display:grid;grid-template-columns:minmax(90px,1fr) minmax(0,1.6fr);gap:8px;padding:12px max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom));background:#141a17fa;border-top:1px solid #b99652;box-shadow:0 -7px 18px #0008}
+.market-preview__basket>div{font-size:12px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.market-preview__basket strong,.market-preview__confirm>strong{display:flex;align-items:center;gap:6px;font:400 21px 'Preview Russo',sans-serif;color:#ffda67}
+.market-preview__basket img,.market-preview__confirm>strong img{width:18px;height:18px;object-fit:contain}
+.market-preview__basket button{font-size:13px;min-height:48px;padding:8px}
+.market-preview__basket small{grid-column:1/-1;color:#edba9d}
+.market-preview__veil{position:fixed;inset:0;display:grid;place-items:center;background:#000b;z-index:100;padding:16px}
+.market-preview__confirm{width:min(100%,370px);padding:20px;background:#151c18;border:1px solid #887550;border-radius:10px;box-shadow:0 12px 40px #000}
+.market-preview__confirm h2{font:400 21px/1.25 'Preview Russo',sans-serif;margin-bottom:14px}
+.market-preview__confirm p{font-size:13px;margin:10px 0;color:#d2c9b7}
+.market-preview__confirm>div{display:flex;gap:8px;margin-top:15px}
+.market-preview__confirm button{flex:1;border:1px solid #8b7750;border-radius:5px;padding:8px;color:#eee5d2;font-family:'Preview Russo',sans-serif;font-weight:400}
+.market-preview__confirm button.market-preview__buy{color:#161106}
+@media(min-width:700px){section:has(.market-preview)>header>h1{font-size:42px;padding:14px 45px}section:has(.market-preview)>header>button{left:max(14px,calc((100% - 960px)/2))}.market-preview__scene{height:220px}.market-preview__filters button,.market-preview__filters select{font-size:14px;padding:6px 14px}.market-preview__filters{grid-template-columns:auto 70px minmax(150px,1fr) auto auto}.market-preview__grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.market-preview__seller{font-size:12px}.market-preview__serial{font-size:11px}.market-preview__price{font-size:18px}.market-preview__card>.market-preview__buy{font-size:14px}}
+@media(max-width:335px){.market-preview__filters{grid-template-columns:auto 32px minmax(0,1fr) auto auto;gap:3px}.market-preview__filters button,.market-preview__filters select{font-size:10px;padding:4px}.market-preview__select{gap:2px}.market-preview__select svg{width:11px}.market-preview__card{padding:4px}.market-preview__serial{font-size:8px}.market-preview__grid{gap:4px}.market-preview__basket button{font-size:12px}}
+
+section:has(.market-preview)>header>button{z-index:1}
+
+/* Exact approved source artwork, not the regenerated replacements. */
+section[aria-labelledby="castle-window-title"]:has(.market-preview){display:block;overflow-y:auto;overscroll-behavior:contain;scroll-padding-top:54px;background:linear-gradient(180deg,#3b281c 0,#211a14 1000px,#211a14 100%)}
+section:has(.market-preview)>div:last-child{overflow:visible!important;padding:0 0 16px!important;min-height:auto}
+section:has(.market-preview)>header{position:absolute;left:50%;top:0;transform:translateX(-50%);width:min(100%,680px);height:0;min-height:0;padding:0;margin:0;display:block;z-index:5;container-type:inline-size;background:none;pointer-events:none}
+section:has(.market-preview)>header>h1{position:absolute;left:32%;top:9.2cqw;width:36%;height:7.6cqw;padding:0;margin:0;background:none;display:flex;align-items:center;justify-content:center;font:400 8cqw/1 'Preview Russo',sans-serif;color:#eee5d2;border:0;border-radius:0;box-shadow:none;text-shadow:0 2px 2px #000;pointer-events:none}
+section:has(.market-preview)>header>button{left:2.8%;top:1.6cqw;width:19.4%;height:7.5cqw;min-height:44px;padding:0;background:none;border:0;box-shadow:none;pointer-events:auto;font:400 3.8cqw/1 'Preview Golos',sans-serif;color:#eee5d2}
+.market-preview{max-width:680px;padding-bottom:12px}
+.market-preview__scene{position:relative;display:block;width:100%;height:auto;aspect-ratio:941/584;padding:0;background:url('/design-assets/market/market-reference-stage.webp') center/100% 100% no-repeat;container-type:inline-size}
+.market-preview__balance{position:absolute;left:36.1%;top:27.5cqw;width:27.5%;min-width:0;padding:0;border:0;background:none;box-shadow:none;font-size:2.7cqw;line-height:1.2;text-align:center}
+.market-preview__balance strong{font:400 4.5cqw/1.1 'Preview Russo',sans-serif;margin-top:.5cqw;gap:1.2cqw}
+.market-preview__balance img{width:4cqw;height:4cqw}
+.market-preview .market-preview__balance-add{position:relative;width:5cqw;height:5cqw;min-width:20px;min-height:20px}
+.market-preview__balance-add::after{content:'';position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+.market-preview__balance-add svg{width:4cqw;height:4cqw;min-width:15px;min-height:15px}
+.market-preview__sell{position:absolute;left:30.4%;top:49.8cqw;width:39.4%;max-width:none;height:8.3cqw;min-height:44px;padding:0;border:0;background:none;box-shadow:none;border-radius:0;font:400 4.2cqw/1 'Preview Russo',sans-serif}
+.market-preview__filters{max-width:calc(100% - 28px);margin:0 auto;padding:0;top:0;grid-template-columns:minmax(44px,.8fr) 38px minmax(65px,1.25fr) minmax(60px,1fr) 44px;gap:4px;min-height:44px;background:transparent;backdrop-filter:none;box-shadow:none;z-index:6}
+.market-preview__filters button,.market-preview__filters select{position:relative;isolation:isolate;background:none;border:0;border-radius:0;padding:4px 6px;min-height:44px;font-size:11px;color:#eee5d2}
+.market-preview__filters button::before{content:'';position:absolute;inset:6px 0;background:url('/design-assets/market/market-reference-filter-price.png') center/100% 100% no-repeat;z-index:-1}
+.market-preview__filters button:nth-child(2)::before{background-image:url('/design-assets/market/market-reference-filter-stars.png')}
+.market-preview__filters button:nth-child(4)::before{background-image:url('/design-assets/market/market-reference-filter-mine.png')}
+.market-preview__filters select{background:url('/design-assets/market/market-reference-filter-packs.png') center/100% calc(100% - 12px) no-repeat;color:#eee5d2;padding:5px 6px}
+.market-preview__filters button[aria-pressed=true]{background:none;color:#ffe29d;border:0}
+.market-preview__filters button:nth-child(4){display:flex;justify-content:center;align-items:center;gap:3px;font-size:10px;white-space:nowrap}
+.market-preview__switch{display:inline-block;position:relative;width:21px;height:12px;border:1px solid #62696a;border-radius:8px;background:#242929;flex:none}
+.market-preview__switch::before{content:'';position:absolute;left:1px;top:1px;width:8px;height:8px;border-radius:50%;background:#6b6f70}
+.market-preview__switch.is-on::before{left:10px;background:#e4c15b}
+.market-preview__select{justify-content:center;padding:0!important}
+.market-preview__select svg{width:17px;height:17px}
+.market-preview__select-label{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap}
+.market-preview__grid{grid-template-columns:repeat(3,minmax(0,1fr));margin:0 12px;gap:5px;padding-top:8px}
+.market-preview__card{border:3px solid transparent;border-image:url('/design-assets/market/market-reference-card-frame-png-optimized.webp') 12 stretch;border-radius:0;padding:3px;background:#121716f5;box-shadow:0 2px 4px #0007;scroll-margin-top:54px}
+.market-preview__chip>div{width:56%;margin:6px auto 0}
+.market-preview__serial{font-size:clamp(8px,1.7vw,12px);margin-bottom:2px}
+.market-preview__seller{font-size:clamp(9px,2.2vw,12px);margin-top:3px}
+.market-preview__price{font-size:clamp(13px,3.1vw,18px);margin:3px 0 0}
+.market-preview__card>.market-preview__buy{position:relative;isolation:isolate;font-size:clamp(11px,2.8vw,16px);min-height:44px;padding:0;border:0;box-shadow:none;background:none;border-radius:0}
+.market-preview__card>.market-preview__buy::before{content:'';position:absolute;inset:8px 0;background:url('/design-assets/market/market-reference-action-png-optimized.webp') center/100% 100% no-repeat;z-index:-1}
+@media(min-width:700px){.market-preview__filters{grid-template-columns:90px 65px minmax(150px,1fr) 105px 44px;gap:7px}.market-preview__filters button,.market-preview__filters select{font-size:16px}.market-preview__filters button:nth-child(4){font-size:14px}.market-preview__grid{gap:9px}.market-preview__chip>div{width:56%}.market-preview__filters button::before{inset:4px 0}.market-preview__filters select{background-size:100% calc(100% - 8px)}}
+@media(max-width:335px){.market-preview__filters{max-width:calc(100% - 16px);gap:2px;grid-template-columns:46px 34px minmax(62px,1fr) 65px 36px}.market-preview__filters button,.market-preview__filters select{font-size:10px;padding:4px}.market-preview__filters button:nth-child(4){font-size:9px}.market-preview__grid{margin:0 7px;gap:4px}.market-preview__serial{font-size:8px}.market-preview__chip>div{width:56%}}
+
+.market-preview__selection-heading{margin:3px 12px;padding:0;background:transparent;text-shadow:0 1px 3px #000,0 0 6px #000}
+
+/* Continue the same source scene through the filters instead of exposing the floor crop at their top edge. */
+.market-preview__filters{max-width:none;padding:0 14px;isolation:isolate}
+.market-preview__filters::before{content:'';position:absolute;inset:0;z-index:-2;pointer-events:none;background:url('/design-assets/market/market-reference-filter-scene.webp') center top/100% 100% no-repeat}
+@media(max-width:335px){.market-preview__filters{max-width:none;padding:0 8px}}
+
+/* One stationary world; only live offers scroll. No independent scene/floor strips. */
+section[aria-labelledby="castle-window-title"]:has(.market-preview){overflow:hidden;overscroll-behavior:none;background:#141713}
+section:has(.market-preview)>div:last-child{height:100%;min-height:0;overflow:hidden!important;padding:0!important}
+.market-preview,.market-preview.has-selection{position:relative;isolation:isolate;display:flex;flex-direction:column;height:100%;min-height:0;padding:0;overflow:hidden}
+.market-preview{container-type:inline-size}
+/* Keep the 941 × 584 header artwork fixed to its controls. Only the remaining
+   1088 pixels of the world adapt to the available catalog height. */
+.market-preview::before{content:'';position:absolute;inset:0 0 auto;height:62.061637cqw;z-index:-1;pointer-events:none;background:#141713 url('/design-assets/market/market-reference-world.webp') center top/100% auto no-repeat}
+.market-preview::after{content:'';position:absolute;inset:62.061637cqw 0 0;z-index:-1;pointer-events:none;background:#141713 url('/design-assets/market/market-reference-world.webp') center bottom/100% 153.676471% no-repeat}
+.market-preview__scene{flex:none;background:none}
+.market-preview__filters{position:relative;flex:none;width:86%;max-width:none;margin:0 auto;padding:0;grid-template-columns:minmax(42px,.8fr) 34px minmax(48px,1.25fr) minmax(57px,1fr) 36px;gap:3px;background:none}
+.market-preview__filters::before{display:none}
+.market-preview__catalog{flex:1;min-height:0;width:86%;margin:3px auto 8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#9c895c77 transparent;background:#101714bb;backdrop-filter:blur(5px);border:1px solid #c4ad7133;box-shadow:0 4px 18px #0005;border-radius:3px;scroll-padding:8px}
+.market-preview__grid{margin:0;padding:6px;gap:5px}
+.market-preview__selection-heading{margin:0 6px;padding:0;background:none}
+.market-preview__basket{position:relative;inset:auto;flex:none;width:86%;max-width:none;margin:0 auto;padding:8px;gap:8px;border:1px solid #b9965255;background:#111915ec;box-shadow:none}
+.market-preview__basket button{min-height:44px}
+.market-preview__card.is-selected{border-image:none;border:2px solid #e9c65c;padding:4px;box-shadow:none}
+@media(min-width:700px){.market-preview__filters{grid-template-columns:80px 52px minmax(100px,1fr) 96px 40px;gap:5px}}
+@media(max-width:335px){.market-preview__filters{width:88%;max-width:none;padding:0;grid-template-columns:44px 30px minmax(46px,1fr) 63px 34px;gap:2px}.market-preview__catalog,.market-preview__basket{width:88%}.market-preview__filters button,.market-preview__filters select{padding:3px;font-size:9px}.market-preview__grid{margin:0;padding:4px;gap:4px}}
+section:has(.market-preview)>div:last-child>div:has(>.market-preview){height:100%;min-height:0;max-width:none}
+.market-preview__catalog{width:84%;margin-left:11%;margin-right:5%;overflow-y:scroll;scrollbar-gutter:stable;padding-right:5px}
+.market-preview__basket{width:84%;margin-left:11%;margin-right:5%}
+@media(max-width:335px){.market-preview__catalog,.market-preview__basket{width:84%;margin-left:11%;margin-right:5%}.market-preview__catalog{padding-right:3px}.market-preview__grid{gap:3px;padding:3px}}
+.market-preview__catalog:focus-visible{outline:1px solid #c9ac6577;outline-offset:1px}
+.market-preview__catalog::-webkit-scrollbar{width:6px}
+.market-preview__catalog::-webkit-scrollbar-track{background:#0c110d55;border-radius:5px}
+.market-preview__catalog::-webkit-scrollbar-thumb{background:#baac8977;border:1px solid #0c110d55;border-radius:5px}
+/* Align controls with the cards themselves, excluding the scrollbar lane. */
+.market-preview__filters{width:calc(84% - 19px);margin-left:calc(11% + 7px);margin-right:auto}
+@media(max-width:335px){.market-preview__filters{width:calc(84% - 11px);margin-left:calc(11% + 4px);margin-right:auto;grid-template-columns:40px 28px minmax(42px,1fr) 56px 30px;gap:2px}}
+/* Clean functional plates: one surface and one contour, no stretched bitmap frames. */
+.market-preview__filters button,.market-preview__filters select{background:#13181bf5;border:1px solid #7f765f;border-radius:3px;min-height:34px;height:34px;padding:3px 6px;box-shadow:inset 0 1px #ffffff08;color:#eee5d2;align-self:center}
+.market-preview__filters button::before{display:none}
+.market-preview__filters button[aria-pressed=true]{border:1px solid #9e8c5c;background:#171c1e;color:#ffe29d}
+.market-preview__filters select{background-image:none}
+.market-preview__filters button:nth-child(4){font-size:10px}
+.market-preview__filters .market-preview__select svg{width:18px;height:18px}
+.market-preview__sell,.market-preview__buy{background:var(--button-primary,var(--gradient-gold));border:1px solid transparent;border-radius:8px;color:var(--button-ink,#18150f);font-family:'Preview Russo',sans-serif;font-weight:400;box-shadow:0 3px 10px #ffc4001a}
+.market-preview__card>.market-preview__buy{background:var(--button-primary,var(--gradient-gold));border:1px solid transparent;border-radius:8px;min-height:44px;padding:4px 2px;margin-top:4px;box-shadow:none}
+.market-preview__card>.market-preview__buy::before{display:none}
+.market-preview__sell{min-height:44px}
+@media(max-width:335px){.market-preview__filters button,.market-preview__filters select{padding:3px;font-size:9px}}
+section:has(.market-preview)>header>button{left:3.05%;width:19.15%;top:7.1cqw;height:max(44px,7.4cqw);transform:translateY(-50%);display:flex;align-items:center;justify-content:center;text-align:center;padding:0;line-height:1;margin:0}
+.market-preview__filters button:nth-child(2){padding:3px 1px;white-space:nowrap}
+.market-preview__filters button{white-space:nowrap}
+/* Slim 30px filter plates with unchanged 44px hit areas. */
+.market-preview__filters button,.market-preview__filters button[aria-pressed=true]{height:44px;min-height:44px;background:none;border:0;box-shadow:none}
+.market-preview__filters button::before{display:block;content:'';position:absolute;inset:7px 0;border:1px solid #7f765f;border-radius:3px;background:#13181bf5;box-shadow:inset 0 1px #ffffff08;z-index:-1}
+.market-preview__filters button[aria-pressed=true]::before{border-color:#9e8c5c;background:#171c1e}
+.market-preview__filters select{height:44px;min-height:44px;border:0;box-shadow:none;background:linear-gradient(#13181b,#13181b) center/calc(100% - 2px) 28px no-repeat,linear-gradient(#7f765f,#7f765f) center/100% 30px no-repeat}
+.market-preview__filters button::before{background-image:none!important}
+/* Compact catalog actions; the invisible hit area extends upward within the price/action zone. */
+.market-preview__card>.market-preview__buy{position:relative;height:28px;min-height:28px;padding:2px 4px;font-size:clamp(10px,2.7vw,13px);line-height:1.2;border-radius:6px;margin-top:4px}
+.market-preview__card>.market-preview__buy::after{content:'';position:absolute;inset:-16px 0 0;pointer-events:auto;background:transparent}
+/* Smaller market actions, keeping the established gold and the list density. */
+.market-preview__sell{top:calc(49.8cqw + 3px);height:38px;min-height:38px;font-size:3.6cqw}
+.market-preview__sell::after{content:'';position:absolute;inset:-3px 0;pointer-events:auto;background:transparent}
+.market-preview__card>.market-preview__buy{width:88%;height:24px;min-height:24px;margin-left:auto;margin-right:auto;font-size:clamp(9px,2.5vw,12px)}
+.market-preview__card>.market-preview__buy::after{inset:-20px 0 0}
+/* The Mine filter grows with its count; the pack filter yields the spare width. */
+.market-preview__filters{grid-template-columns:max-content 34px minmax(0,1fr) max-content 36px}
+.market-preview__filters button:nth-child(4){width:max-content;min-width:max-content;justify-self:end;padding-inline:7px}
+.market-preview__filters select{min-width:0}
+@media(max-width:335px){.market-preview__filters{grid-template-columns:max-content 28px minmax(0,1fr) max-content 30px}.market-preview__filters button:nth-child(4){padding-inline:4px}}
+/* Own listings use the same compact card action size. */
+.market-preview__card>.market-preview__unlist{position:relative;width:88%;height:24px;min-height:24px;margin:4px auto 0;padding:2px 4px;border-radius:6px;font:400 clamp(9px,2.5vw,12px)/1.2 'Preview Russo',sans-serif;box-shadow:none}
+.market-preview__card>.market-preview__unlist::after{content:'';position:absolute;inset:-20px 0 0;background:transparent}
+/* Controlled dark pack menu, bounded to the viewport instead of the native light popup. */
+.market-preview__pack{position:relative;min-width:0;height:44px;z-index:8}
+.market-preview__filters .market-preview__pack-trigger{display:flex;align-items:center;justify-content:space-between;width:100%;height:44px;min-height:44px;gap:5px;text-align:left;overflow:hidden}
+.market-preview__pack-trigger>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.market-preview__pack-trigger>span:last-child{flex:none;margin-right:4px;font-size:16px;line-height:1;transform:translateY(-2px)}
+@media(max-width:400px){.market-preview__filters .market-preview__pack-trigger{gap:2px;padding-inline:3px}.market-preview__pack-trigger>span:last-child{margin-right:0}}
+.market-preview__pack-list{position:absolute;left:50%;top:42px;transform:translateX(-50%);width:min(250px,calc(100vw - 24px));max-height:min(250px,45dvh);overflow-y:auto;overscroll-behavior:contain;padding:4px;background:#15191af5;border:1px solid #8d8165;border-radius:5px;box-shadow:0 12px 28px #000b;scrollbar-color:#ad9b76 #171b1b;scrollbar-width:thin}
+.market-preview__filters .market-preview__pack-list button{display:flex;align-items:center;justify-content:flex-start;gap:9px;width:100%;height:auto;min-height:44px;padding:5px 8px;text-align:left;white-space:normal;color:#f2eadb;border:0;border-radius:3px;background:transparent;font:400 12px/1.25 'Preview Golos',sans-serif}
+.market-preview__pack-list button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.market-preview__filters .market-preview__pack-list .market-preview__pack-icon{display:block;width:30px;height:30px;flex:none;object-fit:cover;border:1px solid #a88a59;border-radius:4px;background:#383228}
+.market-preview__filters .market-preview__pack-list .market-preview__pack-icon[hidden]{display:none}
+.market-preview__filters .market-preview__pack-list button::before{display:none}
+.market-preview__filters .market-preview__pack-list button:hover,.market-preview__filters .market-preview__pack-list button:focus-visible{background:#31352e;color:#fff7df}
+.market-preview__filters .market-preview__pack-list button[aria-selected=true]{color:#ffda67;background:#2b291e}
+/* Compact market confirmation, with the price as the only detail. */
+.market-preview__confirm{width:min(100%,340px);padding:16px;background:#151a18;border:1px solid #907b55;border-radius:8px;box-shadow:0 12px 36px #000b}
+.market-preview__confirm h2{font:400 18px/1.25 'Preview Russo',sans-serif;margin:0 0 12px}
+.market-preview__confirm-total{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:#0c1210a6;border:1px solid #756c575e;border-radius:5px}
+.market-preview__confirm-total>span{font:400 13px/1.25 'Preview Golos',sans-serif;color:#cfc5b5}
+.market-preview__confirm-total>strong{display:flex;align-items:center;gap:6px;font:400 20px/1.1 'Preview Russo',sans-serif;color:#ffda67}
+.market-preview__confirm-total img{width:18px;height:18px;object-fit:contain}
+.market-preview__confirm>div:last-child{display:flex;gap:8px;margin-top:12px}
+.market-preview__confirm button{min-height:44px;padding:8px;font-size:13px;background:#1c211f}
+.market-preview__confirm button.market-preview__buy{background:var(--button-primary,var(--gradient-gold));border-color:transparent;color:#18150f}
+.market-preview__filters:not(:has(.market-preview__select)){grid-template-columns:auto 38px minmax(0,1fr) auto}
+/* Владелец, 09.10.2026: листается вся страница, а не кусок каталога внизу —
+   сцена уходит вверх, предложения идут поверх неё. Фильтры держатся сверху,
+   корзина «Купить выбранное» — снизу. Мир под сценой — повторяющейся землёй:
+   растянутая на всю длину каталога картинка расплывалась бы. */
+section[aria-labelledby="castle-window-title"]:has(.market-preview){overflow-y:auto;overscroll-behavior:contain}
+section:has(.market-preview)>div:last-child,section:has(.market-preview)>div:last-child>div:has(>.market-preview){height:auto;min-height:100%;overflow:visible!important}
+.market-preview,.market-preview.has-selection{height:auto;min-height:100%;overflow:visible}
+.market-preview::after{background:linear-gradient(180deg,#3b281c 0,#211a14 1000px,#211a14 100%)}
+.market-preview__filters{position:sticky;top:0;z-index:6;padding-top:4px;padding-bottom:4px;background:linear-gradient(#141713f2,#141713e0)}
+.market-preview__catalog{flex:none;height:auto;min-height:0;overflow:visible;overscroll-behavior:auto;scrollbar-gutter:auto;padding-right:0}
+.market-preview__basket{position:sticky;bottom:0;z-index:6}
+/* Откуп по флору: сколько самых дешёвых выбрать одним нажатием. */
+.market-preview__floor{display:flex;align-items:center;gap:4px;margin:4px 6px 6px;color:#eee5d2;font-size:12px;text-shadow:0 1px 3px #000}
+.market-preview__floor span{margin-right:2px}
+.market-preview__floor button{flex:1;min-width:0;min-height:36px;padding:2px 4px;border:1px solid #7f765f;border-radius:3px;background:#13181bf5;color:#ffe29d;font:400 13px 'Preview Russo',sans-serif}
+.market-preview__floor button:disabled{opacity:.5}
+@media(max-width:699px){
+  .market-preview__serial{display:block;text-align:center;white-space:nowrap;font-size:12px;font-weight:600;line-height:1.3;margin:2px 0 5px;color:#f1e6ce}
+  .market-preview__serial span:first-child{display:none}
+  .market-preview__serial span:last-child{display:block;overflow:hidden;text-overflow:ellipsis}
+  .market-preview__seller{font-size:11px;line-height:1.3;color:#f0e5d0;margin-top:4px}
+}
+
+.market-preview__grid.is-sweeping [data-sweep-id]{touch-action:none;user-select:none;-webkit-user-select:none}
+.market-preview__grid.is-sweeping img{-webkit-user-drag:none;pointer-events:none}
+.market-preview__basket .market-preview__reset{min-height:36px;padding:4px 8px;margin-left:4px;background:transparent;color:#ddd2bb;border:0;font:400 12px/1.2 'Preview Golos',sans-serif;text-decoration:underline}
+.market-preview__basket>.market-preview__buy{align-self:center;min-height:44px;height:auto;line-height:1.25}
+
+/* The painted doorway is part of the market scene. Keep controls and the foreground sharp. */
+.market-preview::before{
+  height:177.683315cqw;
+  background-color:transparent;
+  background-image:url('/design-assets/market/market-reference-world.webp');
+  mask-image:linear-gradient(to bottom,#000 0,#000 150cqw,transparent 177.683315cqw);
+}
+.market-preview::after{
+  inset:0;
+  z-index:-2;
+  background:linear-gradient(180deg,#3b281c 0,#211a14 1000px,#211a14 100%);
+}
+.market-preview__trading-house-door{
+  position:absolute;z-index:2;left:2%;top:28cqw;width:19%;height:33cqw;
+  min-width:44px;min-height:44px;padding:0;border:0;background:transparent;
+  cursor:pointer;touch-action:manipulation;
+}
+.market-preview__trading-house-door:hover{box-shadow:inset 0 0 0 2px #f4cf8a88}
+.market-preview__trading-house-door:focus-visible{outline:3px solid #ffdc6b;outline-offset:2px;border-radius:5px}

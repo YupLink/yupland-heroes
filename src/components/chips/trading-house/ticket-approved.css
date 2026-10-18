@@ -1,0 +1,418 @@
+@font-face { font-family: "Castle Ticket Russo"; src: url("../../../assets/tavern/RussoOne.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Castle Ticket Golos"; src: url("../../../assets/tavern/GolosText.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+.castle-ticket-dialog { --font-display: "Castle Ticket Russo", sans-serif; --font-sans: "Castle Ticket Golos", sans-serif; }
+.castle-ticket-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(90dvh, 680px);
+  display: block;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid #756747;
+  border-radius: 9px;
+  background: linear-gradient(155deg, #101216, #08090f 58%, #08090f);
+  box-shadow: 0 18px 48px #000b, inset 0 1px #a48a4b77;
+  color: #eee5d2;
+  font-family: var(--font-sans);
+}
+.castle-ticket-dialog__one-time h3 { margin-bottom: 12px; font-family: var(--font-display); font-size: 17px; font-weight: 400; }
+.castle-ticket-dialog:focus-visible { outline: none; }
+.castle-ticket-dialog__header { position: sticky; top: -22px; z-index: 3; display: flex; align-items: center; gap: 10px; min-height: 72px; margin: -22px -22px 0; padding: 20px 58px 14px 22px; border-bottom: 1px solid #756747; background: #0d1015; }
+.castle-ticket-dialog__header img { width: 30px; height: 30px; flex: none; object-fit: contain; image-rendering: pixelated; }
+.castle-ticket-dialog__header h2 { font-family: var(--font-display); font-size: 21px; font-weight: 400; line-height: 1.2; letter-spacing: 0; }
+.castle-ticket-dialog__close { position: absolute; right: 18px; top: 20px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #756747; border-radius: 50%; color: #eee5d2; }
+.castle-ticket-dialog__close svg { width: 17px; height: 17px; }
+.castle-ticket-dialog__close:hover { background: #24252a; }
+.castle-ticket-dialog__back { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border: 1px solid #756747; border-radius: 50%; color: #eee5d2; }
+.castle-ticket-dialog__back svg { width: 17px; height: 17px; }
+.castle-ticket-dialog__back:hover { background: #24252a; }
+.castle-ticket-dialog__description { margin-top: 15px; color: #e7decf; font-family: var(--font-sans); font-size: 14px; line-height: 1.5; }
+.castle-ticket-dialog__content { margin-top: 18px; }
+.castle-ticket-dialog__more-payments { display: flex; align-items: center; justify-content: center; gap: 7px; width: fit-content; min-height: 44px; margin: 4px auto 8px; padding: 8px 12px; border: 0; background: transparent; color: #b9c1cd; font-size: 13px; line-height: 1.25; text-align: center; text-decoration: underline; text-underline-offset: 3px; }
+.castle-ticket-dialog__more-payments:hover { color: #edf0f3; }
+.castle-ticket-dialog__more-payments svg { width: 15px; height: 15px; flex: none; }
+.castle-ticket-dialog__status { display: grid; justify-items: start; gap: 12px; min-height: 100px; align-content: center; margin: 0; color: #e7decf; font-size: 14px; }
+.castle-ticket-dialog__status button { min-height: 40px; padding: 7px 14px; border: 1px solid #a48a4b; border-radius: 20px; color: #f3ca62; }
+.castle-ticket-dialog__empty { margin: 0; padding: 20px 16px; border: 1px solid #756747; border-radius: 7px; color: #b7b7bf; font-size: 14px; line-height: 1.5; }
+.castle-ticket-dialog__offers,
+.castle-ticket-dialog__methods { display: grid; gap: 9px; }
+.castle-ticket-dialog__method {
+  width: 100%;
+  border: 1px solid #756747;
+  border-radius: 7px;
+  background: #14171c;
+  color: #eee5d2;
+  text-align: left;
+}
+.castle-ticket-dialog__method { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 66px; padding: 10px 12px; }
+.castle-ticket-dialog__method > span { display: grid; gap: 3px; min-width: 0; }
+.castle-ticket-dialog__method strong { font-size: 14px; }
+.castle-ticket-dialog__method small { color: #b7b7bf; font-size: 11px; line-height: 1.25; }
+.castle-ticket-dialog__method b { flex: none; color: #f3ca62; font-size: 13px; white-space: nowrap; }
+.castle-ticket-dialog__connect { display: grid; gap: 9px; margin-top: 18px; padding-top: 15px; border-top: 1px solid #756747; }
+.castle-ticket-dialog__connect p { margin: 0; color: #b7b7bf; font-size: 12px; line-height: 1.45; }
+.castle-ticket-dialog__connect button { justify-self: start; min-height: 40px; padding: 7px 12px; border: 1px solid #a48a4b; border-radius: 20px; color: #f3ca62; font-size: 12px; font-weight: 700; }
+.castle-ticket-dialog__connect button:hover { background: #24252a; }
+.castle-ticket-dialog__summary { display: grid; gap: 7px; padding: 17px; border: 1px solid #756747; border-radius: 7px; background: #14171c; }
+.castle-ticket-dialog__summary span { font-size: 17px; font-weight: 700; }
+.castle-ticket-dialog__summary strong { color: #f3ca62; font-size: 19px; }
+.castle-ticket-dialog__summary small { color: #b7b7bf; font-size: 12px; line-height: 1.4; }
+.castle-ticket-dialog__primary { width: 100%; min-height: 46px; margin-top: 17px; padding: 10px 14px; border: 1px solid #b58b41; border-radius: 23px; background: #24252a; color: #ffe08a; font-weight: 700; }
+.castle-ticket-dialog__primary:hover:not(:disabled) { background: #303137; }
+.castle-ticket-dialog__primary:disabled { opacity: .45; cursor: not-allowed; }
+.castle-ticket-dialog__error { margin-top: 12px; color: #dfa390; font-size: 12px; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__content > .castle-ticket-dialog__error { margin: 12px 15px; padding: 10px 12px; border: 1px solid #a56857; border-radius: 10px; background: #2b1d1d; color: #f4c0af; font-size: 13px; line-height: 1.4; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__content > .castle-ticket-dialog__error button { color: #ffda78; text-decoration: underline; text-underline-offset: 2px; }
+.castle-ticket-dialog__stars-balance { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 12px; margin: 14px 0 0; color: #d8d4cd; font-size: 14px; }
+.castle-ticket-dialog__stars-balance strong { color: #f3ca62; }
+.castle-ticket-dialog__stars-balance span { width: 100%; color: #f3ca62; }
+.castle-ticket-dialog__top-up > p { margin: 0 0 14px; color: #e3d8bd; font-size: 14px; line-height: 1.45; }
+.castle-ticket-dialog__top-up > .castle-ticket-dialog__primary { margin-top: 13px; }
+.castle-ticket-dialog__method:hover { border-color: #a48a4b; background: #1c2026; }
+.castle-ticket-dialog button:focus-visible { outline: 2px solid #f3ca62; outline-offset: 2px; }
+.castle-ticket-dialog > button:last-child { display: none; }
+@media (max-width: 620px) {
+  .castle-ticket-dialog { padding: 20px 17px 21px; }
+  .castle-ticket-dialog__header { top: -20px; margin: -20px -17px 0; min-height: 68px; padding: 17px 54px 13px 17px; }
+  .castle-ticket-dialog__close { right: 16px; top: 17px; }
+  .castle-ticket-dialog__header h2 { font-size: 19px; }
+}
+.castle-ticket-dialog--bundle-study {
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(90dvh, 680px);
+  font-family: "Castle Ticket Golos", var(--font-sans), sans-serif;
+}
+.castle-ticket-dialog--bundle-study .castle-ticket-dialog__content { margin-top: 15px; }
+.castle-ticket-dialog--bundle-study .castle-ticket-dialog__one-time h3 {
+  margin-bottom: 8px;
+  color: #b8b6ad;
+  font-size: 13px;
+}
+.castle-ticket-dialog--bundle-study .castle-ticket-dialog__offers { gap: 8px; }
+.castle-ticket-dialog--bundle-study .castle-ticket-dialog__one-time { scroll-margin-top: 90px; }
+.castle-ticket-dialog--bundle-study .castle-ticket-dialog__method {
+  border: 0;
+  border-bottom: 1px solid #756747;
+  border-radius: 0;
+  background: transparent;
+}
+.castle-ticket-dialog--bundle-study .castle-ticket-dialog__method:hover { background: #1c2026; }
+.castle-ticket-dialog--energy-flow { width: min(740px, calc(100vw - 32px)); max-height: min(94dvh, 800px); padding: 0; border-color: #3a414b; border-radius: 28px; background: #0e1117; box-shadow: 0 24px 70px #000d; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__header { top: 0; min-height: 78px; margin: 0; padding: 17px 70px 16px 30px; border-bottom-color: #31353e; background: linear-gradient(110deg, #151920, #11141a); }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__header > img { display: none; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__header h2 { font-size: 29px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__back { width: 36px; height: 36px; border-color: #555862; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__close { top: 20px; right: 30px; width: 36px; height: 36px; border: 0; color: #c1c1c8; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__close svg { width: 25px; height: 25px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__description { display: grid; gap: 4px; margin: 18px 28px 12px; padding: 17px 20px; border: 1px solid #3a404c; border-radius: 15px; background: linear-gradient(105deg, #202028, #151820 78%); color: #bfc0c6; font-size: 14px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__description strong { color: #f4ead5; font-family: var(--font-display); font-size: 22px; font-weight: 400; line-height: 1.2; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__content { margin: 0 28px 27px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__methods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__methods > .castle-ticket-dialog__method { grid-column: 1 / -1; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__method { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto 17px; align-items: center; gap: 10px; min-height: 72px; padding: 10px 13px; border: 1px solid #3a404c; border-radius: 14px; background: linear-gradient(115deg, #171b23, #12161e); text-align: left; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__method:hover { border-color: #ba9651; background: #20232a; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__payment-glyph { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #4b505b; border-radius: 50%; background: #10141b; color: #f3ca62; font-size: 24px; line-height: 1; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__payment-glyph img { width: 29px; height: 29px; object-fit: contain; image-rendering: pixelated; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__payment-glyph svg { width: 22px; height: 22px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__method > span:not(.castle-ticket-dialog__payment-glyph) { display: grid; gap: 2px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__method strong { color: #eee5d2; font-size: 16px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__method small { color: #a9a9ad; font-size: 11px; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__method b { color: #f3ca62; font-size: 16px; font-variant-numeric: tabular-nums; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__connect { margin-top: 14px; padding-top: 13px; border-color: #383e49; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__summary { padding: 19px; border-color: #3a404c; border-radius: 15px; background: #171b23; }
+.castle-ticket-dialog--energy-flow .castle-ticket-dialog__primary { border-radius: 14px; }
+@media (max-width: 620px) {
+  .castle-ticket-dialog--energy-flow { max-height: 92dvh; border-radius: 20px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__header { min-height: 55px; padding: 11px 42px 10px 13px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__header h2 { font-size: 18px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__back { width: 30px; height: 30px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__close { top: 11px; right: 12px; width: 30px; height: 30px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__close svg { width: 21px; height: 21px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__description { margin: 10px 14px 9px; padding: 12px 14px; font-size: 12px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__description strong { font-size: 17px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__content { margin: 0 14px 18px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__methods { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__method { grid-template-columns: 36px minmax(0, 1fr) auto 15px; gap: 8px; min-height: 58px; padding: 7px 9px; border-radius: 11px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__payment-glyph { width: 36px; height: 36px; font-size: 20px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__payment-glyph img { width: 25px; height: 25px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__payment-glyph svg { width: 19px; height: 19px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__method strong { font-size: 14px; }
+  .castle-ticket-dialog--energy-flow .castle-ticket-dialog__method b { font-size: 13px; }
+}
+.castle-ticket-dialog--ticket-catalog {
+  width: min(740px, calc(100vw - 32px));
+  max-height: min(96dvh, 800px);
+  padding: 0;
+  border-color: #3a414b;
+  border-radius: 28px;
+  background: #0e1117;
+  box-shadow: 0 24px 70px #000d;
+}
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__header {
+  top: 0;
+  min-height: 78px;
+  margin: 0;
+  padding: 17px 70px 16px 44px;
+  border-bottom-color: #31353e;
+  background: linear-gradient(110deg, #151920, #11141a);
+}
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__header > img { display: none; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__header h2 { font-size: 35px; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__close { top: 20px; right: 34px; width: 38px; height: 38px; border: 0; color: #c1c1c8; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__close svg { width: 27px; height: 27px; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__content { margin: 0; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__one-time { margin: 18px 32px 28px; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__offers { gap: 10px; }
+@media (max-width: 620px) {
+  .castle-ticket-dialog--ticket-catalog { max-height: min(96dvh, 800px); }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__header { min-height: 55px; padding: 12px 47px 12px 23px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__header h2 { font-size: 20px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__close { top: 10px; right: 14px; width: 35px; height: 35px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__close svg { width: 23px; height: 23px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__one-time { margin: 13px 15px 20px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__offers { gap: 8px; }
+}
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__header > img { display: block; width: 36px; height: 36px; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__content { margin-top: 0; }
+.castle-ticket-dialog__ticket-feature { position: relative; display: flex; align-items: center; height: 174px; overflow: hidden; padding: 17px 36px; border-bottom: 1px solid #42403c; background: linear-gradient(90deg, #0a0e16aa, transparent 42%), url('./assets/ticket-showcase-banner-webp-optimized.webp') 52% 50% / cover no-repeat; }
+.castle-ticket-dialog__ticket-feature-copy { position: relative; z-index: 1; width: min(36%, 240px); text-shadow: 0 2px 4px #000a; }
+.castle-ticket-dialog__ticket-feature-copy h3 { margin: 0 0 9px; color: #f7eee0; font-family: "Castle Ticket Russo", var(--font-display), sans-serif; font-size: 25px; font-weight: 400; line-height: 1.15; }
+.castle-ticket-dialog__ticket-feature-copy p { margin: 0; color: #c1c2c9; font-size: 15px; line-height: 1.35; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__one-time { margin: 14px 29px 24px; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__offers { gap: 8px; }
+.castle-ticket-dialog__ticket-bundle { position: relative; display: block; width: 58px; height: 58px; overflow: hidden; border: 2px solid #455164; border-radius: 50%; background: radial-gradient(circle at 50% 42%, #263145, #0a0e16 72%); }
+.castle-ticket-dialog__ticket-bundle img { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; object-fit: contain; image-rendering: pixelated; transform: translate(-50%, -50%); filter: drop-shadow(0 2px 1px #0008); }
+.castle-ticket-dialog__ticket-bundle--pile img { transform: translate(-50%, -50%) scale(1.2); }
+@media (max-width: 620px) {
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__header > img { width: 27px; height: 27px; }
+  .castle-ticket-dialog__ticket-feature { height: 108px; padding: 10px 17px; background-position: 53% 50%; }
+  .castle-ticket-dialog__ticket-feature-copy { width: 43%; }
+  .castle-ticket-dialog__ticket-feature-copy h3 { margin-bottom: 4px; font-size: 14px; }
+  .castle-ticket-dialog__ticket-feature-copy p { font-size: 10px; line-height: 1.25; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__one-time { margin: 10px 11px 18px; }
+  .castle-ticket-dialog__ticket-bundle { width: 46px; height: 46px; }
+  .castle-ticket-dialog__ticket-bundle img { width: 42px; height: 42px; }
+}
+.castle-ticket-dialog--purchase-confirm { width: min(500px, calc(100vw - 32px)); }
+.castle-ticket-dialog--purchase-confirm .castle-ticket-dialog__content { margin: 17px 20px 20px; }
+.castle-ticket-dialog__confirm-hero { position: relative; display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; min-height: 142px; overflow: hidden; border: 1px solid #3d4752; border-radius: 18px; background: linear-gradient(90deg, #10151de8, #10151d66 76%), url('./assets/subscription-stone-scene-webp-optimized.webp') center 52% / cover no-repeat; }
+.castle-ticket-dialog__confirm-hero::after { position: absolute; inset: auto 0 0; height: 22px; background: linear-gradient(transparent, #111720); content: ''; pointer-events: none; }
+.castle-ticket-dialog__confirm-art { z-index: 1; display: grid; place-items: center; width: 120px; height: 120px; margin-left: 10px; background: radial-gradient(circle closest-side, #dc9d3188, transparent); }
+.castle-ticket-dialog__confirm-art > img { width: 83px; height: 83px; object-fit: contain; image-rendering: pixelated; }
+.castle-ticket-dialog__confirm-reward { z-index: 1; display: grid; gap: 6px; min-width: 0; padding: 12px 14px; }
+.castle-ticket-dialog__confirm-reward strong { color: #f4ead5; font-family: "Castle Ticket Russo", var(--font-display), sans-serif; font-size: 25px; font-weight: 400; line-height: 1.15; }
+.castle-ticket-dialog__confirm-reward small { color: #c6c2bf; font-size: 13px; line-height: 1.3; }
+.castle-ticket-dialog__confirm-payment { display: grid; grid-template-columns: 45px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 80px; margin-top: 10px; padding: 10px 16px; border: 1px solid #3a404c; border-radius: 15px; background: #171b23; }
+.castle-ticket-dialog__confirm-payment--no-glyph { grid-template-columns: minmax(0, 1fr) auto; }
+.castle-ticket-dialog__confirm-payment > span:not(.castle-ticket-dialog__payment-glyph) { display: grid; gap: 3px; min-width: 0; }
+.castle-ticket-dialog__confirm-payment small { color: #b7b7bf; font-size: 12px; }
+.castle-ticket-dialog__confirm-payment strong { color: #f4ead5; font-size: 16px; }
+.castle-ticket-dialog__confirm-payment b { min-width: 0; padding-left: 15px; border-left: 1px solid #454955; color: #f3ca62; font-size: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+.castle-ticket-dialog__payment-balance { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 5px 12px; margin: 14px 0 0; color: #d8d4cd; font-size: 14px; line-height: 1.35; }
+.castle-ticket-dialog__payment-balance strong { color: #f3ca62; }
+.castle-ticket-dialog__payment-balance > span { width: 100%; color: #f3ca62; }
+.castle-ticket-dialog--purchase-confirm .castle-ticket-dialog__primary:disabled { background: #37383b !important; border-color: #67605b !important; box-shadow: none !important; color: #d9d0bd !important; opacity: 1; }
+.castle-ticket-dialog--purchase-confirm .castle-ticket-dialog__primary[data-game-button="primary"] { min-height: 58px !important; margin-top: 16px; border-radius: 30px !important; background: linear-gradient(110deg, #ffdc45, #eba000) !important; border-color: #ffdc6c !important; box-shadow: inset 0 2px #fff1a5, 0 8px 24px #d68b2945 !important; color: #17130b !important; font-size: 18px !important; }
+.castle-ticket-dialog--purchase-confirm .castle-ticket-dialog__primary:hover:not(:disabled) { background: linear-gradient(110deg, #ffe46a, #f4b21e); }
+@media (max-width: 620px) {
+  .castle-ticket-dialog--purchase-confirm .castle-ticket-dialog__content { margin: 12px 13px 14px; }
+  .castle-ticket-dialog__confirm-hero { grid-template-columns: 85px minmax(0, 1fr); min-height: 103px; border-radius: 13px; }
+  .castle-ticket-dialog__confirm-art { width: 79px; height: 79px; margin-left: 4px; }
+  .castle-ticket-dialog__confirm-art > img { width: 61px; height: 61px; }
+  .castle-ticket-dialog__confirm-reward { gap: 3px; padding: 7px 7px 7px 1px; }
+  .castle-ticket-dialog__confirm-reward strong { font-size: clamp(17px, 5vw, 20px); }
+  .castle-ticket-dialog__confirm-reward small { font-size: 10px; }
+  .castle-ticket-dialog__confirm-payment { grid-template-columns: 35px minmax(0, 1fr) auto; gap: 8px; min-height: 63px; margin-top: 8px; padding: 7px 9px; border-radius: 11px; }
+  .castle-ticket-dialog__confirm-payment--no-glyph { grid-template-columns: minmax(0, 1fr) auto; }
+  .castle-ticket-dialog__confirm-payment small { font-size: 10px; }
+  .castle-ticket-dialog__confirm-payment strong { font-size: 12px; }
+  .castle-ticket-dialog__confirm-payment b { max-width: clamp(95px, 30vw, 120px); padding-left: 8px; font-size: 16px; line-height: 1.15; white-space: normal; }
+  .castle-ticket-dialog--purchase-confirm .castle-ticket-dialog__primary[data-game-button="primary"] { min-height: 50px !important; margin-top: 12px; font-size: 15px !important; }
+}
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__content > .castle-ticket-dialog__status { min-height: 112px; margin: 16px 29px 24px; padding: 16px 18px; border: 1px solid #3b4452; border-radius: 14px; background: #171d27; line-height: 1.4; }
+.castle-ticket-dialog__ticket-feature { height: 108px; background-position: 52% 54%; }
+.castle-ticket-dialog__ticket-feature-copy { width: min(43%, 290px); }
+.castle-ticket-dialog__ticket-feature-copy h3 { margin-bottom: 5px; font-size: 25px; }
+.castle-ticket-dialog__ticket-feature-copy p { font-size: 14px; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature { height: 116px; padding: 10px 24px; background-position: 52% 55%; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature-copy { display: block; width: 40%; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature-copy h3 { margin-bottom: 4px; font-size: clamp(18px, 2.2vw, 22px); line-height: 1.1; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature-copy p { font-size: 13px; line-height: 1.2; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__offers { gap: 8px; }
+.castle-ticket-dialog__ticket-catalog-card { min-width: 0; padding: 10px 14px; border: 1px solid #405066; border-radius: 14px; background: linear-gradient(110deg, #182331, #111922 68%, #18212a); }
+.castle-ticket-dialog__ticket-catalog-top { display: grid; grid-template-columns: 58px minmax(0, 1fr) 160px; align-items: center; gap: 12px; }
+.castle-ticket-dialog__ticket-catalog-top > strong { color: #f7eee0; font-family: "Castle Ticket Russo", var(--font-display), sans-serif; font-size: 24px; font-weight: 400; line-height: 1.2; }
+.castle-ticket-dialog__ticket-stars-button { display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 50px; padding: 8px 12px; border: 2px solid #ffe47e; border-radius: 13px; background: linear-gradient(#ffe579, #f0ad35); box-shadow: inset 0 2px #fff3ab, 0 3px #81531e; color: #241707; cursor: pointer; }
+.castle-ticket-dialog__ticket-stars-button b { font-family: "Castle Ticket Russo", var(--font-display), sans-serif; font-size: 20px; font-weight: 400; white-space: nowrap; }
+.castle-ticket-dialog__ticket-stars-button svg { width: 17px; height: 17px; }
+.castle-ticket-dialog__ticket-stars-button:hover { filter: brightness(1.08); }
+.castle-ticket-dialog__ticket-catalog-alternatives { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 5px 0 0 70px; }
+.castle-ticket-dialog__ticket-catalog-alternatives--single { grid-template-columns: 1fr; }
+.castle-ticket-dialog__ticket-alternative-button { position: relative; display: block; min-width: 0; min-height: 47px; padding: 5px 10px; border: 1px solid #677485; border-radius: 9px; background: #101820; color: #f3eee4; text-align: left; cursor: pointer; }
+.castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-button { display: flex; align-items: center; padding-right: 30px; }
+.castle-ticket-dialog__ticket-alternative-button:hover { border-color: #aab5c2; background: #1d2936; }
+.castle-ticket-dialog__ticket-alternative-main { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; white-space: nowrap; }
+.castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-main { flex-direction: row; align-items: center; gap: 5px; }
+.castle-ticket-dialog__ticket-alternative-main b { font-family: "Castle Ticket Russo", var(--font-display), sans-serif; font-size: 14px; font-weight: 400; white-space: nowrap; }
+.castle-ticket-dialog__ticket-alternative-main small { color: #cbd0d6; font-size: 12px; line-height: 1.2; }
+.castle-ticket-dialog__ticket-alternative-button > svg { position: absolute; right: 8px; bottom: 6px; width: 16px; height: 16px; color: #b9c2cc; }
+.castle-ticket-dialog__ticket-alternative-button > em { position: absolute; top: 7px; right: 8px; padding: 2px 6px; border-radius: 999px; background: linear-gradient(#ffdf76, #edaa32); box-shadow: inset 0 1px #fff1a9, 0 1px 2px #0008; color: #241705; font-size: 11px; font-style: normal; font-weight: 700; line-height: 1; white-space: nowrap; }
+.castle-ticket-dialog__ticket-other-title { margin: 16px 0 0; padding-top: 15px; border-top: 1px solid #485260; color: #f7eee0; font-family: "Castle Ticket Russo", var(--font-display), sans-serif; font-size: 21px; font-weight: 400; }
+.castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__one-time .castle-ticket-dialog__ticket-other-title { font-size: 21px; }
+.castle-ticket-dialog__ticket-other-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-card { padding: 11px; }
+.castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-top { grid-template-columns: 48px minmax(0, 1fr); gap: 9px; }
+.castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-bundle { width: 48px; height: 48px; }
+.castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-bundle img { width: 43px; height: 43px; }
+.castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-top > strong { font-size: 16px; }
+.castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-alternatives { margin: 9px 0 0; }
+@media (max-width: 620px) {
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature { height: 70px; padding: 7px 12px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature-copy { width: 48%; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature-copy h3 { margin-bottom: 2px; font-size: 13px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature-copy p { font-size: 10px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__ticket-feature-copy span { display: none; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__one-time { margin: 12px 11px 18px; }
+  .castle-ticket-dialog__ticket-catalog-card { padding: 10px; border-radius: 13px; }
+  .castle-ticket-dialog__ticket-catalog-top { grid-template-columns: 46px minmax(0, 1fr) 98px; gap: 7px; }
+  .castle-ticket-dialog__ticket-catalog-top .castle-ticket-dialog__ticket-bundle { width: 46px; height: 46px; }
+  .castle-ticket-dialog__ticket-catalog-top .castle-ticket-dialog__ticket-bundle img { width: 42px; height: 42px; }
+  .castle-ticket-dialog__ticket-catalog-top > strong { font-size: 15px; }
+  .castle-ticket-dialog__ticket-stars-button { min-height: 42px; gap: 4px; padding: 5px 6px; border-radius: 10px; }
+  .castle-ticket-dialog__ticket-stars-button b { font-size: 13px; }
+  .castle-ticket-dialog__ticket-stars-button svg { width: 13px; height: 13px; }
+  .castle-ticket-dialog__ticket-catalog-alternatives { gap: 6px; margin: 6px 0 0 53px; }
+  .castle-ticket-dialog__ticket-alternative-button { min-height: 48px; padding: 5px 6px; }
+  .castle-ticket-dialog__ticket-alternative-main { gap: 2px 4px; }
+  .castle-ticket-dialog__ticket-alternative-main b { font-size: 12px; }
+  .castle-ticket-dialog__ticket-alternative-button > svg { width: 13px; height: 13px; }
+  .castle-ticket-dialog__ticket-alternative-main small,
+.castle-ticket-dialog__ticket-alternative-button > em { font-size: 11px; }
+  .castle-ticket-dialog__ticket-other-title { font-size: 16px; }
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__one-time .castle-ticket-dialog__ticket-other-title { font-size: 16px; }
+  .castle-ticket-dialog__ticket-other-grid { gap: 6px; }
+  .castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-card { padding: 7px; }
+  .castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-top { grid-template-columns: 38px minmax(0, 1fr); gap: 4px; }
+  .castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-bundle { width: 38px; height: 38px; }
+  .castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-bundle img { width: 35px; height: 35px; }
+  .castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-top > strong { font-size: 11px; }
+  .castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-alternative-main b { font-size: 11px; }
+  .castle-ticket-dialog__ticket-catalog-card--first { position: relative; padding: 10px 10px 9px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-catalog-top { grid-template-columns: 46px minmax(0, 1fr) 98px; height: 27px; gap: 7px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-bundle { position: absolute; top: 10px; left: 10px; width: 42px; height: 42px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-bundle img { width: 40px; height: 40px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-catalog-top > strong { grid-column: 2; transform: translateY(3px); }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-stars-button { grid-column: 3; align-self: start; height: 25px; min-height: 25px; margin-top: 2px; padding: 1px 7px; border: 1px solid #f4cc66; border-radius: 7px; box-shadow: inset 0 1px #ffefaf; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-catalog-alternatives { margin-top: 2px; margin-left: 53px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-button { height: 26px; min-height: 26px; padding: 1px 7px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-main b { font-size: 11px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-main small { font-size: 10px; }
+}
+@media (max-width: 480px) {
+  .castle-ticket-dialog__ticket-catalog-alternatives { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-left: 0; }
+  .castle-ticket-dialog__ticket-catalog-alternatives--single { grid-template-columns: 1fr; }
+  .castle-ticket-dialog__ticket-alternative-button { min-height: 43px; padding: 4px 6px; }
+  .castle-ticket-dialog__ticket-alternative-main small { font-size: 10px; }
+  .castle-ticket-dialog__ticket-alternative-button > em { top: 5px; right: 5px; padding: 2px 4px; font-size: 10px; }
+  .castle-ticket-dialog__ticket-alternative-button > svg { right: 4px; bottom: 4px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-catalog-alternatives { margin-left: 53px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-button { display: flex; align-items: center; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-main { flex-direction: row; align-items: center; gap: 4px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-button > svg { bottom: 5px; }
+}
+@media (max-width: 350px) {
+  .castle-ticket-dialog__ticket-catalog-top { grid-template-columns: 42px minmax(0, 1fr) 90px; gap: 5px; }
+  .castle-ticket-dialog__ticket-catalog-top .castle-ticket-dialog__ticket-bundle { width: 42px; height: 42px; }
+  .castle-ticket-dialog__ticket-catalog-top > strong { font-size: 14px; }
+  .castle-ticket-dialog__ticket-stars-button b { font-size: 12px; }
+  .castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-catalog-alternatives { margin-left: 53px; }
+  .castle-ticket-dialog__ticket-alternative-main b { font-size: 10px; }
+  .castle-ticket-dialog__ticket-alternative-main small { font-size: 10px; }
+  .castle-ticket-dialog__ticket-alternative-button > em { font-size: 9px; }
+  .castle-ticket-dialog__ticket-other-grid { grid-template-columns: 1fr; }
+  .castle-ticket-dialog__ticket-other-grid .castle-ticket-dialog__ticket-catalog-top > strong { font-size: 14px; }
+}
+@media (max-width: 620px) {
+  .castle-ticket-dialog--ticket-catalog .castle-ticket-dialog__content > .castle-ticket-dialog__status { min-height: 108px; margin: 12px 11px 18px; padding: 14px; }
+  .castle-ticket-dialog__ticket-feature { height: 70px; padding: 7px 17px; }
+  .castle-ticket-dialog__ticket-feature-copy { width: 54%; }
+  .castle-ticket-dialog__ticket-feature-copy h3 { margin-bottom: 2px; font-size: 15px; }
+  .castle-ticket-dialog__ticket-feature-copy p { font-size: 11px; }
+  .castle-ticket-dialog__payment-balance { font-size: 12px; }
+}
+.castle-ticket-dialog__content--wallet-disconnected .castle-ticket-dialog__one-time { margin-bottom: 0; }
+/* Prices and supporting copy use the approved Golos Text family. */
+.castle-ticket-dialog button { font-family: var(--font-sans); }
+.castle-ticket-dialog__ticket-stars-button b,
+.castle-ticket-dialog__ticket-alternative-main b,
+.castle-ticket-dialog__confirm-payment b { font-family: var(--font-sans); font-weight: 600; }
+.castle-ticket-dialog__header .resource-glyph { width: 30px; height: 30px; flex: none; }
+.castle-ticket-dialog__confirm-art .resource-glyph { width: 70px; height: 70px; }
+.castle-ticket-dialog__content > [role="alert"] { margin: 12px; }
+
+.castle-ticket-dialog--ticket-methods .castle-ticket-dialog__method--no-glyph { grid-template-columns: minmax(0, 1fr) auto 17px; }
+/* A compact +N opens the existing full payment-method screen. */
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 36px;
+  margin-left: 0;
+}
+.castle-ticket-dialog__more-methods {
+  align-self: center; min-width: 36px; min-height: 44px;
+  border: 0; border-radius: 12px; background: transparent; color: #cbd0d6;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.castle-ticket-dialog__more-methods:hover { background: #27313c; color: #ffe08a; }
+.castle-ticket-dialog__more-methods:focus-visible { outline: 2px solid #ffe08a; outline-offset: 2px; }
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto;
+  gap: 4px 3px; align-items: center;
+}
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main { display: contents; }
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main b { grid-column: 1; grid-row: 1; }
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main small { grid-column: 1; grid-row: 2; white-space: nowrap; }
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button > em { position: static; grid-column: 2; grid-row: 1; padding: 2px 4px; font-size: 10px; }
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button > svg { position: static; grid-column: 2; grid-row: 2; justify-self: end; }
+@media (max-width: 620px) {
+  .castle-ticket-dialog__ticket-catalog-alternatives--overflow { gap: 5px; }
+  .castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button { padding: 5px; column-gap: 2px; }
+  .castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main b { font-size: 11px; }
+  .castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button > em { padding: 1px 3px; font-size: 8px; }
+}
+@media (max-width: 350px) {
+  .castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main b { font-size: 9px; }
+}
+
+/* Currency choices share the same divided row as energy offers. */
+.castle-ticket-dialog__ticket-catalog-alternatives{gap:0;margin:10px 0 0;padding-top:8px;border-top:1px solid #8d763a66}
+.castle-ticket-dialog__ticket-alternative-button{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:5px 4px;align-items:center;min-height:54px;padding:4px 9px;border:0;border-radius:0;background:transparent;text-align:left;box-shadow:none}
+.castle-ticket-dialog__ticket-alternative-button:hover{background:#e7bd4010;border-color:transparent}
+.castle-ticket-dialog__ticket-alternative-button + .castle-ticket-dialog__ticket-alternative-button{border-left:1px solid #8d763a66}
+.castle-ticket-dialog__ticket-alternative-main{display:contents}
+.castle-ticket-dialog__ticket-alternative-main b{grid-column:1;grid-row:1;color:#f3ca62;font-size:17px}
+.castle-ticket-dialog__ticket-alternative-main small{grid-column:1/-1;grid-row:2;color:#c3c3c7;white-space:nowrap}
+.castle-ticket-dialog__ticket-alternative-button>em{position:static;grid-column:2;grid-row:1;padding:2px 4px;font-size:10px}
+.castle-ticket-dialog__ticket-alternative-button>svg{display:none}
+.castle-ticket-dialog__more-methods{color:#f3ca62;min-height:44px}
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button{gap:5px 4px;min-height:54px;padding:4px 9px}
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main small{grid-column:1/-1}
+.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main b{font-size:17px}
+.castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-catalog-alternatives{margin-left:0;margin-top:12px}
+.castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-button{display:grid;height:auto;min-height:54px;padding:4px 9px}
+.castle-ticket-dialog__ticket-catalog-card--first .castle-ticket-dialog__ticket-alternative-main{display:contents}
+@media(max-width:620px){
+ .castle-ticket-dialog__ticket-alternative-button,.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button{padding:4px 6px;min-height:48px}
+ .castle-ticket-dialog__ticket-alternative-main b,.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main b{font-size:12px}
+ .castle-ticket-dialog__ticket-alternative-main small{font-size:11px}
+ .castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-button>em{font-size:8px;padding:1px 3px}
+}
+@media(max-width:350px){
+ .castle-ticket-dialog__ticket-alternative-main b,.castle-ticket-dialog__ticket-catalog-alternatives--overflow .castle-ticket-dialog__ticket-alternative-main b{font-size:10px}
+ .castle-ticket-dialog__ticket-alternative-button>em{font-size:8px;padding:1px 3px}
+}
+
+
+.castle-ticket-dialog__quantity { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; margin-top: 10px; padding: 7px 10px; border: 1px solid #3a404c; border-radius: 12px; background: #171b23; color: #eee5d2; font-size: 13px; }
+.castle-ticket-dialog__quantity > div { display: flex; align-items: center; gap: 6px; }
+.castle-ticket-dialog__quantity button { width: 40px; height: 40px; border: 1px solid #756747; border-radius: 9px; color: #ffe08a; font-size: 24px; line-height: 1; }
+.castle-ticket-dialog__quantity button:disabled { opacity: .4; }
+.castle-ticket-dialog__quantity output { min-width: 28px; text-align: center; font-size: 17px; font-weight: 700; }

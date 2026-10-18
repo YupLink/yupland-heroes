@@ -1,0 +1,147 @@
+.casino-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  overflow: auto;
+  overscroll-behavior: contain;
+  min-height: 100dvh;
+  background: #0b101b;
+  color: #ffe5aa;
+  isolation: isolate;
+}
+.casino-ui [hidden] {
+  display: none !important;
+}
+.casino-ui .machine {
+  margin: 0 auto;
+  max-width: 1024px;
+}
+.casino-ui button:disabled {
+  cursor: default;
+}
+.casino-ui .bonus-summary-content {
+  position: absolute;
+  inset: 30% 8% auto;
+  display: grid;
+  justify-items: center;
+  gap: 24px;
+  text-align: center;
+  font: 800 clamp(24px, 5cqw, 54px)/1.1 var(--font-ui);
+  text-shadow: 0 2px 6px #150905;
+}
+.casino-ui .bonus-summary-content strong {
+  font-size: clamp(48px, 12cqw, 110px);
+  color: #ffe49d;
+}
+.casino-ui .cabinet-status {
+  position: fixed;
+  left: 50%;
+  top: 38%;
+  translate: -50%;
+  width: min(85%, 480px);
+  padding: 18px;
+  background: #111827f5;
+  border: 1px solid #c89144;
+  border-radius: 12px;
+  text-align: center;
+  z-index: 20;
+}
+.casino-ui .cabinet-status button {
+  display: block;
+  margin: 12px auto 0;
+  padding: 10px 20px;
+  border: 1px solid #c89144;
+  border-radius: 8px;
+}
+.casino-ui .cabinet-stats {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  padding: 8px 12px;
+  background: #1c140ced;
+  border: 1px solid #c89144;
+  border-radius: 8px;
+  z-index: 12;
+}
+.casino-ui .scene-retry {
+  position: absolute;
+  z-index: 20;
+  left: 15%;
+  top: 69%;
+  width: 70%;
+  padding: 12px;
+  text-align: center;
+  border-radius: 12px;
+  background: #17100bf5;
+  font-size: clamp(16px, 3cqw, 28px);
+}
+.casino-ui .scene-retry button {
+  margin-top: 10px;
+  padding: 10px 24px;
+  border: 1px solid #e9ba65;
+  border-radius: 8px;
+}
+.casino-ui .arcade:active .key-cap {
+  transform: scaleY(0.88);
+  filter: brightness(0.84);
+}
+.casino-ui .arcade:active .button-label {
+  transform: translate(-50%, -50%) translateY(var(--key-label-travel, 2px));
+}
+.casino-ui .round:active .button-label {
+  transform: translateY(0.45cqw);
+}
+.casino-ui .round:active .rest {
+  opacity: 0;
+}
+.casino-ui .round:active .down {
+  opacity: 1;
+}
+.casino-ui .round .rest {
+  animation: casino-key-wave 3.2s ease-in-out infinite;
+}
+.casino-ui .round:nth-child(2) .rest {
+  animation-delay: -2.56s;
+}
+.casino-ui .round:nth-child(3) .rest {
+  animation-delay: -1.92s;
+}
+.casino-ui .round:nth-child(4) .rest {
+  animation-delay: -1.28s;
+}
+.casino-ui .round:nth-child(5) .rest {
+  animation-delay: -0.64s;
+}
+.casino-ui .round[aria-pressed="true"] .rest {
+  animation: none;
+}
+@keyframes casino-key-wave {
+  0%,
+  60%,
+  100% {
+    filter: brightness(1);
+  }
+  30% {
+    filter: brightness(1.24) saturate(1.1);
+  }
+}
+.casino-ui.is-background *,
+.casino-ui.is-background *::before,
+.casino-ui.is-background *::after {
+  animation-play-state: paused !important;
+}
+.casino-ui.is-spinning .round .rest {
+  animation: none;
+}
+.casino-ui .cabinet-stage:has(> .scene) .controls *,
+.casino-ui .cabinet-stage:has(> .scene) .controls *::before {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .casino-ui *,
+  .casino-ui *::before,
+  .casino-ui *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

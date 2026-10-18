@@ -1,0 +1,935 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * YupLink — Noir & Gold loot-bag design system.
+ * Dark by default. Gold = hero (Golden Dara reward), cyan = neon accent.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-gold-deep: var(--gold-deep);
+  --color-neon: var(--neon);
+  --color-neon-foreground: var(--neon-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.875rem;
+
+  /* Dark loot vault */
+  --background: oklch(0.13 0.012 270);
+  --foreground: oklch(0.97 0.01 90);
+  --card: oklch(0.17 0.014 270);
+  --card-foreground: oklch(0.97 0.01 90);
+  --popover: oklch(0.17 0.014 270);
+  --popover-foreground: oklch(0.97 0.01 90);
+
+  /* Gold = primary hero */
+  --primary: oklch(0.83 0.16 88);
+  --primary-foreground: oklch(0.16 0.01 90);
+  --gold: oklch(0.83 0.16 88);
+  --gold-foreground: oklch(0.16 0.01 90);
+  --gold-deep: oklch(0.7 0.17 70);
+
+  /* Neon cyan accent */
+  --neon: oklch(0.86 0.13 200);
+  --neon-foreground: oklch(0.16 0.01 90);
+
+  --secondary: oklch(0.22 0.015 270);
+  --secondary-foreground: oklch(0.97 0.01 90);
+  --muted: oklch(0.22 0.015 270);
+  --muted-foreground: oklch(0.68 0.012 270);
+  --accent: oklch(0.27 0.025 270);
+  --accent-foreground: oklch(0.97 0.01 90);
+
+  --success: oklch(0.78 0.16 155);
+  --warning: oklch(0.82 0.16 75);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.97 0.01 90);
+
+  --border: oklch(0.28 0.018 270 / 0.6);
+  --input: oklch(0.25 0.018 270);
+  --ring: oklch(0.83 0.16 88 / 0.5);
+
+  --chart-1: oklch(0.83 0.16 88);
+  --chart-2: oklch(0.86 0.13 200);
+  --chart-3: oklch(0.78 0.16 155);
+  --chart-4: oklch(0.72 0.2 30);
+  --chart-5: oklch(0.65 0.18 320);
+
+  --sidebar: oklch(0.15 0.012 270);
+  --sidebar-foreground: oklch(0.92 0.01 90);
+  --sidebar-primary: oklch(0.83 0.16 88);
+  --sidebar-primary-foreground: oklch(0.16 0.01 90);
+  --sidebar-accent: oklch(0.22 0.015 270);
+  --sidebar-accent-foreground: oklch(0.97 0.01 90);
+  --sidebar-border: oklch(0.28 0.018 270 / 0.6);
+  --sidebar-ring: oklch(0.83 0.16 88 / 0.5);
+
+  /* Gradients & shadows */
+  --gradient-gold: linear-gradient(135deg, oklch(0.88 0.17 92), oklch(0.7 0.17 70));
+  --gradient-vault:
+    radial-gradient(ellipse at top, oklch(0.22 0.04 280 / 0.6), transparent 60%),
+    linear-gradient(180deg, oklch(0.13 0.012 270), oklch(0.1 0.012 270));
+  --gradient-loot: radial-gradient(circle at 50% 40%, oklch(0.88 0.17 92 / 0.35), transparent 70%);
+  --shadow-gold:
+    0 10px 40px -10px oklch(0.83 0.16 88 / 0.45), 0 0 0 1px oklch(0.83 0.16 88 / 0.18) inset;
+  --shadow-neon: 0 0 30px -5px oklch(0.86 0.13 200 / 0.55);
+  --shadow-card: 0 8px 30px -12px oklch(0 0 0 / 0.6);
+}
+
+/* MI Browser / старый WebView (Chromium < 111) НЕ парсит oklch(). Кастом-проперти
+   хранит oklch как есть (парс-тайм разрешает любой токен), но при подстановке
+   var(--token) в color/background значение невалидно на computed-value → сбрасывается
+   в inherited → вся тема уходила в серость/сепию (баг только на MI-браузере).
+   Даём sRGB-фолбэк ТОЛЬКО там, где oklch не поддерживается: @supports not срабатывает
+   на старом WebView и переопределяет токены; современные браузеры блок игнорируют и
+   рендерят исходные oklch. Значения — точный перевод oklch→sRGB (см. styles.css :root). */
+@supports not (color: oklch(0 0 0)) {
+  :root {
+    --background: #06070c;
+    --foreground: #f8f5ee;
+    --card: #0d0f16;
+    --card-foreground: #f8f5ee;
+    --popover: #0d0f16;
+    --popover-foreground: #f8f5ee;
+    --primary: #f2c02a;
+    --primary-foreground: #0f0d08;
+    --gold: #f2c02a;
+    --gold-foreground: #0f0d08;
+    --gold-deep: #e08700;
+    --neon: #49eaf2;
+    --neon-foreground: #0f0d08;
+    --secondary: #181a22;
+    --secondary-foreground: #f8f5ee;
+    --muted: #181a22;
+    --muted-foreground: #9598a0;
+    --accent: #222633;
+    --accent-foreground: #f8f5ee;
+    --success: #4ed589;
+    --warning: #ffb330;
+    --destructive: #f94144;
+    --destructive-foreground: #f8f5ee;
+    --border: rgba(37, 41, 50, 0.6);
+    --input: #1e212a;
+    --ring: rgba(242, 192, 42, 0.5);
+    --chart-1: #f2c02a;
+    --chart-2: #49eaf2;
+    --chart-3: #4ed589;
+    --chart-4: #ff6853;
+    --chart-5: #be64d2;
+    --sidebar: #090b10;
+    --sidebar-foreground: #e7e4dd;
+    --sidebar-primary: #f2c02a;
+    --sidebar-primary-foreground: #0f0d08;
+    --sidebar-accent: #181a22;
+    --sidebar-accent-foreground: #f8f5ee;
+    --sidebar-border: rgba(37, 41, 50, 0.6);
+    --sidebar-ring: rgba(242, 192, 42, 0.5);
+    --gradient-gold: linear-gradient(135deg, #ffd32e, #e08700);
+    --gradient-vault:
+      radial-gradient(ellipse at top, rgba(23, 24, 45, 0.6), transparent 60%),
+      linear-gradient(180deg, #06070c, #020306);
+    --gradient-loot: radial-gradient(circle at 50% 40%, rgba(255, 211, 46, 0.35), transparent 70%);
+    --shadow-gold:
+      0 10px 40px -10px rgba(242, 192, 42, 0.45), 0 0 0 1px rgba(242, 192, 42, 0.18) inset;
+    --shadow-neon: 0 0 30px -5px rgba(73, 234, 242, 0.55);
+    --shadow-card: 0 8px 30px -12px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Старый WebView (Chromium < 108) не знает dvh: max-h-[85dvh] у окна-шторки
+   превращался в «без предела». Окно вырастало выше экрана (ратуша — 1876 px при
+   экране 760, шапка на −1115), своей прокрутки у него не оставалось, и листать
+   было нечем ни вверх, ни вниз (жалоба 04.10). Там, где dvh нет, те же классы
+   берут vh; современные браузеры блок игнорируют. Новый класс с dvh — сюда же. */
+@supports not (height: 1dvh) {
+  .max-h-\[55dvh\] {
+    max-height: 55vh;
+  }
+  .max-h-\[80dvh\] {
+    max-height: 80vh;
+  }
+  .max-h-\[85dvh\] {
+    max-height: 85vh;
+  }
+  .max-h-\[88dvh\] {
+    max-height: 88vh;
+  }
+  .max-h-\[90dvh\] {
+    max-height: 90vh;
+  }
+  .max-h-\[92dvh\] {
+    max-height: 92vh;
+  }
+  .max-h-\[calc\(100dvh-5rem\)\] {
+    max-height: calc(100vh - 5rem);
+  }
+  .max-h-\[calc\(100dvh-80px\)\] {
+    max-height: calc(100vh - 80px);
+  }
+  .max-h-\[calc\(100dvh-96px\)\] {
+    max-height: calc(100vh - 96px);
+  }
+  .max-h-\[calc\(100dvh-180px\)\] {
+    max-height: calc(100vh - 180px);
+  }
+  .h-\[100dvh\] {
+    height: 100vh;
+  }
+  .min-h-\[100dvh\] {
+    min-height: 100vh;
+  }
+  .min-h-\[60dvh\] {
+    min-height: 60vh;
+  }
+  @media (min-width: 40rem) {
+    .sm\:max-h-\[85dvh\] {
+      max-height: 85vh;
+    }
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body {
+    background: var(--gradient-vault);
+    background-attachment: fixed;
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* Anti-overflow на mobile: длинный контент не должен раздвигать viewport
+       и заставлять страницу горизонтально скроллиться / автомасштабироваться. */
+    overflow-x: hidden;
+  }
+
+  /* Утилита для тяжёлых карточек — браузер скипает рендер если карточка
+     не в viewport. Резко уменьшает работу при скроле длинных списков.
+     contain-intrinsic-size резервирует место чтобы не «прыгало» при появлении.
+     Значение подобрано под вертикальные карточки дропов: квадратное превью
+     + текст + кнопка ≈ 260-280px на мобильном (~150px ширина). */
+  .card-cv {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 260px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  /* Ползунок в золоте: accent-color не везде красит бегунок (владелец видел
+     белые кружки), поэтому дорожка и бегунок нарисованы явно. */
+  .range-gold {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-gold) 30%, transparent);
+    accent-color: var(--color-gold);
+  }
+  .range-gold::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: var(--color-gold);
+    border: 2px solid var(--color-background, #000);
+  }
+  .range-gold::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: var(--color-gold);
+    border: 2px solid var(--color-background, #000);
+  }
+  .text-gold {
+    color: var(--color-gold);
+  }
+  .text-neon {
+    color: var(--color-neon);
+  }
+  .bg-gold {
+    background-color: var(--color-gold);
+  }
+  .bg-neon {
+    background-color: var(--color-neon);
+  }
+  .border-gold {
+    border-color: var(--color-gold);
+  }
+  .gradient-gold {
+    background-image: var(--gradient-gold);
+  }
+  .gradient-vault {
+    background-image: var(--gradient-vault);
+  }
+  .text-gradient-gold {
+    background-image: var(--gradient-gold);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-gold {
+    box-shadow: var(--shadow-gold);
+  }
+  .shadow-neon {
+    box-shadow: var(--shadow-neon);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .glow-gold {
+    box-shadow:
+      0 0 0 1px oklch(0.83 0.16 88 / 0.4),
+      0 0 24px oklch(0.83 0.16 88 / 0.4),
+      0 0 48px oklch(0.83 0.16 88 / 0.2);
+  }
+  .ring-gold {
+    box-shadow: 0 0 0 1px oklch(0.83 0.16 88 / 0.35);
+  }
+
+  /* Background patterns */
+  .bg-grid {
+    background-image:
+      linear-gradient(oklch(0.83 0.16 88 / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.83 0.16 88 / 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .bg-noise {
+    background-image: radial-gradient(oklch(1 0 0 / 0.025) 1px, transparent 1px);
+    background-size: 4px 4px;
+  }
+
+  /* Animations */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  .animate-shimmer {
+    background: linear-gradient(
+      110deg,
+      transparent 30%,
+      oklch(0.83 0.16 88 / 0.25) 50%,
+      transparent 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.5s linear infinite;
+  }
+
+  @keyframes float-up {
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .animate-float-up {
+    animation: float-up 0.5s ease-out both;
+  }
+
+  /* Слот «Прорубь»: барабан крутится — лента символов едет вниз по кругу. */
+  @keyframes slot-reel {
+    0% {
+      transform: translateY(-50%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+  .animate-slot-reel {
+    animation: slot-reel 0.28s linear infinite;
+  }
+  @keyframes slot-pop {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    60% {
+      transform: scale(1.08);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  .animate-slot-pop {
+    animation: slot-pop 0.45s ease-out both;
+  }
+  /* Барабан в ожидании бонуса крутится медленнее и светится. */
+  .animate-slot-reel-slow {
+    animation: slot-reel 0.6s linear infinite;
+  }
+  @keyframes slot-stop {
+    0% { transform: translateY(-6%); }
+    50% { transform: translateY(3%); }
+    100% { transform: translateY(0); }
+  }
+  .animate-slot-stop {
+    animation: slot-stop 0.32s ease-out both;
+  }
+  @keyframes slot-glow {
+    0%, 100% { box-shadow: 0 0 18px rgba(245, 179, 1, 0.25), inset 0 0 0 0 rgba(245, 179, 1, 0); }
+    50% { box-shadow: 0 0 46px rgba(245, 179, 1, 0.75), inset 0 0 24px rgba(245, 179, 1, 0.25); }
+  }
+  .animate-slot-glow {
+    animation: slot-glow 0.9s ease-in-out 4;
+  }
+  @keyframes slot-anticipate {
+    0%, 100% { box-shadow: inset 0 0 12px rgba(245, 179, 1, 0.35); }
+    50% { box-shadow: inset 0 0 28px rgba(245, 179, 1, 0.9); }
+  }
+  .animate-slot-anticipate {
+    animation: slot-anticipate 0.45s ease-in-out infinite;
+  }
+  @keyframes slot-shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-3px, 2px); }
+    40% { transform: translate(3px, -2px); }
+    60% { transform: translate(-2px, -2px); }
+    80% { transform: translate(2px, 2px); }
+  }
+  .animate-slot-shake {
+    animation: slot-shake 0.5s ease-in-out 2;
+  }
+  @keyframes slot-confetti {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0.2; }
+  }
+  @keyframes slot-coin {
+    0% { transform: translateY(-12vh) scale(1); opacity: 1; }
+    100% { transform: translateY(110vh) scale(0.8); opacity: 0.4; }
+  }
+  @keyframes slot-pulse {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.08); filter: brightness(1.35); }
+  }
+  @keyframes slot-glow-soft {
+    0%, 100% { box-shadow: 0 0 0 rgba(243, 202, 98, 0); }
+    50% { box-shadow: 0 0 16px rgba(243, 202, 98, 0.45); }
+  }
+  .animate-slot-glow-soft {
+    animation: slot-glow-soft 2.2s ease-in-out infinite;
+  }
+  .animate-slot-pulse {
+    animation: slot-pulse 0.7s ease-in-out infinite;
+  }
+
+  /* Тап-флоатер «+N»: взлетает вверх и затухает, держит финальный (невидимый)
+     кадр через forwards — иначе элемент отскакивал в исходное видимое «+1». */
+  @keyframes float-tap {
+    0% {
+      transform: translate(-50%, 4px) scale(0.9);
+      opacity: 0;
+    }
+    25% {
+      transform: translate(-50%, 0) scale(1.15);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -34px) scale(1);
+      opacity: 0;
+    }
+  }
+  .animate-float-tap {
+    animation: float-tap 0.9s ease-out forwards;
+  }
+
+  @keyframes pulse-gold {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 0 oklch(0.83 0.16 88 / 0.5),
+        0 0 24px oklch(0.83 0.16 88 / 0.4);
+    }
+    50% {
+      box-shadow:
+        0 0 0 12px oklch(0.83 0.16 88 / 0),
+        0 0 32px oklch(0.83 0.16 88 / 0.6);
+    }
+  }
+  .animate-pulse-gold {
+    animation: pulse-gold 2s ease-in-out infinite;
+  }
+
+  /* «Дыхание» босса: низ зафиксирован (transform-origin снизу), верх слегка
+     колышется — добавляет живости стоящему боссу. */
+  @keyframes boss-breathe {
+    0%,
+    100% {
+      transform: translateY(0) scaleY(1) skewX(0deg);
+    }
+    50% {
+      transform: translateY(-2px) scaleY(1.02) skewX(0.6deg);
+    }
+  }
+  .animate-boss-breathe {
+    animation: boss-breathe 3.4s ease-in-out infinite;
+    transform-origin: 50% 100%;
+    will-change: transform;
+  }
+  /* Покачивание от удара: гнётся назад от опоры и возвращается. */
+  @keyframes boss-hit {
+    0% {
+      transform: rotate(0deg) translateY(0);
+    }
+    25% {
+      transform: rotate(4deg) translateY(-3px);
+    }
+    55% {
+      transform: rotate(-2deg) translateY(-1px);
+    }
+    80% {
+      transform: rotate(1deg);
+    }
+    100% {
+      transform: rotate(0deg) translateY(0);
+    }
+  }
+  .animate-boss-hit {
+    animation: boss-hit 0.55s ease-out;
+    transform-origin: 50% 100%;
+  }
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0) rotate(0);
+    }
+    20% {
+      transform: translateX(-8px) rotate(-3deg);
+    }
+    40% {
+      transform: translateX(8px) rotate(3deg);
+    }
+    60% {
+      transform: translateX(-6px) rotate(-2deg);
+    }
+    80% {
+      transform: translateX(6px) rotate(2deg);
+    }
+  }
+  .animate-shake {
+    animation: shake 0.6s ease-in-out infinite;
+  }
+
+  @keyframes count-pop {
+    0% {
+      transform: scale(0.4);
+      opacity: 0;
+    }
+    60% {
+      transform: scale(1.15);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .animate-count-pop {
+    animation: count-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  @keyframes spark-rise {
+    0% {
+      transform: translateY(0) scale(1);
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-160px) scale(0.3);
+      opacity: 0;
+    }
+  }
+  .animate-spark {
+    animation: spark-rise 2.5s ease-out infinite;
+  }
+
+  /* Премиум-блик: диагональный sheen, медленно проезжает по hero-карте.
+     Накладывается поверх как overlay, не трогает контент. */
+  @keyframes hero-sheen {
+    0% {
+      transform: translateX(-120%) skewX(-18deg);
+    }
+    45%,
+    100% {
+      transform: translateX(400%) skewX(-18deg);
+    }
+  }
+  .animate-hero-sheen {
+    animation: hero-sheen 5.5s ease-in-out infinite;
+  }
+
+  /* Shimmer-скелетон: серая плашка с бегущим бликом — для состояний
+     загрузки балансов / NFT вместо голого «—». */
+  @keyframes skeleton-slide {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: oklch(0.27 0.02 270 / 0.55);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, oklch(0.83 0.16 88 / 0.12), transparent);
+    animation: skeleton-slide 1.4s ease-in-out infinite;
+  }
+
+  /* Маскот-котик на карте баланса: нежное непрерывное покачивание —
+     ощущение «живого персонажа», не отвлекает от баланса. */
+  @keyframes mascot-bob {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-3deg);
+    }
+    50% {
+      transform: translateY(-7px) rotate(3deg);
+    }
+  }
+  .animate-mascot-bob {
+    animation: mascot-bob 5s ease-in-out infinite;
+  }
+
+  /* ── Boss / raid screen ─────────────────────────────────────────────
+     Локальная PvE-фича. Эпичный рейд-босс: багровая аура, живая HP,
+     появление раундов. Всё на transform/opacity — дёшево для мобилы. */
+
+  /* Дышащая багровая аура вокруг портрета босса. */
+  @keyframes boss-aura {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    50% {
+      transform: scale(1.12);
+      opacity: 0.9;
+    }
+  }
+  .animate-boss-aura {
+    animation: boss-aura 3.4s ease-in-out infinite;
+  }
+
+  /* Медленное вращение рунического кольца-обрамления портрета. */
+  @keyframes boss-ring-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .animate-boss-ring {
+    animation: boss-ring-spin 14s linear infinite;
+  }
+
+  /* Глянцевый блик, бегущий по HP-полосе — ощущение «живой» опасной шкалы. */
+  @keyframes hp-sheen {
+    0% {
+      transform: translateX(-120%) skewX(-20deg);
+    }
+    60%,
+    100% {
+      transform: translateX(420%) skewX(-20deg);
+    }
+  }
+  .animate-hp-sheen {
+    animation: hp-sheen 2.8s ease-in-out infinite;
+  }
+
+  /* Лёгкий «жар» — пульсация яркости заливки HP. */
+  @keyframes hp-throb {
+    0%,
+    100% {
+      filter: brightness(1) saturate(1);
+    }
+    50% {
+      filter: brightness(1.18) saturate(1.25);
+    }
+  }
+  .animate-hp-throb {
+    animation: hp-throb 2.2s ease-in-out infinite;
+  }
+
+  /* Появление строк боя каскадом снизу. */
+  @keyframes round-in {
+    0% {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  .animate-round-in {
+    animation: round-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Дрейф дымки/искр над ареной. */
+  @keyframes ember-drift {
+    0% {
+      transform: translateY(0) translateX(0) scale(1);
+      opacity: 0;
+    }
+    15% {
+      opacity: 0.7;
+    }
+    100% {
+      transform: translateY(-46px) translateX(8px) scale(0.4);
+      opacity: 0;
+    }
+  }
+  .animate-ember {
+    animation: ember-drift 3.6s ease-out infinite;
+  }
+
+  /* ── Пораундовые боевые FX ── */
+  /* Всплывающее число урона над фишкой/боссом (⚔/🔥 −N). */
+  @keyframes dmg-float {
+    0% {
+      transform: translateY(2px) scale(0.85);
+      opacity: 0;
+    }
+    20% {
+      transform: translateY(-2px) scale(1.1);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-16px) scale(1);
+      opacity: 0;
+    }
+  }
+  .animate-dmg-float {
+    animation: dmg-float 0.7s ease-out both;
+  }
+  /* Лёгкий выпад фишки игрока при ударе. */
+  @keyframes chip-attack {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+    35% {
+      transform: translateY(-5px) scale(1.06);
+      filter: brightness(1.3);
+    }
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+  .animate-chip-attack {
+    animation: chip-attack 0.55s ease-out both;
+  }
+  /* Вздрагивание фишки под ударом босса. */
+  @keyframes chip-hit {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-3px) rotate(-2deg);
+    }
+    50% {
+      transform: translateX(3px) rotate(2deg);
+    }
+    80% {
+      transform: translateX(-2px);
+    }
+  }
+  .animate-chip-hit {
+    animation: chip-hit 0.5s ease-in-out both;
+  }
+  /* Босс дёргается, когда по нему бьют. */
+  @keyframes boss-hit {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.08);
+      filter: brightness(1.2);
+    }
+  }
+  .animate-boss-hit {
+    animation: boss-hit 0.45s ease-out both;
+  }
+
+  /* Гибель фишки: вспышка → растворение вверх. ~0.5с, затем фишка пропадает
+     (новое состояние уже без неё) — никаких постоянных «трупов». */
+  @keyframes chip-die {
+    0% {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+      filter: brightness(1);
+    }
+    25% {
+      transform: scale(1.08);
+      filter: brightness(1.7) saturate(0.5);
+    }
+    100% {
+      transform: scale(0.72) translateY(-10px) rotate(-6deg);
+      opacity: 0;
+      filter: brightness(0.6) grayscale(1);
+    }
+  }
+  .animate-chip-die {
+    animation: chip-die 0.5s ease-in both;
+  }
+
+  /* СПОКОЙНЫЙ индикатор «под ударом»: статичное кольцо с очень мягким ровным
+     пульсом тени (без резких вспышек/стробоскопа). */
+  @keyframes guard-breathe {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 1px oklch(0.62 0.24 22 / 0.55),
+        0 0 8px oklch(0.62 0.24 22 / 0.22);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px oklch(0.62 0.24 22 / 0.7),
+        0 0 14px oklch(0.62 0.24 22 / 0.4);
+    }
+  }
+  .animate-guard-breathe {
+    animation: guard-breathe 3.2s ease-in-out infinite;
+  }
+
+  /* Лёгкая дымка под боссом — премиальный объём, дёшево. */
+  @keyframes boss-smoke {
+    0%,
+    100% {
+      transform: translateX(-4%) scale(1);
+      opacity: 0.35;
+    }
+    50% {
+      transform: translateX(4%) scale(1.08);
+      opacity: 0.6;
+    }
+  }
+  .animate-boss-smoke {
+    animation: boss-smoke 6s ease-in-out infinite;
+  }
+
+  /* Микро-нажатие премиальных кнопок боя. */
+  .fx-press {
+    transition:
+      transform 0.12s ease,
+      filter 0.12s ease;
+  }
+  .fx-press:active:not(:disabled) {
+    transform: scale(0.97);
+    filter: brightness(1.08);
+  }
+
+  /* Деления на премиальной HP-полосе босса (накладка). */
+  .hp-ticks {
+    background-image: repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent calc(10% - 1px),
+      oklch(1 0 0 / 0.14) calc(10% - 1px),
+      oklch(1 0 0 / 0.14) 10%
+    );
+  }
+
+  /* Багровый рейд-градиент и свечения как утилиты. */
+  .gradient-boss-hp {
+    background-image: linear-gradient(
+      90deg,
+      oklch(0.5 0.2 18),
+      oklch(0.62 0.24 22) 45%,
+      oklch(0.72 0.21 35)
+    );
+  }
+  .bg-boss-vault {
+    background-image:
+      radial-gradient(ellipse at 50% 0%, oklch(0.45 0.18 18 / 0.4), transparent 62%),
+      linear-gradient(180deg, oklch(0.17 0.03 18 / 0.7), oklch(0.15 0.014 270));
+  }
+  .glow-boss {
+    box-shadow:
+      0 0 0 1px oklch(0.62 0.24 22 / 0.4),
+      0 0 28px oklch(0.62 0.24 22 / 0.35),
+      0 0 60px oklch(0.62 0.24 22 / 0.18);
+  }
+  .shadow-boss {
+    box-shadow: 0 12px 44px -12px oklch(0.62 0.24 22 / 0.5);
+  }
+}

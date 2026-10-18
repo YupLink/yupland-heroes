@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/multisend",
+      "destination": "https://ton-multisend.vercel.app/multisend"
+    },
+    {
+      "source": "/multisend/:path*",
+      "destination": "https://ton-multisend.vercel.app/multisend/:path*"
+    }
+  ]
+}

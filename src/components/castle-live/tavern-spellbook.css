@@ -1,0 +1,95 @@
+    [data-book-preview] .stats{display:flex;gap:7px;margin:10px 17px 2px}
+    [data-book-preview] .stats span{display:inline-flex;align-items:center;gap:4px;min-height:25px;padding:4px 7px;border:1px solid #76623f;border-radius:5px;font-size:10px;font-weight:600}
+    [data-book-preview] .stats img, [data-book-preview] .cost img{width:14px;height:14px;object-fit:contain;image-rendering:pixelated}
+    [data-book-preview] .book{position:relative;width:min(370px,calc(100% - 8px));aspect-ratio:1086/1448;margin:0 auto;background-size:100% 100%;background-repeat:no-repeat;color:#3b2817}
+    [data-book-preview] .book-index{background-image:url('/design-assets/book-index.webp');margin-bottom:54px}
+    [data-book-preview] .book-illustrated{background-image:url('/design-assets/book-index.webp')}
+    [data-book-preview] .paper-title{font:400 13px/1.2 "Tavern Russo",sans-serif;overflow-wrap:anywhere}
+    [data-book-preview] .paper-rule{height:1px;background:#8d68446b;margin:7px 0}
+    [data-book-preview] .smallcap{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#795533}
+    [data-book-preview] button{font-family:inherit;cursor:pointer}
+    [data-book-preview] button:focus-visible{outline:2px solid #f4cc7a;outline-offset:2px}
+    [data-book-preview] button:disabled{opacity:.42;cursor:default}
+    [data-book-preview] .wind{display:block;width:100%;height:100%;fill:none;stroke:#71502f;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+    /* Four fixed rows follow the four frames painted into the book image. */
+    [data-book-preview] .index-list{position:absolute;top:10%;bottom:12%;left:12%;width:22%;display:grid;grid-template-rows:repeat(4,minmax(0,1fr));align-items:center}
+    [data-book-preview] .index-list button{position:relative;display:grid;place-items:center;overflow:hidden;height:92%;width:100%;padding:5px;border:0;background:transparent;color:#61462b}
+    [data-book-preview] .index-list button[aria-current="page"]{filter:drop-shadow(0 0 3px #c79341)}
+    [data-book-preview] .index-list button svg{width:58%;height:58%;margin:auto}
+    [data-book-preview] .index-list button img{width:90%;height:90%;object-fit:contain;image-rendering:pixelated}
+    [data-book-preview] .index-list button.is-unavailable img, [data-book-preview] .index-list button.is-unavailable svg{filter:grayscale(1) sepia(.45) brightness(.72);opacity:.78}
+    [data-book-preview] .slot-badge{position:absolute;right:6px;bottom:6px;z-index:1;display:grid;place-items:center;min-width:17px;min-height:17px;padding:0 2px;border:1px solid #795b36;border-radius:4px;background:#e0c18b;color:#473018;font:700 9px "Tavern Golos",sans-serif}
+    [data-book-preview] .slot-badge.lock::before{content:"";position:absolute;top:-8px;left:4px;width:7px;height:8px;border:2px solid #795b36;border-bottom:0;border-radius:7px 7px 0 0}
+    [data-book-preview] .slot-badge.lock{font-size:0}
+    [data-book-preview] .slot-badge.lock::after{content:"•";font-size:8px;line-height:1}
+    [data-book-preview] .index-list button:not([aria-current]){font:700 19px "Tavern Golos",sans-serif;color:#8a7459}
+    [data-book-preview] .index-detail{position:absolute;top:11%;left:44%;right:12%;bottom:15%;display:flex;flex-direction:column;min-width:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#8f7047 transparent}
+    [data-book-preview] .index-detail .spell-name{max-width:100%;margin:10px 0 8px;font:400 14px/1.2 "Tavern Russo",sans-serif;overflow-wrap:anywhere}
+    [data-book-preview] .index-detail .effect{margin:0;color:#68461e;font-size:12px;font-weight:600;line-height:1.33}
+    [data-book-preview] .index-detail .status{margin:12px 0 0;color:#725d47;font-size:10px;line-height:1.35}
+    [data-book-preview] .index-detail .availability{margin:11px 0 0;color:#4f673b;font-size:10px;font-weight:600;line-height:1.3}
+    [data-book-preview] .index-detail .availability.blocked{color:#8a5230}
+    [data-book-preview] .index-detail .spell-meta{margin:7px 0 0;color:#725d47;font-size:10px;line-height:1.3}
+    [data-book-preview] .index-detail .cost{margin:10px 0 0;display:flex;align-items:center;gap:4px;color:#5c4025;font-size:10px;font-weight:700}
+    [data-book-preview] .book-action{min-height:50px;padding:5px 3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1px solid #9a753e;border-radius:5px;background:#a87c39;color:#21170b;font-size:12px;line-height:1.15;font-weight:700;box-shadow:0 2px 5px #0006}
+    [data-book-preview] .book-action small{display:inline-flex;align-items:center;gap:3px;font-size:10px;line-height:1.15;font-weight:700}
+    [data-book-preview] .book-action small img{width:12px;height:12px;object-fit:contain;image-rendering:pixelated}
+    [data-book-preview] .index-detail .book-action{flex:none;margin-top:18px;width:100%}
+    [data-book-preview] .book-index .book-action{position:relative;min-height:44px;width:max-content;max-width:100%;align-self:flex-start;margin-top:8px;flex-direction:row;gap:4px;padding:5px 9px;border:0;background:transparent;box-shadow:none;transform:none;font:400 11px/1.2 "Tavern Russo",sans-serif;white-space:nowrap}
+    [data-book-preview] .book-index .book-action::before{content:"";position:absolute;inset:8px 0;z-index:0;border:1px solid #9a753e;border-radius:5px;background:#a87c39;box-shadow:0 2px 5px #0006}
+    [data-book-preview] .book-index .book-action span, [data-book-preview] .book-index .book-action small{position:relative;z-index:1}
+    [data-book-preview] .book-index .book-action small{font:700 11px/1.2 "Tavern Golos",sans-serif}
+    [data-book-preview] .book-index .book-action:disabled{opacity:1;color:#493e2c;cursor:not-allowed}
+    [data-book-preview] .book-index .book-action:disabled::before{border-color:#9b8667;background:#a69a84;box-shadow:none}
+    [data-book-preview] .free{display:none;margin:auto 0;text-align:center;color:#725738}
+    [data-book-preview] .free b{display:block;font:400 13px "Tavern Russo",sans-serif}
+    [data-book-preview] .free p{margin:6px 0 0;font-size:10px;line-height:1.3}
+    [data-book-preview] .book-index[data-page="4"] .known{display:none}
+    [data-book-preview] .book-index[data-page="4"] .free{display:block}
+    [data-book-preview] .book-index[data-page="4"] .book-action{display:none}
+    [data-book-preview] .book-illustrated[data-page]:not([data-page="1"]) .free{display:block}
+    [data-book-preview] .book-illustrated[data-page]:not([data-page="1"]) .book-action{display:none}
+    [data-book-preview] .book-nav{position:absolute;bottom:6%;left:13%;right:8%;display:flex;align-items:center;justify-content:space-between;gap:7px}
+    [data-book-preview] .book-index .book-nav{top:100%;bottom:auto;left:12%;right:12%;margin-top:5px}
+    [data-book-preview] .book-index .book-nav span{color:#d3bd91}
+    [data-book-preview] .book-nav button{min-width:44px;min-height:44px;border:1px solid #775936;border-radius:5px;background:#2b1d14;color:#efd29a;font-size:20px;font-weight:700}
+    [data-book-preview] .book-nav span{font-size:10px;font-weight:700;color:#5e4228}
+
+[data-book-preview]{font-family:"Tavern Golos",sans-serif;--book-russo:"Tavern Russo";color:#3b2817}
+[data-book-preview] .book{margin-bottom:0}
+[data-book-preview] .book-nav{position:static;width:min(281px,76%);margin:5px auto 0;min-height:44px}
+[data-book-preview] .book-nav span{color:#d3bd91}
+[data-book-preview] .free{display:block}
+[data-book-preview] .spell-name,[data-book-preview] .free b,[data-book-preview] .book-action{font-family:"Tavern Russo",sans-serif}
+[data-book-preview] .book-action small,[data-book-preview] .slot-badge{font-family:"Tavern Golos",sans-serif}
+[data-book-preview] button{cursor:pointer}
+[data-book-preview] button:disabled{opacity:.42;cursor:default}
+[data-book-preview] button:focus-visible{outline:2px solid #f4cc7a;outline-offset:2px}
+[data-book-preview] .book-note{position:fixed;inset:0;z-index:200;background:#000b;display:grid;place-items:center;padding:18px;color:#eee8df}
+[data-book-preview] .book-note>div{max-width:310px;padding:20px;border:1px solid #a27a40;border-radius:10px;background:#111317}
+[data-book-preview] .book-note b{font:400 16px "Tavern Russo",sans-serif}
+[data-book-preview] .book-note p{font:400 12px/1.5 "Tavern Golos",sans-serif;color:#bdb6ad;margin:12px 0}
+[data-book-preview] .book-note button{min-height:44px;padding:0 15px;border:1px solid #8d754b;border-radius:5px;background:#33271b;color:#eed3a7}
+/* Preserve the approved paper colors against the hero screen's heading rules. */
+[data-tavern-style] [data-book-preview] .index-detail .spell-name{color:#3b2817}
+[data-book-preview] .stats{color:#eee7d9}
+[data-book-preview]{container-type:inline-size}
+[data-book-preview] .index-detail .spell-name{font-size:clamp(12px,4cqw,15px)}
+
+/* Keep the inline action inside the scrollable paper column. */
+[data-book-preview] .book-index .book-action{box-sizing:border-box;min-width:0}
+@container (max-width:330px){
+ [data-book-preview] .book-index .book-action{font-size:10px;gap:3px;padding-inline:4px}
+ [data-book-preview] .book-index .book-action small{font-size:10px}
+}
+
+/* The page controls sit at the book's sides, like turning a paper page. */
+[data-book-preview] .book-index .book-nav{position:absolute;top:47%;bottom:auto;left:0;right:0;width:auto;min-height:44px;margin:0;transform:translateY(-50%);pointer-events:none}
+[data-book-preview] .book-index .book-nav button{position:relative;display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;border:0;background:transparent;color:#18150f;pointer-events:auto}
+[data-book-preview] .book-index .book-nav button::before{position:absolute;width:34px;height:34px;border:1px solid #efd081;border-radius:50%;background:var(--gradient-gold,linear-gradient(135deg,#ffd32e,#e08700));box-shadow:inset 0 1px #fff7,0 2px 5px #0006;content:""}
+[data-book-preview] .book-index .book-nav button svg{position:relative;width:23px;height:23px;stroke-width:3}
+[data-book-preview] .book-index .book-nav button:disabled{visibility:hidden}
+
+/* «Забыть» (эффект «Забвение») — тихая кнопка под «Использовать». */
+[data-book-preview] .book-index .book-forget::before{border-color:#7f765f;background:#20242a}
+[data-book-preview] .book-index .book-forget{color:#eee5d2}

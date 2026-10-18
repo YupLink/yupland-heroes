@@ -1,0 +1,45 @@
+@font-face{font-family:"Game Load Russo";src:url("../../assets/tavern/RussoOne.ttf") format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:"Game Load Golos";src:url("../../assets/tavern/GolosText.ttf") format("truetype");font-weight:400 900;font-display:swap}
+.game-load-state{display:grid;place-items:center;min-height:256px;padding:24px;background:#11151b;color:#f8edda;font-family:"Game Load Golos",sans-serif}
+.game-load-state--fullscreen{position:fixed;inset:0;z-index:40;min-height:100dvh;padding:0;overflow:hidden}
+.game-load-state__scene{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100vw;height:100dvh;overflow:hidden;background:#11151b url("../../assets/loading/yupik-scene.webp") center / 100% 100% no-repeat;box-shadow:0 12px 40px #000b}
+.game-load-state__runner{position:absolute;width:min(80vw,38dvh);height:auto;left:calc(50% - min(40vw,19dvh));bottom:22.5%;image-rendering:pixelated;filter:drop-shadow(0 7px 3px #160d0b88)}
+.game-load-state__runner--walking{display:none;will-change:transform;animation:game-load-walk-first 10s linear 0s 1 none,game-load-walk-loop 20s linear 10s infinite}
+.game-load-state__runner--still{display:block;animation:none}
+.game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--walking{display:block}
+.game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--still{display:none}
+.game-load-state--inactive .game-load-state__runner--walking{display:none}
+.game-load-state--inactive .game-load-state__runner--still{display:block}
+.game-load-state--inactive .game-load-state__runner{width:45%;left:27.5%;bottom:31%;animation:none}
+.game-load-state .game-load-state__caption{position:absolute;top:79%;left:4%;width:92%;margin:0;color:#fff4dc;text-align:center;text-shadow:0 3px #29170e,2px 2px #29170e,-2px 2px #29170e;font:700 clamp(20px,6.2vw,29px)/1.15 Georgia,serif;white-space:nowrap}
+.game-load-state__cells{position:absolute;left:15.5%;right:15.5%;top:86.25%;height:2.35%;display:grid;grid-template-columns:repeat(16,minmax(0,1fr));align-items:center;gap:.7%}
+.game-load-state__cells span{display:block;width:100%;aspect-ratio:1;max-height:100%;border:1px solid #5a4939;background:linear-gradient(145deg,#252528,#101112 70%);box-shadow:inset 0 0 2px #000,0 0 1px #d7c09a;animation:game-load-cell 3.2s linear infinite}
+.game-load-state__cells span:nth-child(2){animation-delay:.16s}.game-load-state__cells span:nth-child(3){animation-delay:.32s}.game-load-state__cells span:nth-child(4){animation-delay:.48s}
+.game-load-state__cells span:nth-child(5){animation-delay:.64s}.game-load-state__cells span:nth-child(6){animation-delay:.8s}.game-load-state__cells span:nth-child(7){animation-delay:.96s}.game-load-state__cells span:nth-child(8){animation-delay:1.12s}
+.game-load-state__cells span:nth-child(9){animation-delay:1.28s}.game-load-state__cells span:nth-child(10){animation-delay:1.44s}.game-load-state__cells span:nth-child(11){animation-delay:1.6s}.game-load-state__cells span:nth-child(12){animation-delay:1.76s}
+.game-load-state__cells span:nth-child(13){animation-delay:1.92s}.game-load-state__cells span:nth-child(14){animation-delay:2.08s}.game-load-state__cells span:nth-child(15){animation-delay:2.24s}.game-load-state__cells span:nth-child(16){animation-delay:2.4s}
+.game-load-state__message{position:absolute;left:50%;width:90%;max-width:480px;bottom:7%;transform:translateX(-50%);padding:16px 16px 18px;border:2px solid #be8840;border-radius:12px;background:linear-gradient(180deg,#1a1720f2,#101216fa);box-shadow:0 5px 22px #000c;text-align:center}
+.game-load-state__content{width:100%;max-width:360px;text-align:center}
+.game-load-state h1{margin:0;font:400 22px/1.25 "Game Load Russo",sans-serif}
+.game-load-state p{margin:12px 0 0;color:#e2d6c4;font-size:15px;line-height:1.4}
+.game-load-state__spinner{display:block;width:32px;height:32px;margin:0 auto 24px;border:3px solid #d3a64233;border-top-color:#efc55b;border-radius:50%;animation:game-load-spin 1s linear infinite}
+.game-load-state__actions{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.game-load-state__actions:empty{display:none}
+.game-load-state button{width:100%;min-height:48px;padding:10px 14px;border:1px solid #80704d;border-radius:9px;background:#1b2429;color:#f3eadb;font:400 16px/1.2 "Game Load Russo",sans-serif;cursor:pointer}
+.game-load-state button.game-load-state__retry{border-color:#f4ce74;background:linear-gradient(180deg,#f2cd77,#ca963d);color:#20170d}
+.game-load-state button:focus-visible{outline:2px solid #f4c45e;outline-offset:4px}
+@keyframes game-load-spin{to{transform:rotate(360deg)}}
+/* Путь — сдвигом (transform), а не left: left пересчитывал раскладку и заново
+   растрировал пиксельный спрайт на каждом кадре, и Юпик дёргался. Старт — left
+   (центр), % в translate — от ширины самого Юпика. Первый проход — от центра за
+   правый край, дальше круг из-за левого края за правый — одной цепочкой CSS,
+   без кода игры: на медленном канале код грузится десятки секунд, и Юпик
+   стоял. Путь круга вдвое длиннее — и время вдвое: шаг один. */
+@keyframes game-load-walk-first{from{transform:translateX(0)}to{transform:translateX(calc(50vw + 50%))}}
+@keyframes game-load-walk-loop{from{transform:translateX(calc(-50vw - 50%))}to{transform:translateX(calc(50vw + 50%))}}
+@keyframes game-load-cell{0%,32%,100%{border-color:#5a4939;background:linear-gradient(145deg,#252528,#101112 70%);box-shadow:inset 0 0 2px #000,0 0 1px #d7c09a}4%,22%{border-color:#e7a735;background:repeating-linear-gradient(45deg,#fff5bf44 0 1px,transparent 1px 3px),radial-gradient(circle at 40% 35%,#fff1a0,#ffc445 52%,#b9690d);box-shadow:inset 0 0 3px #fff0aa,0 0 6px #f9af22}}
+@media(min-aspect-ratio:3/4){.game-load-state__scene{width:max(100vw,177.68dvh);height:auto;aspect-ratio:1672/941;background-image:url("../../assets/loading/yupik-scene-wide.webp")}.game-load-state__runner{width:20%;left:40%;bottom:21%}.game-load-state__runner--walking{animation:game-load-walk-first 8s linear 0s 1 none,game-load-walk-loop 16s linear 8s infinite}.game-load-state--inactive .game-load-state__runner--still{display:none}.game-load-state .game-load-state__caption{top:77%;font-size:clamp(24px,3vw,38px)}.game-load-state__cells{left:34%;right:34%;top:88%;height:4%}}
+@media(min-aspect-ratio:2/1){.game-load-state__scene{width:100vw;height:100dvh;aspect-ratio:auto}.game-load-state__runner{width:min(20vw,34dvh);left:calc(50% - min(10vw,17dvh))}.game-load-state__runner--walking{animation:game-load-walk-first 8s linear 0s 1 none,game-load-walk-loop 16s linear 8s infinite}.game-load-state .game-load-state__caption{font-size:clamp(24px,3dvh,38px)}}
+@media(prefers-reduced-motion:reduce){.game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--walking{display:none}.game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--still{display:block}.game-load-state__runner--still{animation:none}.game-load-state__spinner,.game-load-state__cells span{animation:none}}
+@media(max-width:350px){.game-load-state--inactive .game-load-state__runner--still{display:none}}
+@media(max-height:550px){.game-load-state__message{bottom:3%;padding:10px}.game-load-state__message h1{font-size:17px}.game-load-state__message p{font-size:12px;margin-top:6px}.game-load-state__actions{margin-top:8px}.game-load-state button{min-height:40px}}

@@ -1,0 +1,169 @@
+.quest-window-shell { background: #05090866 !important; backdrop-filter: blur(1px); }
+.quest-window-scroll { padding: 0 !important; background: transparent; }
+.quest-window-scroll > div { display: flex; align-items: center; justify-content: center; max-width: none; min-height: 100%; padding: 6px; }
+.quest-review {
+  position: relative; isolation: isolate; display: flex; flex-direction: column;
+  width: min(100%, 850px); height: min(1000px, calc(100dvh - 12px)); padding: 88px 60px 48px 70px;
+  border: 0; border-radius: 0; color: #f6eee1;
+  border-image-source: url("../../assets/quests/board-frame-v2.webp");
+  border-image-slice: 420 150 105 150 fill;
+  border-image-width: 230px 82px 58px 82px;
+  border-image-repeat: stretch;
+  filter: drop-shadow(0 22px 35px #000c);
+  font-family: var(--font-display, "Preview Russo", sans-serif);
+}
+.quest-review__top {
+  display: flex; align-items: center; gap: 14px; min-height: 84px; padding: 2px 53px 8px 60px;
+  border: 0; border-bottom: 1px solid #8c6233; border-radius: 0;
+  background: transparent; box-shadow: 0 2px #0009;
+}
+.quest-review__scroll-icon { flex: none; width: 90px; height: 90px; object-fit: contain; image-rendering: pixelated; }
+.quest-review__heading { flex: 1; min-width: 0; }
+.quest-review__heading h2 { margin: 0; color: #fff; font-size: clamp(27px, 3.4vw, 37px); line-height: 1.12; text-shadow: 0 2px #000; }
+.quest-review__heading p { margin: 5px 0 0; color: #b9c0bf; font: 500 17px/1.25 Inter, sans-serif; }
+.quest-review__close, .quest-review__back {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  min-width: 44px; min-height: 44px; border: 1px solid #a27a43; border-radius: 50%;
+  color: #e6b260; background: #111818; box-shadow: inset 0 1px #ffe7aa22;
+}
+.quest-review__back { gap: 5px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; font-size: 13px; }
+.quest-review__close:hover, .quest-review__back:hover { background: #343029; }
+.quest-review__close:focus-visible, .quest-review__back:focus-visible, .quest-review__action:focus-visible, .quest-review__destination:focus-visible, .quest-review__tab:focus-visible { outline: 2px solid #ffd17b; outline-offset: 2px; }
+.quest-review__tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 20px; border-top: 1px solid #6c4a25; border-bottom: 1px solid #936632; background: #121515d9; }
+.quest-review__tab { min-width: 0; min-height: 40px; padding: 5px 8px; border: 0; border-right: 1px solid #78532b; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: #c6bdb1; font-size: 14px; white-space: nowrap; }
+.quest-review__tab:last-child { border-right: 0; }
+.quest-review__tab--active { border-bottom-color: #e7b35c; color: #fff; background: #ffffff0b; }
+.quest-review__tab-compact { display: none; }
+.quest-review__content { min-height: 0; max-height: 667px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 3px; scrollbar-width: thin; scrollbar-color: #a8793c #151412; }
+.quest-review--short { height: min(420px, calc(100dvh - 20px)); padding-bottom: 44px; }
+.quest-review--detail { height: auto; min-height: 370px; max-height: calc(100dvh - 20px); padding-bottom: 90px; }
+.quest-review--detail .quest-review__top { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "back close" "title title"; gap: 2px 12px; padding-top: 6px; }
+.quest-review--detail .quest-review__back { grid-area: back; justify-self: start; }
+.quest-review--detail .quest-review__heading { grid-area: title; padding-left: 12px; }
+.quest-review--detail .quest-review__close { grid-area: close; }
+.quest-review__list, .quest-review__detail, .quest-review__steps { display: grid; gap: 0; }
+.quest-review__card, .quest-review__summary, .quest-review__step {
+  position: relative; border: 0; border-bottom: 1px solid #8a613277; border-radius: 0;
+  background: transparent; box-shadow: inset 0 -1px #0008;
+}
+.quest-review__card::before, .quest-review__summary::before, .quest-review__step::before {
+  content: none;
+}
+.quest-review__card {
+  display: grid; grid-template-columns: 108px minmax(0,1fr) 120px; align-items: center; gap: 14px;
+  min-height: 110px; padding: 7px 10px 7px 24px;
+}
+.quest-review__art { position: relative; height: 88px; overflow: hidden; }
+.quest-review__art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 5px #0008); }
+.quest-review__art--resource img { inset: 14%; width: 72%; height: 72%; image-rendering: pixelated; }
+.quest-review__info { min-width: 0; }
+.quest-review__info h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 0; color: #fff; font-size: 20px; line-height: 1.2; }
+.quest-review__info p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 4px 0 0; color: #b9c3c3; font: 500 15px/1.3 Inter, sans-serif; }
+.quest-review__list-count { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: 62px; margin-top: 5px; padding: 3px 12px; border: 1px solid #594a36; border-radius: 99px; background: #0c1010bb; color: #efe7db; text-align: center; font-size: 14px; }
+.quest-review__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; margin-top: 5px; }
+.quest-review__meta .quest-review__list-count { margin-top: 0; }
+.quest-review__reward-small { display: inline-flex; align-items: center; gap: 3px; color: #efc980; font: 600 12px/1.2 Inter, sans-serif; white-space: nowrap; }
+.quest-review__reward-small svg { flex: none; }
+.quest-review__card--ready .quest-review__list-count { border-color: #c79642; color: #ffdc8a; }
+.quest-review__card--locked .quest-review__art img { filter: grayscale(.75) brightness(.7); }
+.quest-review__card--locked .quest-review__action, .quest-review__card--done .quest-review__action { border-color: #876d48; background: linear-gradient(#454039, #262927); box-shadow: inset 0 1px #ffffff18, 0 3px 6px #0008; color: #f1dfbb; font-size: 14px; }
+.quest-review__card--locked .quest-review__info p { color: #f2c880; }
+.quest-review__empty { margin: 0; padding: 40px 18px; color: #ded2c0; text-align: center; }
+.quest-review__action, .quest-review__destination {
+  min-height: 44px; padding: 5px 12px; border: 1px solid #ffcf70; border-radius: 7px;
+  color: #35200b; background: linear-gradient(#ffcf67, #e5a12f);
+  box-shadow: inset 0 1px #fff4bb, 0 3px 6px #0008; font-size: 17px;
+}
+.quest-review__card .quest-review__action { position: relative; justify-self: end; align-self: center; width: 108px; min-height: 36px; height: 36px; margin-right: 12px; padding: 0 12px; font-size: 15px; }
+.quest-review__card .quest-review__action::before { content: ""; position: absolute; inset: -4px 0; }
+.quest-review__action:hover, .quest-review__destination:hover { filter: brightness(1.07); }
+.quest-review__summary { display: grid; grid-template-columns: 145px 1fr; align-items: center; gap: 18px; min-height: 150px; padding: 13px 18px; }
+.quest-review__summary-art { display: grid; place-items: center; height: 120px; }
+.quest-review__summary-art img { width: 100%; height: 100%; object-fit: contain; }
+.quest-review__summary-art--resource img { width: 75%; height: 75%; image-rendering: pixelated; }
+.quest-review__summary p { margin: 0 0 6px; font: 500 15px/1.3 Inter, sans-serif; }
+.quest-review__summary p strong, .quest-review__step p strong { color: #e9b65f; }
+.quest-review__reward-line { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #f3d18e; font: 600 14px/1.25 Inter, sans-serif; }
+.quest-review__reward-line svg { flex: none; }
+.quest-review__reward-line strong { color: #e9b65f; }
+.quest-review__count { display: inline-block; margin-top: 8px; color: #f1bd66; font-size: 17px; }
+.quest-review__unlock { display: inline-flex; align-items: flex-start; gap: 6px; margin-top: 8px; color: #f1bd66; font-size: 15px; line-height: 1.3; }
+.quest-review__unlock svg { flex: none; margin-top: 2px; }
+.quest-review__steps { margin: 0 12px; padding: 0; list-style: none; }
+.quest-review__step { display: flex; align-items: center; gap: 14px; min-height: 91px; padding: 12px 22px; }
+.quest-review__check {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px;
+  border: 2px solid #b88b4a; border-radius: 5px; color: #ffcb70; background: #11191a;
+}
+.quest-review__check svg { width: 18px; height: 18px; }
+.quest-review__check--done { background: #594022; }
+.quest-review__step h3 { margin: 0; color: #fff; font-size: 18px; line-height: 1.2; }
+.quest-review__step p { margin: 5px 0 0; color: #b9c3c3; font: 500 14px/1.3 Inter, sans-serif; }
+.quest-review__destination { justify-self: center; width: max-content; max-width: calc(100% - 32px); min-width: 150px; min-height: 40px; height: 40px; margin: 12px 0 0; padding: 0 24px; font-size: 15px; }
+.quest-review__destination:disabled { opacity: .58; cursor: not-allowed; }
+.quest-review__claim-error { margin: 7px 18px 0; color: #ffb6a9; font: 500 13px/1.3 Inter, sans-serif; text-align: center; }
+@media (min-width: 561px) and (max-height: 950px) {
+  .quest-review:not(.quest-review--short):not(.quest-review--detail) { height: min(640px, calc(100dvh - 12px)); }
+  .quest-review__content { max-height: 337px; }
+}
+@media (min-width: 561px) and (max-height: 750px) {
+  .quest-review__content { max-height: 307px; }
+  .quest-review__card { min-height: 100px; }
+  .quest-review__art { height: 82px; }
+}
+@media (min-width: 561px) and (max-width: 760px) {
+  .quest-review__card { grid-template-columns: 90px minmax(0,1fr) 120px; gap: 10px; }
+}
+@media (max-width: 560px) {
+  .quest-window-scroll > div { padding: 4px 5px; }
+  .quest-review { width: min(100%, 380px); height: min(500px, calc(100dvh - 8px)); padding: 45px 18px 38px; border-image-width: 118px 38px 30px 38px; }
+  .quest-review--short { height: min(320px, calc(100dvh - 8px)); padding-bottom: 35px; }
+  .quest-review--detail { height: auto; min-height: 340px; max-height: calc(100dvh - 8px); padding-bottom: 72px; }
+  .quest-review__top { gap: 5px; min-height: 75px; padding: 7px 24px 8px; }
+  .quest-review--detail .quest-review__top { gap: 0 8px; padding: 5px 24px 8px; }
+  .quest-review--detail .quest-review__heading h2 { font-size: 19px; line-height: 1.12; }
+  .quest-review__scroll-icon { width: 42px; height: 44px; }
+  .quest-review__heading h2 { font-size: 21px; }
+  .quest-review__heading p { margin-top: 2px; font-size: 11px; }
+  .quest-review__back { min-width: 77px; padding: 0 2px; font-size: 10px; }
+  .quest-review--detail .quest-review__back { margin-left: 16px; }
+  .quest-review__back svg { width: 15px; }
+  .quest-review__close { min-width: 42px; min-height: 42px; }
+  .quest-review__tabs { margin: 0 24px; }
+  .quest-review__tab { min-height: 44px; padding: 2px; font: 700 11px/1.1 Inter, sans-serif; letter-spacing: -.25px; }
+  .quest-review__content { max-height: 289px; padding: 2px 11px; }
+  .quest-review__detail { gap: 7px; }
+  .quest-review__card { grid-template-columns: 58px minmax(0,1fr) 82px; gap: 4px; min-height: 95px; padding: 4px 7px 4px 12px; }
+  .quest-review__art { height: 72px; }
+  .quest-review__info h3 { width: auto; font-size: 13px; line-height: 1.16; }
+  .quest-review__info p { margin-top: 3px; font-size: 11px; line-height: 1.2; }
+  .quest-review__list-count { min-width: 45px; margin-top: 4px; padding: 2px 7px; font-size: 10px; }
+  .quest-review__meta { gap: 2px 5px; margin-top: 4px; }
+  .quest-review__reward-small { font-size: 10px; }
+  .quest-review__reward-small svg { width: 11px; height: 11px; }
+  .quest-review__card .quest-review__action { width: 72px; min-height: 38px; height: 38px; margin-right: 10px; padding: 2px 7px; font-size: 11px; }
+  .quest-review__action { min-height: 38px; padding: 4px; font-size: 11px; }
+  .quest-review__card--locked .quest-review__action, .quest-review__card--done .quest-review__action { font-size: 10px; }
+  .quest-review__summary { grid-template-columns: 78px 1fr; gap: 7px; min-height: 115px; padding: 10px; }
+  .quest-review__summary-art { height: 82px; }
+  .quest-review__summary p { margin-bottom: 4px; font-size: 12px; }
+  .quest-review__reward-line { gap: 4px; margin-top: 5px; font-size: 11px; }
+  .quest-review__reward-line svg { width: 13px; height: 13px; }
+  .quest-review__count { margin-top: 3px; font-size: 12px; }
+  .quest-review__unlock { margin-top: 4px; font-size: 11px; }
+  .quest-review__steps { margin-inline: 18px 20px; }
+  .quest-review__step { gap: 8px; min-height: 76px; padding: 9px 10px; }
+  .quest-review__check { width: 24px; height: 24px; }
+  .quest-review__check svg { width: 15px; height: 15px; }
+  .quest-review__step h3 { font-size: 14px; }
+  .quest-review__step p { margin-top: 3px; font-size: 11px; }
+  .quest-review__destination { min-width: 128px; min-height: 38px; height: 38px; padding-inline: 14px; font-size: 13px; }
+}
+@media (max-width: 340px) {
+  .quest-review__tab-full { display: none; }
+  .quest-review__tab-compact { display: inline; }
+  .quest-review__content { padding-inline: 5px 8px; }
+  .quest-review__card { grid-template-columns: 46px minmax(0,1fr) 76px; gap: 3px; padding-inline: 10px 5px; }
+  .quest-review__art { height: 64px; }
+  .quest-review__card .quest-review__action { width: 68px; margin-right: 8px; padding-inline: 5px; font-size: 10px; }
+}

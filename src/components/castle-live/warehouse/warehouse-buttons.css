@@ -1,0 +1,40 @@
+/* Player buttons: approved Friends CTA is the shared visual reference. */
+@font-face { font-family: "YupLink Button Russo"; src: url(../../../assets/tavern/RussoOne.ttf); font-display: swap; }
+.warehouse-page {
+  --game-button-gold: linear-gradient(180deg, #edc976, #bd913e);
+  --game-button-gold-border: #efd081;
+  --game-button-ink: #18150f;
+  --game-button-surface: #171a20;
+  --game-button-border: #555862;
+  --game-button-text: #eee5d2;
+  --game-button-radius: 8px;
+}
+.warehouse-page [data-game-button] {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .15s, border-color .15s, filter .15s;
+}
+.warehouse-page [data-game-button]:focus-visible { outline: 2px solid #f3ca62 !important; outline-offset: 3px; }
+.warehouse-page [data-game-button]:disabled { opacity: .45 !important; cursor: not-allowed; }
+.warehouse-page [data-game-button]:not(:disabled):active { filter: brightness(.93); }
+/* Explicit roles override old theme-specific button skins, never card geometry. */
+.warehouse-page [data-game-button]:is([data-game-button="primary"], [data-game-button="secondary"], [data-game-button="danger"]) {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  gap: 8px !important; min-height: 46px !important; max-width: 100%;
+  height: auto !important; padding: 10px 16px !important;
+  border: 1px solid var(--game-button-border) !important; border-image: none !important;
+  border-radius: var(--game-button-radius) !important;
+  background: var(--game-button-surface) !important; color: var(--game-button-text) !important;
+  box-shadow: none !important; animation: none !important;
+  font-family: "YupLink Button Russo", "Russo One", sans-serif !important;
+  font-size: 14px !important; font-weight: 400 !important; line-height: 1.35 !important;
+  white-space: normal !important; text-align: center !important; text-decoration: none !important;
+  overflow-wrap: anywhere;
+}
+.warehouse-page [data-game-button][data-game-button="primary"] {
+  background: var(--game-button-gold) !important; border-color: var(--game-button-gold-border) !important;
+  color: var(--game-button-ink) !important; box-shadow: inset 0 1px #fff4 !important;
+}
+.warehouse-page [data-game-button][data-game-button="danger"] { border-color: #98605b !important; color: #e6a7a1 !important; }
+.warehouse-page [data-game-button]:is([data-game-button="primary"], [data-game-button="secondary"], [data-game-button="danger"]) svg {
+  width: 16px !important; height: 16px !important; flex: none;
+}

@@ -1,0 +1,71 @@
+[data-alchemy-preview]{font-family:"Tavern Golos",sans-serif;color:#eee5d2;container-type:inline-size}
+[data-alchemy-preview] .alchemy-stats{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 9px}
+[data-alchemy-preview] .alchemy-stats span{font-size:12px;font-weight:600;line-height:1.4;padding:5px 8px;border:1px solid #786443;border-radius:4px;background:#15120fbb}
+[data-alchemy-preview] .alchemy-stats span:last-child{color:#f2c555}
+[data-alchemy-preview] .alchemy-case{position:relative;width:100%;aspect-ratio:1122/1402;touch-action:pan-y}
+[data-alchemy-preview][data-batch-preview][data-list-rows="1"]{--alchemy-rows-height:clamp(39px,10cqw,55px)}
+[data-alchemy-preview][data-batch-preview][data-list-rows="2"]{--alchemy-rows-height:clamp(78px,20cqw,110px)}
+[data-alchemy-preview][data-batch-preview][data-list-rows="3"]{--alchemy-rows-height:clamp(117px,30cqw,165px)}
+[data-alchemy-preview][data-batch-preview]{--alchemy-quantity-height:0px}
+[data-alchemy-preview][data-batch-preview][data-quantity-row]{--alchemy-quantity-height:32px}
+[data-alchemy-preview][data-batch-preview] .alchemy-case{--alchemy-detail-height:calc(var(--alchemy-rows-height) + 41px + var(--alchemy-quantity-height));--alchemy-extra:calc(var(--alchemy-detail-height) - 45.6cqw);height:calc(124.96cqw + var(--alchemy-extra));aspect-ratio:auto}
+[data-alchemy-preview] .alchemy-art-original{display:block;width:100%;height:100%;user-select:none;pointer-events:none;image-rendering:pixelated}
+[data-alchemy-preview] .alchemy-art{position:absolute;inset:0;box-sizing:border-box;border-style:solid;border-color:transparent;border-width:38.32cqw 0 33.16cqw;border-image-source:url('/design-assets/alchemy-case-eight-webp-optimized.webp');border-image-slice:430 0 372 0 fill;border-image-width:1;border-image-repeat:stretch;pointer-events:none;image-rendering:pixelated}
+[data-alchemy-preview] .alchemy-cells{position:absolute;left:12%;right:12%;height:13%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3%;padding:1%}
+[data-alchemy-preview] .alchemy-cells-top{top:16%}
+[data-alchemy-preview] .alchemy-cells-bottom{top:75%}
+[data-alchemy-preview][data-batch-preview] .alchemy-cells{height:16.24cqw}
+[data-alchemy-preview][data-batch-preview] .alchemy-cells-top{top:20cqw}
+[data-alchemy-preview][data-batch-preview] .alchemy-cells-bottom{top:calc(93.72cqw + var(--alchemy-extra))}
+[data-alchemy-preview] .alchemy-cell{position:relative;min-width:0;min-height:0;display:grid;place-items:center;padding:0;border:3px solid #806447;border-radius:4px;background:linear-gradient(145deg,#161615,#28211c);box-shadow:inset 0 2px 6px #000b,0 1px 0 #e6b6764a;color:#d5b787;cursor:pointer;overflow:hidden;font-family:inherit}
+[data-alchemy-preview] .alchemy-cell[data-current=true]{border-color:#ad9873;box-shadow:inset 0 2px 6px #000b,inset 0 0 0 1px #806447}
+[data-alchemy-preview] .alchemy-cell[data-picked=true]{border-color:#e1bd61;background:#211e17}
+[data-alchemy-preview] .alchemy-check{position:absolute;bottom:2px;left:3px;z-index:2;display:grid;place-items:center;width:14px;height:14px;border:1px solid #cfaa60;border-radius:2px;background:#16130f;color:#f9d980;font:700 12px/1 "Tavern Golos",sans-serif}
+[data-alchemy-preview] .alchemy-cell[data-picked=true] .alchemy-check{background:#5b411c}
+[data-alchemy-preview] .alchemy-cell img{width:60%;height:64%;object-fit:contain;image-rendering:pixelated;pointer-events:none;user-select:none}
+[data-alchemy-preview] .alchemy-quantity{position:absolute;top:2px;left:3px;z-index:1;font-size:11px;font-weight:700;color:#f5c24a;text-shadow:0 1px 2px #000}
+[data-alchemy-preview] .alchemy-number{position:absolute;bottom:1px;right:3px;font-size:9px;color:#d3c4a5}
+[data-alchemy-preview] .alchemy-cell.is-locked{background:#0b0c0ee8;border-color:#443b2e;cursor:default}
+[data-alchemy-preview] .alchemy-cell.is-locked .alchemy-number{color:#8c8578}
+[data-alchemy-preview] .alchemy-lock{position:relative;width:13px;height:12px;border:2px solid #817667;border-radius:2px}
+[data-alchemy-preview] .alchemy-lock::before{content:"";position:absolute;left:1px;top:-9px;width:7px;height:8px;border:2px solid #817667;border-bottom:0;border-radius:8px 8px 0 0}
+[data-alchemy-preview] .alchemy-detail{position:absolute;left:15.5%;right:15.5%;top:34.8%;height:34%;display:flex;flex-direction:column;padding:7px 8px;color:#3b2817}
+[data-alchemy-preview] .alchemy-detail-copy{min-height:0;flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#8c714e transparent}
+[data-alchemy-preview] .alchemy-detail-copy.has-selection{overflow:hidden}
+[data-alchemy-preview] .alchemy-selected-list{display:flex;flex-direction:column;gap:1px;height:100%;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#8c714e transparent}
+[data-alchemy-preview] .alchemy-selected-list[data-overflow=true]{overflow-y:scroll;scrollbar-gutter:stable}
+[data-alchemy-preview] .alchemy-selected-row{display:grid;flex:0 0 auto;grid-template-columns:clamp(24px,6cqw,34px) minmax(0,1fr);align-items:center;gap:5px;width:100%;min-height:clamp(39px,10cqw,55px);padding:3px 1px;border:0;border-bottom:1px solid #9f7a4a77;background:transparent;color:#3b2817;text-align:left;cursor:pointer;font-family:"Tavern Golos",sans-serif}
+[data-alchemy-preview] .alchemy-selected-row[data-active=true]{border-left:2px solid #a66e23;padding-left:3px}
+[data-alchemy-preview] .alchemy-selected-row img{width:clamp(23px,6cqw,34px);height:clamp(23px,6cqw,34px);object-fit:contain;image-rendering:pixelated}
+[data-alchemy-preview] .alchemy-selected-text{display:flex;flex-direction:column;min-width:0;gap:1px}
+[data-alchemy-preview] .alchemy-selected-name{display:flex;align-items:baseline;justify-content:space-between;gap:3px;min-width:0;font-size:clamp(12px,3.2cqw,16px);line-height:1.12}
+[data-alchemy-preview] .alchemy-selected-name strong{min-width:0;overflow-wrap:anywhere;font-weight:750}
+[data-alchemy-preview] .alchemy-selected-name b{flex:none;font-size:clamp(10px,2.8cqw,14px)}
+[data-alchemy-preview] .alchemy-selected-effect{color:#654d35;font-size:clamp(11px,2.9cqw,14px);line-height:1.12;overflow-wrap:anywhere}
+[data-alchemy-preview] .alchemy-detail.is-empty .alchemy-detail-copy{display:flex;flex-direction:column}
+[data-alchemy-preview] .alchemy-detail.is-empty .alchemy-detail-title{flex:1;align-items:center;justify-content:center;text-align:center}
+[data-alchemy-preview] .alchemy-selected-label{display:block;text-transform:uppercase;letter-spacing:.04em;font:600 9px/1.2 "Tavern Golos",sans-serif;color:#775632;margin-bottom:4px}
+[data-alchemy-preview] .alchemy-detail-title{display:flex;gap:5px;align-items:baseline;justify-content:space-between}
+[data-alchemy-preview] .alchemy-detail-title strong{font:400 clamp(11px,3.5cqw,15px)/1.25 "Tavern Russo",sans-serif;overflow-wrap:anywhere;min-width:0}
+[data-alchemy-preview] .alchemy-detail-title>span{font-size:11px;white-space:nowrap;flex-shrink:0}
+[data-alchemy-preview] .alchemy-detail p{margin:4px 0 0;font:400 clamp(10px,3cqw,12px)/1.35 "Tavern Golos",sans-serif;color:#654d35}
+[data-alchemy-preview] .alchemy-use{display:block;align-self:flex-start;flex:none;margin-top:4px;min-height:40px;min-width:112px;padding:6px 12px;border:1px solid #805a25;border-radius:4px;background:linear-gradient(#dbaa3c,#a56c14);box-shadow:inset 0 1px #f7d575,0 2px 2px #5a361b66;color:#211608;font:500 12px/1.1 "Tavern Russo",sans-serif}
+[data-alchemy-preview][data-batch-preview] .alchemy-detail{top:41.74cqw;height:var(--alchemy-detail-height);padding:5px 7px}
+[data-alchemy-preview] .alchemy-quantity-row{display:flex;align-items:center;gap:4px;flex:none;min-height:30px;margin-top:2px;font:700 11px/1 "Tavern Golos",sans-serif}
+[data-alchemy-preview] .alchemy-quantity-row button{display:grid;place-items:center;min-width:28px;height:28px;padding:0 5px;border:1px solid #88663b;border-radius:4px;background:#ecd1a0;color:#382514;font:700 18px/1 "Tavern Golos",sans-serif;cursor:pointer}
+[data-alchemy-preview] .alchemy-quantity-row button:disabled{opacity:.45;cursor:default}
+[data-alchemy-preview] .alchemy-quantity-row input{width:42px;height:28px;padding:0 2px;border:1px solid #88663b;border-radius:4px;background:#f8e7c8;color:#382514;text-align:center;font:700 13px/1 "Tavern Golos",sans-serif}
+[data-alchemy-preview] .alchemy-quantity-row>span{margin-left:3px;white-space:nowrap;color:#725336;font-size:10px}
+[data-alchemy-preview] .alchemy-quantity-row>.alchemy-qty-label{margin-left:0;margin-right:1px;color:#594027;font-size:10px}
+[data-alchemy-preview] .alchemy-batch-action{display:flex;align-items:center;justify-content:space-between;gap:5px;flex:none;margin-top:3px}
+[data-alchemy-preview] .alchemy-batch-action>span{font:700 10px/1.2 "Tavern Golos",sans-serif;white-space:nowrap}
+[data-alchemy-preview][data-batch-preview] .alchemy-batch-action .alchemy-use[data-game-button="primary"]{display:flex!important;flex:0 1 164px;align-items:center!important;justify-content:center!important;width:auto;min-height:22px!important;height:22px!important;min-width:0;margin:0;padding:1px 7px!important;border:1px solid transparent!important;border-radius:999px!important;background:var(--button-primary,var(--gradient-gold))!important;box-shadow:0 4px 18px #ffc40026!important;color:var(--button-ink,#18150f)!important;font:400 clamp(10px,2.8cqw,11px)/1.1 "eBlink Button Russo","Russo One",sans-serif!important;white-space:nowrap!important}
+[data-alchemy-preview] .alchemy-batch-action .alchemy-use:disabled{opacity:.55}
+[data-alchemy-preview] .alchemy-pages{position:absolute;z-index:2;top:51.5%;left:0;right:0;display:flex;align-items:center;justify-content:space-between;transform:translateY(-50%);pointer-events:none}
+[data-alchemy-preview][data-batch-preview] .alchemy-pages{top:calc(64.35cqw + clamp(40px,10cqw,60px))}
+[data-alchemy-preview] .alchemy-case .alchemy-pages button{display:grid;place-items:center;width:44px;height:44px;min-width:44px;border:1px solid #b98b41;border-radius:50%;background:linear-gradient(#493521,#231b14);box-shadow:inset 0 1px #e4b95b55,0 2px 5px #0008;color:#f5ca6c;cursor:pointer;pointer-events:auto}
+[data-alchemy-preview] .alchemy-pages button svg{width:21px;height:21px;stroke-width:2.5}
+[data-alchemy-preview] .alchemy-pages button:disabled{opacity:.35;cursor:default}
+[data-alchemy-preview] .alchemy-total{font-weight:700!important}
+[data-alchemy-preview] button:focus-visible{outline:2px solid #f4cc7a;outline-offset:2px}
+@container(max-width:330px){[data-alchemy-preview] .alchemy-selected-label{font-size:8px;margin-bottom:2px}[data-alchemy-preview] .alchemy-detail-title>span{font-size:10px}[data-alchemy-preview] .alchemy-quantity{font-size:10px}}

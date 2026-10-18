@@ -1,0 +1,28 @@
+/* Артефакт: нажатие на лот — «что даёт» (ArtifactInfoPop), 3 секунды. */
+.auction-lot { position: relative; }
+.auction-lot__top--tap { cursor: pointer; }
+.auction-lot__top--tap:focus-visible { outline: 2px solid #ffe08d; outline-offset: 3px; border-radius: 10px; }
+.auction-artpop {
+  position: absolute;
+  z-index: 4;
+  top: 76px;
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 5px;
+  padding: 11px 13px;
+  border: 1px solid #e8bd5e;
+  border-radius: 12px;
+  background: linear-gradient(150deg, #1a2d42fa, #0b1828fc 75%);
+  box-shadow: 0 12px 28px #000c, inset 0 1px 0 #f4cf7640;
+  animation: auction-artpop-in .14s ease-out;
+}
+.auction-artpop__main { display: flex; align-items: center; gap: 7px; color: #fff0c7; font-size: 15px; }
+.auction-artpop__main svg { width: 18px; height: 18px; flex: none; }
+.auction-artpop__main .auction-rarity { margin-left: auto; font-size: 12px; }
+.auction-artpop__what { margin: 0; color: #d7c8a6; font-size: 12.5px; line-height: 1.4; }
+.auction-artpop__row { margin: 0; color: #b9a885; font-size: 12.5px; line-height: 1.35; }
+.auction-artpop__row b { color: #f5ecda; }
+@keyframes auction-artpop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.auction-lot [role="button"] { cursor: pointer; }
+.auction-lot [role="button"]:focus-visible { outline: 2px solid #ffe08d; outline-offset: 3px; border-radius: 10px; }

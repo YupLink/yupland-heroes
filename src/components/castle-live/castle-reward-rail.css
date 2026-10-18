@@ -1,0 +1,241 @@
+.castle-reward-rail {
+  position: fixed;
+  top: max(104px, calc(env(safe-area-inset-top) + 96px));
+  right: 11px;
+  z-index: 52;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  pointer-events: none;
+}
+.castle-reward-rail > button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: #e8c983;
+  pointer-events: auto;
+}
+.castle-reward-rail > button:active { transform: scale(.95); }
+.castle-reward-rail > button::before {
+  position: absolute;
+  inset: 3px;
+  border: .75px solid #ffd32e55;
+  border-radius: 50%;
+  background: linear-gradient(155deg, #242b2b, #111719 72%);
+  box-shadow: inset 0 .5px #e8d4a626, 0 2px 5px #0007;
+  content: "";
+}
+.castle-reward-rail > button > img {
+  position: relative;
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.castle-reward-rail__badge {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  display: grid;
+  min-width: 19px;
+  height: 19px;
+  place-items: center;
+  padding: 0 3px;
+  border: .75px solid #ffe08a99;
+  border-radius: 999px;
+  background: var(--gradient-gold, linear-gradient(135deg, #ffd32e, #e08700));
+  color: #18150f;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 3px #0008;
+}
+.castle-reward-rail > button:focus-visible {
+  outline: 2px solid #ffe08a;
+  outline-offset: 3px;
+}
+body:has([aria-labelledby="castle-window-title"]) .castle-reward-rail,
+body:has([role="dialog"]) .castle-reward-rail {
+  display: none;
+}
+
+/* Local visual treatment of the shared GiftsModal, independent of its entry point. */
+[data-hud-modal="gifts"] {
+  align-items: center;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+}
+[data-hud-modal="gifts"] [data-hud-modal-panel] {
+  width: 100%;
+  max-width: 448px;
+  max-height: calc(100dvh - 32px) !important;
+  margin: 0 !important;
+  border-radius: 24px !important;
+  border: 1px solid #b991485c;
+  background: linear-gradient(160deg, #17191b, #0d1012 75%);
+  color: #f3ebdb;
+  box-shadow: 0 18px 50px #0009;
+}
+[data-hud-modal="gifts"] [data-hud-modal-header] {
+  border-bottom: 1px solid #b991484a;
+  padding: 18px 20px;
+}
+[data-hud-modal="gifts"] h3 {
+  color: #f5ebd8;
+  font-size: 21px;
+  font-weight: 400;
+}
+[data-hud-modal="gifts"] p {
+  margin-top: 5px;
+  color: #b9b5ae;
+  font-size: 12px;
+  line-height: 1.45;
+}
+[data-hud-modal="gifts"] [data-hud-modal-body] { padding: 17px 20px; }
+.castle-gifts-stage__status { display: grid; gap: 12px; }
+.castle-gifts-stage__status button { justify-self: start; }
+[data-hud-modal="gifts"] [data-gift-card] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 78px;
+  border: 1px solid #a9844f73;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #20201e, #151719 75%);
+  box-shadow: inset 0 1px #fff1, 0 4px 12px #0004;
+  animation: castle-gift-breathe 5.5s ease-in-out infinite;
+}
+[data-hud-modal="gifts"] [data-gift-card]::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, #f5cb7220 49%, transparent 65%);
+  transform: translateX(-130%);
+  animation: castle-gift-sheen 5.5s ease-in-out infinite;
+  content: "";
+  pointer-events: none;
+}
+[data-hud-modal="gifts"] [data-gift-icon] {
+  background: #121416 url("@/assets/harvest/castle-gift-card-png-optimized.webp") center / 38px 38px no-repeat;
+}
+[data-hud-modal="gifts"] [data-gift-icon] svg { display: none; }
+[data-hud-modal="gifts"] [data-gift-title] {
+  color: #f3e6ca;
+  font-size: 15px;
+}
+[data-hud-modal="gifts"] [data-gift-amount] { color: #eec870; }
+[data-hud-modal="gifts"] [data-gift-details] .truncate {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+[data-hud-modal="gifts"] button:is([data-game-button="secondary"]:not([data-gift-dismiss]), [data-gift-next-action]) {
+  min-height: 46px !important;
+  border: 1px solid var(--game-button-gold-border, #efd081) !important;
+  border-radius: var(--game-button-radius, 8px) !important;
+  background: var(--game-button-gold, linear-gradient(180deg, #edc976, #bd913e)) !important;
+  color: var(--game-button-ink, #18150f) !important;
+  box-shadow: inset 0 1px #fff4 !important;
+}
+[data-hud-modal="gifts"] button:is([data-game-button="secondary"]:not([data-gift-dismiss]), [data-gift-next-action]):not(:disabled):hover {
+  background: var(--game-button-gold, linear-gradient(180deg, #edc976, #bd913e)) !important;
+  filter: brightness(1.07);
+}
+[data-hud-modal="gifts"] button[data-gift-dismiss] {
+  min-height: 46px !important;
+  border: 1px solid #555862 !important;
+  border-radius: var(--game-button-radius, 8px) !important;
+  background: #171a20 !important;
+  color: #eee5d2 !important;
+  box-shadow: none !important;
+}
+[data-hud-modal="gifts"] button[data-gift-dismiss]:not(:disabled):hover {
+  background: #24272e !important;
+  border-color: #777a85 !important;
+}
+@keyframes castle-gift-breathe {
+  0%, 100% { box-shadow: inset 0 1px #fff1, 0 4px 12px #0004; }
+  50% { box-shadow: inset 0 1px #fff2, 0 4px 16px #d9a0442b; }
+}
+@keyframes castle-gift-sheen {
+  0%, 60% { transform: translateX(-130%); }
+  88%, 100% { transform: translateX(130%); }
+}
+@media (max-width: 360px) {
+  [data-hud-modal="gifts"] [data-gift-card] {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+  }
+  [data-hud-modal="gifts"] [data-gift-details] { min-width: 0; }
+  [data-hud-modal="gifts"] [data-gift-action] {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  [data-hud-modal="gifts"] [data-gift-icon] {
+    width: 36px;
+    height: 36px;
+    background-size: 34px 34px;
+  }
+  [data-hud-modal="gifts"] button:is([data-gift-action], [data-gift-next-action], [data-gift-dismiss]) { padding: 10px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-hud-modal="gifts"] [data-gift-card],
+  [data-hud-modal="gifts"] [data-gift-card]::before { animation: none; }
+}
+
+/* Desktop: one content-sized castle toolbar; mobile rules above stay unchanged. */
+.castle-reward-rail__label { display: none; }
+@media (min-width: 1024px) {
+  .castle-desktop-toolbar {
+    left: 0; right: 0; top: 16px; margin-inline: auto;
+    width: max-content; max-width: calc(100vw - 32px);
+    gap: 12px; padding: 6px 10px; align-items: center;
+    border: 1px solid #ffd32e66; border-radius: 20px;
+    background: linear-gradient(180deg,#141f1dfa,#081213fa);
+    box-shadow: 0 4px 12px #0009,inset 0 1px #e1c97955;
+  }
+  .castle-desktop-toolbar > .castle-main-hud {
+    position: relative; top: auto; left: auto; right: auto;
+    flex: 0 0 510px; width: 510px; max-width: 510px;
+  }
+  .castle-desktop-toolbar .castle-main-hud__balances {
+    background: none; border: 0; box-shadow: none; border-radius: 0;
+  }
+  .castle-desktop-toolbar .castle-main-hud__balance { padding-left: 8px; padding-right: 8px; }
+  .castle-desktop-toolbar .castle-main-hud__recovery { left: 40px; }
+  .castle-desktop-toolbar .castle-reward-rail {
+    position: static; display: flex; flex-direction: row; gap: 8px; flex: none;
+  }
+  .castle-desktop-toolbar .castle-reward-rail > button {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: auto; min-width: 104px; height: 44px; padding: 0 10px;
+    border: 1px solid #9d8249; border-radius: 12px;
+    background: #101a18; font: 600 13px "Castle HUD Golos",sans-serif;
+    color: #fff4d8;
+  }
+  .castle-desktop-toolbar .castle-reward-rail > button::before { display: none; }
+  .castle-desktop-toolbar .castle-reward-rail > button > img { width: 28px; height: 28px; }
+  .castle-desktop-toolbar .castle-reward-rail__label { display: inline; }
+  .castle-desktop-toolbar > .castle-toolbar-profile { margin-left: 0; flex: none; }
+  .castle-desktop-toolbar > .castle-toolbar-profile > .castle-profile-satiety > button { width: 52px !important; height: 52px !important; }
+}
+
+@media (min-width:1024px) {
+ .castle-desktop-toolbar .castle-main-hud__effects-shell { position:absolute; top:100%; left:0; width:100%; }
+ .castle-desktop-toolbar .castle-main-hud__wallet-toggle { position:absolute; top:calc(100% + 38px); left:0; }
+ body:has([role="dialog"]) .castle-desktop-toolbar { visibility:hidden; }
+}
+
+@media (min-width:1024px) { .castle-desktop-toolbar:has(> .castle-main-hud) { align-items:center; } }

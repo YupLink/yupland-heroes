@@ -1,0 +1,16 @@
+node_modules
+dist
+.output
+.vinxi
+pnpm-lock.yaml
+package-lock.json
+routeTree.gen.ts
+
+# Замок (дизайн Ангелины, 07.10.2026): файлы в её плотной вёрстке — под 250
+# строк каждый. Prettier растягивает их вдвое, ломая правило модульности.
+src/components/castle-live/
+src/components/chips/castle-barracks/
+src/components/chips/castle-market/
+src/components/chips/trading-house/
+src/components/beta-raid/castle/GearPaperDoll.tsx
+src/components/beta-raid/hud/CastleHarvestModal.tsx

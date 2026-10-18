@@ -1,0 +1,80 @@
+@font-face {font-family:"Castle Upgrade Russo";src:url("../../assets/tavern/RussoOne.ttf") format("truetype");font-weight:400;font-display:swap}
+@font-face {font-family:"Castle Upgrade Golos";src:url("../../assets/tavern/GolosText.ttf") format("truetype");font-weight:400 900;font-display:swap}
+.barracks-main-chip-modal.is-upgrading>.barracks-detail-panel{visibility:hidden}
+.chip-upgrade-overlay{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:12px;background:transparent}
+.chip-upgrade-overlay.is-top-layer{z-index:130}
+.chip-upgrade-overlay.is-inactive{background:transparent;backdrop-filter:none;pointer-events:none}
+.chip-upgrade-overlay.is-inactive>.chip-upgrade{visibility:hidden}
+.chip-upgrade{position:relative;width:min(100%,430px);height:auto;max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;border:1px solid #aa8241;border-radius:20px;background:radial-gradient(ellipse at 47% 5%,#242326,#111619 64%,#0d1114);box-shadow:0 12px 36px #000b;color:#f4f0e7;padding:17px 17px 13px}
+.chip-upgrade:focus{outline:none}
+.chip-upgrade__heading{display:flex;align-items:center;justify-content:center;position:relative;min-height:50px;margin:0 0 17px;padding-bottom:10px;border-bottom:1px solid #765820}
+.chip-upgrade__heading::after{content:"";position:absolute;bottom:-5px;left:50%;width:8px;height:8px;transform:translateX(-50%) rotate(45deg);border:1px solid #dfad2e;background:#0b1216}
+.chip-upgrade__heading h2{font:normal clamp(20px,5vw,26px)/1.1 'Castle Upgrade Russo',sans-serif;text-align:center;margin:0 46px;min-width:0;white-space:normal;overflow-wrap:normal}
+.chip-upgrade__close{position:absolute;right:0;top:0;display:grid;place-items:center;width:44px;height:44px;border:1px solid #95733c;border-radius:50%;background:#101316;color:#f3eee5}
+.chip-upgrade__close svg{width:22px;height:22px}
+.chip-upgrade__hero{display:flex;align-items:center;gap:7px;margin:12px -4px 12px 2px;min-width:0}
+.chip-upgrade__portrait{width:88px!important;min-width:88px;flex:none}
+.chip-upgrade__portrait.is-mid-tier,.chip-upgrade__tiny-portrait.is-mid-tier{border-color:#b85af6!important;box-shadow:0 0 12px #a640ef80,inset 0 0 12px #a640ef45!important}
+.chip-upgrade__type-number{position:relative;color:#f3c852;font:18px 'Castle Upgrade Russo',sans-serif;white-space:nowrap}
+.chip-upgrade__type-number::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:1px;background:linear-gradient(90deg,#85672f80,transparent)}
+.chip-upgrade__level{position:relative;display:flex;flex:1;align-items:center;justify-content:space-between;gap:4px;min-width:0;min-height:66px;padding:0 7px 0 12px;border-top:1px solid #6b4e205e;border-bottom:1px solid #6b4e205e;background:none;white-space:nowrap;font:clamp(29px,8.7vw,38px) 'Castle Upgrade Russo',sans-serif;letter-spacing:-.025em}
+.chip-upgrade__level::before{content:"";position:absolute;top:9px;bottom:9px;left:0;width:1px;background:#71562b}
+.chip-upgrade__level strong span{display:inline-block;color:#f8c850;font-size:.58em;vertical-align:.12em}
+.chip-upgrade__level strong:last-child{color:#f8c850}
+.chip-upgrade__level svg{width:24px;color:#e6af30}
+.chip-upgrade__material{display:flex;align-items:center;gap:7px;min-height:61px;border:1px solid #3e4546;border-radius:9px;background:#0b1317;padding:8px 10px;margin-bottom:5px}
+.chip-upgrade.is-compact .chip-upgrade__material{min-height:67px}
+.chip-upgrade__material:not(.is-auto){display:grid;grid-template-columns:minmax(0,1fr) auto;row-gap:6px}
+.chip-upgrade__material-copy{min-width:0;flex:1 1 auto}
+.chip-upgrade__material-copy strong{display:block;font-size:clamp(12px,3.2vw,14px);line-height:1.2;white-space:nowrap}
+.chip-upgrade__star{color:#f8c850}
+.chip-upgrade__material-copy p{margin:3px 0 0;color:#a1a8b7;font-size:clamp(11px,3vw,13px);line-height:1.2;white-space:nowrap}
+.chip-upgrade__material.is-auto{flex-wrap:wrap}
+.chip-upgrade__material.is-auto .chip-upgrade__candidates{margin:0;padding:0;gap:6px;max-height:150px}
+.chip-upgrade__material-count{flex:none;display:grid;place-items:center;min-width:45px;height:32px;padding:0 4px;border:1px solid #344148;border-radius:8px;color:#efb92d;font:normal 16px 'Castle Upgrade Russo',sans-serif;white-space:nowrap}
+.chip-upgrade__material:not(.is-auto) .chip-upgrade__material-count{grid-column:2;grid-row:1}
+.chip-upgrade__tiny-list{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+.chip-upgrade__tiny{display:flex;align-items:center;flex-direction:column;justify-content:center;gap:2px;padding:0;min-width:70px;min-height:82px;border:0;border-radius:8px;background:transparent;color:#dcd3c5;text-align:center}
+.chip-upgrade__candidates .chip-upgrade__tiny{min-width:70px}
+.chip-upgrade__tiny:focus-visible{outline:2px solid #ffd45a;outline-offset:1px}
+.chip-upgrade__tiny.is-selected{background:transparent}
+.chip-upgrade__tiny-portrait{width:66px!important;height:66px!important;flex:none}
+.chip-upgrade__tiny small{font-size:11px;line-height:1;color:#d9d3c7}
+.chip-upgrade__selection-state{display:flex;align-items:center;justify-content:center;gap:9px;min-height:35px;margin:0 0 7px;color:#a3a9b9;font-size:13px}
+.chip-upgrade__selection-state svg{width:20px;height:20px;color:#eeb72f}
+.chip-upgrade__candidate-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;margin:2px 0 0;color:#cbb990;font-size:13px;min-height:38px}
+.chip-upgrade__candidates{display:flex;gap:6px;flex-wrap:wrap;max-height:145px;overflow-y:auto;padding:2px 0;margin:0}
+.chip-upgrade__warning{display:flex;align-items:center;gap:7px;color:#e5b864;font-size:13px;line-height:1.4;margin:9px 0}
+.chip-upgrade__auto-entry{display:block;width:100%;min-height:42px;border:1px solid #836633;border-radius:12px;background:#241f16;color:#f3c456;font-weight:700;margin:4px 0 9px}
+.chip-upgrade__auto-entry:disabled{opacity:.5}
+.chip-upgrade__summary{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #765820;padding:13px 4px 10px;font-size:13px}
+.chip-upgrade__summary::before{content:"";position:absolute;top:-5px;left:50%;width:8px;height:8px;transform:translateX(-50%) rotate(45deg);border:1px solid #dfad2e;background:#0b1216}
+.chip-upgrade__currency{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.chip-upgrade__currency>span{color:#a7a9b1}
+.chip-upgrade__currency strong{display:inline-flex;align-items:center;gap:4px;font-size:15px;font-weight:700}
+.chip-upgrade__currency img{width:19px;height:19px}
+.chip-upgrade__confirm{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:53px;border:2px solid #ffdf67;border-radius:999px;background:linear-gradient(135deg,#f8c956,#d8a331);color:#17120b;box-shadow:0 4px 16px #f1ad2550}
+.chip-upgrade .chip-upgrade__confirm[data-game-button="primary"]{font-family:var(--font-display,"YupLink Button Russo"),"Castle Upgrade Russo",sans-serif!important;font-size:clamp(16px,4.8vw,18px)!important;font-weight:400!important}
+.chip-upgrade .chip-upgrade__confirm[data-game-button="primary"]:disabled{opacity:1!important;background:#3c3524!important;color:#c5b99f!important;border-color:#7b652b!important;box-shadow:none!important}
+.chip-upgrade__confirm img{width:20px;height:20px}
+.chip-upgrade__back{display:block;width:100%;min-height:41px;color:#bbb8b5;font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.chip-upgrade__state{padding:10px 0;text-align:center;font-size:14px;color:#d7d0be}
+.chip-upgrade__state p{margin:0 0 10px}
+.chip-upgrade__retry{min-height:42px;padding:0 16px;border:1px solid #ad8136;border-radius:12px;background:#282114;color:#f6ca67;font-weight:700}
+.chip-upgrade__steps{border:1px solid #4b4b48;border-radius:14px;background:#0c1214;margin-bottom:10px;padding:10px 12px}
+.chip-upgrade__steps h3{margin:0 0 5px;font-size:14px;color:#eed29c}
+.chip-upgrade__steps p{margin:5px 0;color:#c3c0bc;font-size:12px;line-height:1.4}
+@media(min-width:600px){.chip-upgrade-overlay{padding:16px}.chip-upgrade.is-compact{max-width:430px}}
+@media(max-width:350px){.chip-upgrade{padding:12px 12px 9px}.chip-upgrade__heading{margin-bottom:14px}.chip-upgrade__portrait{width:68px!important;min-width:68px}.chip-upgrade__hero{gap:5px}.chip-upgrade__type-number{font-size:15px}.chip-upgrade__level{font-size:clamp(27px,8.7vw,30px);gap:3px;min-height:66px;padding:0 3px 0 8px}.chip-upgrade__level svg{width:20px}.chip-upgrade__material{padding:7px 6px;gap:3px}.chip-upgrade__material-count{min-width:38px;font-size:14px}.chip-upgrade__summary{font-size:11px}.chip-upgrade__currency strong{font-size:13px}}
+
+.chip-upgrade {--font-display:"Castle Upgrade Russo";font-family:"Castle Upgrade Golos",sans-serif}
+.chip-upgrade-overlay:not(.is-inactive) {background:#06090caa;backdrop-filter:blur(4px)}
+
+.chip-upgrade.is-auto-plan{height:auto;max-height:calc(100dvh - 24px)}
+/* Unavailable auto-select: one explanation and a clear return action. */
+.chip-upgrade__shortfall{margin:12px 0;padding:12px;border:1px solid #806325;border-radius:14px;background:#2b2617;color:#e9c56b;font-size:13px;line-height:1.45}
+.chip-upgrade__shortfall strong{display:block;margin-bottom:5px;font-weight:700;color:#f0db9b}
+.chip-upgrade__shortfall p{margin:3px 0}
+.chip-upgrade .chip-upgrade__confirm[data-game-button="primary"]:disabled{background:#25282b!important;border:1px solid #45494d!important;color:#979c9f!important;box-shadow:none!important;opacity:1}
+.chip-upgrade__back.is-prominent{margin-top:12px;min-height:44px;border:1px solid #92733b;border-radius:12px;background:#211f19;color:#f2d18d;font-weight:700;text-decoration:none}
+.chip-upgrade__back.is-prominent:hover:not(:disabled){background:#302a1d}

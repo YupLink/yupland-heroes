@@ -1,0 +1,290 @@
+/* Окно аукционов в дизайне замка Ангелины: те же шрифты (Russo/Golos), тёмный
+   фон, золото, карточка-леджер с обводкой и золотые кнопки — как в Казне. */
+@font-face {
+  font-family: "Auction Russo";
+  src: url("../../../assets/tavern/RussoOne.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Auction Golos";
+  src: url("../../../assets/tavern/GolosText.ttf") format("truetype");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+/* Полноэкранное окно (оверлей). */
+.auction-window {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  background: #081321;
+  color: #f5ecda;
+  font-family: "Auction Golos", sans-serif;
+}
+.auction-topbar {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+  background: #081521;
+  box-shadow: 0 3px 12px #0006;
+}
+.auction-topbar h1 {
+  margin: 0;
+  color: #fff0c7;
+  font: 400 clamp(20px, 5vw, 25px)/1.15 "Auction Russo", sans-serif;
+  text-shadow: 0 2px 4px #000e;
+}
+.auction-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #b38b4f;
+  border-radius: 999px;
+  background: #10161ced;
+  color: #f8eed8;
+  font: 400 14px/1 "Auction Russo", sans-serif;
+  box-shadow: 0 4px 12px #0008;
+  cursor: pointer;
+}
+.auction-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+  background: linear-gradient(#07101b00 40%, #07101b80 90%), #07101b;
+}
+.auction-stage {
+  width: min(100%, 560px);
+  margin: 0 auto;
+  padding: 14px 10px 0;
+}
+
+
+/* Карточка-леджер (общий контейнер + лоты). */
+.auction-ledger {
+  margin: 0 0 12px;
+  padding: 14px 15px;
+  border: 2px solid #94703c;
+  border-radius: 18px;
+  background: linear-gradient(150deg, #15273af9, #081522fc 75%);
+  box-shadow: 0 10px 30px #000a, inset 0 1px 0 #f4cf7640;
+}
+
+/* Кнопки. */
+.auction-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 1px solid #e8bd5e;
+  border-radius: 10px;
+  background: var(--gradient-gold, linear-gradient(135deg, #ffd32e, #e08700));
+  color: #1f180c;
+  font: 400 clamp(14px, 3.6vw, 17px)/1 "Auction Russo", sans-serif;
+  box-shadow: 0 4px 12px #0008, inset 0 1px 0 #fff8;
+  cursor: pointer;
+}
+.auction-primary:disabled { opacity: .48; cursor: not-allowed; }
+.auction-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #9b7b46;
+  border-radius: 10px;
+  background: #162231;
+  color: #f7e6c7;
+  font-weight: 700;
+  cursor: pointer;
+}
+.auction-secondary:disabled { opacity: .45; cursor: not-allowed; }
+.auction-danger {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #a7584f;
+  border-radius: 9px;
+  background: #241318;
+  color: #f0b4ab;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Лот. */
+.auction-lot { padding: 12px 0; border-top: 1px solid #a98a5955; }
+.auction-lot:first-child { border-top: 0; }
+.auction-lot__top { display: flex; align-items: flex-start; gap: 11px; }
+.auction-lot__media {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  border: 1px solid #94703c;
+  background: #0d1b2b;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #6d5a34;
+}
+.auction-lot__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.auction-lot__media svg { width: 24px; height: 24px; }
+.auction-lot__info { flex: 1; min-width: 0; }
+.auction-lot__title { margin: 0; color: #fbeccb; font-size: 16px; font-weight: 700; }
+.auction-lot__meta { margin: 3px 0 0; color: #b9a885; font-size: 12px; line-height: 1.4; }
+.auction-lot__bidrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.auction-lot__clock { flex: none; color: #ffd773; font-size: 14px; font-variant-numeric: tabular-nums; }
+.auction-lot__price { color: #fff0c7; font: 400 20px/1.1 "Auction Russo", sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.auction-lot__price i { color: #cdb791; font-size: 12px; font-style: normal; font-weight: 700; }
+.auction-lot__bid { display: flex; align-items: center; gap: 8px; }
+.auction-lot__bid .auction-field { width: 96px; text-align: right; }
+
+/* Плашка вида приза (бокс/пак/герой/…). */
+.auction-kind { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #e7b75422; color: #ffd773; font-size: 10px; font-weight: 800; }
+
+/* Редкость — цвета как в игре (heroLabels RARITY_COLOR). */
+.auction-rarity { font-weight: 800; }
+.auction-rarity--common { color: #9ca3af; }
+.auction-rarity--rare { color: #5b9bff; }
+.auction-rarity--epic { color: #b46bff; }
+.auction-rarity--legendary { color: #f5c451; }
+/* Плашка редкости в заголовке лота — рядом с «Герой / Артефакт». */
+.auction-rarity-chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; background: #9ca3af22; color: #c3c8d0; }
+.auction-rarity-chip--rare { background: #5b9bff26; color: #8db9ff; }
+.auction-rarity-chip--epic { background: #b46bff2b; color: #cf9dff; }
+.auction-rarity-chip--legendary { background: #f5c45130; color: #ffd773; }
+
+/* Статус-чип. */
+.auction-chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+.auction-chip--live { background: #1f5a3a; color: #8df0b6; }
+.auction-chip--settled { background: #1b4a66; color: #86d7f4; }
+.auction-chip--cancelled { background: #5a2330; color: #f6a9b6; }
+
+/* Бейдж лидера. */
+.auction-lead { display: inline-flex; margin-top: 4px; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; background: #e7b75422; color: #ffd773; font-size: 10px; font-weight: 800; }
+
+/* Поля формы. */
+.auction-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #94703c;
+  border-radius: 10px;
+  background: #0d1b2b;
+  color: #f5ecda;
+  font-size: 14px;
+}
+.auction-field:focus-visible { outline: 2px solid #ffe08d; outline-offset: 2px; }
+.auction-label { display: block; margin: 0 0 5px; color: #cdb791; font-size: 12px; font-weight: 700; }
+
+/* Пикер приза с миниатюрами (нативный select картинки не умеет). */
+.auction-picker { position: relative; }
+.auction-picker__btn {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 6px 12px;
+  border: 1px solid #94703c;
+  border-radius: 10px;
+  background: #0d1b2b;
+  color: #f5ecda;
+  text-align: left;
+  cursor: pointer;
+}
+.auction-picker__thumb {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: 1px solid #7a6336;
+  background: #0a1420;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.auction-picker__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.auction-picker__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.auction-picker__ph { color: #8c7f63; }
+.auction-picker__chev { width: 18px; height: 18px; flex: none; color: #c6a874; }
+.auction-picker__pop {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 264px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 5px;
+  border: 1px solid #94703c;
+  border-radius: 12px;
+  background: #0d1b2b;
+  box-shadow: 0 12px 30px #000b;
+}
+.auction-picker__opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f0e7d4;
+  text-align: left;
+  cursor: pointer;
+}
+.auction-picker__opt:hover, .auction-picker__opt--on { background: #ffffff12; }
+.auction-picker__empty { padding: 12px; color: #9f916f; font-size: 13px; text-align: center; }
+.auction-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* Два коротких числа — рядом и на телефоне. */
+.auction-row2.auction-row2--nums { grid-template-columns: 1fr 1fr; }
+.auction-form { display: grid; gap: 12px; }
+
+/* Пилюли-пресеты (длительность/шаг/антиснайпер). */
+.auction-pills { display: flex; flex-wrap: wrap; gap: 7px; }
+.auction-pill {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #7a6336;
+  border-radius: 999px;
+  background: #121f2e;
+  color: #cdb791;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.auction-pill--on {
+  border-color: #e8bd5e;
+  background: var(--gradient-gold, linear-gradient(135deg, #ffd32e, #e08700));
+  color: #1f180c;
+}
+
+.auction-empty { padding: 26px 8px; color: #b0a483; text-align: center; font-size: 14px; }
+.auction-loading { display: grid; place-items: center; padding: 48px 0; color: #cdb791; }
+
+.auction-window button:focus-visible { outline: 2px solid #ffe08d; outline-offset: 3px; }
+
+@media (max-width: 390px) {
+  .auction-ledger { margin-right: 1px; margin-left: 1px; padding: 12px; }
+  .auction-row2 { grid-template-columns: 1fr; }
+}
+

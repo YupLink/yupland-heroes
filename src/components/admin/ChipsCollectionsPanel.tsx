@@ -1,0 +1,1 @@
+export { ChipsCollectionsPanel } from "./ChipsCollectionsList";

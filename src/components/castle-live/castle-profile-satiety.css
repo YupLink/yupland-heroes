@@ -1,0 +1,21 @@
+/* Castle portrait uses the raid satiety ring without taking room from balances. */
+.castle-profile-satiety {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+}
+.castle-profile-satiety > .satiety-bar--ring { inset: -5px; }
+.castle-profile-satiety > button {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+@media (max-width: 620px) {
+  .castle-profile-satiety { width: 55px; height: 55px; }
+}
+@media (min-width: 1024px) {
+  .castle-profile-satiety { width: 52px; height: 52px; }
+}

@@ -1,0 +1,43 @@
+@font-face{font-family:"Raid HUD Golos";src:url("../../assets/tavern/GolosText.ttf") format("truetype");font-weight:400 900;font-display:swap}
+.raid-energy{display:flex;align-items:center;gap:5px;width:166px;max-width:100%;min-height:58px;padding:5px 7px;border:1px solid #a58b3c;border-radius:16px;background:linear-gradient(120deg,#102522ed,#111919dc);color:#fff4d8;box-shadow:inset 0 2px #d6b85355;backdrop-filter:blur(8px);pointer-events:auto;font-family:"Raid HUD Golos",sans-serif}
+.raid-energy>img{width:18px;height:26px;object-fit:contain;image-rendering:pixelated}
+.raid-energy__value{display:flex;flex:1;min-width:0;flex-direction:column;align-items:flex-start;gap:1px;font-size:11px;line-height:1.2}
+.raid-energy__value strong{font-family:inherit;font-size:17px;font-weight:700;line-height:1.1;white-space:nowrap}
+.raid-energy .castle-main-hud__recovery{position:static;grid-column:auto;padding:0;margin:2px 0 0;font-size:10px;line-height:1.2;white-space:nowrap;color:#e9dcb9}
+.raid-energy__buy{display:grid;place-items:center;position:relative;width:32px;height:44px;flex:none;border:0;background:transparent;cursor:pointer}
+.raid-energy__buy svg{width:26px;height:26px;padding:4px;border:2px solid #ffe890;border-radius:9px;background:linear-gradient(#ffd926,#f0a500);color:#352500;box-shadow:0 2px #835309}
+.raid-energy__retry{color:#ffe38a;text-decoration:underline;font-size:11px}
+.raid-world-effects{pointer-events:auto;color:#fff4d8}
+.raid-world-effects .castle-main-hud__effects-shell{margin:0}
+.raid-world-effects .castle-main-hud__effects-panel{top:auto;bottom:calc(100% + 3px);max-height:min(45dvh,330px)}
+.raid-world-effects .castle-main-hud__effects-toggle[aria-expanded="false"] svg{transform:rotate(180deg)}
+.raid-world-effects .castle-main-hud__effects-toggle[aria-expanded="true"] svg{transform:rotate(0)}
+.raid-energy button:focus-visible{outline:2px solid #fff4d8;outline-offset:2px}
+
+/* Под аватаром героя — шкала сытости (SatietyBar, 68…88 px): колонка ниже на её высоту. */
+.raid-world-hud .raid-map-nav__camera{position:fixed;top:96px;right:8px;width:44px;bottom:auto}
+
+
+
+
+.raid-world-effects .castle-main-hud__effects-pill{white-space:nowrap}
+
+.raid-energy__buy::before{content:"";position:absolute;inset:0 -6px}
+
+.raid-world-utilities{top:148px}
+
+
+/* One glass surface per effect; the group itself stays transparent. */
+.raid-world-effects .castle-main-hud__effects-panel{width:max-content;max-width:calc(100vw - 24px);padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;gap:4px}
+.raid-world-effects .castle-main-hud__effect-entry{border:1px solid #ffd32e55;border-radius:8px;background:#0d1a18b3;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.raid-world-effects .castle-main-hud__effect{min-height:30px;padding:3px 7px;gap:4px;border:0;border-radius:8px;background:transparent;font:400 11px/16px "Raid HUD Golos",sans-serif}
+.raid-world-effects .castle-main-hud__effect-icon{width:15px;height:15px}
+.raid-world-effects .castle-main-hud__effect-chevron{width:11px;height:11px}
+.raid-world-effects .castle-main-hud__effect-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.raid-world-effects .castle-main-hud__effect-detail{padding:2px 7px 7px;contain:inline-size}
+.raid-world-effects .castle-main-hud__effect-chip,.raid-world-effects .castle-main-hud__effect-source{border:0;border-radius:0;background:transparent;padding:0}
+.raid-world-effects .castle-main-hud__effects-toggle:focus-visible{outline:none}
+.raid-world-effects .castle-main-hud__effects-toggle:focus-visible .castle-main-hud__effects-pill{outline:2px solid #fff4d8;outline-offset:2px}
+.raid-world-effects .castle-main-hud__effect:focus-visible{outline-offset:-2px}
+/* Раскрыта админская панель (AdminFullscreenPanels) — колонка миникарты прячется, чтобы панель не легла поверх. */
+body[data-admin-panel="open"] .raid-map-nav__camera,body[data-admin-panel="open"] [data-hud-right]{visibility:hidden}

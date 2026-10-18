@@ -1,0 +1,196 @@
+/* Шрифты замка явно (дизайн Ангелины, 07.10): без них окно лайков брало общий шрифт игры. */
+@font-face { font-family: "Castle HUD Golos"; src: url("../../assets/tavern/GolosText.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Castle HUD Russo"; src: url("../../assets/tavern/RussoOne.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+/* Шапка замка (CastleMainHud): в мастерской — fixed поверх превью, в игре —
+   первый элемент строки шапки CastleLiveView, справа от неё кружок профиля. */
+.castle-main-hud {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 620px;
+  pointer-events: none;
+  color: #fff4d8;
+  font-family: "Castle HUD Golos", var(--font-sans), sans-serif;
+}
+.castle-main-hud__balances {
+  display: flex;
+  align-items: stretch;
+  min-height: 66px;
+  overflow: hidden;
+  border: 1px solid #ffd32e66;
+  border-bottom-color: transparent;
+  border-radius: 19px;
+  background: linear-gradient(180deg, rgba(20, 31, 29, .98) 0%, rgba(12, 24, 23, .94) 46%, rgba(8, 18, 19, .76) 68%, rgba(8, 18, 19, .32) 100%);
+  backdrop-filter: blur(6px) saturate(115%);
+  -webkit-backdrop-filter: blur(6px) saturate(115%);
+  box-shadow: 0 3px 10px #0006, inset 0 1px 0 #e1c97955;
+  pointer-events: auto;
+}
+.castle-main-hud__balance {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px 10px;
+  position: relative;
+}
+.castle-main-hud__balance + .castle-main-hud__balance::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 1px;
+  background: #ffd32e33;
+}
+.castle-main-hud__icon { flex: none; width: 25px; height: 25px; object-fit: contain; image-rendering: pixelated; }
+.castle-main-hud__icon--tickets { width: 27px; height: 27px; }
+.castle-main-hud__numbers { display: flex; flex: 1 1 0; flex-direction: column; min-width: 0; line-height: 1.12; }
+.castle-main-hud__label-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.castle-main-hud__label { font-size: 12px; white-space: nowrap; }
+.castle-main-hud__numbers strong { position: relative; display: block; width: 100%; overflow: hidden; font-size: 17px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.castle-main-hud__probe { position: absolute; left: 0; top: 0; width: max-content; visibility: hidden; pointer-events: none; }
+.castle-main-hud__buy {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  border: 1px solid #ffd32e66;
+  border-radius: 9px;
+  background: var(--gradient-gold);
+  box-shadow: inset 0 1px 0 #fff3a9, 0 2px 3px #0008;
+  color: #3b2608;
+}
+.castle-main-hud__buy::before { content: ""; position: absolute; top: -11px; bottom: -11px; left: -4px; right: -4px; }
+.castle-main-hud__buy svg { width: 17px; height: 17px; stroke-width: 2.5; }
+.castle-main-hud__buy:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.castle-main-hud__buy:disabled { opacity: .5; cursor: not-allowed; }
+@property --castle-buy-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.castle-main-hud__buy:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 2px solid transparent;
+  border-radius: inherit;
+  background: conic-gradient(from var(--castle-buy-angle), transparent 0deg 270deg, #ffe384 313deg, #fffdf0 337deg 350deg, transparent 360deg) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  /* 12 кадров в секунду, а не 60: угол градиента не идёт через видеокарту, и
+     плавный бег перерисовывал обе кнопки каждый кадр (~30 мс/с на слабом телефоне). */
+  animation: castle-main-hud-buy-runner 3s steps(36) infinite;
+}
+.castle-main-hud__balance--energy .castle-main-hud__buy::after { animation-delay: -1.5s; }
+@keyframes castle-main-hud-buy-runner {
+  to { --castle-buy-angle: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .castle-main-hud__buy::after { animation: none; opacity: 0; }
+}
+.castle-main-hud__info { position: relative; display: grid; flex: none; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #ffd32eaa; pointer-events: auto; }
+.castle-main-hud__info::before { content: ""; position: absolute; inset: -5px -3px; }
+.castle-main-hud__info svg { width: 16px; height: 16px; }
+.castle-main-hud__info:hover { background: #d6c99922; }
+.castle-main-hud__info:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.castle-main-hud__status { width: fit-content; margin: 5px 0 0 12px; padding: 4px 9px; border-radius: 8px; background: #231414ec; font-size: 12px; }
+.castle-main-hud__wallet-toggle { display: flex; align-items: center; gap: 6px; width: fit-content; min-height: 32px; margin: 6px 0 0 12px; padding: 4px 10px; border: 1px solid #ffd32e66; border-radius: 17px; background: #0d1a18ed; color: #fff4d8; font-size: 12px; font-weight: 600; pointer-events: auto; cursor: pointer; }
+.castle-main-hud__wallet-toggle:hover { border-color: #ffd32e; }
+.castle-main-hud__wallet-toggle:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.castle-main-hud__wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: #858b8a; }
+.castle-main-hud__wallet-toggle[aria-checked="true"] .castle-main-hud__wallet-dot { background: #46c987; box-shadow: 0 0 6px #46c98788; }
+.castle-likes-info {
+  width: min(400px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(90dvh, 620px);
+  gap: 0;
+  overflow-y: auto;
+  padding: 23px 22px 24px;
+  border: 1px solid #756747;
+  border-radius: 9px;
+  background: linear-gradient(155deg, #101216, #08090f 58%, #08090f);
+  box-shadow: 0 18px 48px #000b, inset 0 1px #a48a4b77;
+  color: #eee5d2;
+  font-family: "Castle HUD Golos", var(--font-sans), sans-serif;
+}
+.castle-likes-info__heading { display: flex; align-items: center; gap: 11px; padding-right: 30px; }
+.castle-likes-info__heading img { width: 30px; height: 30px; flex: none; object-fit: contain; image-rendering: pixelated; }
+.castle-likes-info__heading h2 { font-family: "Castle HUD Russo", var(--font-display), sans-serif; font-size: 21px; font-weight: 400; line-height: 1.2; letter-spacing: 0; }
+.castle-likes-info__body { display: grid; gap: 17px; margin-top: 17px; padding-top: 16px; border-top: 1px solid #756747; color: #e7decf; font-family: "Castle HUD Golos", var(--font-sans), sans-serif; font-size: 15px; line-height: 1.5; }
+.castle-likes-info__source { display: grid; gap: 4px; }
+.castle-likes-info__source strong { color: #f3ca62; font-weight: 600; }
+.castle-likes-info > button:last-child { display: grid; place-items: center; width: 30px; height: 30px; right: 17px; top: 17px; border: 1px solid #756747; border-radius: 50%; background: #08090f; color: #eee5d2; opacity: 1; }
+.castle-likes-info > button:last-child:hover { background: #24252a; color: #ffe08a; }
+.castle-likes-info > button:last-child:focus-visible { outline: 2px solid #f3ca62; outline-offset: 3px; box-shadow: none; }
+header:has(> .castle-main-hud) { align-items: flex-start; }
+header:has(> .castle-main-hud) button:is([aria-label="Открыть профиль"], [aria-label="Open profile"]) {
+  width: 66px;
+  height: 66px;
+  border-width: 1px;
+  border-color: #ffd32e66;
+  box-shadow: 0 4px 12px #0009;
+}
+@media (max-width: 620px) {
+  .castle-likes-info { padding: 21px 18px 22px; }
+  .castle-likes-info__heading h2 { font-size: 19px; }
+  .castle-likes-info__body { font-size: 14px; }
+  .castle-main-hud { max-width: none; }
+  header:has(> .castle-main-hud) button:is([aria-label="Открыть профиль"], [aria-label="Open profile"]) { width: 55px; height: 55px; }
+  .castle-main-hud__balances { min-height: 55px; border-radius: 15px; }
+  .castle-main-hud__balance { gap: 3px; padding: 5px 4px; }
+  .castle-main-hud__icon { width: 17px; height: 17px; }
+  .castle-main-hud__icon--tickets { width: 19px; height: 19px; }
+  .castle-main-hud__balance--tickets { flex-grow: 1.1; }
+  .castle-main-hud__balance--likes { flex-grow: .9; }
+  .castle-main-hud__label { font-size: 10px; }
+  .castle-main-hud__numbers strong { font-size: 12px; }
+  .castle-main-hud__balance:nth-child(3) { flex-grow: 1.2; }
+  .castle-main-hud__numbers strong[data-compact] { font-size: 10px; }
+  /* Замерщик меряет полный вид в полном размере — иначе сжатое и полное число переключаются по кругу. */
+  .castle-main-hud__numbers strong[data-compact] .castle-main-hud__probe { font-size: 12px; }
+  .castle-main-hud__buy { width: 19px; height: 19px; border-width: 1px; border-radius: 5px; }
+  .castle-main-hud__label-row { gap: 2px; }
+  .castle-main-hud__info { width: 14px; height: 14px; }
+  .castle-main-hud__info svg { width: 13px; height: 13px; }
+  .castle-main-hud__buy svg { width: 12px; height: 12px; }
+}
+/* Старый WebView (Chromium <108) без dvh — иначе окно без предела высоты. */
+@supports not (height: 1dvh) {
+  .castle-likes-info { max-height: min(90vh, 620px); }
+}
+
+/* Real next energy tick, kept inside the energy segment at narrow widths. */
+.castle-main-hud__balance--energy { padding-bottom: 20px; }
+.castle-main-hud__recovery { position: absolute; bottom: 5px; left: 4px; right: 4px; text-align: center; white-space: nowrap; font-size: 11px; line-height: 1; font-variant-numeric: tabular-nums; color: #e7dec4; }
+@media (max-width:620px) {
+ .castle-main-hud__balance--energy { padding-bottom: 17px; }
+ .castle-main-hud__recovery { bottom: 4px; font-size: 9px; }
+}
+
+/* Shared balance baseline and a separate recovery row, matching the approved HUD. */
+.castle-main-hud__balances { min-height: 66px; }
+.castle-main-hud__balance { padding-bottom: 20px; }
+.castle-main-hud__balance + .castle-main-hud__balance::before { bottom: 20px; }
+.castle-main-hud__recovery { left: 42px; right: 8px; bottom: 4px; text-align: left; font-size: 12px; line-height: 1.15; }
+@media (max-width: 620px) {
+  .castle-main-hud__balances { min-height: 55px; }
+  .castle-main-hud__balance { padding-bottom: 18px; }
+  .castle-main-hud__balance + .castle-main-hud__balance::before { bottom: 19px; }
+  .castle-main-hud__recovery { left: 24px; right: 3px; bottom: 4px; font-size: 10px; }
+}
+@media (max-width: 350px) {
+  .castle-main-hud__recovery { font-size: 9px; }
+}
+
+.castle-main-hud__label-row { min-height: 18px; }
+@media (max-width: 620px) { .castle-main-hud__label-row { min-height: 14px; } }
+

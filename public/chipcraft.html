@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>YupLink — крафт фишек: расход</title>
+<style>
+  :root{--bg:#0b0b12;--card:#14141e;--b:#26263a;--txt:#ececf5;--mut:#8a8a9c;--gold:#f5b301;--pur:#8b6cff;--green:#37d67a;--red:#ff5470}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:24px 14px 60px}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:28px;font-weight:800;letter-spacing:-.5px}
+  .sub{color:var(--mut);font-size:14px;margin:6px 0 20px;line-height:1.5}
+  h2{font-size:16px;font-weight:700;margin:26px 0 4px;display:flex;align-items:center;gap:8px}
+  .h2sub{color:var(--mut);font-size:12px;margin-bottom:10px}
+  .dot{width:9px;height:9px;border-radius:3px}
+  table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--b);border-radius:14px;overflow:hidden;font-size:13.5px}
+  th,td{padding:10px 11px;text-align:left}
+  th{background:rgba(255,255,255,.04);color:var(--mut);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+  td{border-top:1px solid var(--b)}
+  tr td:last-child,tr th:last-child{text-align:right}
+  .lv{font-weight:700;color:var(--gold)}
+  .tag{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:999px;font-weight:600;white-space:nowrap}
+  .same{background:rgba(245,179,1,.14);color:var(--gold);border:1px solid rgba(245,179,1,.4)}
+  .any{background:rgba(139,108,255,.16);color:var(--pur);border:1px solid rgba(139,108,255,.4)}
+  .low{background:rgba(55,214,122,.14);color:var(--green);border:1px solid rgba(55,214,122,.4)}
+  .n{font-variant-numeric:tabular-nums;font-weight:600}
+  .tk{color:var(--gold);font-weight:700;font-variant-numeric:tabular-nums}
+  .hi td{background:rgba(55,214,122,.06)}
+  .note{color:var(--mut);font-size:12px;margin-top:10px;line-height:1.5}
+  .box{background:var(--card);border:1px solid var(--b);border-radius:14px;padding:14px 16px;margin-top:18px;font-size:14px;line-height:1.6}
+  .box b{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Крафт фишек — расход</h1>
+  <div class="sub">Актуальные правила прокачки фишек в YupLink (факт из кода: <code>CRAFT_RULES</code> + SQL <code>craft_chip_atomic</code>). Уровни 1★…5★, шаг 0.5. «Всего 1★» = сколько фишек 1★ уходит на одну фишку уровня с нуля. Билеты — цена за шаг (первоисточник, не меняются). Механика совпадает с <b style="color:var(--green)">вики CapsGame</b>.</div>
+
+  <h2><span class="dot" style="background:var(--gold)"></span>Дерево прокачки</h2>
+  <div class="h2sub">Каждый шаг: 1 базовая фишка + жертвы. «Этот вид» = того же шаблона; «любые» = любые фишки нужного уровня из коллекции.</div>
+  <table>
+    <tr><th>Шаг</th><th>Жертвы (+ к базе)</th><th>Тип</th><th>Всего 1★</th><th>Билеты/шаг</th></tr>
+    <tr><td><span class="lv">1★→1.5★</span></td><td class="n">+1</td><td><span class="tag same">этот вид · 1★</span></td><td class="n">2</td><td class="tk">0.03</td></tr>
+    <tr><td><span class="lv">1.5★→2★</span></td><td class="n">+2</td><td><span class="tag any">любые · 1.5★</span></td><td class="n">6</td><td class="tk">0.07</td></tr>
+    <tr><td><span class="lv">2★→2.5★</span></td><td class="n">+1</td><td><span class="tag same">этот вид · 2★</span></td><td class="n">12</td><td class="tk">0.28</td></tr>
+    <tr><td><span class="lv">2.5★→3★</span></td><td class="n">+2</td><td><span class="tag any">любые · 2.5★</span></td><td class="n">36</td><td class="tk">0.55</td></tr>
+    <tr><td><span class="lv">3★→3.5★</span></td><td class="n">+2</td><td><span class="tag same">этот вид · 3★</span></td><td class="n">108</td><td class="tk">1.11</td></tr>
+    <tr><td><span class="lv">3.5★→4★</span></td><td class="n">+1</td><td><span class="tag any">любые · 3.5★</span></td><td class="n">216</td><td class="tk">2.12</td></tr>
+    <tr class="hi"><td><span class="lv">4★→4.5★</span></td><td class="n">+1</td><td><span class="tag low">любые · 3.5★ (ниже)</span></td><td class="n">324</td><td class="tk">3.53</td></tr>
+    <tr class="hi"><td><span class="lv">4.5★→5★</span></td><td class="n">+2</td><td><span class="tag low">этот вид · 2.5★ (ниже)</span></td><td class="n">348</td><td class="tk">5.63</td></tr>
+  </table>
+  <div class="note">Одна фишка 5★ с нуля: <b style="color:var(--gold)">348 фишек 1★</b>, суммарно билетов по всему дереву ≈ <b style="color:var(--gold)">36.96</b>.</div>
+
+  <h2><span class="dot" style="background:var(--green)"></span>Кумулятивно билетов (с нуля до уровня)</h2>
+  <div class="h2sub">Сколько билетов суммарно уходит на всё дерево крафта до этого уровня.</div>
+  <table>
+    <tr><th>Уровень</th><th>Фишек 1★</th><th>Билетов всего</th></tr>
+    <tr><td><span class="lv">1.5★</span></td><td class="n">2</td><td class="tk">0.03</td></tr>
+    <tr><td><span class="lv">2★</span></td><td class="n">6</td><td class="tk">0.16</td></tr>
+    <tr><td><span class="lv">2.5★</span></td><td class="n">12</td><td class="tk">0.60</td></tr>
+    <tr><td><span class="lv">3★</span></td><td class="n">36</td><td class="tk">2.35</td></tr>
+    <tr><td><span class="lv">3.5★</span></td><td class="n">108</td><td class="tk">8.16</td></tr>
+    <tr><td><span class="lv">4★</span></td><td class="n">216</td><td class="tk">18.44</td></tr>
+    <tr class="hi"><td><span class="lv">4.5★</span></td><td class="n">324</td><td class="tk">30.13</td></tr>
+    <tr class="hi"><td><span class="lv">5★</span></td><td class="n">348</td><td class="tk">36.96</td></tr>
+  </table>
+
+  <div class="box">
+    <b>Верхние 2 апгрейда</b> (отмечены зелёным) берут жертвы <b>нижнего</b> уровня — как в первоисточнике CapsGame:<br>
+    • <b>4★→4.5★:</b> база 4★ + 1 фишка <b>3.5★</b> (любая из коллекции) → всего 324 фишки 1★.<br>
+    • <b>4.5★→5★:</b> база 4.5★ + 2 фишки <b>2.5★</b> (этот вид) → всего 348 фишек 1★.<br>
+    Цены в билетах за шаг неизменны: 0.03 / 0.07 / 0.28 / 0.55 / 1.11 / 2.12 / 3.53 / 5.63.
+  </div>
+</div>
+</body>
+</html>

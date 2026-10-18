@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>YupLink · Фишки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0c14; --card:#151725; --bd:rgba(255,255,255,.08);
+    --fg:#f1f1fa; --mut:#9a9ab5;
+    --gold:#ffc531; --gold2:#ff9f1c; --deep:#d9891f;
+    --cyan:#4fd6e0; --red:#ff5470; --violet:#8a5cff; --green:#3ddc84;
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:#07080d;color:var(--fg);font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .num{font-family:"Space Grotesk";font-weight:700;font-variant-numeric:tabular-nums}
+  .st{stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+  .phone{position:relative;width:100%;max-width:400px;height:100dvh;max-height:864px;overflow:hidden;background:var(--bg);isolation:isolate}
+  /* ── атмосфера: авроры из цветов арта ── */
+  .atmo{position:absolute;inset:0;z-index:0;pointer-events:none}
+  .atmo::before{content:"";position:absolute;inset:-20%;
+    background:
+      radial-gradient(46% 34% at 18% 6%, rgba(138,92,255,.32), transparent 62%),
+      radial-gradient(50% 36% at 88% 12%, rgba(255,159,28,.24), transparent 64%),
+      radial-gradient(42% 30% at 78% 88%, rgba(79,214,224,.12), transparent 60%),
+      radial-gradient(40% 30% at 12% 92%, rgba(255,84,112,.10), transparent 60%);
+    filter:blur(10px);animation:breathe 12s ease-in-out infinite alternate}
+  @keyframes breathe{from{opacity:.85;transform:scale(1)}to{opacity:1;transform:scale(1.06)}}
+  .atmo::after{content:"";position:absolute;inset:0;opacity:.5;
+    background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+    background-size:26px 26px;
+    -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 30%,transparent 75%);mask-image:radial-gradient(120% 90% at 50% 0%,#000 30%,transparent 75%)}
+  .vig{position:absolute;inset:0;z-index:4;pointer-events:none;background:radial-gradient(135% 100% at 50% 40%,transparent 58%,rgba(0,0,0,.5))}
+  /* конфетти */
+  .cf{position:absolute;width:7px;height:10px;border-radius:2px;opacity:.55;z-index:1;animation:cfall linear infinite}
+  @keyframes cfall{from{transform:translateY(-30px) rotate(0)}to{transform:translateY(920px) rotate(560deg)}}
+
+  .wrap{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:16px 16px 0}
+  .scroll{flex:1;overflow-y:auto;padding-bottom:86px;scrollbar-width:none}
+  .scroll::-webkit-scrollbar{display:none}
+
+  /* ── header ── */
+  .hdr{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 12px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#20160a;flex:none;
+    background:linear-gradient(140deg,#ffe27a,var(--gold) 50%,var(--gold2));
+    box-shadow:0 4px 14px rgba(255,159,28,.45),0 1px 0 rgba(255,255,255,.55) inset}
+  .brand .t{font-family:"Space Grotesk";font-weight:700;font-size:18px;letter-spacing:.01em}
+  .brand .s{font-size:10.5px;color:var(--mut);letter-spacing:.22em;text-transform:uppercase;margin-top:1px}
+  .wallet{display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:999px;cursor:pointer;
+    color:#ffdf7a;font-size:12.5px;font-weight:600;border:1px solid rgba(255,197,49,.45);
+    background:linear-gradient(180deg,rgba(255,197,49,.14),rgba(255,197,49,.05));
+    box-shadow:0 0 18px rgba(255,197,49,.14)}
+
+  /* ── статы ── */
+  .stats{display:flex;gap:9px;margin-bottom:14px}
+  .stat{flex:1;display:flex;align-items:center;gap:8px;border-radius:14px;padding:9px 10px;border:1px solid var(--bd);min-width:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));backdrop-filter:blur(8px)}
+  .stat .ic{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
+  .stat .n{font-size:16px;line-height:1;white-space:nowrap}
+  .stat .l{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-top:2px}
+  .i-gold{background:rgba(255,197,49,.16);color:var(--gold);box-shadow:0 0 14px rgba(255,197,49,.2)}
+  .i-cyan{background:rgba(79,214,224,.14);color:var(--cyan)}
+  .i-red{background:rgba(255,84,112,.14);color:var(--red)}
+  .stat .n.gold{color:#ffdf7a}.stat .n.cyan{color:#9fe9f0}.stat .n.red{color:#ff8ba0}
+
+  /* ── HERO: пак ── */
+  .hero{position:relative;border-radius:24px;padding:20px 18px;margin-bottom:18px;overflow:hidden;cursor:pointer;
+    background:
+      radial-gradient(120% 150% at 85% 20%, rgba(138,92,255,.45), transparent 55%),
+      radial-gradient(100% 140% at 10% 100%, rgba(255,159,28,.25), transparent 55%),
+      linear-gradient(160deg,#1d1633,#151725 70%);
+    border:1px solid rgba(160,120,255,.35);
+    box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 44px rgba(138,92,255,.22),0 1px 0 rgba(255,255,255,.08) inset;
+    transition:transform .25s var(--ease)}
+  .hero:active{transform:scale(.98)}
+  .hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.14) 50%,transparent 58%);
+    background-size:260% 100%;animation:sheen 4.2s var(--ease) infinite}
+  @keyframes sheen{0%{background-position:130% 0}55%,100%{background-position:-70% 0}}
+  .hero .cols{display:flex;align-items:center;gap:8px;position:relative;z-index:2}
+  .hero .info{flex:1;min-width:0}
+  .hero .tag{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    color:#d9c2ff;background:rgba(138,92,255,.22);border:1px solid rgba(160,120,255,.4);border-radius:999px;padding:5px 11px}
+  .hero h1{font-family:"Space Grotesk";font-weight:700;font-size:27px;line-height:1.06;margin:12px 0 7px;
+    background:linear-gradient(140deg,#fff 30%,#e8ddff 60%,#cdb7ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .odds{font-size:12px;color:var(--mut);margin-bottom:16px}
+  .hero .odds b{color:#ffdf7a;font-family:"Space Grotesk"}
+  .btn{display:inline-flex;align-items:center;gap:9px;border:none;cursor:pointer;
+    font-family:"Space Grotesk";font-weight:700;font-size:15px;color:#241503;padding:13px 22px;border-radius:14px;
+    background:linear-gradient(140deg,#ffe27a,var(--gold) 45%,var(--gold2));
+    box-shadow:0 12px 28px rgba(255,159,28,.45),0 2px 0 rgba(255,255,255,.5) inset,0 -3px 0 rgba(140,70,0,.25) inset;
+    transition:transform .22s var(--ease),box-shadow .22s var(--ease)}
+  .btn:active{transform:scale(.96)}
+  .btn .cnt{background:rgba(36,21,3,.18);border-radius:8px;padding:2px 8px;font-size:13px}
+  .hero .art{position:relative;width:150px;flex:none;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55))}
+  .hero .art img{width:100%;display:block;border-radius:14px;transform:rotate(6deg);animation:float 5s ease-in-out infinite}
+  @keyframes float{0%,100%{transform:rotate(6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-9px)}}
+  .hero .halo{position:absolute;inset:-26%;z-index:-1;border-radius:50%;
+    background:radial-gradient(50% 50% at 50% 50%,rgba(255,197,49,.4),rgba(138,92,255,.25) 55%,transparent 75%);
+    filter:blur(14px);animation:puls 3.4s ease-in-out infinite}
+  @keyframes puls{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+
+  /* ── табы ── */
+  .tabs{display:flex;gap:7px;margin-bottom:14px}
+  .tab{display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--mut);cursor:pointer;
+    border:1px solid var(--bd);background:rgba(255,255,255,.03);transition:all .22s var(--ease)}
+  .tab.act{color:#241503;border-color:transparent;background:linear-gradient(140deg,#ffe27a,var(--gold) 45%,var(--gold2));
+    box-shadow:0 6px 18px rgba(255,159,28,.35);font-weight:700}
+
+  .sec{display:flex;align-items:baseline;justify-content:space-between;margin:2px 2px 11px}
+  .sec .t{font-family:"Space Grotesk";font-weight:700;font-size:15px;letter-spacing:.02em}
+  .sec .c{font-size:11.5px;color:var(--mut)}
+
+  /* ── карты фишек ── */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .cardc{position:relative;border-radius:18px;padding:2px;cursor:pointer;transition:transform .25s var(--ease)}
+  .cardc:active{transform:scale(.96)}
+  .cardc .in{position:relative;border-radius:16px;overflow:hidden;background:var(--card)}
+  .cardc img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+  .plate{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px 11px;
+    background:linear-gradient(180deg,rgba(10,11,18,.4),rgba(10,11,18,.85))}
+  .plate .nm{font-family:"Space Grotesk";font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .plate .stx{font-size:11px;letter-spacing:.06em;flex:none}
+  .idb{position:absolute;top:8px;right:8px;z-index:2;font-size:9px;color:rgba(255,255,255,.85);background:rgba(8,9,14,.62);
+    border:1px solid rgba(255,255,255,.14);border-radius:7px;padding:2px 7px;backdrop-filter:blur(4px)}
+  /* редкости */
+  .r1{background:linear-gradient(160deg,rgba(154,160,185,.55),rgba(154,160,185,.12) 55%,rgba(154,160,185,.4))}
+  .r1 .stx{color:#aeb4c9}
+  .r2{background:linear-gradient(160deg,rgba(79,214,224,.85),rgba(79,214,224,.12) 55%,rgba(79,214,224,.6));
+    box-shadow:0 8px 30px rgba(79,214,224,.22)}
+  .r2 .stx{color:#7fe6ef}
+  .r3{background:conic-gradient(from var(--a,0deg),#ffe27a,#ff9f1c,#ff5470,#ffe27a);
+    box-shadow:0 10px 40px rgba(255,159,28,.4);animation:spin3 4s linear infinite}
+  @property --a{syntax:'<angle>';initial-value:0deg;inherits:false}
+  @keyframes spin3{to{--a:360deg}}
+  .r3 .stx{color:#ffdf7a}
+  .r3 .in::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.22) 50%,transparent 60%);
+    background-size:240% 100%;animation:sheen 3.2s var(--ease) infinite}
+  .ribbon{position:absolute;top:10px;left:-32px;z-index:3;transform:rotate(-35deg);
+    font-family:"Space Grotesk";font-weight:700;font-size:9px;letter-spacing:.14em;color:#241503;text-align:center;width:110px;padding:4px 0;
+    background:linear-gradient(90deg,#ffe27a,var(--gold2));box-shadow:0 4px 12px rgba(255,159,28,.5)}
+
+  /* ── низ ── */
+  .nav{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:space-around;
+    border-top:1px solid var(--bd);background:rgba(11,12,20,.78);
+    -webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+    box-shadow:0 -10px 30px rgba(0,0,0,.45);padding:10px 0 calc(9px + env(safe-area-inset-bottom))}
+  .nav a{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--mut);font-size:9.5px;font-weight:600;cursor:pointer;
+    transition:color .2s var(--ease),transform .2s var(--ease)}
+  .nav a:active{transform:scale(.9)}
+  .nav a.act{color:var(--gold)}
+  .nav a.act svg{filter:drop-shadow(0 0 9px rgba(255,197,49,.65))}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="atmo"></div>
+  <!-- конфетти -->
+  <i class="cf" style="left:8%;background:#ffc531;animation-duration:11s;animation-delay:-2s"></i>
+  <i class="cf" style="left:22%;background:#8a5cff;animation-duration:14s;animation-delay:-7s"></i>
+  <i class="cf" style="left:38%;background:#4fd6e0;animation-duration:12s;animation-delay:-4s"></i>
+  <i class="cf" style="left:57%;background:#ff5470;animation-duration:15s;animation-delay:-9s"></i>
+  <i class="cf" style="left:71%;background:#ffc531;animation-duration:10s;animation-delay:-1s"></i>
+  <i class="cf" style="left:86%;background:#8a5cff;animation-duration:13s;animation-delay:-6s"></i>
+
+  <div class="wrap">
+    <div class="hdr">
+      <div class="brand">
+        <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" class="st" stroke-width="2.2"><path d="m12 3 2 4.5L18.5 9 15 12l1 5-4-2.4L8 17l1-5-3.5-3 4.5-1.5z"/></svg></span>
+        <div><div class="t">Фишки</div><div class="s">коллекция</div></div>
+      </div>
+      <div class="wallet"><svg width="15" height="15" viewBox="0 0 24 24" class="st"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16.5 14h.5"/></svg>Кошелёк</div>
+    </div>
+
+    <div class="scroll">
+      <div class="stats">
+        <div class="stat"><span class="ic i-gold"><svg width="16" height="16" viewBox="0 0 24 24" class="st"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></span><div><div class="n num gold">7</div><div class="l">фишки</div></div></div>
+        <div class="stat"><span class="ic i-cyan"><svg width="16" height="16" viewBox="0 0 24 24" class="st"><path d="M4 8h16v8H4z"/><path d="M9 8v8"/></svg></span><div><div class="n num cyan">3,01</div><div class="l">билеты</div></div></div>
+        <div class="stat"><span class="ic i-red"><svg width="16" height="16" viewBox="0 0 24 24" class="st"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></span><div><div class="n num red">22<span style="font-size:11px;opacity:.55">/30</span></div><div class="l">энергия</div></div></div>
+      </div>
+
+      <!-- HERO -->
+      <div class="hero">
+        <div class="cols">
+          <div class="info">
+            <span class="tag"><svg width="11" height="11" viewBox="0 0 24 24" class="st" stroke-width="2.4"><path d="m12 3 2 4.5L18.5 9 15 12l1 5-4-2.4L8 17l1-5-3.5-3 4.5-1.5z"/></svg>сезон · футбол</span>
+            <h1>Football<br>Pack</h1>
+            <div class="odds">шанс 3★ <b>0,01%</b> · камонка <b>15%</b></div>
+            <button class="btn"><svg width="17" height="17" viewBox="0 0 24 24" class="st" stroke-width="2.2"><path d="M3 9 4.5 4h15L21 9M4 9v11h16V9M9 4v5h6V4"/></svg>Открыть<span class="cnt">×2</span></button>
+          </div>
+          <div class="art"><div class="halo"></div><img src="/uploads/tasks/paOtGFC8lM.png" alt="Football pack"></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab act">Все</div><div class="tab">1★</div><div class="tab">2★</div><div class="tab">3★</div>
+      </div>
+
+      <div class="sec"><span class="t">Моя коллекция</span><span class="c">7 фишек · 2 сета</span></div>
+
+      <div class="grid">
+        <!-- 3★ джекпот -->
+        <div class="cardc r3"><div class="in">
+          <div class="ribbon">ЛЕГЕНДА</div><span class="idb">#13</span>
+          <img src="/uploads/tasks/5Y2XVBCAxi.png" alt="Чемпион">
+          <div class="plate"><span class="nm">Чемпион</span><span class="stx">★★★</span></div>
+        </div></div>
+        <!-- 2★ -->
+        <div class="cardc r2"><div class="in">
+          <span class="idb">#1892</span>
+          <img src="/uploads/tasks/WLxEwiudmt.png" alt="Дракон FC">
+          <div class="plate"><span class="nm">Дракон FC</span><span class="stx">★★</span></div>
+        </div></div>
+        <div class="cardc r2"><div class="in">
+          <span class="idb">#1998</span>
+          <img src="/uploads/tasks/xRTmgxmWCf.jpg" alt="Меломан">
+          <div class="plate"><span class="nm">Меломан</span><span class="stx">★★</span></div>
+        </div></div>
+        <!-- 1★ -->
+        <div class="cardc r1"><div class="in">
+          <span class="idb">#4998</span>
+          <img src="/uploads/tasks/tTgGJGlWtH.png" alt="Нападающий">
+          <div class="plate"><span class="nm">Нападающий</span><span class="stx">★</span></div>
+        </div></div>
+        <div class="cardc r1"><div class="in">
+          <span class="idb">#1150</span>
+          <img src="/uploads/tasks/lSq5LpzuHL.png" alt="Вратарь">
+          <div class="plate"><span class="nm">Вратарь</span><span class="stx">★</span></div>
+        </div></div>
+        <div class="cardc r1"><div class="in">
+          <span class="idb">#2670</span>
+          <img src="/uploads/tasks/3f1u4nrn4e.jpg" alt="Ретро-кот">
+          <div class="plate"><span class="nm">Ретро-кот</span><span class="stx">★</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="vig"></div>
+
+  <nav class="nav">
+    <a><svg width="22" height="22" viewBox="0 0 24 24" class="st"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Главная</a>
+    <a class="act"><svg width="22" height="22" viewBox="0 0 24 24" class="st"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/></svg>Фишки</a>
+    <a><svg width="22" height="22" viewBox="0 0 24 24" class="st"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/></svg>Босс</a>
+    <a><svg width="22" height="22" viewBox="0 0 24 24" class="st"><path d="M3 9 4.5 4h15L21 9"/><path d="M4 9v11h16V9"/></svg>Магазин</a>
+  </nav>
+</div>
+</body>
+</html>

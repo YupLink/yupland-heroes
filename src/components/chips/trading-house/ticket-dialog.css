@@ -1,0 +1,238 @@
+.castle-purchase-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(90dvh, 680px);
+  display: block;
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid #756747;
+  border-radius: 9px;
+  background: linear-gradient(155deg, #101216, #08090f 58%, #08090f);
+  box-shadow: 0 18px 48px #000b, inset 0 1px #a48a4b77;
+  color: #eee5d2;
+  font-family: var(--font-sans);
+}
+.castle-purchase-dialog--energy-catalog { width: min(720px, calc(100vw - 32px)); max-height: min(96dvh, 760px); }
+.castle-purchase-dialog--energy-catalog .castle-purchase-dialog__content { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; column-gap: 18px; row-gap: 0; }
+.castle-purchase-dialog--energy-catalog .castle-purchase-dialog__balance { grid-column: 1 / -1; }
+.castle-purchase-dialog__one-time h3 { margin-bottom: 12px; font-family: var(--font-display); font-size: 17px; font-weight: 400; }
+.castle-purchase-dialog:focus-visible { outline: none; }
+.castle-purchase-dialog__header { position: sticky; top: -22px; z-index: 3; display: flex; align-items: center; gap: 10px; min-height: 72px; margin: -22px -22px 0; padding: 20px 58px 14px 22px; border-bottom: 1px solid #756747; background: #0d1015; }
+.castle-purchase-dialog__header img { width: 30px; height: 30px; flex: none; object-fit: contain; image-rendering: pixelated; }
+.castle-purchase-dialog__header h2 { font-family: var(--font-display); font-size: 21px; font-weight: 400; line-height: 1.2; letter-spacing: 0; }
+.castle-purchase-dialog__close { position: absolute; right: 18px; top: 20px; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #756747; border-radius: 50%; color: #eee5d2; }
+.castle-purchase-dialog__close svg { width: 17px; height: 17px; }
+.castle-purchase-dialog__close:hover { background: #24252a; }
+.castle-purchase-dialog__back { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border: 1px solid #756747; border-radius: 50%; color: #eee5d2; }
+.castle-purchase-dialog__back svg { width: 17px; height: 17px; }
+.castle-purchase-dialog__back:hover { background: #24252a; }
+.castle-purchase-dialog__description { margin-top: 15px; color: #e7decf; font-family: var(--font-sans); font-size: 14px; line-height: 1.5; }
+.castle-purchase-dialog__content { margin-top: 18px; }
+.castle-purchase-dialog__jump { display: flex; gap: 8px; margin-top: 16px; }
+.castle-purchase-dialog__jump button { min-height: 40px; padding: 7px 14px; border: 1px solid #756747; border-radius: 20px; color: #eee5d2; font-size: 13px; }
+.castle-purchase-dialog__jump button:hover { background: #24252a; }
+.castle-purchase-dialog__status { display: grid; justify-items: start; gap: 12px; min-height: 100px; align-content: center; margin: 0; color: #e7decf; font-size: 14px; }
+.castle-purchase-dialog__status button { min-height: 40px; padding: 7px 14px; border: 1px solid #a48a4b; border-radius: 20px; color: #f3ca62; }
+.castle-purchase-dialog__empty { margin: 0; padding: 20px 16px; border: 1px solid #756747; border-radius: 7px; color: #b7b7bf; font-size: 14px; line-height: 1.5; }
+.castle-purchase-dialog__offers, .castle-purchase-dialog__methods, .castle-purchase-dialog__subscriptions { display: grid; gap: 9px; }
+.castle-purchase-dialog__offer, .castle-purchase-dialog__method, .castle-purchase-dialog__tier {
+  width: 100%;
+  border: 1px solid #756747;
+  border-radius: 7px;
+  background: #14171c;
+  color: #eee5d2;
+  text-align: left;
+}
+.castle-purchase-dialog__offer { display: grid; gap: 10px; padding: 12px 13px; }
+.castle-purchase-dialog__offer-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.castle-purchase-dialog__offer-heading strong { font-size: 17px; }
+.castle-purchase-dialog__offer-heading > svg, .castle-purchase-dialog__tier-heading > svg { width: 16px; height: 16px; flex: none; color: #b7b7bf; }
+.castle-purchase-dialog__offer-prices { display: grid; gap: 5px; padding-top: 8px; border-top: 1px solid #756747; }
+.castle-purchase-dialog__offer-prices > span { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.castle-purchase-dialog__offer-prices small { min-width: 0; color: #b7b7bf; font-size: 12px; }
+.castle-purchase-dialog__offer-prices em { margin-left: 3px; color: #66d6a4; font-size: 11px; font-style: normal; white-space: nowrap; }
+.castle-purchase-dialog__offer-prices b { flex: none; color: #f3ca62; font-size: 13px; font-variant-numeric: tabular-nums; }
+@media (min-width: 621px) {
+  .castle-purchase-dialog__offer-prices--three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .castle-purchase-dialog__offer-prices--three > span { display: grid; gap: 2px; }
+  .castle-purchase-dialog__offer-prices--three > span:nth-child(2) { text-align: center; }
+  .castle-purchase-dialog__offer-prices--three > span:nth-child(3) { text-align: right; }
+  .castle-purchase-dialog__offer-prices--three b { font-size: 12px; white-space: nowrap; }
+}
+.castle-purchase-dialog__subscription-section { margin-top: 0; padding-top: 0; border-top: 0; }
+.castle-purchase-dialog--energy-catalog .castle-purchase-dialog__subscription-section { margin: 0; padding: 0 0 0 18px; border-top: 0; border-left: 1px solid #756747; }
+.castle-purchase-dialog__subscription-section h3 { font-family: var(--font-display); font-size: 17px; font-weight: 400; }
+.castle-purchase-dialog__subscription-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.castle-purchase-dialog__subscription-saving { flex: none; padding: 4px 8px; border: 1px solid #408a62; border-radius: 14px; background: #173127; color: #81dfaa; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.castle-purchase-dialog__subscription-section > p { margin: 4px 0 12px; color: #b7b7bf; font-size: 12px; }
+.castle-purchase-dialog__method { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 66px; padding: 10px 12px; }
+.castle-purchase-dialog__method > span { display: grid; gap: 3px; min-width: 0; }
+.castle-purchase-dialog__method strong { font-size: 14px; }
+.castle-purchase-dialog__method small { color: #b7b7bf; font-size: 11px; line-height: 1.25; }
+.castle-purchase-dialog__method b { flex: none; color: #f3ca62; font-size: 13px; white-space: nowrap; }
+.castle-purchase-dialog__wallet-methods { display: grid; gap: 8px; margin-top: 9px; padding-top: 15px; border-top: 1px solid #756747; }
+.castle-purchase-dialog__wallet-methods h3 { color: #b7b7bf; font-size: 12px; font-weight: 600; }
+.castle-purchase-dialog__connect { display: grid; gap: 9px; margin-top: 18px; padding-top: 15px; border-top: 1px solid #756747; }
+.castle-purchase-dialog__connect p { margin: 0; color: #b7b7bf; font-size: 12px; line-height: 1.45; }
+.castle-purchase-dialog__connect button { justify-self: start; min-height: 40px; padding: 7px 12px; border: 1px solid #a48a4b; border-radius: 20px; color: #f3ca62; font-size: 12px; font-weight: 700; }
+.castle-purchase-dialog__connect button:hover { background: #24252a; }
+.castle-purchase-dialog__summary { display: grid; gap: 7px; padding: 17px; border: 1px solid #756747; border-radius: 7px; background: #14171c; }
+.castle-purchase-dialog__summary span { font-size: 17px; font-weight: 700; }
+.castle-purchase-dialog__summary strong { color: #f3ca62; font-size: 19px; }
+.castle-purchase-dialog__summary small { color: #b7b7bf; font-size: 12px; line-height: 1.4; }
+.castle-purchase-dialog__primary { width: 100%; min-height: 46px; margin-top: 17px; padding: 10px 14px; border: 1px solid #b58b41; border-radius: 23px; background: #24252a; color: #ffe08a; font-weight: 700; }
+.castle-purchase-dialog__primary:hover:not(:disabled) { background: #303137; }
+.castle-purchase-dialog__primary:disabled { opacity: .45; cursor: not-allowed; }
+.castle-purchase-dialog__error { margin-top: 12px; color: #dfa390; font-size: 12px; }
+.castle-purchase-dialog__tier { display: grid; gap: 8px; padding: 12px 13px; }
+.castle-purchase-dialog__tier-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.castle-purchase-dialog__tier-heading strong { font-family: var(--font-display); font-size: 16px; font-weight: 400; }
+.castle-purchase-dialog__tier-benefit { font-size: 13px; }
+.castle-purchase-dialog__offer:hover, .castle-purchase-dialog__method:hover, .castle-purchase-dialog__tier:hover { border-color: #a48a4b; background: #1c2026; }
+.castle-purchase-dialog button:focus-visible { outline: 2px solid #f3ca62; outline-offset: 2px; }
+.castle-purchase-dialog > button:last-child { display: none; }
+@media (max-width: 620px) {
+  .castle-purchase-dialog { padding: 20px 17px 21px; }
+  .castle-purchase-dialog__header { top: -20px; margin: -20px -17px 0; min-height: 68px; padding: 17px 54px 13px 17px; }
+  .castle-purchase-dialog__close { right: 16px; top: 17px; }
+  .castle-purchase-dialog--energy-catalog { width: min(420px, calc(100vw - 32px)); max-height: min(90dvh, 680px); }
+  .castle-purchase-dialog--energy-catalog .castle-purchase-dialog__content { display: block; }
+  .castle-purchase-dialog--energy-catalog .castle-purchase-dialog__subscription-section { margin-top: 20px; padding: 16px 0 0; border-top: 1px solid #756747; border-left: 0; }
+  .castle-purchase-dialog__header h2 { font-size: 19px; }
+  .castle-purchase-dialog__offer-heading strong { font-size: 15px; }
+}
+
+/* Visual study for both external-wallet states. The default catalog stays intact. */
+.castle-purchase-dialog--bundle-study {
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(90dvh, 680px);
+  font-family: "Preview Golos", var(--font-sans), sans-serif;
+}
+.castle-purchase-dialog--bundle-study :is(h2, h3, .castle-purchase-dialog__tier-heading strong) {
+  font-family: "Preview Russo", var(--font-display), sans-serif;
+  font-weight: 400;
+}
+.castle-purchase-dialog--bundle-study.castle-purchase-dialog--energy-catalog .castle-purchase-dialog__content {
+  display: block;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__content { margin-top: 15px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__one-time h3 {
+  margin-bottom: 8px;
+  color: #b8b6ad;
+  font-size: 13px;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offers,
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__subscriptions { gap: 8px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer,
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #14171c;
+  box-shadow: none;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer { padding: 12px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-heading { align-items: center; justify-content: start; gap: 9px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-heading strong { font-size: 16px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-heading > svg { margin-left: auto; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-glyph { width: 30px; height: 30px; flex: none; object-fit: contain; image-rendering: pixelated; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-subtitle { display: block; margin: 2px 0 0 39px; color: #9fb7ab; font-size: 11px; line-height: 1.25; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__more { align-self: center; color: #b7b7bf; font-size: 11px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__more + span { border-left: 0; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__one-time,
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__subscription-section { scroll-margin-top: 90px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  padding-top: 8px;
+  border-top: 1px solid #75674780;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices--single { grid-template-columns: 1fr; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices--three { grid-template-columns: 1fr; gap: 5px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices--single > span { display: flex; justify-content: space-between; align-items: baseline; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 4px;
+  text-align: left;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices > span + span { border-left: 1px solid #75674780; padding-left: 8px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices small { color: #b7b7bf; font-size: 11px; line-height: 1.15; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices b { font-size: 13px; line-height: 1.2; white-space: nowrap; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices--three > span { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 3px 4px; border-left: 0; text-align: left; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices--three > span + span { border-top: 1px solid #75674755; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices--three b { flex: 0 1 auto; white-space: normal; text-align: right; }
+.castle-purchase-dialog--bundle-study.castle-purchase-dialog--energy-catalog .castle-purchase-dialog__subscription-section {
+  margin-top: 18px;
+  padding: 15px 0 0;
+  border: 0;
+  border-top: 1px solid #756747;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__subscription-section > h3 { font-size: 17px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__subscription-section > p { margin-bottom: 11px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier {
+  position: relative;
+  display: grid;
+  grid-template-columns: 43px minmax(0, 1fr);
+  gap: 3px 9px;
+  align-items: center;
+  min-height: 112px;
+  padding: 11px 10px;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier-heading { grid-column: 2; grid-row: 1; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier-heading strong { font-size: 15px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier-benefit { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 5px; grid-column: 2; grid-row: 2; font-size: 13px; font-weight: 700; line-height: 1.3; }
+.castle-purchase-dialog__box-reward { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.castle-purchase-dialog__box-reward img { width: 38px; height: 38px; flex: none; margin: -8px 0; object-fit: contain; image-rendering: pixelated; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier .castle-purchase-dialog__offer-prices { grid-column: 1 / -1; grid-row: 3; margin-top: 5px; }
+.castle-purchase-dialog__energy-bundle { position: relative; display: block; grid-column: 1; grid-row: 1 / 3; width: 40px; height: 40px; }
+.castle-purchase-dialog__energy-bundle img { position: absolute; width: 23px; height: 23px; object-fit: contain; image-rendering: pixelated; }
+.castle-purchase-dialog__energy-bundle--0 img:first-child { left: 8px; top: 8px; width: 24px; height: 24px; }
+.castle-purchase-dialog__energy-bundle--1 img:nth-child(1) { left: 1px; top: 14px; }
+.castle-purchase-dialog__energy-bundle--1 img:nth-child(2) { left: 9px; top: 4px; }
+.castle-purchase-dialog__energy-bundle--1 img:nth-child(3) { left: 17px; top: 14px; }
+.castle-purchase-dialog__energy-bundle--2 img { width: 19px; height: 19px; }
+.castle-purchase-dialog__energy-bundle--2 img:nth-child(1) { left: 0; top: 17px; }
+.castle-purchase-dialog__energy-bundle--2 img:nth-child(2) { left: 6px; top: 6px; }
+.castle-purchase-dialog__energy-bundle--2 img:nth-child(3) { left: 13px; top: 0; }
+.castle-purchase-dialog__energy-bundle--2 img:nth-child(4) { left: 20px; top: 7px; }
+.castle-purchase-dialog__energy-bundle--2 img:nth-child(5) { left: 21px; top: 19px; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer:hover,
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier:hover { border-color: #a48a4b; background: #1c2026; }
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__method {
+  border: 0;
+  border-bottom: 1px solid #756747;
+  border-radius: 0;
+  background: transparent;
+}
+.castle-purchase-dialog--bundle-study .castle-purchase-dialog__method:hover { background: #1c2026; }
+@media (max-width: 380px) {
+  .castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices b { font-size: 12px; }
+  .castle-purchase-dialog--bundle-study .castle-purchase-dialog__offer-prices small { font-size: 10px; }
+  .castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier-benefit { font-size: 12px; }
+  .castle-purchase-dialog__box-reward img { width: 30px; height: 30px; margin: -5px 0; }
+}
+@font-face { font-family: "Castle Ticket Russo"; src: url("../../../assets/tavern/RussoOne.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Castle Ticket Golos"; src: url("../../../assets/tavern/GolosText.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
+.castle-ticket-live__offers { display: grid; gap: 9px; font-family: "Castle Ticket Golos", sans-serif; }
+.castle-ticket-live__card { min-width: 0; padding: 10px 12px; border: 1px solid #405066; border-radius: 14px; background: linear-gradient(110deg, #182331, #111922 68%, #18212a); }
+.castle-ticket-live__top { display: grid; grid-template-columns: 48px minmax(0, 1fr) minmax(92px, 35%); align-items: center; gap: 8px; }
+.castle-ticket-live__top > img { width: 48px; height: 48px; object-fit: contain; }
+.castle-ticket-live__top > strong { color: #f7eee0; font: 400 clamp(16px, 4vw, 22px)/1.2 "Castle Ticket Russo", sans-serif; }
+.castle-ticket-live__stars { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 44px; padding: 7px 9px; border: 2px solid #ffe47e; border-radius: 12px; background: linear-gradient(#ffe579, #f0ad35); box-shadow: inset 0 2px #fff3ab, 0 3px #81531e; color: #241707; }
+.castle-ticket-live__stars b { font: 400 clamp(15px, 4vw, 19px) "Castle Ticket Russo", sans-serif; white-space: nowrap; }
+.castle-ticket-live__stars svg, .castle-ticket-live__alternative svg { width: 15px; height: 15px; flex: none; }
+.castle-ticket-live__alternatives { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 7px 0 0 56px; }
+.castle-ticket-live__alternatives:has(> :only-child) { grid-template-columns: 1fr; }
+.castle-ticket-live__alternative { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-width: 0; min-height: 42px; padding: 5px 8px; border: 1px solid #677485; border-radius: 9px; background: #101820; color: #f3eee4; text-align: left; }
+.castle-ticket-live__alternative > span { display: flex; min-width: 0; flex-wrap: wrap; align-items: baseline; gap: 0 4px; }
+.castle-ticket-live__alternative b { font: 400 13px "Castle Ticket Russo", sans-serif; }
+.castle-ticket-live__alternative small { min-width: 0; overflow-wrap: anywhere; color: #cbd0d6; font-size: 11px; }
+.castle-ticket-live__alternative em { flex: none; padding: 2px 4px; border-radius: 999px; background: #eeb83f; color: #241705; font: 700 10px "Castle Ticket Golos", sans-serif; }
+.castle-ticket-live__other-title { margin: 16px 0 9px; padding-top: 14px; border-top: 1px solid #485260; color: #f7eee0; font: 400 19px "Castle Ticket Russo", sans-serif; }
+.castle-ticket-live__stars:hover { filter: brightness(1.08); }
+.castle-ticket-live__alternative:hover { border-color: #aab5c2; background: #1d2936; }
+.castle-ticket-live__stars:focus-visible, .castle-ticket-live__alternative:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (max-width: 380px) { .castle-ticket-live__top { grid-template-columns: 40px minmax(0, 1fr) minmax(82px, 34%); gap: 5px; } .castle-ticket-live__top > img { width: 40px; height: 40px; } .castle-ticket-live__alternatives { margin-left: 45px; gap: 5px; } .castle-ticket-live__alternative { padding: 5px; } .castle-ticket-live__alternative b { font-size: 11px; } .castle-ticket-live__alternative small { font-size: 10px; } }

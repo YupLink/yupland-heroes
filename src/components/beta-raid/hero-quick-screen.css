@@ -1,0 +1,11 @@
+.raid-hero-dialog.raid-hero-screen{width:100%;height:100dvh;max-width:none;max-height:none;border:0!important;border-radius:0!important;background:#0e1419;box-shadow:none}
+.raid-hero-screen .raid-hero-dialog__toolbar{flex-shrink:0;padding:calc(10px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left))}
+.raid-hero-screen .raid-hero-dialog__body{flex:1;width:100%;padding:8px max(8px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+.raid-hero-screen .raid-hero-dialog__body>div{width:100%;max-width:640px;margin-inline:auto}
+
+/* Keep satiety beside the Raid back button without growing the content area. */
+.raid-hero-screen .raid-hero-dialog__toolbar>button:first-child{flex:none;white-space:nowrap}
+.raid-hero-screen .raid-hero-dialog__satiety{flex:1;min-width:0;max-width:540px;margin:0;padding:5px 8px;border-radius:999px}
+.raid-hero-screen .raid-hero-dialog__satiety .satiety-bar__num{font-size:10px;letter-spacing:-.02em}
+.raid-hero-screen .raid-hero-dialog__actions{flex:none}
+@media(max-width:359px){.raid-hero-screen .raid-hero-dialog__actions button{font-size:0;min-width:44px;padding:7px}}

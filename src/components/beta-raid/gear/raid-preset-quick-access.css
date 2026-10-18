@@ -1,0 +1,9 @@
+.raid-preset-access{position:relative;display:flex;align-items:center;flex:none;pointer-events:auto}
+.raid-preset-access__toggle{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:2px solid #d3a85d;border-radius:50%;background:#101619;box-shadow:0 2px 6px #0008;cursor:pointer}
+.raid-preset-access__toggle img{width:38px;height:38px;object-fit:contain}
+.raid-preset-access__panel{position:absolute;z-index:40;display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:max-content;max-height:min(42dvh,240px);overflow:auto;padding:2px}
+.raid-preset-access__chip{min-height:30px;max-width:100%;padding:3px 9px;border:1px solid #b99a58;border-radius:999px;background:#0d1a18dc;box-shadow:0 2px 6px #0008;backdrop-filter:blur(8px);color:#f5efdc;font:500 12px/1.15 var(--font-sans);overflow-wrap:anywhere;text-align:center;cursor:pointer}
+.raid-preset-access__message{display:grid;gap:4px;width:100%;font:400 12px/1.3 var(--font-sans);color:#f5efdc}
+.raid-preset-access__message button{min-height:34px;color:#f1d28a;text-align:left;text-decoration:underline}
+.raid-preset-access__toggle:focus-visible,.raid-preset-access__panel button:focus-visible{outline:2px solid #fff4d8;outline-offset:2px}
+.raid-preset-access__toggle:disabled,.raid-preset-access__chip:disabled{opacity:.55;cursor:wait}

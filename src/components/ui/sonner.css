@@ -1,0 +1,150 @@
+/* Уведомления игры — тёмные, в стиле замка (дизайн Ангелины, 07.10). Раньше
+   классы Tailwind проигрывали встроенным стилям sonner, и тосты были белыми. */
+@font-face {
+  font-family: "YupLink Toast Golos";
+  src: url("../../assets/tavern/GolosText.ttf") format("truetype");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+[data-sonner-toaster].yuplink-toaster {
+  --width: 356px;
+  --border-radius: 12px;
+  font-family: "YupLink Toast Golos", sans-serif;
+}
+
+/* Castle balances and active effects occupy the top edge of the map. */
+body:has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] {
+  top: max(120px, env(safe-area-inset-top)) !important;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] {
+  min-height: 62px;
+  padding: 12px 16px;
+  gap: 0;
+  border: 1px solid #786849 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(160deg, #1a1c1e, #101315) !important;
+  color: #f7f3e9 !important;
+  box-shadow: 0 8px 22px #0009, inset 0 1px #fff1 !important;
+  font-family: "YupLink Toast Golos", sans-serif !important;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-icon] {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  place-content: center;
+  flex: none;
+  margin: 0 12px 0 0;
+  border: 1px solid #756449;
+  border-radius: 50%;
+  background: #111416;
+  color: #eac170;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-icon] svg {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.yuplink-toaster [data-sonner-toast][data-type="error"] [data-icon] {
+  border-color: #9c605c;
+  color: #ed766e;
+}
+
+.yuplink-toaster [data-sonner-toast][data-type="warning"] [data-icon] {
+  color: #e8b75e;
+}
+
+.yuplink-toaster [data-sonner-toast][data-type="info"] [data-icon] {
+  color: #cfc6b4;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-content] {
+  min-width: 0;
+  flex: 1;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-title] {
+  color: #f7f3e9 !important;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-description] {
+  color: #d0cbc1 !important;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"]:has([data-close-button]) {
+  padding-right: 44px;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-close-button] {
+  top: 50%;
+  right: 8px;
+  left: auto;
+  width: 28px;
+  height: 28px;
+  transform: translateY(-50%);
+  border: 1px solid #6d6559;
+  background: #191c1e;
+  color: #d7d2c9;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-close-button]:focus-visible {
+  outline: 2px solid #eac170;
+  outline-offset: 2px;
+}
+
+.yuplink-toaster [data-sonner-toast][data-styled="true"] [data-button]:not([data-cancel]) {
+  min-height: 30px;
+  border: 1px solid #efd081;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #edc976, #bd913e);
+  color: #18150f;
+  font-family: "YupLink Button Russo", "Russo One", sans-serif;
+}
+
+@media (max-width: 600px) {
+  body:has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] {
+    top: max(96px, env(safe-area-inset-top)) !important;
+  }
+}
+
+/* Raid notices leave the playfield and persistent controls visible. */
+body:has(.raid-map-nav) [data-sonner-toaster].yuplink-toaster {
+  --width: 300px;
+  width: min(300px, calc(100vw - 24px));
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+body:has(.raid-map-nav) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] {
+  top: max(84px, env(safe-area-inset-top)) !important;
+}
+body:has(.raid-map-nav) .yuplink-toaster [data-sonner-toast][data-styled="true"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 10px !important;
+  background: #101b20ed !important;
+  box-shadow: 0 3px 10px #0007 !important;
+}
+body:has(.raid-map-nav) .yuplink-toaster [data-sonner-toast][data-styled="true"]:has([data-close-button]) { padding-right: 42px; }
+body:has(.raid-map-nav) .yuplink-toaster [data-sonner-toast][data-styled="true"] [data-icon] {
+  width: 18px; height: 18px; margin-right: 8px; border: 0; background: none;
+}
+body:has(.raid-map-nav) .yuplink-toaster [data-title] { font-size: 13px !important; line-height: 1.35 !important; overflow-wrap: anywhere; }
+body:has(.raid-map-nav) .yuplink-toaster [data-description] { font-size: 12px !important; line-height: 1.35 !important; }
+body:has(.raid-map-nav) .yuplink-toaster [data-sonner-toast][data-styled="true"] [data-close-button] { width: 32px; height: 32px; right: 5px; border-color: transparent; background: none; }
+
+/* Preserve clearance while the legacy three-balance HUD is still mounted. */
+body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: max(120px, env(safe-area-inset-top)) !important; }
+@media(max-width:600px){body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: max(96px, env(safe-area-inset-top)) !important; }}
+

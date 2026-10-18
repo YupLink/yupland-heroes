@@ -1,0 +1,24 @@
+/* Шкала сытости героя (SatietyBar). */
+.satiety-bar { display: flex; align-items: center; gap: 6px; color: #f3d48a; pointer-events: auto; }
+.satiety-bar__icon { flex: none; width: 15px; height: 15px; }
+.satiety-bar__track { position: relative; flex: 1; min-width: 0; height: 8px; overflow: hidden; border: 1px solid #6d5b3a; border-radius: 999px; background: #14181bcc; box-shadow: inset 0 1px 2px #000a; }
+.satiety-bar__fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(180deg, #9be27f, #5aa84a); transition: width .35s ease-out, background .35s; }
+.satiety-bar__num { flex: none; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: #f4ead6; }
+.satiety-bar--mid .satiety-bar__fill { background: linear-gradient(180deg, #f6d36b, #d9a531); }
+.satiety-bar--low .satiety-bar__fill { background: linear-gradient(180deg, #f4a35c, #d0652a); }
+.satiety-bar--hungry { color: #ff8a80; }
+.satiety-bar--hungry .satiety-bar__track { border-color: #b84a44; animation: satiety-hungry 1.6s ease-in-out infinite; }
+@keyframes satiety-hungry { 50% { box-shadow: inset 0 1px 2px #000a, 0 0 6px #e0534c99; } }
+@media (prefers-reduced-motion: reduce) { .satiety-bar--hungry .satiety-bar__track { animation: none; } }
+/* Карта: компактная полоска под аватаром героя. */
+.satiety-bar--compact { gap: 4px; padding: 3px 6px; border: 1px solid #ffffff1f; border-radius: 999px; background: #0c0f12d9; box-shadow: 0 2px 6px #0008; }
+.satiety-bar--compact .satiety-bar__icon { width: 12px; height: 12px; }
+.satiety-bar--compact .satiety-bar__track { height: 6px; }
+/* Окно героя: шкала над снаряжением. */
+.raid-hero-dialog__satiety { margin: 0 4px 8px; padding: 6px 10px; border: 1px solid #ffd32e33; border-radius: 12px; background: #0d1a18e6; }
+
+/* Кольцо сытости вокруг портрета на карте. Число и состояние остаются в aria-label. */
+.satiety-bar--ring{position:absolute;inset:0;display:block;pointer-events:none}
+.satiety-bar--ring .satiety-bar__track{position:absolute;inset:0;display:block;width:100%;height:100%;min-width:0;border:0;border-radius:50%;box-shadow:0 2px 6px #0009;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px))}
+.satiety-bar--ring.satiety-bar--hungry .satiety-bar__track{animation:none}
+.satiety-bar--ring.satiety-bar--hungry::after{content:"";position:absolute;z-index:1;top:-1px;left:calc(50% - 5px);width:10px;height:10px;border-radius:50%;background:#e6534b;box-shadow:0 0 6px 2px #e6534b99}

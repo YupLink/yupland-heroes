@@ -1,0 +1,56 @@
+/* Свёрнутый блок «Прошедшие» (PastSection) — в гамме окна аукционов. */
+.auction-past { margin: 0 0 12px; }
+.auction-past__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid #94703c;
+  border-radius: 12px;
+  background: #0d1b2b;
+  color: #cdb791;
+  font: 400 14px/1 "Auction Russo", sans-serif;
+  cursor: pointer;
+}
+.auction-past__toggle:focus-visible { outline: 2px solid #ffe08d; outline-offset: 3px; }
+.auction-past__count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e7b75422;
+  color: #ffd773;
+  font: 800 11px/1.2 "Auction Golos", sans-serif;
+}
+.auction-past__chev { width: 18px; height: 18px; margin-left: auto; transition: transform .15s; }
+.auction-past__chev--open { transform: rotate(180deg); }
+.auction-past__list { margin-top: 8px; padding-block: 6px; }
+.auction-past > .auction-ledger:not(.auction-past__list) { margin-top: 8px; }
+.auction-past > .auction-loading,
+.auction-past > .auction-empty { padding-block: 16px; }
+.auction-past__row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #a98a5933; }
+.auction-past__row:first-child { border-top: 0; }
+.auction-past__media {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  border: 1px solid #7a6336;
+  background: #0d1b2b;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: #6d5a34;
+  opacity: .85;
+}
+.auction-past__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.auction-past__media svg { width: 18px; height: 18px; }
+.auction-past__info { flex: 1; min-width: 0; }
+.auction-past__name { margin: 0; overflow: hidden; color: #e9dcc0; font-size: 13.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.auction-past__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 3px 0 0; color: #f5ecda; font-size: 12px; font-variant-numeric: tabular-nums; }
+.auction-past__meta .auction-lead { margin-top: 0; }
+.auction-past__outcome { padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; }
+.auction-past__outcome--sold { background: #1b4a66; color: #86d7f4; }
+.auction-past__outcome--unsold { background: #2a2f3a; color: #b0b6c3; }
+.auction-past__outcome--cancelled { background: #5a2330; color: #f6a9b6; }
+.auction-past__date { flex: none; color: #9f916f; font-size: 11.5px; font-variant-numeric: tabular-nums; }

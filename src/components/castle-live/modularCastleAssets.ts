@@ -1,0 +1,14 @@
+import asset0 from '../../assets/castle-modular/market.webp';
+import asset1 from '../../assets/castle-modular/tavern.webp';
+import asset2 from '../../assets/castle-modular/temple.webp';
+import asset3 from '../../assets/castle-modular/warehouse.webp';
+import asset4 from '../../assets/castle-modular/training-camp.webp';
+import asset5 from '../../assets/castle-modular/glory.webp';
+import asset6 from '../../assets/castle-modular/notice.webp';
+import asset7 from '../../assets/castle-modular/gates.webp';
+import asset8 from '../../assets/castle-modular/town-hall.webp';
+import asset9 from '../../assets/castle-modular/trading-house.webp';
+import asset10 from '../../assets/castle-modular/wall.webp';
+import asset11 from '../../assets/castle-modular/exterior-landscape.webp';
+import asset12 from '../../assets/castle-modular/paving-tile.webp';
+export const modularCastleAssets:Record<string,string>={'market.png':asset0,'tavern.png':asset1,'temple.png':asset2,'warehouse.png':asset3,'training-camp.png':asset4,'glory.png':asset5,'notice.png':asset6,'gates.png':asset7,'town-hall.png':asset8,'trading-house.png':asset9,'wall.png':asset10,'exterior-landscape.png':asset11,'paving-tile.png':asset12};

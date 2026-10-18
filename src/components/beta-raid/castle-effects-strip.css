@@ -1,0 +1,27 @@
+.castle-main-hud__effects-shell { position: relative; width: fit-content; max-width: calc(100% - 16px); margin: 5px 0 0 12px; color: #fff4d8; pointer-events: auto; }
+.castle-main-hud__effects-toggle { display: flex; align-items: center; min-height: 44px; padding: 0; border: 0; border-radius: 14px; background: transparent; color: inherit; font: 500 11px/16px var(--font-sans); cursor: pointer; }
+.castle-main-hud__effects-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 4px 8px; border: 1px solid #ffd32e55; border-radius: 14px; background: #0d1a1899; box-shadow: 0 2px 6px #0005; backdrop-filter: blur(8px); }
+.castle-main-hud__effects-toggle svg { width: 12px; height: 12px; transition: transform .15s ease; }
+.castle-main-hud__effects-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.castle-main-hud__effects-toggle:focus-visible, .castle-main-hud__effect:focus-visible, .castle-main-hud__effects-status button:focus-visible { outline: 2px solid #fff4d8; outline-offset: 2px; }
+.castle-main-hud__effects-panel { position: absolute; z-index: 20; top: calc(100% + 5px); left: 0; display: flex; flex-direction: column; gap: 5px; width: min(330px, calc(100vw - 24px)); max-height: min(46vh, 360px); overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid #ffd32e66; border-radius: 14px; background: #0d1a18ad; box-shadow: 0 8px 20px #0009; scrollbar-width: thin; scrollbar-color: #d9b76077 transparent; backdrop-filter: blur(10px); }
+.castle-main-hud__effects-panel[hidden], .castle-main-hud__effect-detail[hidden] { display: none; }
+.castle-main-hud__effect-entry { min-width: 0; }
+.castle-main-hud__effect { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 44px; padding: 5px 8px; border: 1px solid #ffd32e55; border-radius: 11px; background: #fff4d80d; color: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.castle-main-hud__effect-icon { width: 19px; height: 19px; flex: none; stroke-width: 2.3; }
+.castle-main-hud__effect-arrow { width: 12px; height: 12px; flex: none; margin-left: -7px; color: #f3c673; stroke-width: 3; }
+.castle-main-hud__effect-name { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.castle-main-hud__effect-amount { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }
+.castle-main-hud__effect time, .castle-main-hud__effect-target time { flex: none; color: #e9d9ab; font-variant-numeric: tabular-nums; }
+.castle-main-hud__effect-chevron { width: 14px; height: 14px; flex: none; transition: transform .15s ease; }
+.castle-main-hud__effect[aria-expanded="true"] .castle-main-hud__effect-chevron { transform: rotate(180deg); }
+.castle-main-hud__effect-detail { display: grid; gap: 5px; padding: 7px 4px 4px 8px; }
+.castle-main-hud__effect-target { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; min-width: 0; font-size: 11px; }
+.castle-main-hud__effect-chip, .castle-main-hud__effect-source { max-width: 100%; padding: 3px 7px; border: 1px solid #e9d9ab55; border-radius: 12px; background: #fff4d812; overflow-wrap: anywhere; }
+.castle-main-hud__effect-source { border-color: #ffd32e55; color: #e9d9ab; }
+.castle-main-hud__effects-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 32px; padding: 4px 5px; font-size: 12px; }
+.castle-main-hud__effects-status button { border: 0; background: transparent; color: #ffe49a; text-decoration: underline; cursor: pointer; }
+@media (max-width: 620px) {
+  .castle-main-hud__effects-shell { margin-left: 2px; }
+  .castle-main-hud__effects-panel { width: min(310px, calc(100vw - 12px)); max-height: min(42vh, 300px); }
+}

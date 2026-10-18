@@ -1,0 +1,14 @@
+.raid-main-hand{width:56px;height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border:1px solid #9eaaad88;border-radius:14px;background:#111c20cc;backdrop-filter:blur(10px);color:#f5efdc;cursor:pointer;pointer-events:auto;font:500 10px/12px var(--font-sans)}
+.raid-main-hand img{width:30px;height:28px;object-fit:contain;image-rendering:pixelated}.raid-main-hand>svg{width:24px;height:24px}
+.raid-main-hand:focus-visible,.raid-hand-picker button:focus-visible{outline:2px solid #ffe08a;outline-offset:3px}
+.raid-hand-picker{width:min(100%,380px);max-height:85dvh;overflow:auto;overscroll-behavior:contain;border:1px solid #a98b45;border-radius:22px;padding:14px;background:#101b20f2;color:#f5efdc;box-shadow:0 12px 50px #0009;font-family:var(--font-sans)}
+.raid-hand-picker__header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.raid-hand-picker h2{font:400 22px var(--font-display)}
+.raid-hand-picker__header button{display:grid;place-items:center;width:44px;height:44px;border:1px solid #a98b4566;border-radius:50%}.raid-hand-picker__header svg{width:20px;height:20px}
+.raid-hand-picker p{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:14px;line-height:1.5}.raid-hand-picker p svg{width:18px;height:18px;flex:none}
+.raid-hand-picker__list{display:grid;gap:8px}.raid-hand-picker__item{display:flex;align-items:center;gap:10px;width:100%;min-height:64px;padding:8px;border:1px solid #71818b88;border-radius:12px;text-align:left;background:#0c151abb;color:inherit}
+.raid-hand-picker__item>img,.raid-hand-picker__item>svg:first-child{width:40px;height:40px;object-fit:contain;flex:none}.raid-hand-picker__item>span:first-of-type{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.raid-hand-picker__item strong{font-size:14px;line-height:1.3;overflow-wrap:anywhere}.raid-hand-picker__item small{font-size:12px;color:#c5cbc9}.raid-hand-picker__item>svg:last-child{width:20px;height:20px;color:#f3ca68;flex:none}
+.raid-hand-picker__take{font-size:13px;color:#f3ca68;flex:none}.raid-hand-picker button:disabled{cursor:default}.raid-hand-picker__item:disabled{background:#ac90351c;border-color:#c7a25388}
+.raid-hand-picker__put-away,.raid-hand-picker__retry{min-height:44px;padding:8px 12px;border:1px solid #71818b88;border-radius:12px;margin-top:10px;color:#f5efdc;font-size:14px}.raid-hand-picker__put-away{width:100%}
+.raid-hand-picker[data-tavern-dialog]{border-radius:22px;background:#101b20f2;border-color:#a98b45}
+.raid-hand-picker[data-tavern-dialog] .raid-hand-picker__item,.raid-hand-picker[data-tavern-dialog] .raid-hand-picker__put-away,.raid-hand-picker[data-tavern-dialog] .raid-hand-picker__retry{font-family:var(--font-sans);font-weight:500}

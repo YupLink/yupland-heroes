@@ -1,0 +1,15 @@
+@font-face {
+  font-family: "Castle Labels Russo";
+  src: url("../../assets/tavern/RussoOne.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.castle-building-label {
+  font-family: "Castle Labels Russo", sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+  box-shadow: 0 2px 0 #141a14, inset 0 1px 0 #61513a;
+  text-shadow: none;
+}

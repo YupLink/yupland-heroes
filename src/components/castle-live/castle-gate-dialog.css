@@ -1,0 +1,14 @@
+@font-face{font-family:"Castle Gate Russo";src:url("../../assets/tavern/RussoOne.ttf") format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:"Castle Gate Golos";src:url("../../assets/tavern/GolosText.ttf") format("truetype");font-weight:400 900;font-display:swap}
+.castle-gate-dialog{width:calc(100% - 32px);max-width:440px;max-height:calc(100dvh - 32px);overflow-y:auto;gap:0;padding:24px;border:1px solid #a18146;border-radius:22px;background:linear-gradient(160deg,#1d2022,#111416);color:#f3eadb;box-shadow:0 20px 55px #000b,inset 0 1px #fff2;font-family:"Castle Gate Golos",sans-serif}
+.castle-gate-dialog [data-close-button]{top:18px;right:18px;display:grid;width:36px;height:36px;place-items:center;border:1px solid #75684f;border-radius:50%;background:#141718;color:#ead9b7;opacity:1}
+.castle-gate-dialog [data-close-button] svg{width:18px;height:18px}
+.castle-gate-dialog [data-close-button]:focus-visible,.castle-gate-dialog button:focus-visible{outline:2px solid #f4c45e;outline-offset:2px}
+.castle-gate-dialog__title{padding-right:38px;font:400 clamp(22px,6vw,28px)/1.2 "Castle Gate Russo",sans-serif;color:#f3eadb}
+.castle-gate-dialog__description{margin-top:14px;font:400 16px/1.45 "Castle Gate Golos",sans-serif;color:#c9c1b2}
+.castle-gate-dialog__error{margin-top:14px;color:#f2a69e;font:500 14px/1.4 "Castle Gate Golos",sans-serif}
+.castle-gate-dialog__actions{display:flex;gap:10px;margin-top:26px}
+.castle-gate-dialog__actions button{min-width:0;min-height:48px;flex:1;padding:10px 12px;border-radius:12px;font:400 16px/1.2 "Castle Gate Russo",sans-serif}
+.castle-gate-dialog__stay{border:1px solid #736448;background:#171a1c;color:#e7decf}
+.castle-gate-dialog__leave{border:1px solid #f4ce74;background:linear-gradient(180deg,#f2cd77,#ca963d);color:#20170d}
+@media(max-width:340px){.castle-gate-dialog{padding:20px}.castle-gate-dialog__actions button{font-size:14px}}

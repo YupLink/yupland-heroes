@@ -1,0 +1,303 @@
+/* The illustration is scenery only; all game data and controls stay live DOM. */
+[data-tavern-style]:has([data-tavern-immersive]) {
+  background: #090b0d;
+}
+
+[data-tavern-style]:has([data-tavern-immersive]) > header {
+  border-color: transparent;
+  color: #eee5d2;
+}
+
+[data-tavern-style]:not(:has([data-tavern-detail])) > header {
+  position: absolute;
+  z-index: 20;
+  top: 12px;
+  left: max(12px, calc((100% - 768px) / 2 + 12px));
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 7px 10px;
+  border: 1px solid rgb(201 172 112 / 22%);
+  border-radius: 18px;
+  background: rgb(8 8 9 / 80%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 55%);
+  backdrop-filter: blur(8px);
+}
+
+section[data-tavern-style]:not(:has([data-tavern-detail])) > div:last-child:not(:has([data-tavern-immersive])) {
+  padding-top: 78px;
+}
+
+[data-tavern-style]:has([data-tavern-immersive]) > header button {
+  border: 1px solid #343038;
+  border-radius: 999px;
+  background: #111316;
+  font-size: 15px;
+}
+
+[data-tavern-style]:has([data-tavern-immersive]) > header h1 {
+  font-size: clamp(20px, 2.8vw, 27px);
+}
+
+[data-tavern-style]:has([data-tavern-immersive]) > div:last-child {
+  padding: 0;
+}
+
+[data-tavern-style] [data-tavern-immersive] {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-height: max(800px, 100dvh);
+  border: 0;
+  border-radius: 0;
+  background-color: #0c0c0e;
+  background-image: linear-gradient(180deg, rgb(5 6 8 / 12%), rgb(5 6 8 / 24%) 48%, rgb(5 6 8 / 44%) 100%), url('../../assets/tavern/tavern-interior.webp');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: 100% auto;
+  color: #eee5d2;
+}
+
+[data-tavern-style] [data-tavern-immersive] > h2 {
+  padding: clamp(118px, 21vw, 195px) clamp(16px, 6vw, 50px) 12px;
+  font-size: clamp(20px, 3.1vw, 27px);
+  line-height: 1.25;
+  text-shadow: 0 2px 4px #000;
+}
+
+[data-tavern-style] [data-tavern-immersive] > div {
+  padding: 0 clamp(16px, 6vw, 50px) 34px;
+}
+
+[data-tavern-style] [data-tavern-immersive] [data-choice-rail] {
+  gap: 12px;
+  scroll-padding-inline: 2px;
+}
+
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] {
+  margin-top: clamp(28px, 6vw, 52px);
+  padding-top: 24px;
+  border-top: 0;
+}
+
+[data-tavern-style] [data-tavern-immersive] section > h2 {
+  font-size: clamp(20px, 3vw, 27px);
+  line-height: 1.25;
+  text-shadow: 0 2px 4px #000;
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > h2 {
+  margin-bottom: 4px;
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > p {
+  max-width: 48ch;
+  color: #a7a3a9;
+  font-size: 13px;
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] {
+  --chip-left: #000;
+  --chip-right: transparent;
+  margin: clamp(18px, 4.5vw, 41px) clamp(25px, 5vw, 44px) 0 -12px;
+  padding: 14px 0 46px clamp(38px, 8vw, 72px);
+  /* The wooden tray is already painted into the continuous tavern scene. */
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap][data-rail-scrolled] { --chip-left: transparent; }
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap][data-rail-end] { --chip-right: #000; }
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap]::after {
+  display: flex;
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail] {
+  gap: clamp(23px, 6.5vw, 64px);
+  padding: 0 30px 8px 0;
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap]:has([data-choice-rail] > button:nth-child(3)) [data-choice-rail] {
+  -webkit-mask-image: linear-gradient(90deg, var(--chip-left), #000 28px, #000 calc(100% - 80px), var(--chip-right));
+  mask-image: linear-gradient(90deg, var(--chip-left), #000 28px, #000 calc(100% - 80px), var(--chip-right));
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail] > button {
+  display: flex;
+  width: clamp(96px, 14vw, 124px);
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  color: #eee5d2;
+  text-align: center;
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail] > button > div {
+  width: 100%;
+}
+
+[data-tavern-style] [data-tavern-immersive] [data-chip-name] {
+  overflow: hidden;
+  width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 400 clamp(11px, 1.45vw, 14px)/1.2 var(--font-display);
+  text-shadow: 0 1px 2px #000;
+}
+
+[data-tavern-style] [data-tavern-immersive] [data-chip-busy] {
+  overflow: hidden;
+  width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 400 11px/1.2 var(--font-sans);
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-artifacts"] {
+  margin-top: clamp(28px, 4vw, 40px);
+  padding-top: 23px;
+  padding-bottom: 16px;
+  border-top: 0;
+  background: linear-gradient(180deg, transparent 15%, rgb(20 13 10 / 95%) 92%),
+    repeating-linear-gradient(0deg, rgb(108 64 35 / 6%) 0 1px, transparent 1px 8px);
+}
+
+[data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-artifacts"] > h2 {
+  margin-bottom: 4px;
+  font-size: clamp(16px, 2.4vw, 24px);
+}
+
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot-list] {
+  display: grid;
+  max-height: 134px;
+  gap: 4px;
+  margin-left: 5px;
+  margin-right: -13px;
+  padding-right: 8px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-color: #9d7448 #241810;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot-list]::-webkit-scrollbar { width: 6px; }
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot-list]::-webkit-scrollbar-track { background: #241810; }
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot-list]::-webkit-scrollbar-thumb { background: #9d7448; border-radius: 8px; }
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot-list]:focus-visible { outline: 2px solid #d8b66a; outline-offset: 2px; }
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot] {
+  border: 1px solid #4b3325;
+  border-radius: 2px;
+  background: #140e0b;
+  box-shadow: inset 0 1px #a66c3a55, inset 0 -2px #070607, 0 2px 2px #0008;
+}
+
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot] summary {
+  min-height: 40px;
+  padding: 3px 24px 3px 24px;
+  background-image: linear-gradient(180deg, rgb(31 18 11 / 16%), rgb(8 7 8 / 55%) 90%),
+    url('../../assets/tavern/tavern-interior.webp');
+  background-position: center, center 92%;
+  background-size: cover, 100% auto;
+  color: #e7decf;
+  font-size: clamp(13px, 1.7vw, 18px);
+}
+
+[data-tavern-style] [data-tavern-immersive] [data-slot-label] { display: flex; min-width: 0; flex: 1; align-items: center; gap: 16px; }
+[data-tavern-style] [data-tavern-immersive] [data-slot-icon] { display: block; width: 24px; height: 24px; flex: none; }
+[data-tavern-style] [data-tavern-immersive] [data-slot-count] { margin-left: auto; color: #eee5d2; font-weight: 700; }
+[data-tavern-style] [data-tavern-immersive] [data-slot-chevron] {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin: -5px 3px 0 4px;
+  border-right: 2px solid #eee5d2;
+  border-bottom: 2px solid #eee5d2;
+  color: transparent;
+  font-size: 0;
+  transform: rotate(45deg);
+}
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot][open] [data-slot-chevron] { transform: rotate(225deg); margin-top: 5px; }
+[data-tavern-style] [data-tavern-immersive] [data-artifact-slot][data-empty-slot] [data-slot-count] { color: #aca397; }
+[data-tavern-style] [data-tavern-immersive] [data-slot-artifacts] { padding: 12px; border-top: 1px solid #3f352f; background: #140e0b; }
+[data-tavern-style] [data-tavern-immersive] [data-slot-empty] { color: #aca397; font-size: 13px; }
+
+@media (max-width: 380px) {
+  [data-tavern-style] [data-tavern-immersive] > h2 { padding-top: 110px; }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] { margin-inline: -16px; }
+}
+
+@media (max-width: 500px) {
+  [data-tavern-style] [data-tavern-immersive] {
+    background-size: 100% 900px;
+  }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > :is(h2, p) {
+    transform: translateY(-30px);
+  }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail] {
+    gap: 33px;
+  }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail] > button {
+    width: 68px;
+  }
+  [data-tavern-style] [data-tavern-immersive] [data-chip-name] {
+    width: 82px;
+    font-size: 9.5px;
+  }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] {
+    padding-left: 52px;
+    /* The chip and its label form one visual group on the painted board. */
+    transform: translateY(calc(-14.5px + var(--chip-board-correction, 0px)));
+  }
+}
+
+@media (min-width: 501px) and (max-width: 649px) {
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > :is(h2, p) {
+    transform: translateY(-35px);
+  }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] {
+    transform: translateY(calc(-20px + var(--chip-board-correction, 0px)));
+  }
+}
+
+@media (min-width: 650px) and (max-width: 899px) {
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] {
+    transform: translateY(calc(40px + var(--chip-board-correction, 0px)));
+  }
+}
+
+@media (min-width: 900px) {
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > :is(h2, p) {
+    transform: translateY(-10px);
+  }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] {
+    transform: translateY(calc(-11px + var(--chip-board-correction, 0px)));
+  }
+}
+
+@media (min-width: 381px) and (max-width: 500px) {
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] { margin-top: 53px; }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > h2 { margin-bottom: 4px; font-size: 16px; }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > p { margin-top: 4px; margin-bottom: 11px; font-size: 11px; }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] { margin-top: 0; margin-right: 8px; }
+}
+
+@media (max-width: 380px) {
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] [data-choice-rail-wrap] {
+    margin-top: 20px;
+    transform: translateY(calc(clamp(-20px, calc(33.3vw - 126.6px), -1px) + var(--chip-board-correction, 0px)));
+  }
+  [data-tavern-style] [data-tavern-immersive] section[aria-labelledby="tavern-create"] > :is(h2, p) {
+    transform: translateY(clamp(-38px, calc(50vw - 198px), -8px));
+  }
+}
+
+@media (min-width: 650px) {
+  [data-tavern-style] [data-tavern-immersive] > h2 {
+    padding-left: clamp(56px, 10vw, 90px);
+  }
+  [data-tavern-style] [data-hero-rail-wrap] {
+    margin-left: clamp(52px, 8vw, 72px);
+    margin-right: -50px;
+  }
+}

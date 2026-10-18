@@ -1,0 +1,246 @@
+@font-face {
+  font-family: "Town Hall Russo";
+  src: url("../../assets/tavern/RussoOne.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Town Hall Golos";
+  src: url("../../assets/tavern/GolosText.ttf") format("truetype");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+.town-hall-screen {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #090d17;
+  color: #f7efe0;
+  font-family: "Town Hall Golos", sans-serif;
+}
+.town-hall-stage {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 500px);
+  height: 100%;
+  margin: auto;
+  overflow: hidden;
+  box-shadow: 0 0 65px #000b;
+}
+.town-hall-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.town-hall-header {
+  position: absolute;
+  z-index: 2;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.town-hall-header h1 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #f7e5b8;
+  font: 400 clamp(18px, 5vw, 23px)/1.15 "Town Hall Russo", sans-serif;
+  text-shadow: 0 2px 4px #000c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.town-hall-back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid #ac8248;
+  border-radius: 22px;
+  background: #101419ef;
+  color: #f8edda;
+  font: 400 13px/1 "Town Hall Russo", sans-serif;
+  box-shadow: 0 4px 12px #0008;
+  cursor: pointer;
+}
+.town-hall-back span { font: 24px/1 "Town Hall Golos", sans-serif; }
+.town-hall-back:focus-visible { outline: 2px solid #ffe08d; outline-offset: 3px; }
+.town-hall-status {
+  position: absolute;
+  z-index: 1;
+  top: 40%;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 56px);
+  margin: 0;
+  padding: 8px 14px 9px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #ad793e;
+  border-radius: 8px;
+  background: linear-gradient(160deg, #352416f5, #171512f7);
+  color: #ffda85;
+  font: 400 clamp(16px, 5.1vw, 22px)/1.2 "Town Hall Russo", sans-serif;
+  text-align: center;
+  text-shadow: 0 2px 3px #000;
+  box-shadow: 0 3px 0 #090807, 0 7px 16px #000a, inset 0 1px 0 #e7b86a70;
+}
+.town-hall-status--action {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-color: #ffe38b;
+  background: linear-gradient(#ffe47a, #f2c02a 65%, #d89b1e);
+  color: #21170d;
+  font-size: clamp(13px, 3.8vw, 18px);
+  text-shadow: 0 1px #fff5aa70;
+  box-shadow: 0 3px 0 #8d5c13, 0 8px 20px #000a, inset 0 1px 0 #fff2b4;
+  cursor: pointer;
+}
+.town-hall-status--action:focus-visible { outline: 2px solid #ffe08d; outline-offset: 3px; }
+.town-hall-future {
+  position: absolute;
+  z-index: 1;
+  right: 12px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: 12px;
+  padding: 13px 16px 9px;
+  border: 1px solid #a7773f;
+  border-radius: 8px;
+  background: linear-gradient(#11161af0, #0c1115f4);
+  box-shadow: 0 8px 28px #0009, inset 0 1px 0 #dfb86f38;
+}
+.town-hall-future h2 {
+  margin: 0 0 7px;
+  color: #f5c976;
+  font: 400 clamp(17px, 4.7vw, 21px)/1.2 "Town Hall Russo", sans-serif;
+}
+.town-hall-future ul { margin: 0; padding: 0; list-style: none; }
+.town-hall-future li {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 42px;
+  color: #f0ece6;
+  font-size: clamp(13px, 3.6vw, 15px);
+  line-height: 1.25;
+}
+.town-hall-future li + li { border-top: 1px solid #b58b4f55; }
+.town-hall-future li > svg,
+.town-hall-shield {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  color: #e9b858;
+  stroke-width: 1.8;
+}
+.town-hall-shield { position: relative; display: block; }
+.town-hall-shield svg:first-child { width: 26px; height: 26px; stroke-width: 1.8; }
+.town-hall-shield svg:last-child {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  stroke-width: 1;
+}
+@media (max-height: 620px) {
+  .town-hall-future { padding-block: 8px 5px; }
+  .town-hall-future li { min-height: 36px; }
+  .town-hall-status { top: 38%; }
+}
+
+/* Низ ратуши: постройки замка (аукционный дом, казино) + «Здесь появятся». */
+.town-hall-dock {
+  position: absolute;
+  z-index: 1;
+  right: 12px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  left: 12px;
+  display: grid;
+  gap: 8px;
+  /* Аукционный дом + казино + «Здесь появятся»: на низком экране — листается, а не лезет под шапку. */
+  max-height: calc(100% - 72px - env(safe-area-inset-top));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.town-hall-dock .town-hall-future { position: static; }
+.town-hall-build {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid #a7773f;
+  border-radius: 8px;
+  background: linear-gradient(#11161af0, #0c1115f4);
+  box-shadow: 0 8px 28px #0009, inset 0 1px 0 #dfb86f38;
+}
+.town-hall-build--loading { display: grid; place-items: center; min-height: 92px; }
+.town-hall-build__spin { width: 20px; height: 20px; color: #e9b858; }
+.town-hall-build__looks { display: flex; align-items: center; gap: 4px; }
+.town-hall-build__looks img { width: 64px; height: 64px; object-fit: contain; }
+.town-hall-build__looks .town-hall-build__next { opacity: .78; }
+.town-hall-build__arrow { width: 16px; height: 16px; color: #e9b858; }
+.town-hall-build__info h2 {
+  margin: 0;
+  color: #f5c976;
+  font: 400 clamp(16px, 4.4vw, 19px)/1.2 "Town Hall Russo", sans-serif;
+}
+.town-hall-build__info p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 3px 0 0;
+  color: #f0ece6;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.town-hall-build__info b { color: #ffda85; }
+.town-hall-build__cost {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.town-hall-build__cost span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f7efe0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.town-hall-build__cost img { width: 20px; height: 20px; object-fit: contain; }
+.town-hall-build__cost .town-hall-build__lack { color: #f0948a; }
+.town-hall-build__go {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 2px solid #ffe38b;
+  border-radius: 8px;
+  background: linear-gradient(#ffe47a, #f2c02a 65%, #d89b1e);
+  color: #21170d;
+  font: 400 clamp(14px, 3.9vw, 17px)/1 "Town Hall Russo", sans-serif;
+  box-shadow: 0 3px 0 #8d5c13, 0 6px 14px #000a, inset 0 1px 0 #fff2b4;
+  cursor: pointer;
+}
+.town-hall-build__go svg { width: 18px; height: 18px; }
+.town-hall-build__go:disabled { opacity: .5; cursor: not-allowed; }
+.town-hall-build__go:focus-visible { outline: 2px solid #ffe08d; outline-offset: 3px; }
+@media (max-height: 620px) {
+  .town-hall-build__looks img { width: 48px; height: 48px; }
+}

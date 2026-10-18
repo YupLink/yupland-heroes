@@ -1,0 +1,77 @@
+/* Approved raid controls: one dark disc and one warm-gold rim. */
+.raid-hud-design,.raid-right-menu{--raid-hud-rim:#d3a85d}
+.raid-hud-design .raid-map-nav__actions{gap:6px;min-height:44px}
+.raid-hud-design .raid-map-nav__context-slot{display:flex;flex:1;min-width:0;justify-content:flex-end}
+.raid-hud-design .raid-map-nav__button.raid-map-nav__locate{bottom:54px}
+.raid-hud-design .raid-map-nav__effects{bottom:102px}
+.raid-hud-design :is(.raid-map-nav__button.raid-map-nav__locate,.raid-map-nav__button.raid-map-nav__castle--away,.raid-main-hand,.raid-quick-access--backpack,.castle-main-hud__effects-toggle--icon),
+.raid-right-menu :is(.raid-right-menu__toggle,.raid-right-menu__items>button){position:relative;display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:0;border:2px solid var(--raid-hud-rim);border-radius:50%;background:#101619;color:#ffe3a4;box-shadow:0 2px 6px #0008;cursor:pointer}
+.raid-hud-design .raid-map-nav__button.raid-map-nav__locate{position:absolute}
+.raid-hud-design .raid-map-nav__button.raid-map-nav__locate>img{width:38px;height:38px;object-fit:contain;image-rendering:pixelated}
+.raid-hud-design .raid-map-nav__button.raid-map-nav__locate--stop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.raid-hud-design .raid-map-nav__button.raid-map-nav__locate:disabled{opacity:.55;cursor:default}
+.raid-hud-design .raid-map-nav__castle--away img{width:38px;height:38px;filter:none;opacity:1;image-rendering:auto}
+.raid-hud-design .raid-map-nav__button--primary.raid-map-nav__castle{width:108px;height:44px;padding:0 8px;gap:4px;border:2px solid var(--raid-hud-rim);border-radius:24px;background:#e8b943;color:#281b0c;box-shadow:0 3px 9px #0009;font:700 13px/1 var(--font-sans)}
+.raid-hud-design .raid-map-nav__button--primary .raid-map-nav__castle-art{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:50%;background:#101619}
+.raid-hud-design .raid-map-nav__button--primary .raid-map-nav__castle-art img{width:28px;height:28px;object-fit:contain;image-rendering:auto}
+.raid-hud-design .raid-map-nav__button--primary>span:last-child{white-space:nowrap}
+.raid-hud-design .raid-main-hand,.raid-hud-design .raid-quick-access--backpack{position:relative;flex:none;overflow:visible}
+.raid-hud-design .raid-main-hand::before,.raid-hud-design .raid-quick-access--backpack::before{content:"";position:absolute;inset:2px;border-radius:50%;background-position:center;background-size:38px 38px;background-repeat:no-repeat;pointer-events:none}
+.raid-hud-design .raid-main-hand::before{background-image:url('/resources/raid-hud-art-hand.webp')}
+.raid-hud-design .raid-main-hand--rod::before{background-image:url('/resources/raid-hud-art-rod.webp')}
+.raid-hud-design .raid-quick-access--backpack::before{background-image:url('/resources/raid-hud-art-backpack.webp')}
+.raid-hud-design .raid-main-hand>img,.raid-hud-design .raid-main-hand>svg,.raid-hud-design .raid-quick-access--backpack>svg{visibility:hidden}
+.raid-hud-design .raid-main-hand:not(.raid-main-hand--rod)>span{display:none}
+.raid-hud-design .raid-main-hand--rod>span{position:absolute;z-index:1;bottom:0;left:50%;transform:translateX(-50%);color:#fff;font:700 9px/10px var(--font-sans);text-shadow:0 1px 2px #000,0 0 3px #000}
+.raid-hud-design .raid-main-hand.raid-main-hand--equipped-image::before{display:none}
+.raid-hud-design .raid-main-hand.raid-main-hand--equipped-image>img{visibility:visible;width:32px;height:30px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 1px 2px #000)}
+.raid-hud-design .raid-main-hand.raid-main-hand--equipped-image>span{display:block;position:absolute;z-index:1;bottom:0;left:50%;transform:translateX(-50%);color:#fff;font:700 9px/10px var(--font-sans);text-shadow:0 1px 2px #000,0 0 3px #000}
+.raid-hud-design :is(.raid-map-nav__stop,.raid-fishing-cast){width:auto;min-width:112px;height:44px;padding:0 12px;gap:7px;border:2px solid var(--raid-hud-rim);border-radius:24px;background:linear-gradient(180deg,#28302d,#111715);color:#ffe3a4;font:700 13px/1 var(--font-sans);box-shadow:0 3px 8px #0009,inset 0 1px #fff2}
+.raid-hud-design .raid-fishing-cast{max-width:min(144px,calc(100vw - 165px))}
+.raid-hud-design .raid-fishing-hook{display:grid;place-items:center;flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:2px solid var(--raid-hud-rim);border-radius:50%;background:linear-gradient(160deg,#ffe77c 0%,#e9b338 78%);color:#281b0c;box-shadow:0 3px 8px #0009,inset 0 1px #fff8;cursor:pointer}
+.raid-hud-design .raid-fishing-hook img{display:block;width:29px;height:29px;object-fit:contain}
+.raid-hud-design .raid-fishing-hook svg{width:18px;height:18px;color:#281b0c}
+.raid-hud-design .raid-map-nav__stop svg,.raid-hud-design .raid-fishing-cast svg{width:14px;height:14px;color:#e6bd6a}
+.raid-hud-design .raid-world-effects .castle-main-hud__effects-toggle--icon{display:grid;place-items:center}
+.raid-hud-design .raid-world-effects .castle-main-hud__effects-toggle--icon>img{width:36px;height:36px;object-fit:contain}
+.raid-hud-design .raid-effects-icon-count{position:absolute;z-index:1;right:-3px;bottom:-3px;display:grid;place-items:center;min-width:17px;height:17px;padding:0 2px;border:1px solid var(--raid-hud-rim);border-radius:50%;background:#101619;color:#ffe3a4;font:700 10px/14px var(--font-sans)}
+.raid-hud-design .raid-world-effects .castle-main-hud__effects-panel{top:auto;right:auto;bottom:-44px;left:calc(100% + 8px);width:min(232px,calc(100vw - 84px));max-width:min(232px,calc(100vw - 84px));max-height:min(45dvh,300px)}
+.raid-hud-design .raid-world-effects .castle-main-hud__effect{gap:3px;padding:3px 6px;font-size:10px}
+.raid-hud-design .raid-world-effects .castle-main-hud__effect-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.raid-hud-design .raid-world-effects .castle-main-hud__effect time{font-size:10px}
+.raid-right-menu{position:absolute;z-index:35;top:96px;right:8px;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.raid-right-menu>*{pointer-events:auto}
+.raid-right-menu__items{display:flex;flex-direction:column;align-items:center;gap:8px;max-height:min(60dvh,calc(100dvh - 150px));overflow-y:auto;overflow-x:visible;scrollbar-width:thin;padding:2px}
+.raid-right-menu :is(.raid-right-menu__toggle,.raid-right-menu__items>button) svg{width:21px;height:21px}
+.raid-right-menu__toggle svg{stroke-width:2.4}
+.raid-right-menu__items>button>img{width:38px;height:38px;object-fit:contain}
+.raid-right-menu .raid-quick-access--spells{position:relative}
+.raid-right-menu .raid-quick-access--spells::before{content:"";position:absolute;inset:2px;border-radius:50%;background:url('/resources/raid-hud-art-book.webp') center / 38px 38px no-repeat;pointer-events:none}
+.raid-right-menu .raid-quick-access--spells>svg{visibility:hidden}
+.raid-right-menu button:focus-visible,.raid-hud-design button:focus-visible{outline:2px solid #fff4d8;outline-offset:2px}
+@media(max-width:360px){.raid-hud-design .raid-map-nav__actions{gap:2px}.raid-hud-design .raid-map-nav__actions--at-castle .raid-map-nav__button--primary{width:100px;padding:0 5px}.raid-hud-design .raid-map-nav__actions--at-castle :is(.raid-fishing-cast,.raid-map-nav__stop){min-width:100px;padding:0 7px;font-size:12px}}
+.raid-resource-bar__surface{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;width:min(calc(100% - 8px),640px);min-height:36px;margin:0 auto 2px;padding:3px 2px;border:1px solid #8b743f99;border-radius:12px;background:linear-gradient(180deg,#11211de8,#0b1512f2);box-shadow:0 3px 10px #0008;color:#f5efdc;font:500 14px/1 var(--font-sans);pointer-events:auto}
+.raid-resource-bar__surface>div{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:27px}
+.raid-resource-bar__surface>div+div{border-left:1px solid #baa06a70}
+.raid-resource-bar__surface img{width:20px;height:20px;flex:none;object-fit:contain}
+.raid-resource-bar__surface span{font:600 14px/1 var(--font-sans);font-variant-numeric:tabular-nums;white-space:nowrap}
+@media(max-width:340px){.raid-resource-bar__surface>div{gap:2px}.raid-resource-bar__surface img{width:18px;height:18px}.raid-resource-bar__surface span{font-size:12px}}
+
+/* Approved lower row: castle art grows while the hero control keeps its own slot. */
+.raid-hud-design .raid-map-nav__button.raid-map-nav__castle--away{width:53px;height:53px;min-height:53px}
+.raid-hud-design .raid-map-nav__castle--away img{width:46px;height:46px}
+.raid-hud-design .raid-map-nav__button.raid-map-nav__locate{bottom:63px}
+
+@font-face{font-family:"Raid Fishing Russo";src:url('../../assets/tavern/RussoOne.ttf') format('truetype');font-weight:400;font-display:swap}
+.raid-fishing-dialog__fish{display:block;width:31px;height:31px;flex:none;object-fit:contain}
+.raid-fishing-dialog__cast{min-height:44px;font:400 15px/1.25 "Raid Fishing Russo",sans-serif}
+.raid-fishing-dialog__cast img{display:block;width:27px;height:27px;flex:none;object-fit:contain;filter:brightness(.42) saturate(.7)}
+
+/* The effects, castle and hero form one vertical rail; item actions unfold rightward. */
+.raid-hud-design:has(.raid-lower-actions) .raid-map-nav__actions{position:relative;min-height:48px}
+.raid-hud-design:has(.raid-lower-actions) .raid-map-nav__button.raid-map-nav__locate{display:none}
+.raid-hud-design:has(.raid-lower-actions) .raid-map-nav__castle-slot{position:absolute;left:0;bottom:58px}
+.raid-hud-design:has(.raid-lower-actions) .raid-map-nav__button.raid-map-nav__castle--away{width:44px;height:44px;min-height:44px}
+.raid-hud-design:has(.raid-lower-actions) .raid-map-nav__castle--away img{width:38px;height:38px}
+.raid-hud-design:has(.raid-lower-actions) .raid-map-nav__effects{bottom:110px}
+.raid-hud-design:has(.raid-lower-actions) .raid-world-effects .castle-main-hud__effects-panel{top:auto;right:auto;bottom:calc(100% + 8px);left:0;width:min(232px,calc(100vw - 20px));max-width:min(232px,calc(100vw - 20px))}

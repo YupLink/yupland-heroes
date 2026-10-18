@@ -1,0 +1,65 @@
+/* Вкладки окна аукционов и карточка «Аукционный дом» — в той же гамме, что
+   auction-screen.css (дизайн замка Ангелины: Russo/Golos, золото, леджер). */
+
+.auction-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 4px;
+  border: 1px solid #94703c;
+  border-radius: 14px;
+  background: #0d1b2b;
+}
+.auction-tab {
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #cdb791;
+  font: 400 14px/1 "Auction Russo", sans-serif;
+  cursor: pointer;
+}
+.auction-tab--on {
+  background: var(--gradient-gold, linear-gradient(135deg, #ffd32e, #e08700));
+  color: #1f180c;
+  box-shadow: 0 3px 10px #0007, inset 0 1px 0 #fff8;
+}
+
+.auction-house { display: grid; gap: 12px; }
+.auction-house__head { display: flex; align-items: center; gap: 8px; }
+.auction-house__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: #fff0c7;
+  font: 400 18px/1.15 "Auction Russo", sans-serif;
+}
+.auction-house__slots {
+  color: #ffd773;
+  font: 400 18px/1 "Auction Russo", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.auction-house__row { display: flex; align-items: center; gap: 10px; }
+.auction-house__row .auction-primary { flex: 1; }
+.auction-house__wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffd773;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.auction-house__form { padding-top: 12px; border-top: 1px solid #a98a5955; }
+.auction-house__sell { width: 100%; }
+
+.auction-house__fee {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #5a233022;
+  color: #f0b4ab;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

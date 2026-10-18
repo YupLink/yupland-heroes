@@ -1,0 +1,48 @@
+.raid-map-nav{position:absolute;inset:auto 10px max(48px,env(safe-area-inset-bottom)) 10px;display:block;pointer-events:none;z-index:25;color:#f5efdc;font-family:var(--font-sans)}
+.raid-map-nav__actions{display:flex;align-items:center;gap:4px;width:100%;min-height:48px}
+.raid-map-nav__castle-slot{flex:none}
+.raid-map-nav__button.raid-map-nav__castle{width:48px;height:48px;border-radius:50%;padding:8px}
+.raid-map-nav__button.raid-map-nav__castle--away{width:48px;padding:8px;border-color:#88939899;background:#172023cc}
+.raid-map-nav__castle--away img{filter:grayscale(.8);opacity:.8}
+.raid-map-nav__stop-slot{display:flex;flex:none}
+.raid-map-nav__stop{height:48px}
+.raid-map-nav__extra{position:absolute;left:56px;bottom:60px;display:flex;gap:8px}
+.raid-map-nav__effects{position:absolute;left:0;bottom:112px;pointer-events:auto}
+.raid-map-nav__effects:has(+.raid-map-nav__extra:not(:empty)){bottom:164px}
+.raid-map-nav__camera{position:fixed;right:8px;top:96px;display:flex;flex-direction:column;width:44px;flex-shrink:0;pointer-events:auto}
+.raid-map-nav button,.raid-map-nav__actions>*{pointer-events:auto}
+.raid-map-nav__button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 12px;border:1px solid #c7a25380;border-radius:14px;background:#111c20d9;backdrop-filter:blur(12px);color:#f5efdc;font:500 14px/1.25 var(--font-sans);box-shadow:0 3px 10px #0005;cursor:pointer}
+.raid-map-nav__button img{width:26px;height:26px;object-fit:contain;image-rendering:pixelated}
+.raid-map-nav__button svg{width:19px;height:19px;flex-shrink:0}
+.raid-map-nav__button--primary{background:linear-gradient(#ffe578,#f5b932);border-color:#fff0a4;color:#241a0c;font-family:var(--font-display);font-weight:400}
+.raid-map-nav__button:disabled{opacity:.45;cursor:default}
+.raid-map-nav__preview{display:flex;flex-direction:column;overflow:hidden;border:1px solid #c7a25380;border-radius:14px;background:#10191bd9;padding:5px;color:#f5efdc;backdrop-filter:blur(10px)}
+.raid-map-nav__preview>svg{width:100%;height:auto;aspect-ratio:1;border:0;border-radius:8px;pointer-events:none}
+.raid-map-nav__preview>span{display:flex;justify-content:center;align-items:center;gap:5px;min-height:24px;font-size:12px}
+.raid-map-nav__preview span svg{width:13px;height:13px}
+.raid-map-nav__stop{border-color:#edb3a3}
+.raid-map-dialog{width:min(100%,520px);max-height:90dvh;overflow:auto;border:1px solid #b59a57;border-radius:24px;background:#101b20e8;backdrop-filter:blur(18px);color:#f5efdc;padding:16px;box-shadow:0 15px 60px #0009;font-family:var(--font-sans)}
+.raid-map-dialog--help{max-width:380px;margin:12px}
+.raid-map-dialog__header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.raid-map-dialog__header h2{font-family:var(--font-display);font-size:22px}
+.raid-map-dialog__header button,.raid-hero-dialog__toolbar button{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #b59a5755;border-radius:12px;padding:7px;color:inherit;background:#10202699}
+.raid-map-dialog p{margin:8px 0 16px;font-size:14px;line-height:1.45;color:#d3d8d5}
+.raid-map-dialog__map>svg{width:100%;height:auto;max-height:60dvh;aspect-ratio:1}
+.raid-map-dialog__footer{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}
+.raid-map-nav button:focus-visible,.raid-map-dialog button:focus-visible,.raid-hero-dialog button:focus-visible{outline:2px solid #ffe08a;outline-offset:3px}
+.raid-hero-dialog{width:min(100%,448px);max-height:94dvh;overflow:hidden;display:flex;flex-direction:column;border:1px solid #a98b45;border-radius:24px;background:#0e1419;color:#f5efdc}
+.raid-hero-dialog__toolbar{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:10px 12px;border-bottom:1px solid #a98b4544}
+.raid-hero-dialog__toolbar strong{font-family:var(--font-display);font-size:21px}
+.raid-hero-dialog__toolbar button{font:400 13px var(--font-sans)}
+.raid-hero-dialog__toolbar svg{width:18px;height:18px}
+.raid-hero-dialog__actions{display:flex;gap:6px;align-items:center}
+.raid-hero-dialog__body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px}
+@media(max-height:650px){.raid-map-nav__preview>svg{max-height:70px}.raid-map-dialog__map>svg{max-height:48dvh}}
+
+
+@media(prefers-reduced-motion:no-preference){.raid-map-nav__stop{animation:raid-stop-appear .15s ease-out}@keyframes raid-stop-appear{from{opacity:0}to{opacity:1}}}
+
+.raid-map-nav__button.raid-map-nav__locate{position:absolute;left:0;bottom:60px;width:48px;height:48px;border-radius:50%;padding:0}
+.raid-map-nav__button.raid-map-nav__locate--stop{display:flex;flex-direction:column;gap:1px}
+.raid-map-nav__button.raid-map-nav__locate--stop svg{width:13px;height:13px;color:#e6bd6a;stroke-width:2}
+.raid-map-nav__button.raid-map-nav__locate--stop span{font:700 10px/1 var(--font-sans)}
