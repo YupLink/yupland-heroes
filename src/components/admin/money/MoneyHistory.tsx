@@ -9,8 +9,8 @@ export function MoneySent({ sent }: { sent: MoneyOverview["sent"] }) {
       <Hero value={sent.total} unit="DARAI" />
       <div>
         <Row label="Дупло" value={sent.duplo} />
-        <Row label="Миша · owner.example.tg" value={sent.miplix} />
-        <Row label="Ярослав · admin2.example.tg" value={sent.yarsib} />
+        <Row label={sent.labels.owner} value={sent.owner} />
+        <Row label={sent.labels.partner} value={sent.partner} />
         <Row label="Держатели legendary" value={sent.legendary} />
         {sent.devUsdt > 0 && <Row label="Разработчикам из подписок" value={sent.devUsdt} unit="USDT" />}
         {sent.failed > 0 && <Row label="Встали" value={sent.failed} unit="шт" tone="danger" />}

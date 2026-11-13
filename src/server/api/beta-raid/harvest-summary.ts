@@ -13,10 +13,13 @@ import { myMapId } from "./encounter-where";
 import { accAccountId } from "../currency/move";
 import { ownedMineRows, type MineRow } from "./mine-pendings";
 import { myHarvestFields, type HarvestField } from "./harvest-fields";
-import { unseenMineCaptures, type MineCaptureNotice } from "./mine-capture-log";
+import { lostMineRows } from "./mine-capture-log";
+import { myNotices } from "./mine-lost/mine-notices";
 import type { PendingSource } from "../raid-rewards-pending";
+import type { MineNotice } from "@/lib/mineNotice";
 
 export type HarvestSummary = {
+  /** Свои шахты и отнятые с несобранным (строка с полем lost — до сбора, §8.71). */
   mines: MineRow[];
   fields: HarvestField[];
   /**
@@ -27,28 +30,29 @@ export type HarvestSummary = {
   rewards: PendingSource[];
   /** Сколько наград ждёт клейма — для цифры на кнопке. */
   rewardCount: number;
-  /**
-   * Мои шахты, которые отбили, пока меня не было: начисление за целые часы
-   * уже на счёте (SQL raid_mine_capture), здесь — подпись к нему. Пусто —
-   * секции в окне нет.
-   */
-  captures: MineCaptureNotice[];
+  /** Часы сервера в момент ответа: по ним «Добыча» считает срок шахт v2. */
+  serverNow: number;
+  /** Уведомления о потерях до «×» (§8.106): строки и сколько всего — на кружок. */
+  notices: MineNotice[];
+  noticeCount: number;
 };
 
-const EMPTY: HarvestSummary = {
+const empty = (): HarvestSummary => ({
   mines: [],
   fields: [],
   rewards: [],
   rewardCount: 0,
-  captures: [],
-};
+  serverNow: Date.now(),
+  notices: [],
+  noticeCount: 0,
+});
 
 export const getHarvestSummary = createServerFn({ method: "GET" }).handler(
   async (): Promise<HarvestSummary> => {
     const wallet = getCurrentWallet();
-    if (!wallet) return EMPTY;
+    if (!wallet) return empty();
     const account = await accAccountId(wallet).catch(() => null);
-    if (!account) return EMPTY;
+    if (!account) return empty();
     const mapId = await myMapId(wallet);
 
     // Награды берём ОБЫЧНОЙ функцией, а не серверной ручкой: вызов ручки
@@ -60,7 +64,7 @@ export const getHarvestSummary = createServerFn({ method: "GET" }).handler(
     // мире»). Чужой этаж подписан названием.
     const { floorMaps } = await import("./floors");
     const floors = await floorMaps(mapId);
-    const [own, pending, captures] = await Promise.all([
+    const [own, pending, lost, notes] = await Promise.all([
       Promise.all(
         floors.map(async ({ id, floor }) => {
           const [m, f] = await Promise.all([
@@ -74,19 +78,21 @@ export const getHarvestSummary = createServerFn({ method: "GET" }).handler(
         }),
       ),
       pendingRaidRewardsFor(account),
-      // Журнал захватов появился миграцией acc-48: пока её нет — пусто, а не
-      // сломанное окно целиком.
-      unseenMineCaptures(account).catch(() => [] as MineCaptureNotice[]),
+      // Отнятые с несобранным — в общий список шахт; сбой журнала — без них.
+      lostMineRows(account, mapId, floors).catch(() => [] as MineRow[]),
+      myNotices(account, mapId).catch(() => ({ notices: [] as MineNotice[], count: 0 })),
     ]);
 
-    const mines = own.flatMap((x) => x.mines);
+    const mines = [...own.flatMap((x) => x.mines), ...lost];
     const fields = own.flatMap((x) => x.fields);
     return {
       mines,
       fields,
       rewards: pending.sources ?? [],
       rewardCount: Number(pending.total) || 0,
-      captures,
+      serverNow: Date.now(),
+      notices: notes.notices,
+      noticeCount: notes.count,
     };
   },
 );

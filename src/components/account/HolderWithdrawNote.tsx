@@ -6,7 +6,8 @@ import { getMyHolderDarai } from "@/server/api/bank/bank-stake";
 import { holderWithdrawSplit } from "@/lib/bankStake";
 import { useLang } from "@/lib/i18n";
 
-export const HOLDER_TAG_KEY = ["my-holder-darai"] as const;
+import { HOLDER_TAG_KEY } from "@/lib/holderTagKey";
+export { HOLDER_TAG_KEY };
 
 export function HolderWithdrawNote({ amount, balance }: { amount: number; balance: number }) {
   const ru = useLang() === "ru";

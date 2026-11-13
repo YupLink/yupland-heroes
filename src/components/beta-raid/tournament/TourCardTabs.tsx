@@ -5,6 +5,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import type { TourPlate } from "@/lib/tournament/types";
+import { farmSnapClock } from "@/lib/tournament/metricSources";
 import { TourPrizeList } from "./TourPrizeList";
 import { TourRulesList } from "./TourRulesList";
 import { TourTable } from "./TourTable";
@@ -40,7 +41,9 @@ export function TourCardTabs({ q, r, plate }: { q: number; r: number; plate: Tou
         ))}
       </div>
       {tab === "players" && <TourTable q={q} r={r} plate={plate} />}
-      {tab === "rules" && <TourRulesList metric={plate.metric} items={plate.items} />}
+      {tab === "rules" && (
+        <TourRulesList metric={plate.metric} items={plate.items} clock={farmSnapClock(plate)} />
+      )}
       {tab === "prizes" && <TourPrizeList bands={plate.bands} />}
     </div>
   );

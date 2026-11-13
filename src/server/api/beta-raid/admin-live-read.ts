@@ -8,11 +8,11 @@ import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { requireAdmin } from "../../auth";
 import { sqlStr, type RewardConfig } from "../raid-shared";
-import { godMapId } from "./god-map";
 import { POS_MAP_SQL } from "./pos-map-sql";
 import { isVoidFlag } from "./packCells";
 import { cellBuildingEffect, signText, type BuildingEffect } from "@/lib/buildingEffect";
 import type { PortalConfig } from "@/lib/portal";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 const cellInput = (d: unknown) => z.object({ q: z.number().int(), r: z.number().int() }).parse(d);
 
@@ -84,8 +84,7 @@ export type AdminCellView = {
 export const getAdminCell = createServerFn({ method: "GET" })
   .inputValidator(cellInput)
   .handler(async ({ data }): Promise<AdminCellView> => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     // Алиас обязателен у КАЖДОГО поля: в запросе клетки шесть JOIN, и голое
     // `q` там неоднозначно.
     const cellWhere = `c.map_id = ${sqlStr(mapId)} AND c.q = ${data.q} AND c.r = ${data.r}`;

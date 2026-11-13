@@ -108,8 +108,8 @@ export const HERO_SECTION: GuideSection = {
       icon: { Icon: Star, color: "#b46bff" },
       name: ["Очки навыков", "Skill points"],
       what: [
-        "+1 за повышенный уровень, ещё +2 за каждый 5-й и +3 за каждый 10-й (всего: Редкий 17, Эпический 17, Легендарный 34). Очко — +1 к любой характеристике, Торговле или Алхимии. Сброса нет.",
-        "+1 per boosted level, +2 more every 5th and +3 every 10th (total: Rare 17, Epic 17, Legendary 34). A point is +1 to any stat, Trade or Alchemy. No reset.",
+        "+2 за повышенный уровень, ещё +10 за каждый 5-й и +20 за каждый 10-й (всего: Редкий 60, Эпический 60, Легендарный 120). Очко — +1 к любой характеристике, Торговле или Алхимии. Сброса нет.",
+        "+2 per boosted level, +10 more every 5th and +20 every 10th (total: Rare 60, Epic 60, Legendary 120). A point is +1 to any stat, Trade or Alchemy. No reset.",
       ],
     },
     {

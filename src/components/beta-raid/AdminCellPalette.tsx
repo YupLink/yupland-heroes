@@ -6,7 +6,8 @@ import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { thumb } from "@/lib/image";
+import { useCurrentWorldArt } from "./world-art/useCurrentWorldArt";
+import { WorldArtThumbnail } from "./world-art/WorldArtThumbnail";
 import { humanError } from "@/lib/humanError";
 import { uploadTrimmed } from "@/lib/trimImage";
 import { adminCreateItem, adminListItems } from "@/server/api/items";
@@ -106,7 +107,13 @@ export function AdminCellPalette({
   kind,
   selected,
   onPick,
+  allow = null,
+  create = true,
 }: {
+  /** Дизайнер: только эти постройки, без купола, биома и «+ новый». */
+  allow?: ReadonlySet<string> | null;
+  /** «+ новый» (общий справочник для всех карт) — только админу. */
+  create?: boolean;
   kind: AssetKind;
   selected: string | null;
   onPick: (id: string, name: string) => void;
@@ -114,7 +121,10 @@ export function AdminCellPalette({
   const t = godText(useLang());
   const qc = useQueryClient();
   const q = useAssets(kind);
-  const items = (q.data ?? []).filter((i) => i.active);
+  const art = useCurrentWorldArt();
+  const items = (q.data ?? []).filter(
+    (i) => i.active && (kind !== "building" || allow === null || allow.has(i.id)),
+  );
 
   // «+ новый» в конце КАЖДОЙ вкладки палитры: завести новый элемент прямо в режиме
   // бога (имя + картинка). Босс живёт в своей таблице (adminSaveBossTemplate,
@@ -179,7 +189,7 @@ export function AdminCellPalette({
           не является — terrainId не трогает, только свой флаг. Стоит первым,
           чтобы не искать его в хвосте длинного списка. Кнопка ОДНА — тумблер
           по первой клетке мазка. */}
-      {kind === "terrain" && (
+      {kind === "terrain" && allow === null && (
         <>
           <VoidBrushButton
             id={VOID_ON}
@@ -207,7 +217,7 @@ export function AdminCellPalette({
           }`}
         >
           {item.imageUrl ? (
-            <img src={thumb(item.imageUrl, 64)} alt="" className="h-8 w-8 rounded object-contain" />
+            <WorldArtThumbnail art={art} kind={kind} id={item.id} original={item.imageUrl} width={64} className="h-8 w-8 rounded object-contain" />
           ) : (
             <span className="grid h-8 w-8 place-items-center text-muted-foreground">—</span>
           )}
@@ -219,7 +229,7 @@ export function AdminCellPalette({
           клетки. Иначе загруженный тут вид «древо х» падает в общий
           шаблонник и торчит рядом с Плавильней и Ломбардом (жалоба
           владельца «скины делали, чтобы разгрузить общее поле»). */}
-      {kind !== "building" && (
+      {kind !== "building" && allow === null && create && (
         <button
           type="button"
           onClick={startCreate}

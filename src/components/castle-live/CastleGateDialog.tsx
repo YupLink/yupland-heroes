@@ -7,12 +7,14 @@ export function CastleGateDialog({
   onCity,
   onReturnFocus,
   ru,
+  destination = "world",
 }: {
   open: boolean;
   onClose: () => void;
   onCity?: () => void;
   onReturnFocus?: () => void;
   ru: boolean;
+  destination?: "island" | "world";
 }) {
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -40,15 +42,15 @@ export function CastleGateDialog({
       >
         {/* По-английски заголовок раньше звал «войти», а кнопка отвечала
             «выйти» — одно действие, одно слово. */}
-        <DialogTitle className="castle-gate-dialog__title">{ru ? "Выйти в мир?" : "Leave for the world?"}</DialogTitle>
+        <DialogTitle className="castle-gate-dialog__title">{destination === "island" ? (ru ? "Вернуться на остров?" : "Return to your island?") : (ru ? "Выйти в мир?" : "Leave for the world?")}</DialogTitle>
         <DialogDescription className="castle-gate-dialog__description">
           {ru ? "Ты покинешь внутренний замок." : "You will leave the castle interior."}
         </DialogDescription>
         {error && (
           <p role="alert" className="castle-gate-dialog__error">
-            {ru
-              ? "Переход в город пока не подключён."
-              : "The city destination is not connected yet."}
+            {destination === "island"
+              ? ru ? "Переход на остров пока недоступен." : "The island is not available yet."
+              : ru ? "Переход в город пока не подключён." : "The city destination is not connected yet."}
           </p>
         )}
         <div className="castle-gate-dialog__actions">
@@ -66,7 +68,7 @@ export function CastleGateDialog({
               onClose();
             }}
           >
-            {ru ? "Выйти" : "Leave"}
+            {destination === "island" ? (ru ? "На остров" : "To island") : (ru ? "Выйти" : "Leave")}
           </button>
         </div>
       </DialogContent>

@@ -16,29 +16,27 @@
 // Сама клетка живёт в BackpackCell.tsx, сетка — в BackpackCellsGrid.tsx,
 // раскладка стеков — в backpackCellList.ts: файл упирался в лимит, а рисование
 // и арифметика правятся отдельно от логики «что перечитать после действия».
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Coins, FlaskConical, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { humanError } from "@/lib/humanError";
 import { useT } from "@/lib/i18n";
 import { BackpackDiscardModal } from "./BackpackDiscardModal";
+import { useBackpackDiscard } from "./useBackpackDiscard";
 import { BackpackBoostModal } from "./BackpackBoostModal";
 import { BackpackCellsGrid } from "./BackpackCellsGrid";
 import { bagLayout } from "./backpackCellList";
-import { discardBackpackStack } from "@/server/api/beta-raid/market-backpack-read";
 import { applyItemBoost } from "@/server/api/beta-raid/boost-item";
 import { newOpId } from "@/lib/opId";
 import { useLang } from "@/lib/i18n";
 import { boostRollText } from "@/lib/hero/boost";
 import { invalidateHeroQueries, invalidateBackpack } from "@/lib/query";
-import { formatQty } from "@/lib/formatQty";
-import { invalidateBags } from "@/components/beta-raid/loot-bag/lootBagLive";
 import type { BackpackView } from "@/server/api/beta-raid/market-backpack";
-import { guardStacks, isChestStack } from "@/components/beta-raid/chest/useChestActions";
-import { ChestPlacePicker } from "@/components/beta-raid/chest/ChestPlacePicker";
-import { PlainChestPlacePicker } from "@/components/beta-raid/plain-chest/PlainChestPlacePicker";
+import { BackpackPlacePicker } from "@/components/beta-raid/BackpackPlacePicker";
+import { placeableKeys } from "@/components/beta-raid/backpackPlace";
 import { ToolCard } from "@/components/beta-raid/tool/ToolCard";
+import { ItemUseCard } from "@/components/beta-raid/sight/ItemUseCard";
 
 export function BackpackGrid({
   data,
@@ -63,10 +61,6 @@ export function BackpackGrid({
   };
   const t = useT();
   const qc = useQueryClient();
-  // Какой ВИД сейчас выбрасывают. Спрашиваем не только «точно?», но и
-  // «сколько»: стек занимает несколько ячеек, и урна на ячейке раньше уносила
-  // весь вид целиком.
-  const [discarding, setDiscarding] = useState<string | null>(null);
   // У какого товара-буста открыта карточка с описанием и полным разбором.
   const [showing, setShowing] = useState<string | null>(null);
   // У какого инструмента открыта карточка «Сделать основным» (§8.24).
@@ -74,27 +68,7 @@ export function BackpackGrid({
   const [bagPage, setBagPage] = useState(0);
   useEffect(() => setBagPage(0), [data?.heroId, compartment]);
   const lang: "ru" | "en" = useLang() === "en" ? "en" : "ru";
-  // Ключ нажатия — один на окно выброса: повтор после обрыва не выбросит дважды.
-  const discardOp = useRef(newOpId());
-  // Выброшенное падает мешочком на клетке героя (§8.21): слой мешочков — сразу.
-  const discard = useMutation({
-    mutationFn: (v: { stackKey: string; qty: number }) => {
-      guard();
-      return discardBackpackStack({ data: { ...v, op: discardOp.current } });
-    },
-    onSuccess: (res) => {
-      if (res.put > 0) toast.success(t("bag.discarded", { n: formatQty(res.put) }));
-      else toast(t("bag.discard_worn_gone"));
-      invalidateBackpack(qc);
-      invalidateBags(qc);
-      setDiscarding(null);
-    },
-    onError: (e: Error) => toast.error(humanError(e)),
-  });
-  const openDiscard = (key: string | null) => {
-    discardOp.current = newOpId();
-    setDiscarding(key);
-  };
+  const { discarding, setDiscarding, discard, openDiscard } = useBackpackDiscard(guard);
 
   // Использование товара-буста: штуки уходят, прибавка висит заданные админом
   // минуты и снимается сама. Можно выпить несколько разом (qty из карточки).
@@ -104,10 +78,10 @@ export function BackpackGrid({
       if (beforeUse) await beforeUse();
       return applyItemBoost({ data: { stackKey: v.stackKey, op: newOpId(), qty: v.qty } });
     },
-    onSuccess: (res) => {
+    onSuccess: (res, v) => {
       // Товар мог дать несколько прибавок разом — перечисляем все.
       const line = res.rolls.map((r) => boostRollText(r, lang)).join(" · ");
-      toast.success(t("braid.boost_item_done", { hero: res.heroName ?? "", line }));
+      toast.success(t("braid.boost_item_done", { item: data?.stacks.find((s) => s.stackKey === v.stackKey)?.name ?? "", line }));
       setShowing(null);
       // Рюкзак похудел, а герой окреп — оба экрана обязаны обновиться без F5.
       invalidateBackpack(qc);
@@ -118,11 +92,8 @@ export function BackpackGrid({
     onError: (e: Error) => toast.error(humanError(e)),
   });
 
-  // Магический сундук ставится на клетку под героем — с охранником-боссом из
-  // рюкзака или без (вне рейда — отказ тостом): «Поставить» открывает выбор.
-  // Обычный сундук (29.09) — под себя или на соседнюю клетку: выбор клетки.
+  // «Поставить»: сундуки и заготовки шахт — окно выбора клетки (BackpackPlacePicker).
   const [placing, setPlacing] = useState<string | null>(null);
-  const [placingPlain, setPlacingPlain] = useState<string | null>(null);
 
   if (loading && !data) {
     return (
@@ -150,9 +121,8 @@ export function BackpackGrid({
   const bagPages = paged && compartment === "backpack" ? Math.max(1, Math.ceil(layout.backpack.length / 8)) : 1;
   const currentBagPage = Math.min(bagPage, bagPages - 1);
   const visibleBackpack = bagPages > 1 ? layout.backpack.slice(currentBagPage * 8, (currentBagPage + 1) * 8) : layout.backpack;
-  const bosses = guardStacks(data.stacks);
   const grid = {
-    lang,
+    lang, heroId: data.heroId, // таймер гриба — рюкзака этого героя
     readOnly,
     allowUse: canUseBoost,
     busy: use.isPending,
@@ -161,13 +131,10 @@ export function BackpackGrid({
     onInfo: (key: string) => {
       const s = data.stacks.find((x) => x.stackKey === key);
       if (s?.boost?.length) setShowing(key);
-      else if (s?.tool || s?.shovel) setToolCard(key);
+      else if (s?.tool || s?.shovel || s?.binocular || s?.ladder) setToolCard(key);
     },
-    chestKeys: new Set(
-      data.stacks.filter((s) => isChestStack(s) || s.plainChest === true).map((s) => s.stackKey),
-    ),
-    onPlace: (key: string) =>
-      data.stacks.find((s) => s.stackKey === key)?.plainChest ? setPlacingPlain(key) : setPlacing(key),
+    chestKeys: placeableKeys(data.stacks),
+    onPlace: setPlacing,
   };
   const stackBeing = data.stacks.find((s) => s.stackKey === discarding) ?? null;
   const stackShown = data.stacks.find((s) => s.stackKey === showing) ?? null;
@@ -244,7 +211,9 @@ export function BackpackGrid({
         />
       )}
 
-      {stackTool && (
+      {stackTool && (stackTool.binocular || stackTool.ladder) ? (
+        <ItemUseCard stack={stackTool} readOnly={readOnly} onClose={() => setToolCard(null)} />
+      ) : stackTool && (
         <ToolCard
           stack={stackTool}
           main={stackTool.stackKey === mainKey}
@@ -254,10 +223,11 @@ export function BackpackGrid({
       )}
 
       {!readOnly && placing && (
-        <ChestPlacePicker chestKey={placing} bosses={bosses} onClose={() => setPlacing(null)} />
-      )}
-      {!readOnly && placingPlain && (
-        <PlainChestPlacePicker stackKey={placingPlain} onClose={() => setPlacingPlain(null)} />
+        <BackpackPlacePicker
+          stackKey={placing}
+          stacks={data.stacks}
+          onClose={() => setPlacing(null)}
+        />
       )}
 
       {/* Окно выброса: имя, сколько лежит, ползунок количества. */}

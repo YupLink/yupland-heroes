@@ -25,12 +25,13 @@ import { useChestNetActions } from "@/components/beta-raid/chest/useChestActions
 import { guardOf, useGuardLite } from "@/components/beta-raid/chest/chestGuard";
 import { ChestGuardBlock } from "@/components/beta-raid/chest/ChestGuardBlock";
 import { useChestNet } from "@/components/beta-raid/chest/useChestViews";
+import { StorageMoveStatus } from "../useStorageMove";
 import { ChestSpinner } from "@/components/beta-raid/chest/ChestSpinner";
 
 export function ChestOwnerPanel({ q, r, foreign = false }: { q: number; r: number; foreign?: boolean }) {
   const t = useT();
   const net = useChestNet(q, r);
-  const { put, take, busy } = useChestNetActions(q, r);
+  const { put, take, busy, move } = useChestNetActions(q, r);
   const { lite } = useGuardLite(q, r);
   // Чужой берёт «сколько» — ячейка, по которой тапнули.
   const [asking, setAsking] = useState<Cell | null>(null);
@@ -50,13 +51,14 @@ export function ChestOwnerPanel({ q, r, foreign = false }: { q: number; r: numbe
   const movableOf = movableByCell(cells, bp.stacks);
   const takeCell = (c: Cell, qty: number) =>
     take.mutate(
-      { stackKey: c.stack.stackKey, qty, cell: c.key },
+      { stackKey: c.stack.stackKey, qty, cell: c.key, sourceTotal: c.stack.count },
       { onSuccess: () => setAsking(null) },
     );
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-2 gap-2.5">
+      <StorageMoveStatus move={move}/>
+      <fieldset disabled={move.pending || move.blocked} className="grid min-w-0 grid-cols-2 gap-2.5 border-0 p-0">
         <section className="min-w-0 space-y-1">
           <h4 className="truncate text-[10px] font-semibold text-muted-foreground">
             {t("braid.wh_backpack", {
@@ -82,13 +84,13 @@ export function ChestOwnerPanel({ q, r, foreign = false }: { q: number; r: numbe
                     movable={movable}
                     busy={busy === `in:${c.key}`}
                     onClick={() => {
-                      if (movable <= 0) return;
+                      if (movable <= 0 || move.pending || move.blocked) return;
                       const qty = storeQty({ stackKey: c.stack.stackKey, movable }, d.slots);
                       if (qty <= 0) {
                         toast.error(t("chest.net_full"));
                         return;
                       }
-                      put.mutate({ stackKey: c.stack.stackKey, qty, cell: c.key });
+                      put.mutate({ stackKey: c.stack.stackKey, qty, cell: c.key, requested: movable, sourceTotal: c.stack.count });
                     }}
                   />
                 </div>
@@ -118,7 +120,7 @@ export function ChestOwnerPanel({ q, r, foreign = false }: { q: number; r: numbe
             )}
           </div>
         </section>
-      </div>
+      </fieldset>
 
       {!foreign && <ChestGuardBlock q={q} r={r} guard={guard} />}
       {asking && (
@@ -132,7 +134,7 @@ export function ChestOwnerPanel({ q, r, foreign = false }: { q: number; r: numbe
           icon={Backpack}
           label={t("pchest.take")}
           tone="gold"
-          busy={take.isPending}
+          busy={move.pending || move.blocked}
           onSubmit={(qty) => takeCell(asking, qty)}
           onClose={() => setAsking(null)}
         />

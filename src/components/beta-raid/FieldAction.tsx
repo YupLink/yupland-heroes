@@ -18,6 +18,10 @@ import { getFieldState, placeHeroOnField, removeHeroFromField } from "@/server/a
 import { FieldMyHero } from "./FieldMyHero";
 import { FieldHeroTile } from "./FieldHeroTile";
 import { useNowTick } from "@/components/chips/chipBusy";
+import { weatherShown } from "@/lib/raid/weatherYield";
+import { useMyMapWeather } from "./weather/useWeatherByMap";
+import { WeatherBadge } from "./weather/WeatherBadge";
+import { UpgradeOffer } from "./upgrade/UpgradeOffer";
 
 export function FieldAction({
   q,
@@ -87,6 +91,10 @@ export function FieldAction({
   const d = state.data;
   const rewardName = d ? fieldRewardName(d.reward, t) : "";
   const heroes = d?.heroes ?? [];
+  // Урожай в час — с погодой карты («фермы»); коэффициент 1 — как было, без значка.
+  const fw = useMyMapWeather();
+  const total = weatherShown(d?.yieldAmount ?? 0, fw?.coefs.farm, fw?.kind);
+  const share = weatherShown(d?.share ?? 0, fw?.coefs.farm, fw?.kind);
 
   return (
     <div className="space-y-2 rounded-2xl border border-border/60 bg-secondary/20 p-3">
@@ -103,7 +111,11 @@ export function FieldAction({
         <>
           <div className="text-center">
             <div className="text-sm font-bold text-gold">
-              {t("braid.field_yield_total", { n: d.yieldAmount, res: rewardName })}
+              {t("braid.field_yield_total", {
+                n: total.kind ? round2(total.value) : total.value,
+                res: rewardName,
+              })}
+              {total.kind && <WeatherBadge kind={total.kind} />}
             </div>
             <div className="text-[11px] text-muted-foreground">
               {t("braid.field_workers", { n: d.workers })}
@@ -117,7 +129,7 @@ export function FieldAction({
                   {")"}
                 </>
               )}{" "}
-              · {t("braid.field_share", { n: round2(d.share), res: rewardName })}
+              · {t("braid.field_share", { n: round2(share.value), res: rewardName })}
             </div>
           </div>
 
@@ -183,6 +195,7 @@ export function FieldAction({
           </p>
         </>
       )}
+      <UpgradeOffer kind="farm" />
     </div>
   );
 }

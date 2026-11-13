@@ -16,8 +16,12 @@ export type ItemCategory = {
 /** Свой товар без категории — отдельной группой, чтобы его было видно. */
 export const NO_CATEGORY: ItemCategory = { id: "none", name: "Без категории", pos: 900 };
 
-/** Категории по виду товара — постоянные, их не создают и не удаляют. */
-export const KIND_CATEGORIES: Record<Exclude<MarketKind, "custom">, ItemCategory> = {
+/** Категории по виду товара — постоянные, их не создают и не удаляют. Дерево для
+ *  посадки (lib/treePlant) — товар только витрины лавки, в ратушу его не ставят. */
+export const KIND_CATEGORIES: Record<
+  Exclude<MarketKind, "custom" | "tree" | "rock" | "land" | "vein" | "recipe" | "building">,
+  ItemCategory
+> = {
   resource: { id: "kind:resource", name: "Ресурсы", pos: 1000 },
   boss: { id: "kind:boss", name: "Воины", pos: 1010 },
   pack: { id: "kind:pack", name: "Паки", pos: 1020 },
@@ -28,6 +32,16 @@ export const KIND_CATEGORIES: Record<Exclude<MarketKind, "custom">, ItemCategory
 /** Категория товара: у своего — из справочника (или «без категории»), у прочих — по виду. */
 export function categoryIdOf(kind: MarketKind, categoryId: string | null | undefined): string {
   if (kind === "custom") return categoryId || NO_CATEGORY.id;
+  if (
+    kind === "tree" ||
+    kind === "rock" ||
+    kind === "land" ||
+    kind === "vein" ||
+    kind === "recipe" ||
+    kind === "building"
+  ) {
+    return NO_CATEGORY.id;
+  }
   return KIND_CATEGORIES[kind].id;
 }
 

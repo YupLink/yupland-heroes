@@ -62,11 +62,11 @@ describe("splitDeposit: дробные единицы", () => {
   });
 
   it("остаток ячейки дробный — без float-мусора в own/shared", () => {
-    // Своего вида 19,9 + чужой стек 20: в личной остаётся ровно 0,1.
+    // Своего вида — ячейка без 0,1 + полный чужой стек: в личной остаётся ровно 0,1.
     const r = splitDeposit({
       qty: 0.3,
-      ownSame: 19.9,
-      ownCounts: [19.9, CELL_SIZE],
+      ownSame: CELL_SIZE - 0.1,
+      ownCounts: [CELL_SIZE - 0.1, CELL_SIZE],
       sharedSame: 0,
       sharedCounts: [],
     });
@@ -86,30 +86,39 @@ describe("splitDeposit: дробные единицы", () => {
 });
 
 describe("splitDeposit: два стека с одинаковым счётом", () => {
-  // Регрессия: свой стек исключался по ЗНАЧЕНИЮ count, и «Помидоры 20 |
-  // Молоко 20» считались одной занятой ячейкой вместо двух.
-  it("own: полка из двух полных стеков по 20 — места нет", () => {
-    const r = splitDeposit({ qty: 20, scope: "own", ...empty, ownSame: 20, ownCounts: [20, 20] });
-    expect(r).toEqual({ own: 0, shared: 0, rejected: 20 });
+  // Регрессия: свой стек исключался по ЗНАЧЕНИЮ count, и «Помидоры N |
+  // Молоко N» считались одной занятой ячейкой вместо двух.
+  it("own: полка из двух полных стеков — места нет", () => {
+    const full = [CELL_SIZE, CELL_SIZE];
+    const r = splitDeposit({
+      qty: CELL_SIZE,
+      scope: "own",
+      ...empty,
+      ownSame: CELL_SIZE,
+      ownCounts: full,
+    });
+    expect(r).toEqual({ own: 0, shared: 0, rejected: CELL_SIZE });
   });
 
   it("auto: та же полка — всё уходит на общую", () => {
-    const r = splitDeposit({ qty: 20, ...empty, ownSame: 20, ownCounts: [20, 20] });
-    expect(r).toEqual({ own: 0, shared: 20, rejected: 0 });
+    const full = [CELL_SIZE, CELL_SIZE];
+    const r = splitDeposit({ qty: CELL_SIZE, ...empty, ownSame: CELL_SIZE, ownCounts: full });
+    expect(r).toEqual({ own: 0, shared: CELL_SIZE, rejected: 0 });
   });
 
-  it("own: два стека по 17 — доливается только остаток своей ячейки", () => {
-    const r = splitDeposit({ qty: 10, scope: "own", ...empty, ownSame: 17, ownCounts: [17, 17] });
+  it("own: два стека без трёх до полной — доливается только остаток своей ячейки", () => {
+    const n = CELL_SIZE - 3;
+    const r = splitDeposit({ qty: 10, scope: "own", ...empty, ownSame: n, ownCounts: [n, n] });
     expect(r).toEqual({ own: 3, shared: 0, rejected: 7 });
   });
 
-  it("shared: восемь полных стеков по 20 — отказ", () => {
+  it("shared: восемь полных стеков — отказ", () => {
     const busy = Array.from({ length: SHARED_CELLS }, () => CELL_SIZE);
     const r = splitDeposit({
       qty: 5,
       scope: "shared",
       ...empty,
-      sharedSame: 20,
+      sharedSame: CELL_SIZE,
       sharedCounts: busy,
     });
     expect(r).toEqual({ own: 0, shared: 0, rejected: 5 });
@@ -184,12 +193,12 @@ describe("splitDeposit exact: ручной перенос без тысячны�
   });
 
   it("пыль, не влезшая в своё, не открывает ячейку на общей полке", () => {
-    // Своего вида 12,262 + чужой стек: в личной остаётся ровно 7,738.
+    // Своего вида — ячейка без 7,738 + чужой стек: в личной остаётся ровно 7,738.
     const r = splitDeposit({
       qty: 7.738083231,
       exact: true,
-      ownSame: 12.262,
-      ownCounts: [12.262, CELL_SIZE],
+      ownSame: CELL_SIZE - 7.738,
+      ownCounts: [CELL_SIZE - 7.738, CELL_SIZE],
       sharedSame: 0,
       sharedCounts: [],
     });
@@ -200,8 +209,8 @@ describe("splitDeposit exact: ручной перенос без тысячны�
     const r = splitDeposit({
       qty: 10.5,
       exact: true,
-      ownSame: 12.262,
-      ownCounts: [12.262, CELL_SIZE],
+      ownSame: CELL_SIZE - 7.738,
+      ownCounts: [CELL_SIZE - 7.738, CELL_SIZE],
       sharedSame: 0,
       sharedCounts: [],
     });

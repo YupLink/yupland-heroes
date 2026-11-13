@@ -5,18 +5,23 @@
 // декора (payForHit + refund), причина в суточном агрегате — «dig».
 import { payForHit, type HitPayment } from "@/server/api/beta-raid/encounter-pay";
 import { DIG_ENERGY } from "@/lib/lootBag";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 
 /** Сколько энергии стоит закопать, выкопать или копать (число — в lib/lootBag). */
 export { DIG_ENERGY };
 
-/** Снять энергию за переворот. Нехватка — ключом «Нужно N энергии». */
-export async function payDig(wallet: string): Promise<HitPayment> {
+/**
+ * Снять энергию за переворот. Нехватка — ключом «Нужно N энергии». Цена — по
+ * карте, где копают: на острове в 10 раз меньше (island/energy), в мире прежняя.
+ */
+export async function payDig(wallet: string, mapId: string): Promise<HitPayment> {
+  const cost = scaleEnergy(DIG_ENERGY, energyMultOf(mapId));
   try {
-    return await payForHit(wallet, DIG_ENERGY, "dig");
+    return await payForHit(wallet, cost, "dig");
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e ?? "");
-    if (/not_enough_energy|Нужно \d+ энергии/.test(msg)) {
-      throw new Error(`braid.need_energy|${JSON.stringify({ n: DIG_ENERGY })}`);
+    if (/not_enough_energy|Нужно [\d.]+ энергии/.test(msg)) {
+      throw new Error(`braid.need_energy|${JSON.stringify({ n: cost })}`);
     }
     throw e;
   }

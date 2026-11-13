@@ -5,6 +5,7 @@
 // предметы ждут в «Добыче», а не пропадают.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EncounterTarget } from "@/server/api/beta-raid/encounter-target";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { countOf, db, md5, packOf, resetDb } from "./bag.fake";
 
 const s = vi.hoisted(() => ({
@@ -88,15 +89,23 @@ describe("объект карты (сундук, монетка, кучка)", (
       target("chest", [
         { kind: "likes", amount: 10 },
         { kind: "resource", resource: "gold", amount: 5 },
-        { kind: "custom", itemId: "cst_banana", amount: 25 },
+        { kind: "custom", itemId: "cst_banana", amount: CELL_SIZE + 5 },
       ]),
       { mapId: "map1", cycleNo: 0, q: 4, r: 9 },
     );
     expect(s.queued.map((x) => x.kind).sort()).toEqual(["likes", "resource"]);
-    expect(packOf("h1").get(BANANA)).toMatchObject({ count: 20, marks: { loot: 20 } });
+    expect(packOf("h1").get(BANANA)).toMatchObject({
+      count: CELL_SIZE,
+      marks: { loot: CELL_SIZE },
+    });
     expect(bags()).toEqual([expect.objectContaining({ q: 4, r: 9, droppedBy: "acc1" })]);
     expect(bags()[0].items[0]).toMatchObject({ count: 5, marks: { loot: 5 } });
-    expect(got).toContainEqual({ kind: "custom", amount: 25, packId: "cst_banana", dropped: 5 });
+    expect(got).toContainEqual({
+      kind: "custom",
+      amount: CELL_SIZE + 5,
+      packId: "cst_banana",
+      dropped: 5,
+    });
   });
 
   it("всё влезло — «Добыча» предметов не получает, мешочка нет", async () => {
@@ -113,15 +122,15 @@ describe("объект карты (сундук, монетка, кучка)", (
     db.failOn = ["drop"];
     const got = await grantEncounterRewards(
       "w1",
-      target("chest", [{ kind: "custom", itemId: "cst_banana", amount: 25 }]),
+      target("chest", [{ kind: "custom", itemId: "cst_banana", amount: CELL_SIZE + 5 }]),
       { mapId: "map1", cycleNo: 0, q: 4, r: 9 },
     );
-    expect(packOf("h1").get(BANANA)?.count).toBe(20);
+    expect(packOf("h1").get(BANANA)?.count).toBe(CELL_SIZE);
     expect(s.queued).toEqual([
       expect.objectContaining({ kind: "custom", amount: 5, packId: "cst_banana", origin: "loot" }),
     ]);
     expect(got).toEqual([
-      { kind: "custom", amount: 20, packId: "cst_banana", dropped: 0 },
+      { kind: "custom", amount: CELL_SIZE, packId: "cst_banana", dropped: 0 },
       { kind: "custom", amount: 5, packId: "cst_banana", queued: true },
     ]);
   });
@@ -157,7 +166,7 @@ describe("награда босса по топу вклада", () => {
   it("далёкому игроку с полным рюкзаком — мешочек у босса; мне — в рюкзак", async () => {
     db.heroes.set("acc2", { heroId: "h2", capacity: 1, potionCapacity: 0 });
     packOf("h2").set("custom:cst_other", {
-      count: 20,
+      count: CELL_SIZE,
       marks: { mob: 0, mine: 0, field: 0, loot: 0 },
       wear: 0,
     });

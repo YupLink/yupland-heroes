@@ -9,6 +9,11 @@ import { labelForLevel } from "@/components/chips/levelLabel";
 import { fmtTickets, fmtFarm, fmtBurnedPct, Badge } from "@/components/chips/collectionsHelpers";
 import { humanError } from "@/lib/humanError";
 import { farmView, fmtCountdown } from "@/components/chips/collectionFarmView";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
+
+/** Ферма считает в билетах, игрок видит золото ×100 (ПРАВИЛА §8.61). */
+const g = goldForEarnedTickets;
 
 function CollectionCard({
   collection,
@@ -67,13 +72,13 @@ function CollectionCard({
     onSuccess: (r) => {
       toast.success(
         t("chips.farm_claimed", {
-          tickets: fmtTickets(r.claimedTickets),
+          tickets: fmtTickets(r.claimedGold ?? g(r.claimedTickets)),
           level: labelForLevel(r.minLevel),
-          rate: fmtTickets(r.ratePerDay),
+          rate: fmtTickets(g(r.ratePerDay)),
         }) + (r.bonusPct ? " · " + t("chips.museum_bonus", { n: r.bonusPct }) : ""),
       );
       qc.invalidateQueries({ queryKey: ["my-collection-farms"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       // Музей читает СВОЙ запрос — без этого кнопка «Собрать» остаётся гореть
       // после сбора, хотя кулдаун уже пошёл.
       qc.invalidateQueries({ queryKey: ["beta-museum"] });
@@ -147,18 +152,18 @@ function CollectionCard({
       {farm && total > 0 && (
         <div className="mt-3 rounded-xl border border-border/60 bg-secondary/20 p-2.5 text-[11px]">
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
-            <Badge label="3★" filled={at3} total={total} rate={0.1} />
-            <Badge label="4★" filled={at4} total={total} rate={0.5} />
-            <Badge label="5★" filled={at5} total={total} rate={1.0} />
+            <Badge label="3★" filled={at3} total={total} rate={g(0.1)} />
+            <Badge label="4★" filled={at4} total={total} rate={g(0.5)} />
+            <Badge label="5★" filled={at5} total={total} rate={g(1.0)} />
           </div>
 
           {farm.ratePerDay > 0 ? (
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="font-mono font-bold text-gold">{fmtFarm(accruedNow)} 🎟</div>
+                <div className="flex items-center gap-1 font-mono font-bold text-gold">{fmtFarm(g(accruedNow))} <ResourceGlyph kind="gold" className="h-3.5 w-3.5" /></div>
                 <div className="text-[10px] text-muted-foreground">
-                  {t("chips.per_day", { n: fmtTickets(farm.ratePerDay) })} ·{" "}
-                  {t("chips.claimed_total", { n: fmtFarm(farm.totalClaimed) })}
+                  {t("chips.per_day", { n: fmtTickets(g(farm.ratePerDay)) })} ·{" "}
+                  {t("chips.claimed_total", { n: fmtFarm(g(farm.totalClaimed)) })}
                 </div>
                 {capDays != null && (
                   <div

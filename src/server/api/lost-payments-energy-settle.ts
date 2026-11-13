@@ -2,6 +2,7 @@
 // тем же кодом можно было закрыть оплату игрока сразу по клику, не дожидаясь
 // получаса до следующего запуска крона (§13.1).
 import { mcpExec } from "@/server/db/mcpClient";
+import { isEnergyTransferAccepted } from "@/lib/energyPayAllowed";
 import { sqlStr } from "./raid-shared";
 
 export const ENERGY_RECEIVER = "darai_gdrop.near";
@@ -36,7 +37,7 @@ export function rawToHuman(raw: number | string, decimals: number): number {
 
 export type SettleOutcome =
   | { ok: true; wallet: string; packId: string; energy: number }
-  | { ok: false; reason: "no_memo" | "cheap" | "known" | "bad_tx" };
+  | { ok: false; reason: "no_memo" | "cheap" | "known" | "bad_tx" | "not_allowed" };
 
 /** Активные паки — по ним разбираем memo `buy energy pack {id}`. */
 export async function loadEnergyPacks(): Promise<Map<string, EnergyPackRow>> {
@@ -71,6 +72,8 @@ export async function settleEnergyTransfer(args: {
   /** Метка и подписант ИЗ ЗАПИСИ Sendler — без похода в цепь (см. выше). */
   memo: string;
   signer: string;
+  /** Время блока перевода, мс (Sendler blockTimestampNs / 1e6); NaN — неизвестно. */
+  blockMs: number;
 }): Promise<SettleOutcome> {
   const head = args.signer ? { memo: args.memo, signer: args.signer } : null;
   if (!head) return { ok: false, reason: "bad_tx" };
@@ -78,6 +81,16 @@ export async function settleEnergyTransfer(args: {
   const packId = head.memo.match(/buy energy pack (\S+)/)?.[1];
   const pack = packId ? args.packs.get(packId) : undefined;
   if (!packId || !pack) return { ok: false, reason: "no_memo" };
+
+  // §8.61: энергопак за токен (USDT, magicdust, RF…) больше не продаётся.
+  // Перевод, отправленный до среза, доезжает; позже — не зачитываем, а пишем
+  // в лог для ручного разбора (lib/energyPayAllowed).
+  if (!isEnergyTransferAccepted(args.symbol, args.blockMs)) {
+    console.warn(
+      `[energy-settle] токен не принимается: ${head.signer} ${args.paid} ${args.symbol} tx ${args.tx} пак ${packId}`,
+    );
+    return { ok: false, reason: "not_allowed" };
+  }
 
   // Хватило ли суммы: сравниваем с САМОЙ ДЕШЁВОЙ ступенью этой валюты —
   // точную ступень задним числом не восстановить, а недоплату пропускать нельзя.

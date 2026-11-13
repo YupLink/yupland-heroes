@@ -4,8 +4,8 @@
 // деньги ушли в никуда — спасал ручной разбор. Теперь крон сам находит такие
 // переводы по memo `buy energy pack {packId}` и выдаёт энергию.
 //
-// В отличие от пак-догона работает с ЛЮБЫМ токеном (HOPE, GDarai, USDT…),
-// потому что энергия продаётся за целый список валют.
+// Токены (HOPE, GDarai, USDT…) зачитывает только за переводы до среза §8.61
+// (lib/energyPayAllowed): с 20.10.2026 энергопак за токен не продаётся.
 //
 // Зачёт одного перевода живёт в lost-payments-energy-settle.ts — тем же кодом
 // игрок закрывает свою оплату сразу, не дожидаясь крона (energy-packs-pending).
@@ -72,6 +72,7 @@ export async function runEnergyOrphanReconcile(): Promise<Result> {
       packs,
       memo: mm.memo,
       signer: mm.signer,
+      blockMs: ts,
     }).catch(() => null);
 
     if (!res) continue;

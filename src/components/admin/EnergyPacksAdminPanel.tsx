@@ -1,4 +1,4 @@
-// АДМИН: энерго-паки магазина (покупка энергии за билеты/DARAI).
+// АДМИН: энерго-паки магазина (покупка энергии за золото/DARAI/звёзды; цены — EnergyLadderEditor).
 // Килсвич «показать всем», список паков + inline-форма создания/редактирования,
 // удаление. Пока килсвич OFF — паки видны только админам (тест). См. energyPacks.ts.
 import { useState } from "react";
@@ -6,7 +6,8 @@ import { EnergyPackForm } from "./EnergyPackForm";
 import { parsePricing, type OfferPricing } from "@/lib/energySteps";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Zap, Plus, Trash2, Eye, EyeOff, Ticket, Coins, CalendarDays } from "lucide-react";
+import { Zap, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { EnergyPackPriceLine } from "./EnergyPackPriceLine";
 import { cn } from "@/lib/utils";
 import {
   adminListEnergyPacks,
@@ -212,26 +213,7 @@ export function EnergyPacksAdminPanel() {
                     </span>
                   )}
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Ticket className="h-3 w-3 text-gold" />
-                    {p.priceTickets != null ? p.priceTickets : "—"}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Coins className="h-3 w-3 text-gold" />
-                    {p.priceDarai != null ? p.priceDarai.toLocaleString("ru-RU") : "—"}
-                  </span>
-                  {p.priceTokenSymbol && p.priceTokenAmount != null && (
-                    <span className="inline-flex items-center gap-1">
-                      <Coins className="h-3 w-3 text-emerald-400" />
-                      {p.priceTokenAmount.toLocaleString("ru-RU")} {p.priceTokenSymbol}
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarDays className="h-3 w-3 text-sky-400" />
-                    {p.dailyLimit || "∞"}/день
-                  </span>
-                </div>
+                <EnergyPackPriceLine p={p} />
               </div>
               <button
                 type="button"

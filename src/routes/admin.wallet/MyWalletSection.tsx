@@ -15,7 +15,7 @@ import { HistoryTab } from "./WalletTabs";
 import { WalletPickerSheet } from "./WalletPickerSheet";
 import { WalletSettingsSheet } from "./WalletSettingsSheet";
 import { SendModal } from "./SendModal";
-import { UnlockGate } from "./UnlockGate";
+import { VaultGate } from "@/components/wallet/VaultGate";
 import { AddChoice } from "./AddChoice";
 import { CreateForm } from "./CreateForm";
 import { ImportForm } from "./ImportForm";
@@ -75,6 +75,12 @@ export function MyWalletSection() {
     qc.invalidateQueries({ queryKey: ["my", "wallet", accountId] });
   };
 
+  // Пароль обязателен (11.11.2026): им шифруются ключи — без него кошелёк не
+  // создать, не импортировать и не открыть.
+  const needVault = !hasAppPassword() || locked;
+  const vaultGate = <VaultGate onReady={() => setLocked(false)} />;
+  if ((mode === "create" || mode === "import") && needVault) return vaultGate;
+
   if (mode === "add") {
     return (
       <section className="rounded-3xl border border-gold/25 bg-card/60 p-5 shadow-card">
@@ -129,9 +135,7 @@ export function MyWalletSection() {
     );
   }
 
-  if (locked) {
-    return <UnlockGate onUnlocked={() => setLocked(false)} />;
-  }
+  if (needVault) return vaultGate;
 
   return (
     <section className="space-y-3 animate-float-up">

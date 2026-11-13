@@ -10,6 +10,7 @@
 // а не ищет подстроки в собранном запросе.
 import { sqlStr } from "../raid-shared";
 import { WATER_SQL } from "./cell-sql";
+import { mineCellSql } from "./mine-cell-sql";
 import { RUNNER_HERE, RUNNER_LAYER, CELL_LAYER, deadHpSql, type ObjectLayer } from "./runners";
 import type { Hex } from "./flee-rules";
 import { POS_MAP_SQL } from "./pos-map-sql";
@@ -24,15 +25,20 @@ import { POS_MAP_SQL } from "./pos-map-sql";
  * под боссом/сундуком/постройкой — верни назад»). Закрытие укрытия 20.09
  * (e702ddfe) откачено.
  *
- * Два исключения из «под что угодно». Судно: клетка с кораблём рисует только
- * корабль (betaCanvasDraw.drawShip) и тап отдаёт судну (useCellTap) — беглец
- * под ним не виден и недосягаем НИКОГДА, а не «пока верхний жив». Другой
- * беглец: слой держит одного на клетку, и двум грибам в одном кусте не
- * разойтись ни на карте, ни в порядке боя.
+ * Три исключения из «под что угодно». Шахта (§8.59 п. 9, владелец):
+ * сквозь шахты не пройти никому — ни игроку, ни беглецу; под неё не прячутся
+ * и через неё не бегут (тот же mineCellSql, что у шага). Уже сидящий под
+ * шахтой беглец уходит с неё как обычно — клетку отхода запись не проверяет.
+ * Судно: клетка с кораблём рисует только корабль (betaCanvasDraw.drawShip) и
+ * тап отдаёт судну (useCellTap) — беглец под ним не виден и недосягаем
+ * НИКОГДА, а не «пока верхний жив». Другой беглец: слой держит одного на
+ * клетку, и двум грибам в одном кусте не разойтись ни на карте, ни в порядке
+ * боя.
  */
 export const CAN_STAND_DRY = `c.terrain_id IS NOT NULL
        AND c.decoration_id IS NULL
        AND c.void_fog IS NOT TRUE
+       AND NOT ${mineCellSql("c")}
        AND NOT EXISTS (SELECT 1 FROM yuplink.beta_raid_ship s
                         WHERE s.map_id = c.map_id AND s.q = c.q AND s.r = c.r)
        AND NOT ${RUNNER_HERE}`;
@@ -45,7 +51,8 @@ export const CAN_STAND_DRY = `c.terrain_id IS NOT NULL
  * двухклеточных побегов шли «сквозь босса», и владелец читал это как «перепрыгнул
  * препятствие» (21.09). Правило то же, что держит игрока (step-facts
  * .stepBlockedReason): держит объект, только пока жив; поверженный, но ещё не
- * убранный — нет. Постройка игрока не держит — и беглеца тоже.
+ * убранный — нет. Постройка игрока не держит — и беглеца тоже (кроме шахты,
+ * она закрыта уже в посадке).
  */
 export const CAN_PASS_DRY = `${CAN_STAND_DRY}
        AND (c.object_id IS NULL OR ${deadHpSql("c", CELL_LAYER)})`;

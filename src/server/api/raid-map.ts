@@ -14,6 +14,7 @@ import {
   rewardSummary,
 } from "./raid-shared";
 import { energyOf, currentRaidPos } from "./raid-helpers";
+import { customNameSql } from "@/server/api/player-name/player-name-sql";
 export const getRaidFullMap = createServerFn({ method: "GET" }).handler(
   async () => {
     const wallet = requireWallet();
@@ -78,7 +79,7 @@ export const getRaidFullMap = createServerFn({ method: "GET" }).handler(
       mcpExec(
         `SELECT location_id, name, total, mine FROM (
            SELECT r.raid_location_id AS location_id,
-                  COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
+                  COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
                   SUM(r.damage)::int AS total,
                   bool_or(r.account_id = ${sqlStr(myAccount)}) AS mine,
                   ROW_NUMBER() OVER (PARTITION BY r.raid_location_id ORDER BY SUM(r.damage) DESC) AS rn

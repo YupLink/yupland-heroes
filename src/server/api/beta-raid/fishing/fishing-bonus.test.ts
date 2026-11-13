@@ -96,7 +96,7 @@ describe("план бонуса героя", () => {
     const plan = await fishBonusPlan("w1");
     expect(plan.bonusPct).toBe(50 + step(own() + 200));
     expect(plan.steps).toEqual([{ at: 4 * MIN, bonusPct: 50 + step(own()) }]);
-    expect(await fishBonusOf("w1")).toBe(plan.bonusPct);
+    expect(await fishBonusOf("w1")).toEqual({ bonusPct: plan.bonusPct, addPct: 0 });
   });
 
   it("два баффа — по ступени на каждый срок, по возрастанию", async () => {
@@ -115,12 +115,21 @@ describe("план бонуса героя", () => {
   it("сила героя закрыта флагом — удачи нет, артефакт считается, баффы не читаются", async () => {
     db.enabled = false;
     db.buffs = [{ value: 200, endMs: 4 * MIN }];
-    expect(await fishBonusPlan("w1")).toEqual({ bonusPct: 50, steps: [] });
+    expect(await fishBonusPlan("w1")).toEqual({ bonusPct: 50, steps: [], addPct: 0 });
     expect(db.sql.some((s) => s.includes("buff_luck"))).toBe(false);
   });
 
   it("героя нет — ноль без ступеней", async () => {
     db.hero = null;
-    expect(await fishBonusPlan("w1")).toEqual({ bonusPct: 0, steps: [] });
+    expect(await fishBonusPlan("w1")).toEqual({ bonusPct: 0, steps: [], addPct: 0 });
+  });
+
+  it("рыбак (09.11.2026) — +3 к базе, и при закрытой силе героя", async () => {
+    db.hero = { ...hero([ART]), ability: "fisher" };
+    expect((await fishBonusPlan("w1")).addPct).toBe(3);
+    db.enabled = false;
+    expect(await fishBonusOf("w1")).toEqual({ bonusPct: 50, addPct: 3 });
+    db.hero = { ...hero(), ability: "killer" };
+    expect((await fishBonusOf("w1")).addPct).toBe(0);
   });
 });

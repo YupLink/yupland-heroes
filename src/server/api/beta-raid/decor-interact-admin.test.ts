@@ -85,8 +85,9 @@ beforeEach(() => Object.assign(s, fresh(), { list: undefined, meta: null }));
 describe("adminSetDecorInteract — инструмент", () => {
   it("не админ — отказ, в базу ничего", async () => {
     s.admin = false;
+    // Не админ без права catalogs (справочники без денег, 04.11.2026) — «Нет доступа».
     await expect(save({ data: { ...base, toolItemId: "cst_axe" } })).rejects.toThrow(
-      "Только админ",
+      "Нет доступа",
     );
     expect(s.sql).toHaveLength(0);
   });

@@ -9,7 +9,7 @@ export const Barracks = lazy(() =>
   import("@/components/chips/castle-barracks/BarracksScreen").then((m) => ({ default: m.BarracksScreen })),
 );
 export const Shop = lazy(() => import("@/components/chips/ShopTab").then((m) => ({ default: m.ShopTab })));
-// Рынок замка — своё окно; у игроков прежний MarketScreen.
+// Рынок замка — своё окно (маркет фишек за золото с 21.10.2026); у игроков прежний MarketScreen.
 export const Market = lazy(() => import("./CastleMarketWindow").then((m) => ({ default: m.CastleMarketWindow })));
 export const Glory = lazy(() =>
   import("./GloryScreen").then((m) => ({

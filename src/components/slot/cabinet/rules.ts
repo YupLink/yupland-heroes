@@ -71,7 +71,7 @@ function tutorialCard(card?: Card): string {
     const corner = `<span>${rank}</span><small>${suit}</small>`;
     face = `<span class="card-corner">${corner}</span><span class="card-pip">${suit}</span><span class="card-corner card-corner-bottom">${corner}</span>`;
   }
-  return `<span class="playing-card tutorial-card${card ? " is-revealed" : ""}"><span class="card-turn" aria-hidden="true"><span class="card-side card-back">?</span><span class="card-side card-face${card && cardRed(card) ? " is-red" : ""}">${face}</span></span></span>`;
+  return `<span class="playing-card tutorial-card${card ? " is-revealed" : ""}"><span class="card-turn" aria-hidden="true"><span class="card-side card-back"></span><span class="card-side card-face${card && cardRed(card) ? " is-red" : ""}">${face}</span></span></span>`;
 }
 function ruleStep(
   visual: string,

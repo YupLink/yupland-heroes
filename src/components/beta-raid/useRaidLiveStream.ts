@@ -8,20 +8,24 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { applyShipDeltas, type ShipCellDelta, type ShipsData } from "./patchShipsCache";
 import { voidKeys, type PackedCells } from "./unpackMap";
-import { applyDefeated } from "./applyFled";
-import { applyReveal, type Reveal } from "./applyReveal";
+import { handleDefeated } from "./liveDefeated";
+import type { Reveal } from "./applyReveal";
 import { handleFled, type FledWire } from "./liveFled";
 import { useT } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
 import { probeEvent } from "@/lib/perf/clientProbe";
 import { applyLiveDelta, hasRevision, MAP_KEY } from "./useMapProgressive";
 import { foreignFloor } from "@/lib/raid/liveFloor";
-import { HARVEST_KEY } from "./hud/useHarvest";
+import { HARVEST_KEY, handleMineLost } from "./hud/useHarvest";
+import { MINE_OFFICE_KEY } from "@/lib/mineOfficeBus";
 import { cellsTouchMyMines, type MineCell } from "@/lib/mineCellsTouch";
 import { DOOR_TOLLS_KEY } from "./useDoorTolls";
 import { chestLiveKeys } from "./chest/chestLive";
 import { bagEventKeys, bagEventNear } from "./loot-bag/lootBagLive";
 import { movePlayerDot } from "./movePlayerDot";
+import { mineLifeTouched, MINE_LIFE_KEY } from "./mine-life/mineLifeStore";
+import { handleMineBlast } from "./mine-blast/mineBlastLive";
+import { handleSentHome } from "./dynamite/sentHomeLive";
 import type { MapDataV } from "./mapBlob";
 import type { CellPatch, MapDelta, MapDeltaAssets } from "@/lib/raid/mapDelta";
 
@@ -29,7 +33,7 @@ import type { CellPatch, MapDelta, MapDeltaAssets } from "@/lib/raid/mapDelta";
 type DoorTollsCache = { doors?: Record<string, unknown> };
 
 type LiveData = {
-  cells: Array<{ q: number; r: number; count: number }>;
+  cells: Array<{ q: number; r: number; count: number; online: number }>;
   defeated: string[];
   defeatedRunners: string[];
   expired?: string[];
@@ -46,6 +50,7 @@ type WireEvent = FledWire & {
   /** «defeated»: кто открылся под добитым верхним (server runner-reveal). */
   reveal?: Reveal | null;
   mine?: boolean; // «built»: задета шахта — перечитать охрану
+  owner?: boolean; // «built»: шахта сменила владельца (поломка/починка) — флажки всем
   /** Этаж события (у всех событий); null — касается всех карт. */
   mapId?: string | null;
   /** «map»: дельта карты — версия и правки клеток (lib/raid/mapDelta). */
@@ -72,8 +77,7 @@ export function useRaidLiveStream(): void {
   // возвращал автору его же гребки и шаги — двойные дельты флота и метка на
   // своей клетке. Смена кошелька переоткрывает поток (см. зависимости эффекта).
   const wallet = useAppStore((s) => s.walletAddress);
-  // useT() отдаёт НОВУЮ функцию на каждый рендер; в зависимостях эффекта она
-  // пересоздавала бы поток на каждое изменение экрана. Держим её в ref.
+  // useT() — НОВАЯ функция на каждый рендер: в зависимостях пересоздавала бы поток. В ref.
   const t = useT();
   const tRef = useRef(t);
   tRef.current = t;
@@ -137,9 +141,8 @@ export function useRaidLiveStream(): void {
       if (closed) return;
       source = new EventSource("/api/beta-raid/events");
 
-      // Первое же сообщение означает живое соединение — счётчик неудач сбрасываем.
-      // Сервер шлёт события ПАЧКОЙ (массивом раз в 250 мс); одиночный объект —
-      // на всякий случай тоже принимаем.
+      // Первое сообщение — соединение живое, счётчик неудач в ноль. События идут
+      // ПАЧКОЙ (массив раз в 250 мс); одиночный объект тоже принимаем.
       source.onmessage = (e) => {
         fails = 0;
         let parsed: unknown;
@@ -173,9 +176,11 @@ export function useRaidLiveStream(): void {
 
       const handle = (event: WireEvent) => {
         probeEvent(event.type ?? "?");
-        // Событие другого этажа: поток их уже отсекает, но этаж подписчика он
-        // узнаёт с задержкой (переход порталом) — чужое к своей карте не прикладываем.
+        if (handleMineLost(qc, event)) return; // личное «шахту отняли» (useHarvest)
+        if (handleSentHome(qc, event)) return; // личное «отнесли в город» (динамит)
+        // Событие другого этажа: поток их отсекает, но этаж подписчика узнаёт с задержкой (портал) — не прикладываем.
         if (foreignFloor(event.mapId, qc.getQueryData<MapDataV>(MAP_KEY)?.mapId)) return;
+        if (handleMineBlast(event)) return; // взрыв шахт динамитом — анимация (mine-blast)
         if (event.type === "map") {
           if (typeof event.rev !== "number") return;
           applyMap({
@@ -188,11 +193,9 @@ export function useRaidLiveStream(): void {
           return;
         }
         if (event.type === "defeated") {
-          // Клетку гасим и здесь, не дожидаясь дельты «map» (applyDefeated);
-          // и беглеца, открывшегося под добитым, показываем сразу — иначе
-          // наблюдатели видели его лишь с дельтой, а без неё — через минуту.
-          applyDefeated(qc, Array.isArray(event.cells) ? event.cells : []);
-          applyReveal(qc, event.reveal);
+          // Погасить добитое (по слою: объект клетки или беглец) и показать
+          // открывшегося под ним беглеца — сразу, не дожидаясь дельты «map».
+          handleDefeated(qc, event);
           return;
         }
         // Мешочки: слой и окно перечитываем, только если задет мой «второй обзор».
@@ -209,9 +212,7 @@ export function useRaidLiveStream(): void {
         if (event.type === "built") {
           // Карту НЕ перекачиваем: клетки приходят дельтой «map». Снимаем
           // только окна затронутых построек и охрану шахт (если событие о шахте).
-          const cells = ((event.cells ?? []) as unknown[]).filter(
-            (x): x is string => typeof x === "string",
-          );
+          const cells = cellKeys(event.cells);
           if (cells.length) {
             for (const key of cells) {
               const [q, r] = key.split(",").map(Number);
@@ -223,17 +224,18 @@ export function useRaidLiveStream(): void {
             qc.invalidateQueries({ queryKey: ["beta-raid-building"] });
           }
           if (event.mine || !cells.length) refetchSoon("beta-raid-mine-guards");
+          if (mineLifeTouched(event, cells)) refetchSoon(MINE_LIFE_KEY[0]); // починка, режим
           // Сундуки: слой карты — только если задет сундук (гейт в chestLive), окна — всегда.
           for (const key of chestLiveKeys(qc, cells)) refetchSoon(key);
-          // Задета МОЯ шахта (отбили или собрали): прежний хозяин видит потерю,
-          // секцию «Шахты отбили» и перекрашенный флажок без F5 и без ожидания
-          // двухминутного опроса. Гейт нужен: 'built' идёт всем на карте от
+          // Задета МОЯ шахта (отбили или собрали) или шахта сменила владельца:
+          // флажок и «Добыча» без F5. Гейт нужен: 'built' идёт всем на карте от
           // ~15 модулей — безусловный рефетч дал бы +20 QPS при 50 онлайн.
           const myMines = (qc.getQueryData(HARVEST_KEY) as { mines?: MineCell[] } | undefined)
             ?.mines;
-          if (cellsTouchMyMines(cells, myMines)) {
+          if (event.owner || cellsTouchMyMines(cells, myMines)) {
             refetchSoon("beta-raid-harvest");
             refetchSoon("beta-raid-mine-flags");
+            refetchSoon(MINE_OFFICE_KEY[0]); // и окно «Управление шахтами»
           }
           // Правка настройки двери (цена, рамки уровня) приходит этим же
           // событием по её клетке: цены в плашке маршрута перечитываем, но

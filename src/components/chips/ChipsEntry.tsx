@@ -7,6 +7,11 @@
 // 3,5 с впустую, потом начиналась загрузка карты со своей заставкой, и Юпик
 // трижды начинал путь заново, а карта открывалась в квадратиках (12.10.2026).
 // Минимума нет: это окно загрузки, оно есть, пока грузится игра (владелец).
+//
+// На той же заставке — меню входа новичка (22.10.2026, #497194): «Начать игру»
+// и выбор расы. Вернувшийся игрок входит как раньше, без меню. Игра грузится под
+// меню, а окна игры (письма, квитанция NFT) ждут, пока меню закроют: модальное
+// окно под меню перехватило бы нажатия.
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSession } from "@/server/api/user-auth";
@@ -18,6 +23,8 @@ import { PlayerLetters } from "@/components/letters/PlayerLetters";
 import { useLang } from "@/lib/i18n";
 import { tgLoginPending, useTgLogin } from "@/lib/auth/telegramLogin";
 import { GuestEntry } from "@/components/auth/GuestEntry";
+import { GameStartMenu } from "@/components/game-start/GameStartMenu";
+import { useStartMenu } from "@/components/game-start/useStartMenu";
 
 // Module state resets on a full page load; in-app navigation does not replay the intro.
 let startupSplashCompleted = false;
@@ -47,7 +54,13 @@ export function ChipsEntry() {
   useEffect(() => {
     if (intro && screen === "castle" && !covered) startupSplashCompleted = true;
   }, [intro, screen, covered]);
-  const splash = screen === "loading" || screen === "error" || covered;
+  // Меню входа — раз на загрузку страницы; решение «показать/пропустить» одно.
+  const startMenu = useStartMenu(screen === "castle", session.data?.wallet ?? null, gameReady);
+  const menu = startMenu.mode;
+  const menuUp = menu === "new";
+  // Пока решается, новичок ли это, заставка держится: игра не мелькает до меню.
+  const holdPopups = menuUp || menu === "pending";
+  const splash = screen === "loading" || screen === "error" || covered || holdPopups;
   return (
     <>
       {screen === "guest" && <GuestEntry />}
@@ -61,8 +74,8 @@ export function ChipsEntry() {
           <GameLoadBoundary ru={ru}>
             <Suspense fallback={covered ? null : <GameLoadState ru={ru} state="loading" />}>
               <CastleGame onClassic={() => setClassic(true)} onReady={onReady} />
-              <NftInputReceipt />
-              <PlayerLetters />
+              {!holdPopups && <NftInputReceipt />}
+              {!holdPopups && <PlayerLetters />}
             </Suspense>
           </GameLoadBoundary>
         </SplashCover.Provider>
@@ -74,6 +87,15 @@ export function ChipsEntry() {
             ru={ru}
             state={screen === "error" ? "error" : "loading"}
             onRetry={() => void session.refetch()}
+            menu={
+              menuUp ? (
+                <GameStartMenu
+                  options={startMenu.options}
+                  invite={startMenu.invite}
+                  onDone={startMenu.close}
+                />
+              ) : undefined
+            }
           />
         </div>
       )}

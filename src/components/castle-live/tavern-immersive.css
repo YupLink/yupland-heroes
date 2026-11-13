@@ -8,7 +8,7 @@
   color: #eee5d2;
 }
 
-[data-tavern-style]:not(:has([data-tavern-detail])) > header {
+[data-tavern-style]:not([data-armory-preview]):not(:has([data-armory-preview])):not(:has([data-tavern-detail])) > header {
   position: absolute;
   z-index: 20;
   top: 12px;
@@ -23,7 +23,7 @@
   backdrop-filter: blur(8px);
 }
 
-section[data-tavern-style]:not(:has([data-tavern-detail])) > div:last-child:not(:has([data-tavern-immersive])) {
+section[data-tavern-style]:not([data-armory-preview]):not(:has([data-armory-preview])):not(:has([data-tavern-detail])) > div:last-child:not(:has([data-tavern-immersive])) {
   padding-top: 78px;
 }
 

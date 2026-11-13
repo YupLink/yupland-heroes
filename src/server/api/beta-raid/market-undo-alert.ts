@@ -88,7 +88,16 @@ export async function reportUndoFailure(f: UndoFailure, err: unknown): Promise<v
         "",
         "Артефакт удалён из инвентаря и НЕ восстановлен. Что именно ушло — в памятке:",
         `<code>SELECT op FROM yuplink.raid_backpack_op WHERE starts_with(op, '${memo}');</code>`,
-        "Строка памятки: <code>&lt;префикс&gt;&lt;id user_game_item&gt;=&lt;шаблон&gt;=&lt;когда получен&gt;</code>",
+        "Строка памятки: <code>&lt;префикс&gt;&lt;id user_game_item&gt;=&lt;шаблон&gt;=&lt;когда получен&gt;=&lt;износ&gt;</code>",
+      );
+    }
+    // Ломбард героев: сданный лежит снимком (hero-pawn-sql) под ключом списания;
+    // в сделке из нескольких героев — под «ключ:копия» (hero-pawn-take).
+    if (f.res === "hero" && f.token?.startsWith("hero_any_")) {
+      lines.push(
+        "",
+        "Герой снят из инвентаря и НЕ возвращён. Снимки для возврата:",
+        `<code>SELECT * FROM yuplink.pawn_hero_take WHERE (op = '${f.spendRef}' OR starts_with(op, '${f.spendRef}:')) AND restored_at IS NULL AND paid_at IS NULL;</code>`,
       );
     }
     const sending = sendTgMessageToAdmins(lines.join("\n")).catch((e) => {

@@ -5,7 +5,9 @@
 // Владелец решил проще: новый игрок считается прошедшим Прихожую и идёт сразу
 // в Фишки, а вместо накопленного добра получает стартовый набор — коммон-героя
 // и десять тренировочных фишек со случайной звёздностью (владелец, 06.10.2026;
-// было три фишки и без героя). Героя выдаёт starter-kit.ts.
+// было три фишки и без героя). Героя с 22.10.2026 здесь не дают: новичок
+// выбирает расу в меню входа («Начать игру», game-start.ts), и герой ложится
+// через starter-kit.ts.
 //
 // Продать их за билеты нельзя (см. exchangeTrainingForTickets): это плата за
 // пропуск, а не капитал. Воевать ими можно — бой на гекс-карте (босс, охрана
@@ -114,11 +116,10 @@ async function hasSkipChips(wallets: string[], accountId: string | null): Promis
 export async function skipHallwayForNewPlayer(
   wallet: string,
   tgId: number | null,
-): Promise<{ released: boolean; chips: number; hero: boolean }> {
+): Promise<{ released: boolean; chips: number }> {
   const now = new Date().toISOString();
   let released = false;
   let chips = 0;
-  let hero = false;
   try {
     const accountId = await accountForStarter(wallet, tgId);
     // Владельца пишем явно: триггер stamp_acc до этого места дотягивал только
@@ -161,38 +162,44 @@ export async function skipHallwayForNewPlayer(
       released = true;
     }
 
-    // Кошельки аккаунта: набор один на Telegram, а не на каждый кош.
-    const sisters =
-      tgId == null
-        ? [wallet]
-        : (await pg.users.findMany({ telegram_id: tgId })).map((u) => u.wallet);
-    const wallets = Array.from(new Set([wallet, ...sisters]));
-    // Герой — до проверки фишек: у него своя защита от повтора (героя нет
-    // вовсе), а сбой выдачи героя не должен оставить новичка без фишек.
-    if (accountId) {
-      const { grantStarterHero } = await import("./starter-kit");
-      hero = await grantStarterHero(accountId, wallet).catch((err) => {
-        console.warn("[hallway-skip] стартовый герой не выдан:", err);
-        return false;
-      });
-    }
-    if (await hasSkipChips(wallets, accountId)) return { released, chips: 0, hero };
-
-    for (let i = 0; i < SKIP_CHIP_COUNT; i++) {
-      await pg.hallwayTrainingChips.insert({
-        ...owner,
-        id: `htc_${nanoid(10)}`,
-        wallet,
-        telegram_id: tgId,
-        star: randomStar(),
-        source: SKIP_CHIP_SOURCE,
-        obtained_at: now,
-        consumed_at: null,
-      });
-      chips++;
-    }
+    // Остров встречает новичков — 10 стартовых фишек им не нужны: паки из
+    // первого сундука острова (владелец, 20.10.2026, §8.47; включено 06.11).
+    // Остров не создался — фишки выдаст меню входа (game-start-core).
+    const { islandNewbiesOn } = await import("./beta-raid/island/island-newbie");
+    if (await islandNewbiesOn()) return { released, chips: 0 };
+    chips = await grantSkipChips(wallet, tgId, accountId);
   } catch (err) {
     console.warn("[hallway-skip] не удалось выдать стартовый набор:", err);
   }
-  return { released, chips, hero };
+  return { released, chips };
+}
+
+/** 10 стартовых фишек — один набор на Telegram и аккаунт; был — 0. */
+export async function grantSkipChips(
+  wallet: string,
+  tgId: number | null,
+  accountId: string | null,
+): Promise<number> {
+  const owner = accountId ? { account_id: accountId } : {};
+  const now = new Date().toISOString();
+  // Кошельки аккаунта: набор один на Telegram, а не на каждый кош.
+  const sisters =
+    tgId == null ? [wallet] : (await pg.users.findMany({ telegram_id: tgId })).map((u) => u.wallet);
+  const wallets = Array.from(new Set([wallet, ...sisters]));
+  if (await hasSkipChips(wallets, accountId)) return 0;
+  let chips = 0;
+  for (let i = 0; i < SKIP_CHIP_COUNT; i++) {
+    await pg.hallwayTrainingChips.insert({
+      ...owner,
+      id: `htc_${nanoid(10)}`,
+      wallet,
+      telegram_id: tgId,
+      star: randomStar(),
+      source: SKIP_CHIP_SOURCE,
+      obtained_at: now,
+      consumed_at: null,
+    });
+    chips++;
+  }
+  return chips;
 }

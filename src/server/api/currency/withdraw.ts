@@ -13,6 +13,7 @@ import { OPERATING_WALLET } from "./treasury";
 import { accAccountId, humanizeAccError } from "./move";
 import { moneyGate } from "../../rateGate";
 import { requireAccountUser } from "../account-rollout";
+import { assertAccountWithdrawOpen } from "../google-login/noWithdraw";
 
 type TokenRow = {
   symbol: string;
@@ -48,7 +49,7 @@ export async function draftAccountWithdrawal(opts: {
   // Внутренний идентификатор tg<telegram_id> — НЕ NEAR-account. Такой
   // «кошелёк» есть у игроков, которые ещё не привязали настоящий адрес: в
   // цепи его нет, ft_transfer уходит в никуда, средства оседают на балансе
-  // контракта. Ровно так был потерян вывод у player10 (20 GDarai,
+  // контракта. Ровно так был потерян вывод у одного игрока (20 GDarai,
   // сентябрь 2026). Гейт стоит здесь, до списания.
   const { isValidNearAccountForPayout } = await import("../near-account-validate");
   if (!isValidNearAccountForPayout(recipient)) {
@@ -161,6 +162,7 @@ export const requestAccountWithdraw = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     assertNotMaintenance();
+    await assertAccountWithdrawOpen(data.token.trim());
     const wallet = await requireAccountUser();
     await moneyGate("withdraw", wallet);
     const r = await draftAccountWithdrawal({

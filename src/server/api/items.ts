@@ -1,7 +1,6 @@
 // ───────────────────────── Артефакты и герои ─────────────────────────
 // Определения создаются в конструкторе (админка), хранятся в
 // mystic_item_template. Экземпляры у игрока — user_game_item (инвентарь).
-// Временная схема — потом переделаем под артефакты (запрос владельца).
 // Как приз выдаются из мистик-бокса / рейда / локации (интеграция отдельно).
 
 import { createServerFn } from "@tanstack/react-start";
@@ -16,6 +15,17 @@ import { dropFleeCache } from "./beta-raid/flee-cells";
 import { assertHeroAbility, assertHeroRaceSpec } from "./items-hero-guard";
 import { templateOnMaps, templateOnMapsError } from "./beta-raid/template-on-map";
 import { keepDecorInteract } from "./items-meta";
+import { artDurability } from "@/lib/hero/artWear";
+import { isCraftedMeta } from "./craft/crafted-sql";
+import { enchantItemCards } from "@/server/api/beta-raid/enchant/enchant-cards";
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
+import { bridgeAxes } from "@/lib/raid/bridgeTransit";
+import {
+  assertItemTemplateDeletable,
+  assertItemTemplateFree,
+  requireCatalogEditor,
+  withoutMoney,
+} from "@/server/api/catalog-auth";
 
 // Пакетная выдача живёт отдельным модулем (лимит 250 строк), но импортируется
 // отсюда — чтобы админке хватало одного адреса «@/server/api/items».
@@ -81,10 +91,16 @@ export const adminCreateItem = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const wallet = requireAdmin();
+    // Админ — как было; право catalogs — без денег (catalog-auth).
+    const actor = await requireCatalogEditor();
+    const wallet = actor.wallet;
+    const meta = withoutMoney(actor, data.meta);
+    if (data.kind === "decoration" && meta?.bridge !== undefined && !bridgeAxes(meta.bridge)) {
+      throw new Error("У моста должны быть две разные оси из трёх направлений");
+    }
     // Герой без расы/спеца — нули на любом уровне (инцидент 15.09, items-hero-guard).
     assertHeroRaceSpec(data.kind, data, "create");
-    assertHeroAbility(data.meta);
+    assertHeroAbility(meta);
     const id = `${data.kind}_${nanoid(10)}`;
     const isArt = data.kind === "artifact";
     const isHero = data.kind === "hero" || data.kind === "mob";
@@ -108,7 +124,7 @@ export const adminCreateItem = createServerFn({ method: "POST" })
       fish_bonus_pct: isArt ? (data.fishBonusPct ?? 0) : 0,
       immunities: isArt ? (data.immunities ?? null) : null,
       slot: isArt ? (data.slot ?? null) : null,
-      meta: data.meta ?? null,
+      meta: meta ?? null,
       active: true,
       created_at: new Date().toISOString(),
       created_by_wallet: wallet,
@@ -149,7 +165,22 @@ export const adminUpdateItem = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    const actor = await requireCatalogEditor();
+    // Не админ: шаблон с деньгами — только админу, присланное — без денег.
+    await assertItemTemplateFree(actor, data.id);
+    data.meta = withoutMoney(actor, data.meta);
+    let bridgeChanged = false;
+    if (data.meta !== undefined) {
+      const current = await pg.mysticItemTemplates.findOne({ id: data.id });
+      if (current?.kind === "decoration") {
+        const before = bridgeAxes((current.meta as Record<string, unknown> | null)?.bridge);
+        const after = bridgeAxes(data.meta.bridge);
+        if (data.meta.bridge !== undefined && !after) {
+          throw new Error("У моста должны быть две разные оси из трёх направлений");
+        }
+        bridgeChanged = JSON.stringify(before) !== JSON.stringify(after);
+      }
+    }
     // Kind читаем только когда патч трогает расу/спец: у героя их нельзя ни
     // обнулить, ни подменить строкой вне таблицы (items-hero-guard).
     if (data.race !== undefined || data.specialization !== undefined) {
@@ -190,7 +221,7 @@ export const adminUpdateItem = createServerFn({ method: "POST" })
     // тост есть, а на карте старое имя, помогает только F5»). purge, а не
     // stale: тот же администратор сразу перечитает карту, и на протухшем
     // снапшоте имя откатилось бы.
-    if (patch.name !== undefined || patch.image_url !== undefined) {
+    if (patch.name !== undefined || patch.image_url !== undefined || bridgeChanged) {
       // Через журнал активной карты: у игроков словари живут в снимке с
       // версией, и без сдвига версии новое имя/картинка не доехали бы до
       // перекачки. Сброс основы делает сам recordMapChange.
@@ -207,7 +238,9 @@ export const adminUpdateItem = createServerFn({ method: "POST" })
 export const adminDeleteItem = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    const actor = await requireCatalogEditor();
+    // Не админ: без денег и только то, чего нет у игроков (экземпляры ниже удаляются).
+    await assertItemTemplateDeletable(actor, data.id);
     // Шаблон на карте не удаляем: клетки ссылаются на него без внешнего
     // ключа, и после удаления оставалась мёртвая ссылка — зелёная точка-стена
     // без имени («две мёртвые клетки», 20.09). См. beta-raid/template-on-map.
@@ -236,12 +269,15 @@ export const adminListItems = createServerFn({ method: "POST" })
       .parse(d ?? {}),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    // Список — и дизайнеру замка: кисть на его острове новичка (island-editor-auth).
+    await requireDesigner();
     let q = pg.mysticItemTemplates.raw().select("*");
     if (data.kind) q = q.eq("kind", data.kind);
     q = q.limit(data.limit ?? 5000);
     const { data: rows } = await q.order("created_at", { ascending: true });
-    return ((rows ?? []) as PgMysticItemTemplate[]).map((r) => ({
+    // Артефакты лаборатории (§8.81) — не призы и не товар: в пикеры админки не идут.
+    const list = ((rows ?? []) as PgMysticItemTemplate[]).filter((r) => !isCraftedMeta(r.meta));
+    return list.map((r) => ({
       id: r.id,
       kind: r.kind,
       name: r.name,
@@ -301,8 +337,7 @@ export const adminGrantItem = createServerFn({ method: "POST" })
   });
 
 // Инвентарь предметов аккаунта — владелец один, перебирать адреса больше не
-// нужно. Отдаёт данные для
-// «квадратных» карточек (как фишки): имя, картинка, редкость/уровень.
+// нужно. Отдаёт данные для «квадратных» карточек: имя, картинка, редкость/уровень.
 export const listMyItems = createServerFn({ method: "GET" }).handler(async () => {
   const wallet = getCurrentWallet();
   if (!wallet) return [];
@@ -316,7 +351,6 @@ export const listMyItems = createServerFn({ method: "GET" }).handler(async () =>
   const tplIds = Array.from(new Set(items.map((i) => i.template_id)));
   const { data: tplRows } = await pg.mysticItemTemplates.raw().select("*").in("id", tplIds);
   const tplById = new Map(((tplRows ?? []) as PgMysticItemTemplate[]).map((t) => [t.id, t]));
-
   // Уровни прокачки героев: у одного шаблона может быть несколько экземпляров
   // с разными уровнями (один прокачали, остальные нет) — раздаём их по порядку.
   const heroLevels = new Map<string, number[]>();
@@ -333,8 +367,7 @@ export const listMyItems = createServerFn({ method: "GET" }).handler(async () =>
     for (const arr of heroLevels.values()) arr.sort((a, b) => b - a);
   }
   const taken = new Map<string, number>();
-
-  return items.map((i) => {
+  const cards = items.map((i) => {
     const t = tplById.get(i.template_id);
     return {
       id: i.id,
@@ -371,6 +404,8 @@ export const listMyItems = createServerFn({ method: "GET" }).handler(async () =>
       slot: t?.slot ?? null,
       templateId: i.template_id,
       obtainedAt: i.obtained_at,
+      durability: i.kind === "artifact" ? artDurability((i as { wear?: unknown }).wear) : null,
     };
   });
+  return enchantItemCards(cards); // зачарованный артефакт — статы × (1 + pct/100)
 });

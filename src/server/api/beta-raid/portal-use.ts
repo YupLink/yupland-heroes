@@ -91,6 +91,15 @@ export const enterBetaPortal = createServerFn({ method: "POST" })
     const islandExit = await islandPortalExit(wallet, mapId);
     const exit = islandExit ?? (await networkExit(cfg, mapId, data.q, data.r));
     const crossMap = exit.mapId !== mapId ? exit.mapId : null;
+    // Мир строителей (lib/landPlace) — пока только тем, кому открыта фича
+    // builder_world (админам всегда). Выйти из него можно всегда.
+    if (crossMap) {
+      const { isBuilderWorld } = await import("./land/builder-world");
+      if (await isBuilderWorld(crossMap)) {
+        const { canUseFeature } = await import("../testers");
+        if (!(await canUseFeature(wallet, "builder_world"))) throw new Error("builder.closed");
+      }
+    }
 
     // Свой этаж: судно проходит переход вместе с капитаном. На другой этаж судно
     // не едет — остаётся у входа (leaveShipBehind ниже), а на водном выходе
@@ -113,7 +122,7 @@ export const enterBetaPortal = createServerFn({ method: "POST" })
       await refundPortal(wallet, cfg.prices, ref);
       throw new Error("Портал не сработал — попробуй ещё раз");
     }
-    if (islandExit) await finishIsland(wallet, mapId);
+    const islandCut = islandExit ? await finishIsland(wallet, mapId) : null;
     // Переход состоялся — плата в журнал сделок (и энергия в причины трат); best-effort.
     void notePricesPaid({
       source: "portal",
@@ -142,5 +151,5 @@ export const enterBetaPortal = createServerFn({ method: "POST" })
     // Судно осталось у входа — на прежнем этаже.
     if (leftShip) publishRaid({ mapId, type: "ships" });
     // map — новый этаж: клиент по нему перекачивает карту целиком.
-    return { ok: true as const, q: exit.q, r: exit.r, ship: res.mode, map: crossMap };
+    return { ok: true as const, q: exit.q, r: exit.r, ship: res.mode, map: crossMap, islandCut };
   });

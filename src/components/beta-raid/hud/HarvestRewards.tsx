@@ -14,7 +14,7 @@ import { useT } from "@/lib/i18n";
 import { formatQty } from "@/lib/formatQty";
 import { thumb } from "@/lib/image";
 import { prizeIcon, prizeImage } from "@/lib/prizeIcon";
-import { rewardKindLabelKey } from "@/lib/rewardKinds";
+import { rewardKindLabelKey, rewardShownAmount } from "@/lib/rewardKinds";
 import { groupPendingRewards, isPieceKind, isTokenKind, rewardGroupKey } from "@/lib/rewardGroup";
 import type { PendingSource, PendingReward } from "@/server/api/raid-rewards-pending";
 import { HarvestSection } from "./HarvestSection";
@@ -33,9 +33,9 @@ const KIND_KEY: Record<string, string> = {
   custom: "braid.rw_custom",
 };
 
-/** Штучное — «×N», меру и дробный товар — суммой (formatQty: без 0.7899999). */
+/** Штучное — «×N», меру и дробный товар — суммой (formatQty: без 0.7899999). Билеты — золотом ×100. */
 const qty = (r: PendingReward): string =>
-  isPieceKind(r.kind) ? `×${r.count}` : formatQty(r.amount);
+  isPieceKind(r.kind) ? `×${r.count}` : formatQty(rewardShownAmount(r.kind, r.amount));
 
 /**
  * Картинка справочника, спрайт ресурса или lucide-иконка вида — что есть.

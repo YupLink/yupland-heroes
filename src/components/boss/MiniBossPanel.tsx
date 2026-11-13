@@ -9,6 +9,7 @@ import { BossImagePicker } from "./BossImagePicker";
 import { clampNum, DEF_CFG, fromDraftCfg } from "./boss-screen-types";
 import type { DraftConfig } from "./boss-screen-types";
 
+import { thumb } from "@/lib/image";
 export function MiniBossPanel({ onSaved }: { onSaved: () => void }) {
   const t = useT();
   const qc = useQueryClient();
@@ -63,7 +64,7 @@ export function MiniBossPanel({ onSaved }: { onSaved: () => void }) {
       {miniActive ? (
         <div className="space-y-3">
           <div className="space-y-2 rounded-xl border border-success/40 bg-secondary/20 p-3">
-            {boss.imageUrl && <img src={boss.imageUrl} alt="" className="mx-auto h-24 w-24 rounded-2xl object-cover" />}
+            {boss.imageUrl && <img src={thumb(boss.imageUrl, 192)} alt="" className="mx-auto h-24 w-24 rounded-2xl object-cover" />}
             <div className="text-center font-display text-base font-bold">{boss.name}</div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
               <div className="h-full rounded-full bg-success transition-all" style={{ width: `${hpPct}%` }} />

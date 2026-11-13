@@ -51,9 +51,15 @@ export type MyStake = {
   goldDay: number;
   goldPaid: number;
   lockUntil: string | null;
+  /** Вклад NFT-холдера: раньше этого момента не снять вовсе (bank-10). Старый ответ — нет поля. */
+  holdUntil?: string | null;
   createdAt: string;
   nftTitle: string | null;
 };
+
+/** Вклад NFT-холдера ещё на сроке — снять нельзя никак (не лок с возвратом золота). */
+export const stakeHeld = (s: Pick<MyStake, "holdUntil">, now = Date.now()): boolean =>
+  !!s.holdUntil && Date.parse(s.holdUntil) > now;
 
 /** Вклад ещё в локе — снять можно только вернув золото. */
 export const stakeLocked = (s: Pick<MyStake, "lockUntil">, now = Date.now()): boolean =>

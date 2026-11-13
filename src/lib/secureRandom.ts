@@ -22,3 +22,8 @@ export function secureRandomInt(min: number, max: number): number {
     if (r < limit) return lo + (r % range);
   }
 }
+
+/** Криптослучайная дробь в [0, 1) — замена Math.random() один в один (53 бита). */
+export function secureRandom(): number {
+  return random53() / TWO53;
+}

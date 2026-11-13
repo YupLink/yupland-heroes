@@ -4,7 +4,7 @@ import { z } from "zod";
 import { pg } from "../db/pg";
 import type { PgChipPack } from "../db/pg";
 import { getCurrentWallet, isAdminWallet } from "../auth";
-import { AMOUNT_KINDS } from "@/lib/mysticKinds";
+import { AMOUNT_KINDS, randomPrizeLabel } from "@/lib/mysticKinds";
 import { rollAmount } from "./mystic-grant";
 import { parseMysticPool, type MysticTier } from "./mystic-pool";
 import { pickTier } from "./mystic-open";
@@ -43,6 +43,7 @@ export const simulateMysticOpens = createServerFn({ method: "POST" })
     };
     const nameOf = (t: MysticTier) =>
       t.label ||
+      randomPrizeLabel(t) ||
       t.itemName ||
       t.customName ||
       (t.kind === "resource" ? t.resource : t.kind === "token" || t.kind === "ft" ? t.token : null) ||
@@ -59,7 +60,7 @@ export const simulateMysticOpens = createServerFn({ method: "POST" })
         blanks++;
         continue;
       }
-      const key = `${t.kind}:${t.itemTemplateId || t.packId || t.customId || t.resource || t.token || t.label || ""}`;
+      const key = `${t.kind}:${t.itemTemplateId || t.packId || t.customId || t.resource || t.token || t.label || randomPrizeLabel(t) || ""}`;
       const amountKind = AMOUNT_KINDS.includes(t.kind);
       const amt = amountKind ? rollAmount(t) : 0;
       const cur = agg.get(key) ?? {

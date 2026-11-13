@@ -80,8 +80,14 @@ describe("SQL записи", () => {
     expect(sql).toContain(
       "FROM yuplink.res_ledger WHERE kind = 'tour_fee_refund' AND ref = 'tour:t1:a:n:0:gold:back'",
     );
+    // Строка «в билетах» платится золотом ×500 тем же ключом (§8.61); запись,
+    // оплаченная билетами до выката, видна по старому журналу.
+    expect(sql).toContain("res_ledger WHERE kind = 'tour_fee' AND ref = 'tour:t1:a:n:1:tickets')");
     expect(sql).toContain(
       "ticket_ledger WHERE kind = 'building' AND ref = 'tour:t1:a:n:1:tickets'",
+    );
+    expect(sql).toContain(
+      "res_ledger WHERE kind = 'tour_fee_refund' AND ref = 'tour:t1:a:n:1:tickets:back')",
     );
     expect(sql).toContain("kind = 'raid_reward' AND ref = 'tour:t1:a:n:1:tickets:back'");
     expect(sql).toContain("raid_backpack_op WHERE op = 'pay:tour:t1:a:n:2:energy')");

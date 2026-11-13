@@ -27,9 +27,15 @@ export function HarvestByKind({
   // Собираем per-вид: шахта отдаёт resource | token, поле — reward.resource или
   // reward.name (custom).
   const perKind = new Map<string, number>();
+  // Шахты, что платят сутками (алмазная острова, §8.59 п. 11), — «в день», не «в час».
+  const perDay = new Map<string, number>();
   for (const m of mines) {
     if (!(m.yield > 0)) continue;
     const name = m.resource === "token" ? (m.token ?? "token") : label(m.resource);
+    if (m.stepHours === 24) {
+      perDay.set(name, (perDay.get(name) ?? 0) + Number(m.yield) * 24);
+      continue;
+    }
     perKind.set(name, (perKind.get(name) ?? 0) + Number(m.yield));
   }
   for (const f of fields) {
@@ -43,11 +49,14 @@ export function HarvestByKind({
     perKind.set(name, (perKind.get(name) ?? 0) + Number(f.perHour));
   }
 
-  if (perKind.size === 0) return null;
+  if (perKind.size === 0 && perDay.size === 0) return null;
 
-  const rows = [...perKind.entries()]
-    .filter(([, v]) => v > 0)
-    .sort((a, b) => b[1] - a[1]);
+  const rows = [
+    ...[...perKind.entries()].map(([name, n]) => ({ name, n, unit: "/ч" })),
+    ...[...perDay.entries()].map(([name, n]) => ({ name, n, unit: t("mine2.day_suffix") })),
+  ]
+    .filter((r) => r.n > 0)
+    .sort((a, b) => b.n - a.n);
 
   return (
     <div className="rounded-2xl border border-border/60 bg-secondary/20 p-2.5">
@@ -55,13 +64,16 @@ export function HarvestByKind({
         {t("harvest.by_kind_title")}
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {rows.map(([name, sum]) => (
+        {rows.map(({ name, n, unit }) => (
           <span
-            key={name}
+            key={`${name}${unit}`}
             className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-300"
           >
             <span className="truncate max-w-[110px]">{name}</span>
-            <span className="tabular-nums text-emerald-200">{fmt(sum)}/ч</span>
+            <span className="tabular-nums text-emerald-200">
+              {fmt(n)}
+              {unit}
+            </span>
           </span>
         ))}
       </div>

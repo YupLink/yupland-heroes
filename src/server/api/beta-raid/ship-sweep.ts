@@ -8,9 +8,13 @@
 // Снимают штамп и сами починка (ship-repair) с посадкой (ship-crew.seatOnShip),
 // не только тик ниже: между двумя тиками борт успевает «починен → занят → сошёл
 // в минус», и старый штамп подводил его под DELETE как двухсуточного.
+//
+// Подбитый синим динамитом (blasted_at, dynamite-08) убирается тем же тиком, но через
+// ЧАС от взрыва (владелец, 30.10.2026: «исчезает через час») — своим запросом.
 import { publishRaid } from "../../raidLive";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
+import { blastedSweepSql } from "./ship-blasted";
 
 const BROKEN_TTL_DAYS = 2;
 const lastSwept = new Map<string, number>();
@@ -38,11 +42,18 @@ export async function sweepBrokenShips(mapId: string): Promise<void> {
       RETURNING id;`,
     { wrapJsonCte: true },
   ).catch(() => null)) as Array<{ id: string }> | null;
+  // Подбит час назад — тоже долой.
+  const blasted = (await mcpExec(blastedSweepSql(mapId), { wrapJsonCte: true }).catch(
+    () => null,
+  )) as Array<{ id: string }> | null;
   // Причалы кэшируются (ship-berths): без события снятое судно висело бы у
   // всех на карте ещё до 10 с. Снятое — в лог: журнала удалений нет, и жалобу
   // «корабль испарился» иначе не с чем сверить.
-  if (gone && gone.length > 0) {
-    console.log(`[ship-sweep] сняты с карты ${mapId}: ${gone.map((g) => g.id).join(", ")}`);
-    publishRaid({ mapId, type: "ships" });
+  const all = [...(gone ?? []), ...(blasted ?? [])];
+  if (all.length > 0) {
+    console.log(`[ship-sweep] сняты с карты ${mapId}: ${all.map((g) => g.id).join(", ")}`);
+    // Автор — никто: иначе вкладки того же кошелька, чей запрос запустил уборку,
+    // отбросили бы событие как «своё» и видели обломок до опроса.
+    publishRaid({ mapId, type: "ships" }, null);
   }
 }

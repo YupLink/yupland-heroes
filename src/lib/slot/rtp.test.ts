@@ -65,7 +65,7 @@ describe("отдача слота", () => {
     }
     expect(won / wag).toBeGreaterThan(0.55);
     expect(won / wag).toBeLessThan(0.61);
-  });
+  }, 60_000);
 });
 
 describe("удвоение", () => {

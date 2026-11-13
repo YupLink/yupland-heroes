@@ -99,7 +99,8 @@ export function AbilitiesEditor({
                     />
                   </label>
 
-                  {a.kind !== "stun" && (
+                  {/* У оглушения и снятия иммунитетов силы нет — только шанс и минуты. */}
+                  {a.kind !== "stun" && a.kind !== "strip_immune" && (
                     <label className="text-[11px] text-muted-foreground">
                       {meta.valueLabel}
                       <input

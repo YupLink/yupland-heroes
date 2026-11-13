@@ -1,31 +1,21 @@
-// Рынок замка: окно Ангелины + «+» у баланса билетов (окно покупки билетов)
-// + «Выбрать» и «Флор N» → групповая покупка одной транзакцией
-// (server/api/market-batch-buy.ts). У игроков
-// прежний MarketScreen — и «+», и выбор живут только здесь.
-import { Suspense, lazy, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSession } from "@/server/api/user-auth";
-import { buyMarketListings } from "@/server/api/market-batch-buy";
-import { isWalletLinked } from "@/lib/walletLinked";
+// Рынок замка: окно Ангелины + «Выбрать» и «Флор N» → групповая покупка одной
+// транзакцией (server/api/market-batch-buy.ts). С 21.10.2026 маркет фишек снова
+// открыт — за золото (владелец): цены, баланс и нехватка — в золоте; «+» у баланса
+// открывает покупку золота (§8.66) — на месте прежнего «+» билетов.
+import { lazy, Suspense, useState } from "react";
 import { useLang } from "@/lib/i18n";
 import { newOpId } from "@/lib/opId";
-import { TICKETS_KEY } from "@/lib/hooks/useTickets";
+import { buyMarketListings } from "@/server/api/market-batch-buy";
 import { CastleMarketScreen } from "@/components/chips/castle-market/CastleMarketScreen";
 
-const TicketPurchaseLive = lazy(() =>
-  import("@/components/chips/trading-house/TicketPurchaseLive").then((m) => ({ default: m.TicketPurchaseLive })),
-);
 const MAX_LOTS = 500;
+const GoldBuyDialog = lazy(() =>
+  import("./gold-buy/GoldBuyDialog").then((m) => ({ default: m.GoldBuyDialog })),
+);
 
 export function CastleMarketWindow({ onOpenShop }: { onOpenShop?: () => void }) {
   const ru = useLang() === "ru";
-  const qc = useQueryClient();
-  const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
-  const [buy, setBuy] = useState(false);
-  const close = () => {
-    setBuy(false);
-    void qc.invalidateQueries({ queryKey: TICKETS_KEY, refetchType: "all" });
-  };
+  const [goldOpen, setGoldOpen] = useState(false);
   const money = (n: number) => n.toLocaleString(ru ? "ru-RU" : "en-US", { maximumFractionDigits: 2 });
 
   // Частичный успех — не общий отказ: купленное остаётся купленным, а про
@@ -39,8 +29,8 @@ export function CastleMarketWindow({ onOpenShop }: { onOpenShop?: () => void }) 
     const gone = failed.filter((r) => r.reason === "gone").length;
     const other = failed.find((r) => r.reason !== "gone" && r.reason !== "own");
     const head = ru
-      ? `Куплено ${done} из ${results.length} за ${money(spent)} билетов.`
-      : `Bought ${done} of ${results.length} for ${money(spent)} tickets.`;
+      ? `Куплено ${done} из ${results.length} за ${money(spent)} золота.`
+      : `Bought ${done} of ${results.length} for ${money(spent)} gold.`;
     const why = gone
       ? ru ? ` Уже купили другие: ${gone}.` : ` Already sold: ${gone}.`
       : other?.status === "failed" ? ` ${other.reason}` : "";
@@ -49,16 +39,16 @@ export function CastleMarketWindow({ onOpenShop }: { onOpenShop?: () => void }) 
 
   return (
     <>
-      <CastleMarketScreen onBuyTickets={() => setBuy(true)} batchPurchase={batchPurchase} onOpenShop={onOpenShop} />
-      {buy && (
+      <CastleMarketScreen batchPurchase={batchPurchase} onOpenShop={onOpenShop} onBuyGold={() => setGoldOpen(true)} />
+      {goldOpen && (
         <Suspense fallback={null}>
-          <TicketPurchaseLive
+          <GoldBuyDialog
             open
-            walletConnected={isWalletLinked(session.data?.wallet)}
-            accountOpen={session.data?.accountOpen === true}
-            onClose={close}
+            aboveMarket
+            ru={ru}
+            onClose={() => setGoldOpen(false)}
             returnFocus={() =>
-              requestAnimationFrame(() => document.querySelector<HTMLElement>(".market-preview__balance-add")?.focus())
+              requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-gold-topup]")?.focus())
             }
           />
         </Suspense>

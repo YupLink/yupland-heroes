@@ -7,16 +7,16 @@ import { getMyChipsForTemplate } from "@/server/api/chips-stake";
 import { ChipDetailLoadState } from "./ChipDetailLoadState";
 import { BarracksChipDetailModal } from "./BarracksChipDetailModal";
 
-export function BarracksChipDetailLoader({ chipId, templateId, stunUntil, upgradeState, onClose }: {
+export function BarracksChipDetailLoader({ chipId, templateId, stunUntil, upgradeStates, onClose }: {
   chipId: string;
   templateId: string;
   stunUntil?: string | null;
-  upgradeState?: ChipUpgradeState;
+  upgradeStates?: Record<string, ChipUpgradeState>;
   onClose: () => void;
 }) {
   const ru = useLang() === "ru";
   const q = useQuery({ queryKey: ["my-chips-for-template", templateId], queryFn: () => getMyChipsForTemplate({ data: { templateId } }) });
   // Вложенные окна (улучшение, результат) не сбрасываем на фоновом перечитывании.
   if (!q.data) return <ChipDetailLoadState ru={ru} error={q.isError || !q.isFetching} onRetry={() => void q.refetch()} onClose={onClose} />;
-  return <BarracksChipDetailModal chipId={chipId} template={q.data.template} chips={q.data.chips} stunUntil={stunUntil} upgradeState={upgradeState} onClose={onClose} />;
+  return <BarracksChipDetailModal chipId={chipId} template={q.data.template} chips={q.data.chips} stunUntil={stunUntil} upgradeStates={upgradeStates} onClose={onClose} />;
 }

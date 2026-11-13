@@ -1,19 +1,24 @@
 // Рубка руками (владелец, 17.10.2026, ПРАВИЛА §8.56): «рубить можно и руками
-// те деревья, которые можно рубить деревянным и каменным топором — но это
-// отнимает 10 энергии и 30 сытости».
+// те деревья, которые можно рубить деревянным и каменным топором».
 //
 // Руками рубится декор, у которого среди допустимых инструментов шаблона
 // (meta.interact.toolItemIds и старый toolItemId, lib/raid/decorTools) есть
-// деревянный или каменный топор. Цена своя, а не декора: 10 энергии и 30
-// сытости героя; инструмент не тратится. Есть подходящий инструмент — рубят
-// им, как раньше.
+// деревянный или каменный топор. Цена (владелец, 25.10: «руками кое-где
+// дешевле по энергии») — ВДВОЕ больше энергии, чем рубка топором этого декора,
+// и 30 сытости героя; инструмент не тратится. С 29.10 — и при топоре: окно
+// рубки предлагает оба способа (владелец: «не хочу тратить топор»).
 import { SATIETY_COST } from "@/lib/hero/satiety";
 
 /** «Деревянный Топор» и «Каменный Топор» — свои товары (cst_…). */
 export const HAND_CHOP_TOOL_IDS: readonly string[] = ["cst_frxf3xh6mq6g", "cst_g7uwp1syvmng"];
 
-/** Энергия за рубку руками — вместо цены декора. */
-export const HAND_CHOP_ENERGY = 10;
+/** Руками — во столько раз больше энергии, чем топором (25.10). */
+export const HAND_CHOP_ENERGY_MULT = 2;
+
+/** Энергия за рубку руками: цена декора топором × 2 (до множителя карты). */
+export function handChopEnergy(toolCost: number): number {
+  return Math.max(0, Number(toolCost) || 0) * HAND_CHOP_ENERGY_MULT;
+}
 /** Сытость героя за рубку руками; меньше — отказ. */
 export const HAND_CHOP_SATIETY = SATIETY_COST.handChop;
 
@@ -37,8 +42,12 @@ export type HandChopBlock = "satiety" | "energy" | null;
 export function handChopBlock(o: {
   energy?: number | null;
   satiety?: number | null;
+  /** Цена энергией на этой карте (handChopEnergy × множитель карты). */
+  need?: number;
+  /** Сытость на этой карте: на острове в 10 раз меньше (island/satiety). */
+  satNeed?: number;
 }): HandChopBlock {
-  if (o.satiety != null && o.satiety < HAND_CHOP_SATIETY) return "satiety";
-  if (o.energy != null && o.energy < HAND_CHOP_ENERGY) return "energy";
+  if (o.satiety != null && o.satiety < (o.satNeed ?? HAND_CHOP_SATIETY)) return "satiety";
+  if (o.energy != null && o.need != null && o.energy < o.need) return "energy";
   return null;
 }

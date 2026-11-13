@@ -13,6 +13,7 @@
 // считается поверх на каждый запрос.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
+import { isCreatorMapId } from "@/lib/raid/creator/ids";
 import { ensureGroupColumns } from "./map-groups-schema";
 import { swrCache } from "../../cache/swr";
 import type { RawCell } from "./packCells";
@@ -38,7 +39,7 @@ export type TerrainRow = {
 };
 /** Форма объекта карты — ровно та, что отдаёт loadMapObjects. */
 export type ObjectRow = MapObjectRow;
-export type DecorRow = { id: string; name: string; image_url: string | null };
+export type DecorRow = { id: string; name: string; image_url: string | null; meta: unknown };
 
 /** Пятнадцать секунд: правки админа приходят сбросом, а не ожиданием срока. */
 const TTL_MS = 15_000;
@@ -54,6 +55,8 @@ async function load(mapId: string): Promise<MapBase> {
     { wrapJson: true },
   )) as Array<{ revision: number | string }>;
   const rev = Number(revRows?.[0]?.revision ?? 0) || 0;
+  // Клетки без земли в игре не часть карты — кроме мира креатора (07.11.2026):
+  // там пустая клетка — холст под кисть, и рисуется пустым шестиугольником.
   // Порядок клеток — по первичному ключу (q, r): номер клетки в снимке
   // должен быть одним и тем же от сборки к сборке, иначе биты тумана,
   // сохранённые на устройстве по номерам, лягут на чужие клетки.
@@ -62,7 +65,7 @@ async function load(mapId: string): Promise<MapBase> {
       `SELECT c.q, c.r, c.terrain_id, c.road_id, c.object_id, c.decoration_id,
               c.building_id, c.building_skin_id, c.void_fog, c.group_id, c.icon_scale
          FROM yuplink.raid_map_cells c
-        WHERE c.map_id = ${sqlStr(mapId)} AND c.terrain_id IS NOT NULL
+        WHERE c.map_id = ${sqlStr(mapId)}${isCreatorMapId(mapId) ? "" : " AND c.terrain_id IS NOT NULL"}
         ORDER BY c.q, c.r;`,
       { wrapJson: true },
     ) as Promise<RawCell[]>,
@@ -76,7 +79,7 @@ async function load(mapId: string): Promise<MapBase> {
     // Словарь объектов — обоими слоями сразу: и клетки, и беглецы.
     loadMapObjects(mapId),
     mcpExec(
-      `SELECT DISTINCT t.id, t.name, t.image_url
+      `SELECT DISTINCT t.id, t.name, t.image_url, t.meta
          FROM yuplink.mystic_item_template t
         WHERE t.id IN (SELECT DISTINCT decoration_id FROM yuplink.raid_map_cells
                         WHERE map_id = ${sqlStr(mapId)} AND decoration_id IS NOT NULL);`,

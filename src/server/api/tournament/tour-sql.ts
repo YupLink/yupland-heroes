@@ -18,6 +18,8 @@ import {
 import type { TourMetric } from "@/lib/tournament/types";
 import { resSrcSql } from "@/server/api/tournament/tour-res-sql";
 import { combatSrcSql } from "@/server/api/tournament/tour-sql-combat";
+import { brokenSql } from "@/server/api/beta-raid/mine-v2-sql";
+import { accountNamesSql } from "@/server/api/player-name/player-name-sql";
 
 /**
  * Порядок СТРОК таблицы: больше очков выше; при равенстве — кто набрал свой
@@ -194,7 +196,7 @@ export function syncSql(id: string, metric: TourMetric): string | null {
 /**
  * k-й суточный снимок фарма: 1 балл = 1 шахта во владении (все карты). Шахта
  * считается, пока на её клетке стоит постройка: снятые админом оставляют
- * строку в raid_mine_state, но во владении их уже нет.
+ * строку в raid_mine_state, но во владении их уже нет. Сломанная v2 — ничья.
  */
 export function farmSql(id: string, k: number): string {
   const n = Math.max(1, Math.floor(k));
@@ -206,6 +208,7 @@ export function farmSql(id: string, k: number): string {
        JOIN yuplink.raid_map_cells c
          ON c.map_id = m.map_id AND c.q = m.q AND c.r = m.r AND c.building_id IS NOT NULL
       WHERE t.id = ${sqlStr(id)} AND t.status IN ('running', 'paying') AND t.snapshots < ${n}
+        AND NOT ${brokenSql("m", "c.building_config")}
       GROUP BY t.id, m.owner_account`,
     post: `snap AS (
   UPDATE yuplink.tournament SET snapshots = GREATEST(snapshots, ${n})
@@ -230,15 +233,7 @@ export function oneRow<T>(rows: unknown[] | null | undefined): T | undefined {
   return (inner ?? undefined) as T | undefined;
 }
 
-/** Имена игроков — как в доске урона: @username, иначе id<tg>, иначе кошелёк. */
+/** Имена игроков: своё имя из профиля, иначе @username, иначе id<tg>, иначе кошелёк. */
 export function namesSql(accounts: readonly string[]): string {
-  return `SELECT account_id,
-          COALESCE(
-            '@' || min(telegram_username) FILTER (WHERE COALESCE(telegram_username,'') <> ''),
-            'id' || (min(telegram_id) FILTER (WHERE telegram_id IS NOT NULL))::text,
-            min(wallet)
-          ) AS name
-     FROM yuplink.users
-    WHERE account_id IN (${accounts.map(sqlStr).join(",")})
-    GROUP BY account_id;`;
+  return accountNamesSql(accounts);
 }

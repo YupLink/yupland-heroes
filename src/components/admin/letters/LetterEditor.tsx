@@ -1,4 +1,4 @@
-// Форма письма: заголовок и текст (RU | EN), картинка, кому, «показывать до»;
+// Форма письма: заголовок и текст (RU | EN), картинка (загрузка файлом, как везде), кому, «показывать до»;
 // «Предпросмотр» — то самое окно, что увидит игрок, на выбранном языке;
 // «Сохранить» (новое письмо всем — «Отправить всем»: сохранение и есть рассылка).
 //
@@ -12,6 +12,7 @@ import { useT } from "@/lib/i18n";
 import type { LetterAudienceInput } from "@/lib/letters";
 import { LetterWindow } from "@/components/letters/LetterWindow";
 import { UtcDateTimeInput } from "@/components/admin/UtcDateTimeInput";
+import { ImageUploader } from "@/components/ImageUploader";
 import { CAP, FIELD } from "./letterCls";
 import { LetterTextFields } from "./LetterTextFields";
 import { draftError, previewOf, sendsToAll, type LetterDraft } from "./letterDraft";
@@ -75,16 +76,14 @@ export function LetterEditor({
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
           <LetterTextFields value={value} onPatch={patch} />
-          <label className="block">
+          <div>
             <span className={CAP}>{t("letter.adm.f_image")}</span>
-            <input
-              value={value.image}
-              inputMode="url"
-              placeholder="https://…"
-              onChange={(e) => patch({ image: e.target.value })}
-              className={cn(FIELD, "h-10")}
+            <ImageUploader
+              value={value.image || null}
+              onChange={(url) => patch({ image: url ?? "" })}
+              placeholder={t("letter.adm.f_image_drop")}
             />
-          </label>
+          </div>
 
           <div>
             <span className={CAP}>{t("letter.adm.f_to")}</span>

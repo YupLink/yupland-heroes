@@ -9,6 +9,14 @@ import { RACES } from "@/components/heroMeta";
 
 export type AssetTagKind = "decoration" | "building" | "skin";
 
+/**
+ * Природа декора (шахты v2, §8.59.8): дерево или гора — их считает постановка
+ * лесопилки и каменной шахты. Первичную разметку дала миграция minev2-20, дальше
+ * правит админ галочкой; null — ни то ни другое.
+ */
+export const ASSET_NATURES = ["tree", "mountain"] as const;
+export type AssetNature = (typeof ASSET_NATURES)[number];
+
 export type AssetTags = {
   /** id шаблонов местности (kind = 'terrain'). */
   terrains: string[];
@@ -16,7 +24,15 @@ export type AssetTags = {
   races: string[];
   /** true — разметила автоматика, админ ещё не трогал. */
   auto: boolean;
+  /** Природа декора; нет — не дерево и не гора. */
+  nature?: AssetNature | null;
 };
+
+/** Природа из базы или формы: только известные значения, остальное — null. */
+export const natureOf = (v: unknown): AssetNature | null =>
+  typeof v === "string" && (ASSET_NATURES as readonly string[]).includes(v)
+    ? (v as AssetNature)
+    : null;
 
 export const NO_TAGS: AssetTags = { terrains: [], races: [], auto: true };
 

@@ -7,6 +7,7 @@ import { requireWallet } from "../auth";
 import { getSisterWallets } from "./user";
 import { hpOf, powerOf } from "@/lib/chipStats";
 import { isPremiumCollection, tirageBonus } from "@/lib/tirageBonus";
+import { secureRandom } from "@/lib/secureRandom";
 import { notRestingOrFilter } from "../chipRest";
 import { getHallwayConfig } from "./hallwayConfig";
 import { accountOf } from "./user-shared";
@@ -86,7 +87,7 @@ const FIELD_SLOTS = 5;
 const STALL_GUARD_ROUNDS = 100_000;
 const DMG_GROWTH_CAP_ROUND = 5;
 const R_DMG_VARIANCE_ROUND = 0.15;
-const rollIn = ([lo, hi]: [number, number]) => lo + Math.floor(Math.random() * (hi - lo + 1));
+const rollIn = ([lo, hi]: [number, number]) => lo + Math.floor(secureRandom() * (hi - lo + 1));
 const roundDamage = (round: number) =>
   Math.round(R_DMG_BASE * Math.pow(R_DMG_GROWTH, Math.min(round, DMG_GROWTH_CAP_ROUND) - 1));
 
@@ -129,10 +130,6 @@ const raidLineup = (d: unknown) =>
         .max(10),
     })
     .parse(d);
-
-
-
-
 
 /** Коммит рейд-боя: АТОМАРНЫЙ декремент общего HP + запись урона (raid). НЕ
  *  раздаёт турнирные награды (только недельный closeRaidCycle). */
@@ -340,6 +337,21 @@ async function loadRaidSession(sessionId: string, wallet: string): Promise<PgChi
   return s;
 }
 
+/**
+ * Закрыть бой одной записью ДО коммита урона (аудит 11.11.2026): N параллельных
+ * «Завершить» / последних раундов коммитили урон N раз и поднимали место в наградах.
+ * true — закрыл этот вызов; false — бой уже закрыт.
+ */
+async function closeRaidSession(id: string, wallet: string): Promise<boolean> {
+  const rows = (await mcpExec(
+    `UPDATE yuplink.chip_boss_session SET status = 'done', updated_at = now()
+      WHERE id = ${sqlStr(id)} AND wallet = ${sqlStr(wallet)} AND status = 'raid_active'
+      RETURNING id`,
+    { wrapJsonCte: true },
+  )) as Array<{ id: string }> | null;
+  return !!rows?.length;
+}
+
 /** Один раунд рейд-боя. */
 export const raidFightRound = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -399,7 +411,7 @@ export const raidFightRound = createServerFn({ method: "POST" })
     } else if (state.field.length > 0) {
       const dmg = Math.max(
         1,
-        Math.round(roundDamage(round) * (1 + (Math.random() * 2 - 1) * R_DMG_VARIANCE_ROUND)),
+        Math.round(roundDamage(round) * (1 + (secureRandom() * 2 - 1) * R_DMG_VARIANCE_ROUND)),
       );
       const target = state.field[0];
       bossDmg = dmg;
@@ -430,6 +442,7 @@ export const raidFightRound = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
 
     if (ended) {
+      if (!(await closeRaidSession(session.id, wallet))) throw new Error("Бой уже завершён");
       const boss = await pg.chipBoss.findOne({ id: session.boss_id });
       let result = { dealt: 0, killed, bossHpAfter: 0 };
       if (boss) {
@@ -462,6 +475,7 @@ export const endRaidFight = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const wallet = requireWallet();
     const session = await loadRaidSession(data.sessionId, wallet);
+    if (!(await closeRaidSession(session.id, wallet))) throw new Error("Бой уже завершён");
     const state = session.state as RaidSessionState;
     const boss = await pg.chipBoss.findOne({ id: session.boss_id });
     let result = { dealt: 0, killed: false, bossHpAfter: 0 };
@@ -644,7 +658,7 @@ export const raidAutoFight = createServerFn({ method: "POST" })
       if (bossHp <= 0) break;
       const bossDmg = Math.max(
         1,
-        Math.round(roundDamage(round) * (1 + (Math.random() * 2 - 1) * R_DMG_VARIANCE_ROUND)),
+        Math.round(roundDamage(round) * (1 + (secureRandom() * 2 - 1) * R_DMG_VARIANCE_ROUND)),
       );
       const target = field.find((c) => c.alive);
       if (target) {
@@ -672,4 +686,3 @@ export const raidAutoFight = createServerFn({ method: "POST" })
 // ═══════════════════════════════════════════════════════════════════
 // DistributeRaidBossKillRewards (внешняя зависимость commitRaidRun)
 // ═══════════════════════════════════════════════════════════════════
-

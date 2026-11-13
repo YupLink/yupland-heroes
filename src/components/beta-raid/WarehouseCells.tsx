@@ -8,7 +8,9 @@ import { CELL_SIZE } from "@/lib/warehouseCells";
 import { useLang } from "@/lib/i18n";
 import { qtyText } from "@/lib/qtyPick";
 import { marketResourceIconSrc } from "@/lib/resourceIcons";
+import { isDaraiMineKey } from "@/lib/daraiMine";
 import type { Cell } from "./warehouseGrid";
+import { DaraiMineTimer } from "./dmine/DaraiMineTimer";
 
 /** Иконка ячейки склада: у ресурса своя (по refId), у предмета — картинка snap. */
 function slotIconSrc(s: {
@@ -29,6 +31,7 @@ export function FilledCell({
   busy,
   onClick,
   movable,
+  bare,
 }: {
   cell: Cell;
   /** Личная ячейка склада — подсвечиваем жёлтым. */
@@ -39,6 +42,8 @@ export function FilledCell({
   onClick: () => void;
   /** Сколько штук плитки уйдёт тапом (окно сундука: собранное) — число у стрелки. */
   movable?: number;
+  /** Не ячейка, а счёт (ресурс в мешочке, §8.70): только число, без «/20». */
+  bare?: boolean;
 }) {
   const s = cell.stack;
   const lang = useLang();
@@ -70,6 +75,8 @@ export function FilledCell({
       {/* Имя внизу поверх затемнения — читается на любой картинке. */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-1 pb-0.5 pt-3">
         <div className="truncate text-[8px] font-semibold leading-tight text-white">{s.name}</div>
+        {/* Гриб в рюкзаке (колонка героя — `in`): сколько ему лежать до выпадения. */}
+        {dir === "in" && isDaraiMineKey(s.stackKey) && <DaraiMineTimer stackKey={s.stackKey} />}
       </div>
       {/* Сколько единиц вида в ячейке — тем же qtyText, что окно «сколько»
           (до сотых: плитка узкая), крошка 0,000455 — не «0». */}
@@ -79,7 +86,8 @@ export function FilledCell({
           own ? "text-gold" : "text-white",
         )}
       >
-        {qtyText(cell.units, lang, 2)}/{CELL_SIZE}
+        {qtyText(cell.units, lang, 2)}
+        {!bare && `/${CELL_SIZE}`}
       </span>
       {/* Направление переноса — чтобы тап не был загадкой; у сундука рядом
           число: сколько штук плитки уйдёт (собранное). */}

@@ -1,9 +1,10 @@
-type ResourceGlyphKind = "tickets" | "likes" | "energy";
+type ResourceGlyphKind = "tickets" | "likes" | "energy" | "gold";
 
 const sources: Record<ResourceGlyphKind, string> = {
-  tickets: "/resources/tickets.png",
+  tickets: "/resources/tickets.webp",
   likes: "/resources/likes.png",
   energy: "/resources/energy.png",
+  gold: "/resources/gold.png",
 };
 
 /** Shared pixel icon for game currencies. Health hearts and ability bolts stay separate. */

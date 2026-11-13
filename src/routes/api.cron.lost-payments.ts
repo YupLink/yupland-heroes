@@ -11,6 +11,7 @@
 // Ручная отладка: ?wait=1 — дождаться разбора и получить тайминги по шагам.
 import { createFileRoute } from "@tanstack/react-router";
 import { mcpExec } from "@/server/db/mcpClient";
+import { cronDenied } from "@/server/cronAuth";
 
 // Порог = цена Football pack (самый дешёвый). Ниже — пыль, не алертим.
 const THRESHOLD_DARAI = 50000;
@@ -45,13 +46,8 @@ export const Route = createFileRoute("/api/cron/lost-payments")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         // Замер и денежной части: «крон висит» должно быть разложимо на шаг.
         const t0 = Date.now();
         const ms: Record<string, number> = {};

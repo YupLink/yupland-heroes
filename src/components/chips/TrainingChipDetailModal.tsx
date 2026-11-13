@@ -8,7 +8,9 @@ import { Loader2, Info, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { exchangeTrainingForTickets } from "@/server/api/hallway";
 import { humanError } from "@/lib/humanError";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 
+import { thumb } from "@/lib/image";
 const TRIAL_STAT_SCALE = 0.5;
 
 function fmtTickets(x: number): string {
@@ -55,11 +57,13 @@ export function TrainingChipDetailModal({
   const hpFull = hpOf(star);
   const hp = Math.max(1, Math.round(hpFull * TRIAL_STAT_SCALE));
 
+  // Сервер платит за продажу золотом ×100 (§8.61) — показываем ту же сумму.
+  const sellGold = goldForEarnedTickets(sellTickets);
   const sell = useMutation({
     mutationFn: () => exchangeTrainingForTickets({ data: { chipIds: [chipId] } }),
     onSuccess: (r) => {
-      toast.success(`Продано за ${fmtTickets(r.tickets)} 🎟 — на баланс`);
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      toast.success(t("chips.training_sold_gold", { n: fmtTickets(r.gold) }));
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       onSold();
     },
     onError: (e: Error) => toast.error(humanError(e)),
@@ -88,7 +92,7 @@ export function TrainingChipDetailModal({
       >
         <div className="relative">
           <ChipImage
-            src={imageUrl}
+            src={thumb(imageUrl, 640)}
             level={star}
             alt="Тренировочная фишка"
             className="aspect-square w-full"
@@ -114,15 +118,15 @@ export function TrainingChipDetailModal({
             {showInfo && (
               <div className="absolute left-0 top-7 z-10 w-full rounded-xl border border-sky-400/30 bg-card/95 p-3 text-[11px] leading-relaxed text-muted-foreground shadow-xl backdrop-blur-xl">
                 <ul className="space-y-1">
-                  <li>
-                    • Тренировочную фишку нельзя улучшить, продать на маркете или передать.
-                  </li>
+                  <li>• Тренировочную фишку нельзя улучшить, продать на маркете или передать.</li>
                   <li>• Характеристики фишки ×2 меньше обычных.</li>
                   <li>
                     {sellable ? (
                       <>
-                        • Продать можно за{" "}
-                        <b className="text-gold">{fmtTickets(sellTickets)} билетов</b>.
+                        •{" "}
+                        <b className="text-gold">
+                          {t("chips.training_sell_hint", { n: fmtTickets(sellGold) })}
+                        </b>
                       </>
                     ) : (
                       <>• {t("chips.training_skip_hint")}</>
@@ -153,7 +157,7 @@ export function TrainingChipDetailModal({
               ) : (
                 <ShoppingCart className="h-3.5 w-3.5" />
               )}
-              Продать за {fmtTickets(sellTickets)} 🎟
+              {t("chips.training_sell_for", { n: fmtTickets(sellGold) })}
             </button>
           ) : (
             <span className={cn(deadBtn, "mt-2 block")} aria-disabled>

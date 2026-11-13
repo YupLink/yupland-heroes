@@ -58,8 +58,8 @@ export async function getConnectedSisterWallets(wallet: string): Promise<string[
 /**
  * Аккаунт игрока по ключу — или null, если такого игрока нет.
  *
- * Регистр адреса намеренно не важен: паки, выданные на «player01.tg» игроку
- * «player01.tg», уже один раз повисли ничьими (migrations/acc-08).
+ * Регистр адреса намеренно не важен: паки, выданные на адрес с заглавной буквой игроку,
+ * входящему строчными, уже один раз повисли ничьими (migrations/acc-08).
  */
 export async function accountIdOf(key: string): Promise<string | null> {
   if (key.startsWith("acc_")) {

@@ -23,6 +23,7 @@ export const RARITY_SLOTS: Record<HeroRarity, number> = {
   rare: 1,
   epic: 3,
   legendary: 5,
+  unique: 5,
 };
 
 /** Имя специализации мага — ровно как в heroStats.RACE_STATS (канон БД). */

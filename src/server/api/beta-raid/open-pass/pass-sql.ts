@@ -26,6 +26,7 @@
 import { sqlStr } from "@/server/api/raid-shared";
 import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { locksSql } from "@/server/api/beta-raid/chest/chest-net-sql";
+import { bootAnswerSql, bootCtes, bootLockSql } from "@/server/api/beta-raid/loot-bag/bag-fish";
 
 /** Страховочный срок входа, минут: от нажатия, не продлевается. */
 export const PASS_MINUTES = 10;
@@ -48,7 +49,7 @@ export function passAliveSql(account: string, target: string): string {
 }
 
 /**
- * Цена сундука: занятые ячейки (вид по 20, пыль — целая ячейка), как в окне,
+ * Цена сундука: занятые ячейки (вид по CELL_SIZE, пыль — целая ячейка), как в окне,
  * но не меньше 1 — пустой тоже 1 (chestOpenPrice, lib/openPass).
  */
 export const cellsPriceSql = (table: string, where: string): string =>
@@ -65,6 +66,8 @@ export type OpenRow = {
   paid: number | string;
   price: number | string | null;
   until: string | null;
+  /** Открыли рыбу с башмаком (bag-fish): метка снята этим же оператором. */
+  boot?: boolean | null;
 };
 
 /**
@@ -82,12 +85,19 @@ export function openPassSql(o: {
   op: string;
   cell: { q: number; r: number };
   maxPrice?: number;
+  /** Мешочек входа: рыба с башмаком — метку снять тем же оператором (bag-fish). */
+  bagId?: string;
 }): string {
   const [acc, t, op] = [sqlStr(o.account), sqlStr(o.target), sqlStr(o.op)];
   const [q, r] = [Math.floor(o.cell.q), Math.floor(o.cell.r)];
   const near = `(abs(pos.q - ${q}) + abs(pos.r - ${r}) + abs(pos.q + pos.r - ${q} - ${r})) / 2 <= 1`;
-  const cap = Number.isFinite(o.maxPrice) ? `AND price.c <= ${Math.floor(Number(o.maxPrice))}` : "";
+  // Без округления вниз: на острове цена дробная (0,1), floor давал 0 — и вход не открывался.
+  const cap = Number.isFinite(o.maxPrice) ? `AND price.c <= ${Number(o.maxPrice)}` : "";
+  const bag = o.bagId ?? null;
+  const bootWith = bag ? `,\n     ${bootCtes(bag)}` : "";
+  const bootCol = bag ? `,\n              ${bootAnswerSql(bag)} AS boot` : "";
   return `${locksSql(`pass:${o.account}:${o.target}`)}
+     ${bag ? bootLockSql(bag) : ""}
      SELECT 1 FROM yuplink.beta_raid_positions WHERE account_id = ${acc} FOR UPDATE;
      DELETE FROM yuplink.raid_open_pass
       WHERE account_id = ${acc} AND until < now() - interval '1 hour';
@@ -128,11 +138,11 @@ export function openPassSql(o: {
          SET until = EXCLUDED.until, pos_at = EXCLUDED.pos_at, op = EXCLUDED.op,
              cost = EXCLUDED.cost, at = EXCLUDED.at
        RETURNING until
-     )
+     )${bootWith}
      SELECT row_to_json(_t.*) AS _row FROM (
        SELECT EXISTS (SELECT 1 FROM near) AS near, EXISTS (SELECT 1 FROM free) AS free,
               COALESCE((SELECT c FROM paid), 0) AS paid, (SELECT c FROM price) AS price,
-              COALESCE((SELECT until FROM put), (SELECT until FROM cur)) AS until
+              COALESCE((SELECT until FROM put), (SELECT until FROM cur)) AS until${bootCol}
      ) _t;`;
 }
 

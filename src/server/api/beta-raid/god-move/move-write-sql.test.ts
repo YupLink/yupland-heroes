@@ -72,12 +72,27 @@ describe("перенос здания: что переезжает", () => {
       mines: "raid_mine_state",
       guard: "raid_mine_guard",
       mine_log: "raid_mine_capture_log",
+      ward: "raid_mine_ward",
+      cash: "raid_town_cash",
+      cash_log: "raid_town_cash_move",
       swaps: "hero_swap_log",
       trades: "trade_journal",
+      rites: "raid_hero_rite",
+      spells: "raid_enchant_spell",
     };
     for (const [name, table] of Object.entries(tables))
       expect(cte(name), name).toContain(
         `UPDATE yuplink.${table} x SET q = 7, r = 1 FROM go WHERE ${SRC("x")}`,
+      );
+  });
+
+  it("обряды и заклинания: свои едут, забытые на цели — снимаются, только если едут свои", () => {
+    for (const [name, table] of [
+      ["rites", "raid_hero_rite"],
+      ["spells", "raid_enchant_spell"],
+    ])
+      expect(cte(`${name}_drop`), name).toContain(
+        `DELETE FROM yuplink.${table} x USING go WHERE ${DST("x")} AND EXISTS (SELECT 1 FROM yuplink.${table} s WHERE ${SRC("s")})`,
       );
   });
 

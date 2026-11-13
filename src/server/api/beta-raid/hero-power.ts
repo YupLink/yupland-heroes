@@ -26,6 +26,7 @@ import type { HeroStats } from "@/lib/heroStats";
 import type { SquadEntry } from "@/lib/heroSquadMatch";
 import type { AbilityKind } from "./abilities";
 import { HUNGER_FACTOR, satietyOf, type Satiety } from "@/lib/hero/satiety";
+import { dropHeroMount } from "./hero-mount";
 
 export type HeroPowerInfo = {
   heroId: string;
@@ -204,14 +205,12 @@ const cache = swrCache<HeroPowerView | null>({ ttl: TTL_MS, load: computeHeroVie
  */
 export function invalidateHeroPower(wallet?: string): void {
   cache.drop();
+  dropHeroMount(); // конь — темп шага и прыжок (§8.84)
   // Сразу тянем заново, ФОНОМ: игрок только что переоделся и вот-вот пойдёт
   // ходить — пусть цепочку запросов оплатит эта миллисекунда, а не его шаг.
   if (wallet) cache.warm(wallet);
-  // Второй кэш той же природы: интеллект героя лежит в колонках user_energy, а
-  // syncHeroEnergy минуту не ходит в базу, если числа «те же, что записали».
-  // После прокачки числа как раз ДРУГИЕ, и без сброса игрок ещё минуту видел
-  // бы прежний максимум энергии — тот самый случай «изменил, а не появилось».
-  // Раньше invalidateHeroEnergy не звали ниоткуда вовсе.
+  // Второй кэш той же природы: интеллект героя лежит в user_energy, а syncHeroEnergy
+  // минуту не ходит в базу при «тех же» числах — без сброса максимум энергии отставал.
   invalidateHeroEnergy();
 }
 

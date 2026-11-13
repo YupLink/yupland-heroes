@@ -2,13 +2,15 @@ import { copyText } from "@/lib/copyText";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSession } from "@/server/api/user-auth";
-import { getMyTickets } from "@/server/api/user-tickets";
+import { useResources } from "@/lib/hooks/useResources";
 import { getReferralStats } from "@/server/api/user-referrals";
 import { TelegramVerify } from "@/components/TelegramVerify";
 import { Copy, Check } from "lucide-react";
 import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { useT, useLang } from "@/lib/i18n";
 import { ReferralDetails, ReferralFriendList } from "./ReferralDetails";
+import { ReferralRewards } from "@/components/referrals/ReferralRewards";
+import { REF_REWARDS_KEY } from "@/components/referrals/useReferralRewards";
 
 export function CastleReferrals({ onListChange }: { onListChange?: (all: boolean) => void }) {
   const t = useT();
@@ -29,7 +31,8 @@ export function CastleReferrals({ onListChange }: { onListChange?: (all: boolean
     queryFn: () => getReferralStats(),
   });
   useEffect(() => {
-    if (stats.dataUpdatedAt) void qc.invalidateQueries({ queryKey: ["my-tickets"], exact: true });
+    // Статистика может засчитать новый этап — он заводит бонус-бокс (22.10.2026).
+    if (stats.dataUpdatedAt) void qc.invalidateQueries({ queryKey: REF_REWARDS_KEY });
   }, [qc, stats.dataUpdatedAt]);
   // Без TG смотреть можно, действия закрыты сервером — показываем баннер.
   const sessionQ = useQuery({
@@ -38,13 +41,7 @@ export function CastleReferrals({ onListChange }: { onListChange?: (all: boolean
   });
   const needsTg = !!sessionQ.data?.wallet && !sessionQ.data.telegramLinked;
 
-  const tickets = useQuery({
-    // Referral stats may settle a newly reached ticket tier on the server.
-    // Read the balance only after that request, including after a stats refetch.
-    queryKey: ["my-tickets", "referral-stats", stats.dataUpdatedAt],
-    queryFn: () => getMyTickets(),
-    enabled: stats.isSuccess,
-  });
+  const resources = useResources();
 
   const [copiedKind, setCopiedKind] = useState<"tg" | "web" | null>(null);
 
@@ -113,8 +110,8 @@ export function CastleReferrals({ onListChange }: { onListChange?: (all: boolean
             <h2>{ru ? "Приглашай друзей" : "Invite friends"}</h2>
             <p>
               {ru
-                ? "Билеты за этапы приглашений. Друг засчитывается после покупки пака с фишками."
-                : "Tickets for invitation milestones. A friend counts after purchasing a chip pack."}
+                ? "Bonus Box за этапы приглашений и золото с покупок друзей. Друг засчитывается после прохождения обучения в игре."
+                : "A Bonus Box for each invitation milestone and gold from friends' purchases. A friend counts after completing the in-game tutorial."}
             </p>
             <button
               data-game-button="primary"
@@ -160,19 +157,20 @@ export function CastleReferrals({ onListChange }: { onListChange?: (all: boolean
               </div>
             )}
           </section>
+          <ReferralRewards />
           <ReferralDetails data={data} onShowAll={() => switchList(true)} />
           <div className="castle-referrals__balance">
-            <ResourceGlyph kind="tickets" className="h-6 w-6" />
-            <span>{ru ? "Твои билеты" : "Your tickets"}</span>
-            {tickets.isError ? (
-              <button data-game-button="text" onClick={() => void tickets.refetch()}>
+            <ResourceGlyph kind="gold" className="h-6 w-6" />
+            <span>{ru ? "Твоё золото" : "Your gold"}</span>
+            {resources.isError ? (
+              <button data-game-button="text" onClick={() => void resources.refetch()}>
                 {ru ? "Повторить загрузку" : "Retry loading"}
               </button>
             ) : (
               <strong>
-                {stats.isFetching || tickets.isFetching || tickets.isPending
+                {stats.isFetching || resources.isFetching || resources.isPending
                   ? "…"
-                  : (tickets.data?.available ?? 0)}
+                  : Math.floor(resources.data?.gold ?? 0).toLocaleString(ru ? "ru-RU" : "en-US")}
               </strong>
             )}
           </div>

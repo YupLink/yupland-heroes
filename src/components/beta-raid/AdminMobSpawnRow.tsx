@@ -1,7 +1,9 @@
 // Строка «Возрождение» в окне клетки (режим бога): точка, где моб сам встаёт
 // после смерти и бродит вокруг. Три списка и две кнопки — правила в
 // server/api/beta-raid/mob-spawn/mob-spawn.ts. Сохраняется сразу, без «Выгрузить»:
-// это не слой клетки, а настройка моба.
+// это не слой клетки, а настройка моба. «Погода» (§8.49б, 31.10.2026) — моб живёт
+// только в отмеченную погоду мира (несколько сразу — 04.11.2026): пришла — встаёт,
+// ушла — уходит с карты. Моба завела точка спавна — настраивать его там.
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,8 +12,11 @@ import {
   MOB_SPAWN_DEFAULT,
   RESPAWN_MIN,
   ROAM_CELLS,
+  SPAWN_WEATHER,
   STEP_MIN,
   minutesText,
+  spawnWeathersText,
+  type SpawnWeather,
 } from "@/lib/raid/mobSpawn";
 import {
   adminMobSpawnAt,
@@ -19,6 +24,7 @@ import {
   adminSaveMobSpawn,
 } from "@/server/api/beta-raid/mob-spawn/mob-spawn-api";
 import { Row, btn } from "./AdminCellRow";
+import { WeatherPick } from "./WeatherPick";
 
 const field = "rounded-lg border border-border bg-background px-1.5 py-1 text-[11px]";
 
@@ -33,11 +39,13 @@ export function AdminMobSpawnRow({ q, r }: { q: number; r: number }) {
   const [respawnMin, setRespawn] = useState<number>(MOB_SPAWN_DEFAULT.respawnMin);
   const [roam, setRoam] = useState<number>(MOB_SPAWN_DEFAULT.roam);
   const [stepMin, setStep] = useState<number>(MOB_SPAWN_DEFAULT.stepMin);
+  const [weathers, setWeathers] = useState<SpawnWeather[]>([]);
   useEffect(() => {
     if (!spawn) return;
     setRespawn(spawn.respawnMin);
     setRoam(spawn.roam);
     setStep(spawn.stepMin);
+    setWeathers(spawn.weathers);
   }, [spawn]);
 
   const done = (text: string) => {
@@ -46,7 +54,7 @@ export function AdminMobSpawnRow({ q, r }: { q: number; r: number }) {
   };
   const fail = (e: unknown) => toast.error(e instanceof Error ? e.message : String(e));
   const save = useMutation({
-    mutationFn: () => adminSaveMobSpawn({ data: { q, r, respawnMin, roam, stepMin } }),
+    mutationFn: () => adminSaveMobSpawn({ data: { q, r, respawnMin, roam, stepMin, weathers } }),
     onSuccess: () => done(p("Возрождение сохранено", "Respawn saved")),
     onError: fail,
   });
@@ -57,8 +65,25 @@ export function AdminMobSpawnRow({ q, r }: { q: number; r: number }) {
   });
 
   if (!spawn && !at.data?.canCreate) return null;
+  // Моба ведёт точка спавна: его погода, частота и награда — в её строке.
+  if (spawn?.point) {
+    return (
+      <Row label={p("Возрождение", "Respawn")}>
+        <span className="text-[11px] text-muted-foreground">
+          {p(
+            `из точки спавна ${spawn.point.q}, ${spawn.point.r}`,
+            `from spawn point ${spawn.point.q}, ${spawn.point.r}`,
+          )}
+        </span>
+      </Row>
+    );
+  }
   const changed =
-    !spawn || spawn.respawnMin !== respawnMin || spawn.roam !== roam || spawn.stepMin !== stepMin;
+    !spawn ||
+    spawn.respawnMin !== respawnMin ||
+    spawn.roam !== roam ||
+    spawn.stepMin !== stepMin ||
+    spawn.weathers.join() !== weathers.join();
   const busy = save.isPending || remove.isPending;
 
   return (
@@ -86,14 +111,20 @@ export function AdminMobSpawnRow({ q, r }: { q: number; r: number }) {
           ))}
         </select>
       )}
+      <WeatherPick value={weathers} onChange={setWeathers} en={en} />
       {spawn && !spawn.alive && (
         <span className="text-[11px] text-muted-foreground">
-          {spawn.dueInMin
+          {spawn.weathers.length > 0 && !spawn.weatherNow
             ? p(
-                `встанет через ${minutesText(spawn.dueInMin, en)}`,
-                `back in ${minutesText(spawn.dueInMin, en)}`,
+                `ждёт погоду: ${spawnWeathersText(spawn.weathers, false)}`,
+                `waits for ${spawnWeathersText(spawn.weathers, true)}`,
               )
-            : p("ждёт свободную клетку", "waiting for a free tile")}
+            : spawn.dueInMin
+              ? p(
+                  `встанет через ${minutesText(spawn.dueInMin, en)}`,
+                  `back in ${minutesText(spawn.dueInMin, en)}`,
+                )
+              : p("ждёт свободную клетку", "waiting for a free tile")}
         </span>
       )}
       {changed && (

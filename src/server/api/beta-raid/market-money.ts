@@ -4,13 +4,14 @@
 // Гард «не в минус» — внутри каждой нижележащей функции (res_move/tickets/…).
 import { sb } from "../../db/pg";
 import { spendLikes } from "../heroes-shared";
-import { moveTickets } from "../tickets-ledger";
+import { goldForEarnedTickets, goldForTicketPrice } from "@/lib/ticketGold";
 import { payFromAccount } from "../currency/spend";
 import { payDaraiToMapPool, DARAI_TOKEN } from "../currency/pay-darai-map";
 import { grantRaidReward } from "../raid-helpers";
 import { creditEnergy, marketEnergyKind } from "../energy-credit";
 import { accMove } from "../currency/move";
-import { spendArt, creditArt } from "./market-art-pay";
+import { spendInventory, creditInventory, type SpendPick } from "./market-inv-pay";
+import type { PawnHeroRef } from "./hero-any";
 import { noteEnergySpend } from "./econ/energy-note";
 import type { MarketPriceResource } from "@/lib/marketItem";
 import type { BackpackTakeSnapshot } from "./market-backpack-take";
@@ -34,10 +35,15 @@ export type SpendReceipt = {
   heroId?: string;
   /** Звездочник заплатил за DARAI звёздами — откат вернёт их (не DARAI). */
   starsPaid?: number;
+  /** Цену «в билетах» взяли золотом ×500 (§8.61) — откат вернёт столько же, а
+   *  не ×100, как при выдаче товара «билеты». */
+  ticketsAsGold?: boolean;
+  /** Герои, сданные в ломбард «Любым героем»: откат вернёт их из снимка (hero-pawn-take). */
+  paidHeroes?: PawnHeroRef[];
 };
 
-/** Чем сузить выбор при оплате артефактом: игрок сам ткнул в конкретный. */
-export type SpendPick = { artTemplateId?: string | null };
+/** Чем сузить выбор при оплате штучным предметом — тип у его потребителя (market-inv-pay). */
+export type { SpendPick };
 
 /** Списать цену у игрока. Гард «не в минус» — внутри каждой функции. */
 export async function spend(
@@ -65,7 +71,19 @@ export async function spend(
   } else if (res === "likes") {
     await spendLikes(wallet, amount, "market_buy", ref);
   } else if (res === "tickets") {
-    await moveTickets({ wallet, delta: -amount, kind: "market_buy", ref });
+    // Билетов нет (§8.61): цена «в билетах» платится золотом ×500.
+    const { error } = await sb.rpc("res_move", {
+      p_account: account,
+      p_resource: "gold",
+      p_delta: -goldForTicketPrice(amount),
+      p_kind: "market_buy",
+      p_ref: ref,
+    });
+    if (error)
+      throw new Error(
+        String(error.message).includes("в минус") ? "market.not_enough" : error.message,
+      );
+    return { ticketsAsGold: true };
   } else if (res === "energy") {
     const { error } = await sb.rpc("touch_energy_atomic", { p_wallet: wallet, p_spend: amount });
     if (error)
@@ -94,11 +112,11 @@ export async function spend(
     // Символ у предметной цены — refId шаблона (в схеме price_token). Без него
     // не платят: непонятно, что именно снимать.
     if (!token) throw new Error("market.not_enough");
-    // Артефакт — единственный предметный вид, который НЕ рюкзачный: он живёт
-    // штучно в инвентаре (user_game_item) и надевается на героя. Пока платили с
-    // рюкзака, «Ломбард» отвечал «нет артефакта такой редкости» игроку с сотней
-    // артефактов — просто искал не там.
-    if (res === "art") return spendArt(wallet, account, token, amount, ref, pick);
+    // Артефакт и «любой герой редкости» (ломбард) — НЕ рюкзачные: живут штучно
+    // в инвентаре (user_game_item), market-inv-pay. Пока платили с рюкзака,
+    // «Ломбард» отвечал «нет артефакта такой редкости» игроку с сотней артефактов.
+    const inv = await spendInventory(res, wallet, account, token, amount, ref, pick);
+    if (inv) return inv;
     // Пак/герой/босс/кастом — со стека рюкзака героя. Ключ приводим к КАНОНУ:
     // приёмка, выставленная на «Помидоры», обязана принимать и «Помидор» —
     // это один товар (item-alias).
@@ -146,7 +164,19 @@ export async function credit(
     // Через grantRaidReward она шла как награда energy_reward без ref, и
     // таяние (acc-45) не могло отличить её от сундука.
     await creditEnergy(wallet, amount, marketEnergyKind(ref), ref);
-  } else if (res === "likes" || res === "tickets") {
+  } else if (res === "tickets") {
+    // Билетов нет (§8.61): откат цены «в билетах» — то же золото ×500, что взял
+    // spend (квитанция); товар/выплата «билеты» — золото ×100, как всё полученное.
+    const gold = receipt?.ticketsAsGold ? goldForTicketPrice(amount) : goldForEarnedTickets(amount);
+    const { error } = await sb.rpc("res_move", {
+      p_account: account,
+      p_resource: "gold",
+      p_delta: gold,
+      p_kind: "market_sell",
+      p_ref: ref,
+    });
+    if (error) throw new Error(error.message || "market.give_failed");
+  } else if (res === "likes") {
     await grantRaidReward(wallet, res, amount, null, ref);
   } else if (res === "token") {
     // Токен без символа выдать некуда — раньше это была тихая потеря денег.
@@ -181,13 +211,10 @@ export async function credit(
     // Возврат предметной цены (или выдача такого товара). Символ обязателен:
     // без него непонятно, что возвращать, и товар пропал бы.
     if (!token) throw new Error("market.give_failed");
-    // Артефакт возвращается в ИНВЕНТАРЬ, а не в рюкзак, и по квитанции —
-    // ровно теми экземплярами, что списали. Без квитанции (выдача артефакта
-    // как товара) чеканим новые: пустой откат хуже лишней строки.
-    if (res === "art") {
-      await creditArt(wallet, account, token, amount, ref, receipt);
-      return;
-    }
+    // Артефакт (и сданный в ломбард герой) возвращается в ИНВЕНТАРЬ, а не в
+    // рюкзак, и по квитанции — ровно теми экземплярами, что списали. Без
+    // квитанции (выдача артефакта как товара) чеканим новые (market-inv-pay).
+    if (await creditInventory(res, wallet, account, token, amount, ref, receipt)) return;
     const { resolveBackpack, returnToBackpackStack } = await import("./market-backpack");
     // Откат — тому герою, с кого списали (квитанция): сменил игрок основного
     // между оплатой и откатом — зелья не лягут в чужую сумку мимо её ёмкости.
@@ -198,8 +225,7 @@ export async function credit(
     // Имя и картинка — со снимка списания: стопку целиком продали, сделка
     // сорвалась (16.10: «у ратуши нет денег») — без них ячейка вставала заново
     // под кодом «cst_…» и без картинки. Без квитанции — из справочника товара.
-    const look =
-      receipt?.backpack ?? (res === "custom" ? await canonCustomMeta(token) : null);
+    const look = receipt?.backpack ?? (res === "custom" ? await canonCustomMeta(token) : null);
     await returnToBackpackStack(
       heroId,
       stackKey,

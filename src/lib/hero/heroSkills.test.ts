@@ -12,13 +12,25 @@ import {
 import { parseSkills, skillsFree, skillsSpent } from "@/lib/hero/heroSkills";
 
 describe("повышенные уровни", () => {
-  it("потолки: рар 30, эпик 40, лег 60; common без повышенных", () => {
-    expect(MAX_LEVEL_BY_RARITY).toEqual({ common: 10, rare: 30, epic: 40, legendary: 60 });
-    expect(BASE_LEVEL_BY_RARITY).toEqual({ common: 10, rare: 20, epic: 30, legendary: 40 });
+  it("потолки: рар 30, эпик 40, лег 60, уник 70; common без повышенных", () => {
+    expect(MAX_LEVEL_BY_RARITY).toEqual({
+      common: 10,
+      rare: 30,
+      epic: 40,
+      legendary: 60,
+      unique: 70,
+    });
+    expect(BASE_LEVEL_BY_RARITY).toEqual({
+      common: 10,
+      rare: 20,
+      epic: 30,
+      legendary: 40,
+      unique: 50,
+    });
   });
 
   it("цены лега 40→60 — по таблице Гермеса, лестница одна", () => {
-    expect(LEVEL_COST).toHaveLength(60);
+    expect(LEVEL_COST).toHaveLength(70);
     expect(nextLevelCost("legendary", 40)).toBe(60_000);
     expect(nextLevelCost("legendary", 49)).toBe(200_000);
     expect(nextLevelCost("legendary", 59)).toBe(400_000);
@@ -42,17 +54,18 @@ describe("повышенные уровни", () => {
 });
 
 describe("очки навыков", () => {
-  it("+1 за уровень, +2 за пятый, +3 за десятый — только на повышенных", () => {
+  it("+2 за уровень, ещё +10 за пятый, +20 за десятый — только на повышенных (25.10.2026)", () => {
     expect(skillPointsAt("rare", 20)).toBe(0);
-    expect(skillPointsAt("rare", 21)).toBe(1);
-    expect(skillPointsAt("rare", 24)).toBe(4);
-    expect(skillPointsAt("rare", 25)).toBe(7);
-    expect(skillPointsAt("rare", 30)).toBe(17);
+    expect(skillPointsAt("rare", 21)).toBe(2);
+    expect(skillPointsAt("rare", 24)).toBe(8);
+    expect(skillPointsAt("rare", 25)).toBe(20);
+    expect(skillPointsAt("rare", 29)).toBe(28);
+    expect(skillPointsAt("rare", 30)).toBe(60);
     expect(skillPointsAt("epic", 30)).toBe(0);
-    expect(skillPointsAt("epic", 40)).toBe(17);
+    expect(skillPointsAt("epic", 40)).toBe(60);
     expect(skillPointsAt("legendary", 40)).toBe(0);
-    expect(skillPointsAt("legendary", 50)).toBe(17);
-    expect(skillPointsAt("legendary", 60)).toBe(34);
+    expect(skillPointsAt("legendary", 50)).toBe(60);
+    expect(skillPointsAt("legendary", 60)).toBe(120);
     expect(skillPointsAt("common", 10)).toBe(0);
   });
 
@@ -60,8 +73,10 @@ describe("очки навыков", () => {
     const s = parseSkills({ trade: 3, atk: "2", bogus: 9, luck: -1 });
     expect(s).toEqual({ trade: 3, atk: 2 });
     expect(skillsSpent(s)).toBe(5);
-    expect(skillsFree("rare", 30, s)).toBe(12);
+    expect(skillsFree("rare", 30, s)).toBe(55);
     expect(skillsFree("rare", 21, s)).toBe(0);
+    expect(skillsFree("rare", 22, s)).toBe(0);
+    expect(skillsFree("rare", 23, s)).toBe(1);
     expect(parseSkills('{"alchemy":1}')).toEqual({ alchemy: 1 });
     expect(parseSkills(null)).toEqual({});
   });

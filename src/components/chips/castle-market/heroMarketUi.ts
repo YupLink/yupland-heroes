@@ -1,0 +1,10 @@
+import { newOpId } from '@/lib/opId';
+import type { HeroLotView } from '@/server/api/hero-market';
+export type Currency = 'gold' | 'darai';
+export type ReviewItem = { lot: HeroLotView; op: string; error?: string; done?: boolean };
+export const priceOf = (lot: HeroLotView, currency: Currency) => currency === 'gold' ? lot.priceGold : lot.priceDarai;
+export const payIcon = (pay: Currency) => pay === 'gold' ? '/resources/gold.png' : '/resources/darai.webp';
+export const lotPrices = (lot: HeroLotView) => (['gold', 'darai'] as Currency[]).flatMap(pay => { const value = priceOf(lot, pay); return value == null ? [] : [{ pay, value }]; });
+export const money = (value: number, ru: boolean) => value.toLocaleString(ru ? 'ru-RU' : 'en-US', { maximumFractionDigits: 2 });
+export const rarityName = (rarity: string, ru: boolean) => ({ rare: ru ? 'Редкий' : 'Rare', epic: ru ? 'Эпический' : 'Epic', legendary: ru ? 'Легендарный' : 'Legendary', common: ru ? 'Обычный' : 'Common' }[rarity] ?? rarity);
+export const newReview = (lots: HeroLotView[]): ReviewItem[] => lots.map(lot => ({ lot, op: newOpId() }));

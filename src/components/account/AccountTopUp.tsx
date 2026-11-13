@@ -21,6 +21,7 @@ import { verifyAccountDeposit } from "@/server/api/currency/deposit";
 import { registerAccountDeposit } from "@/server/api/credit-wait-api";
 import { ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
 import { useCreditNotices } from "@/lib/hooks/useCreditNotices";
+import { armCreditWatch } from "@/lib/creditWaitBus";
 import { TopUpWaiting } from "./TopUpWaiting";
 import { TopUpByHash } from "./TopUpByHash";
 import type { TokenInfo } from "./AccountBalances";
@@ -77,8 +78,7 @@ export function AccountTopUp({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  const fresh =
-    !!pending?.at && now - pending.at < ((pending.waitSec ?? 60) + 90) * 1000;
+  const fresh = !!pending?.at && now - pending.at < ((pending.waitSec ?? 60) + 90) * 1000;
 
   const token = open.find((t) => t.symbol === symbol) ?? open[0];
   // Считаем целыми: на счёт кладём и с него забираем без дробей.
@@ -129,6 +129,8 @@ export function AccountTopUp({
       const reg = await registerAccountDeposit({
         data: { txHash, token: token.symbol },
       }).catch(() => ({ waitSec: 60 }));
+      // Окно Казны могут закрыть — за зачислением сходит и глобальный сторож.
+      armCreditWatch();
       const mark = {
         txHash,
         symbol: token.symbol,

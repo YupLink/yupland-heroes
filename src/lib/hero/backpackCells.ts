@@ -15,15 +15,18 @@
 import { normalizeSpec } from "./heroStatSources";
 import type { HeroRarity } from "@/lib/heroLevels";
 
-/** Сколько единиц одного вида помещается в одну ячейку. */
-export const CELL_SIZE = 20;
+/**
+ * Сколько единиц одного вида помещается в одну ячейку — рюкзак, сумка зелий, склады,
+ * сундуки, мешочки (владелец 28.10.2026: «расширяем лимит ячейки до 30», было 20).
+ */
+export const CELL_SIZE = 30;
 
 // Торговец и Путешественник — «торговая» группа (просторный рюкзак), остальные
 // боевые спецы носят меньше. Common — стартовый герой (спец у него нет), ровно
 // одна ячейка на любой роли.
 const BASE = {
-  trader: { common: 1, rare: 3, epic: 4, legendary: 5 },
-  other: { common: 1, rare: 1, epic: 2, legendary: 3 },
+  trader: { common: 1, rare: 3, epic: 4, legendary: 5, unique: 6 },
+  other: { common: 1, rare: 1, epic: 2, legendary: 3, unique: 4 },
 } as const;
 
 /** Сколько всего ячеек в рюкзаке героя: база спеца×редкости + бонус торговли. */

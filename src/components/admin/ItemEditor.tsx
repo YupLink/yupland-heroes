@@ -9,6 +9,7 @@ import { humanError } from "@/lib/humanError";
 import { ImageUploader } from "@/components/ImageUploader";
 import { adminCreateItem, adminUpdateItem } from "@/server/api/items";
 import { heroAbilityOf } from "@/lib/hero/heroAbilities";
+import { MOUNT_SLOT, mountTierOfMeta } from "@/lib/hero/mount";
 import { ItemHeroFields } from "./ItemHeroFields";
 import { ItemArtifactFields } from "./ItemArtifactFields";
 import { RARITY, isUniqueItem, type ItemRow } from "./itemsAdminShared";
@@ -44,6 +45,8 @@ export function ItemEditor({
   );
   const [immunities, setImmunities] = useState<string[]>(initial?.immunities ?? []);
   const [slot, setSlot] = useState(initial?.slot ?? "");
+  /** Вид коня (§8.84) — meta.mount, только у места «Конь». */
+  const [mount, setMount] = useState<string>(mountTierOfMeta(initial?.meta) ?? "");
   /** Уникальный герой: выпадет один раз, потом уйдёт из пула превращений. */
   const [uniq, setUniq] = useState(isUniqueItem(initial?.meta));
   /** Способность героя (lib/hero/heroAbilities) — в meta.ability, пусто — нет. */
@@ -63,6 +66,13 @@ export function ItemEditor({
     fishBonusPct: Math.max(0, Number(fishBonusPct.replace(",", ".")) || 0),
     immunities,
     slot: slot || undefined,
+    // meta — целиком (сервер перезаписывает), меняем в ней только вид коня.
+    meta: (() => {
+      const base = { ...((initial?.meta as Record<string, unknown> | null) ?? {}) };
+      if (slot === MOUNT_SLOT && mount) base.mount = mount;
+      else delete base.mount;
+      return base;
+    })(),
   };
   /**
    * meta шлём ЦЕЛИКОМ — сервер её перезаписывает (items.adminUpdateItem), и
@@ -159,6 +169,7 @@ export function ItemEditor({
                 specAmount,
                 fishBonusPct,
                 immunities,
+                mount,
               }}
               set={{
                 rarity: (x) => setRarity(x as (typeof RARITY)[number]),
@@ -173,6 +184,7 @@ export function ItemEditor({
                 specAmount: setSpecAmount,
                 fishBonusPct: setFishBonusPct,
                 immunities: setImmunities,
+                mount: setMount,
               }}
             />
           ) : (

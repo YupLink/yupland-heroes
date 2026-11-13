@@ -23,8 +23,10 @@ export type AchTrackView = {
   from: number;
   target: number | null;
   pct: number;
-  /** Что даёт взятая редкость и какой характеристике. */
+  /** Что даёт взятая редкость и какой характеристике (0 — награда не включена). */
   bonus: number;
+  /** Награда включена; иначе в лестнице — что будет давать. */
+  active: boolean;
   stat: AchStat;
   /** Все шесть редкостей: сколько надо, что даёт и взята ли. */
   ladder: { rarity: Rarity; target: number; bonus: number; done: boolean }[];
@@ -44,12 +46,13 @@ export function achTrackView(id: AchTrackId, count: number): AchTrackView {
     from,
     target,
     pct: Math.min(100, Math.max(0, pct)),
-    bonus: trackBonus(step),
+    bonus: ACH_TRACKS[id].active === false ? 0 : trackBonus(step, id),
+    active: ACH_TRACKS[id].active !== false,
     stat: ACH_TRACKS[id].stat,
     ladder: RARITIES.map((r, i) => ({
       rarity: r,
       target: stepTarget(id, i + 1),
-      bonus: trackBonus(i + 1),
+      bonus: trackBonus(i + 1, id),
       done: step > i,
     })),
   };
@@ -57,6 +60,6 @@ export function achTrackView(id: AchTrackId, count: number): AchTrackView {
 
 /** Подпись характеристики: шесть боевых — из героя, торговля и алхимия — свои. */
 export function achStatLabel(stat: AchStat, lang: "ru" | "en", t: (k: string) => string): string {
-  if (stat === "trade" || stat === "alchemy") return t(`ach.stat.${stat}`);
+  if (stat === "trade" || stat === "alchemy" || stat === "refpct") return t(`ach.stat.${stat}`);
   return STAT_LABELS[stat as HeroStatKey][lang];
 }

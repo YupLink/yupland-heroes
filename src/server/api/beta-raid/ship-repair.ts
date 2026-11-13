@@ -19,14 +19,18 @@ import { resolveBackpack, takeFromBackpackStack } from "./market-backpack";
 import { PLANK_NAME_RE, planksToRepair, repairedHp, shipMaxHp } from "@/lib/shipHealth";
 import { publishRaid } from "../../raidLive";
 import { plankStackKey } from "./plank-item";
+import { BLASTED_NO_REPAIR } from "./ship-blasted";
 
-type ShipRow = { id: string; kind: "small" | "big"; hp: number };
+/** blasted — подбит синим динамитом (dynamite-08): такой не чинится вовсе. */
+type ShipRow = { id: string; kind: "small" | "big"; hp: number; blasted: boolean };
 type PlankStack = { stackKey: string; count: number; name: string };
 
 /**
  * Что чинить на этой клетке. Первым — СВОЁ судно: чинят обычно тот борт, на
  * котором плывут, и ждать, пока с него сойдёшь, незачем. Дальше — самое
  * разбитое из свободных. Целые борта в выборку не попадают: чинить нечего.
+ * Подбитый (dynamite-08) — последним: он достаётся, только когда чинить больше нечего
+ * или игрок выбрал его сам, и тогда починка отказывает (BLASTED_NO_REPAIR).
  */
 async function damagedShipAt(
   mapId: string,
@@ -40,18 +44,24 @@ async function damagedShipAt(
   // COALESCE: у свободного борта сравнение даёт NULL, а NULL в DESC идёт
   // первым — и «своё первым» переворачивалось в «сначала чужой обломок».
   const rows = (await mcpExec(
-    `SELECT s.id, COALESCE(s.kind, 'small') AS kind, s.hp
+    `SELECT s.id, COALESCE(s.kind, 'small') AS kind, s.hp, s.blasted_at IS NOT NULL AS blasted
        FROM yuplink.beta_raid_ship s
       WHERE s.map_id = ${sqlStr(mapId)} AND s.q = ${q} AND s.r = ${r}
         AND s.hp < (CASE WHEN s.kind = 'big' THEN 2000 ELSE 1000 END)
         AND (s.crew_account IS NULL OR ${mine})
         ${shipId ? `AND s.id = ${sqlStr(shipId)}` : ""}
-      ORDER BY COALESCE(${mine}, false) DESC, s.hp, s.created_at LIMIT 1;`,
+      ORDER BY COALESCE(${mine}, false) DESC, (s.blasted_at IS NOT NULL), s.hp, s.created_at
+      LIMIT 1;`,
     { wrapJson: true },
-  ).catch(() => [])) as Array<{ id: string; kind: string; hp: number }>;
+  ).catch(() => [])) as Array<{ id: string; kind: string; hp: number; blasted?: boolean }>;
   const row = rows?.[0];
   return row
-    ? { id: row.id, kind: row.kind === "big" ? "big" : "small", hp: Number(row.hp) }
+    ? {
+        id: row.id,
+        kind: row.kind === "big" ? "big" : "small",
+        hp: Number(row.hp),
+        blasted: row.blasted === true,
+      }
     : null;
 }
 
@@ -89,7 +99,8 @@ export const getShipRepair = createServerFn({ method: "GET" })
       damagedShipAt(mapId, account, data.q, data.r, data.shipId ?? null),
       resolveBackpack(wallet).catch(() => null),
     ]);
-    if (!ship) return null;
+    // Подбитый не чинится — кнопки нет вовсе.
+    if (!ship || ship.blasted) return null;
     const stack = bp?.heroId ? await plankStack(bp.heroId) : null;
     return {
       hp: ship.hp,
@@ -129,6 +140,7 @@ export const repairShip = createServerFn({ method: "POST" })
       (pos.q === data.q && pos.r === data.r) || areNeighbors(pos.q, pos.r, data.q, data.r);
     if (!near) throw new Error("braid.ship_repair_far");
     if (!ship) throw new Error("braid.ship_repair_none");
+    if (ship.blasted) throw new Error(BLASTED_NO_REPAIR);
     if (!bp?.heroId) throw new Error("Сначала выбери героя");
 
     const stack = await plankStack(bp.heroId);
@@ -149,11 +161,11 @@ export const repairShip = createServerFn({ method: "POST" })
     // починенное судно как простоявшее разбитым двое суток.
     const rows = (await mcpExec(
       `UPDATE yuplink.beta_raid_ship SET hp = ${hp}, hp_zero_at = NULL, updated_at = now()
-        WHERE id = ${sqlStr(ship.id)} RETURNING id;`,
+        WHERE id = ${sqlStr(ship.id)} AND blasted_at IS NULL RETURNING id;`,
       { wrapJsonCte: true },
     )) as Array<{ id: string }>;
     if (!rows || rows.length === 0) {
-      // Судно исчезло между чтением и записью — доски возвращаем, чинить нечего.
+      // Судно исчезло (или его подбили) между чтением и записью — доски назад.
       const { returnToBackpackStack } = await import("./market-backpack");
       await returnToBackpackStack(bp.heroId, stack.stackKey, spend, taken, null).catch(() => {});
       throw new Error("braid.ship_repair_none");

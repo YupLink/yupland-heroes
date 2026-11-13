@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getCurrentWallet, isAdminWallet, requireCastleEditor } from "@/server/auth";
+import { storeNewspaperPng } from "@/server/newspaper-upload";
 
 // Загрузка файла-картинки на локальный диск (self-host). Админ — или
 // редактор внутрянки замка (дизайнер грузит свои картинки в /castle-editor).
@@ -53,25 +54,43 @@ export const Route = createFileRoute("/api/upload")({
           return Response.json({ error: "Только JPEG/PNG/WebP/GIF" }, { status: 415 });
         }
 
-        const ext =
-          (file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "") ||
-          (file.type.split("/")[1] ?? "bin");
+        // Explicit opt-in: all other upload consumers retain their existing behavior.
+        if (form.get("purpose") === "newspaper") {
+          try {
+            return Response.json(await storeNewspaperPng(file, UPLOADS_DIR, UPLOADS_PUBLIC_BASE));
+          } catch {
+            return Response.json(
+              { error: "Не удалось сохранить оригинал. Проверь PNG (до 8 МБ) и повтори." },
+              { status: 400 },
+            );
+          }
+        }
 
         try {
           const dir = join(UPLOADS_DIR, "tasks");
           await mkdir(dir, { recursive: true });
           const raw = Buffer.from(await file.arrayBuffer());
 
+          // Формат — по содержимому, не по имени и не по типу из формы (аудит
+          // 11.11.2026: «x.html» с типом image/gif ложился как есть и открывался
+          // страницей на нашем домене). Не картинка — отказ, оригинал не пишем.
+          const sharp = (await import("sharp")).default;
+          const fmt = await sharp(raw, { animated: true })
+            .metadata()
+            .then((m) => m.format)
+            .catch(() => null);
+          if (fmt !== "jpeg" && fmt !== "png" && fmt !== "webp" && fmt !== "gif") {
+            return Response.json({ error: "Только JPEG/PNG/WebP/GIF" }, { status: 415 });
+          }
+
           // Сжимаем на входе: админ грузит PNG до 8 МБ, а на карте/в палитре
           // нужен максимум ~1280px. Ужимаем в WebP ЕДИНОЖДЫ при загрузке —
           // иначе оригинал в 2–8 МБ висит на диске и в первый показ его тянет
-          // ресайз-прокси целиком. GIF не трогаем (анимация); при любой ошибке
-          // sharp — пишем оригинал, чтобы загрузка не падала.
+          // ресайз-прокси целиком. GIF не трогаем (анимация).
           let outBuf: Uint8Array = raw;
-          let outExt = ext;
-          if (file.type !== "image/gif") {
+          let outExt = "gif";
+          if (fmt !== "gif") {
             try {
-              const sharp = (await import("sharp")).default;
               outBuf = await sharp(raw)
                 .rotate()
                 .resize({ width: 1280, height: 1280, fit: "inside", withoutEnlargement: true })
@@ -79,8 +98,7 @@ export const Route = createFileRoute("/api/upload")({
                 .toBuffer();
               outExt = "webp";
             } catch {
-              outBuf = raw;
-              outExt = ext;
+              return Response.json({ error: "Не удалось прочитать картинку" }, { status: 415 });
             }
           }
           const rel = `tasks/${nanoid(10)}.${outExt}`;

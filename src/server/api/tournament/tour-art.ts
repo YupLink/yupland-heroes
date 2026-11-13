@@ -8,6 +8,7 @@
 // (выдать нечего), остальные призы места уходят как обычно.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
+import { droppable, notMount } from "../craft/crafted-sql";
 import { artRarityOf } from "@/lib/tournament/prizeText";
 import type { NewGift } from "../gifts-create";
 
@@ -19,7 +20,7 @@ export function pickArtSql(list: ReadonlyArray<{ ref: string; rarity: string }>)
   FROM (VALUES ${values}) v(ref, rarity)
   CROSS JOIN LATERAL (
     SELECT t.id, t.name, t.image_url FROM yuplink.mystic_item_template t
-     WHERE t.kind = 'artifact' AND t.active AND t.rarity = v.rarity
+     WHERE t.kind = 'artifact' AND t.active AND t.rarity = v.rarity AND ${droppable("t")} AND ${notMount("t")}
      ORDER BY md5(v.ref || t.id) LIMIT 1
   ) a`;
 }

@@ -2,6 +2,7 @@
 // Пусто — подходит всем; ограничивает только отмеченное.
 import { describe, expect, it } from "vitest";
 import {
+  natureOf,
   raceAllowed,
   raceOfTheme,
   racesFromName,
@@ -9,7 +10,7 @@ import {
   terrainAllowed,
 } from "@/lib/raid/assetTags";
 import { decorPlan } from "@/lib/raid/zonegen/decorPlan";
-import { buildAutoTags } from "@/server/api/beta-raid/asset-tags-auto";
+import { buildAutoTags, upsertSql } from "@/server/api/beta-raid/asset-tags-auto";
 import { AFF, recipe } from "@/test/zonegenFixture";
 
 describe("раса по имени", () => {
@@ -93,5 +94,20 @@ describe("автоматическая разметка", () => {
       { refId: "b1", kind: "building", terrains: [], races: ["Единорог"] },
       { refId: "s1", kind: "skin", terrains: [], races: ["Юпик"] },
     ]);
+  });
+});
+
+describe("природа декора (шахты v2, §8.59.8)", () => {
+  it("только дерево и гора; остальное — нет метки", () => {
+    expect(natureOf("tree")).toBe("tree");
+    expect(natureOf("mountain")).toBe("mountain");
+    expect(natureOf("bush")).toBeNull();
+    expect(natureOf(null)).toBeNull();
+    expect(natureOf(1)).toBeNull();
+  });
+
+  it("автоматика метки природу не трогает — её правит только админ", () => {
+    const sql = upsertSql(buildAutoTags([{ id: "d1", name: "Дуб", terrains: [] }], [], [])) ?? "";
+    expect(sql).not.toContain("nature");
   });
 });

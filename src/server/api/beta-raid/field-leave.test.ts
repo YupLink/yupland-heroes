@@ -63,15 +63,22 @@ beforeEach(() => {
 });
 
 describe("leaveFieldWork", () => {
-  it("снятие рядом: любой свой герой, под замком поля, хвост — одной единицей", async () => {
+  it("снятие рядом: любой свой герой, под замком поля; дробь не выдаётся и остаётся в строке", async () => {
     const res = await leaveFieldWork({ ...base, heroId: null, key: null });
-    expect(res).toEqual({ removed: true, dust: 1 });
+    expect(res).toEqual({ removed: true });
     expect(cas()).toContain("w.hero_id IS NOT NULL");
     expect(cas()).toContain("hashtext('field:rmap_a:30:-90')");
-    expect(s.dust).toBe(1);
-    // Хвост — тоже урожай: на склад с меткой грядки (ПРАВИЛА §8.18).
-    expect(s.origin).toBe("field");
-    expect(s.sql.some((x) => x.includes("SET accrued=0"))).toBe(true);
+    // 13.11.2026: «поставил — снял» больше не печатает по штуке.
+    expect(s.dust).toBe(0);
+    expect(s.sql.some((x) => x.includes("SET accrued=0"))).toBe(false);
+  });
+
+  it("сто «поставил — снял» подряд — ни одной штуки", async () => {
+    for (let i = 0; i < 100; i++) {
+      s.heroId = "hero_w";
+      await leaveFieldWork({ ...base, heroId: null, key: null });
+    }
+    expect(s.dust).toBe(0);
   });
 
   it("снятие издалека — только этот герой, ключ снятия в журнал поля", async () => {
@@ -103,21 +110,21 @@ describe("leaveFieldWork", () => {
   it("целые единицы хвостом не выдаются — их увезёт сеттл на склад", async () => {
     s.accrued = 1.7;
     const res = await leaveFieldWork({ ...base, heroId: null, key: null });
-    expect(res).toEqual({ removed: true, dust: 0 });
+    expect(res).toEqual({ removed: true });
     expect(s.dust).toBe(0);
   });
 
   it("героя уже сняли — снимать некого, хвост второй раз не выдаётся", async () => {
     s.heroId = null;
     const res = await leaveFieldWork({ ...base, heroId: null, key: null });
-    expect(res).toEqual({ removed: false, dust: 0 });
+    expect(res).toEqual({ removed: false });
     expect(s.dust).toBe(0);
   });
 
-  it("свой повтор моста узнаётся по ключу в журнале — снято, хвост выдан", async () => {
+  it("свой повтор моста узнаётся по ключу в журнале — снято", async () => {
     s.retried = true;
     const res = await leaveFieldWork({ ...base, heroId: null, key: null });
-    expect(res).toEqual({ removed: true, dust: 1 });
+    expect(res).toEqual({ removed: true });
   });
 
   it("сеттл сорвался — не снимаем: иначе накопленное ушло бы соседям", async () => {
@@ -129,6 +136,6 @@ describe("leaveFieldWork", () => {
 
   it("поле без конфига — героя всё равно отпускаем, без хвоста", async () => {
     const res = await leaveFieldWork({ ...base, cfg: null, heroId: "hero_w", key: "rcl:op2" });
-    expect(res).toEqual({ removed: true, dust: 0 });
+    expect(res).toEqual({ removed: true });
   });
 });

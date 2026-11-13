@@ -4,6 +4,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Sparkles, Box } from "lucide-react";
 
+import { thumb } from "@/lib/image";
 type RevealItem = {
   templateName: string;
   level: number;
@@ -85,7 +86,7 @@ function RevealCard({ item, index }: { item: RevealItem; index: number }) {
     >
       {item.imageUrl ? (
         <ChipImage
-          src={item.imageUrl}
+          src={thumb(item.imageUrl, 400)}
           level={item.level}
           alt={item.templateName}
           className="w-full"

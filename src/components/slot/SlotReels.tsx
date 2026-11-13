@@ -1,16 +1,27 @@
 // Окно барабанов 5×3 в золотой рамке с номерами линий по бокам. Пока крутятся —
-// лента символов едет вниз; барабаны встают слева направо, в «ожидании бонуса»
-// крутятся дольше и светятся; на остановке — отскок. После остановки
-// выигрышные линии показываются по очереди.
-import { useEffect, useMemo, useState } from "react";
+// настоящая лента символов (ReelColumn, lib/slot/reelMotion.ts): разгон, бег,
+// торможение с отскоком; барабаны встают по очереди слева направо, в «ожидании
+// бонуса» тормозят дольше и светятся. После остановки выигрышные линии — по очереди.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { REELS, ROWS } from "@/lib/slot/lines";
-import { rollSymbol } from "@/lib/slot/reels";
-import { BONUS, symbolOf } from "@/lib/slot/symbols";
-import { reelTiming } from "@/lib/slot/timing";
+import { BONUS, SYMBOLS, symbolOf } from "@/lib/slot/symbols";
+import { ANTICIPATION_MS, reelTiming } from "@/lib/slot/timing";
 import type { Grid, LineWin, SymbolId } from "@/lib/slot/types";
 import { SlotLineBadges } from "./SlotLineBadges";
 import { SlotLinesOverlay } from "./SlotLinesOverlay";
+import { notifyReelLanding } from "./music/reelSounds";
+import "./slot-reels-layout.css";
+import "./slot-reels-motion.css";
+import { ReelColumn } from "./ReelColumn";
+
+// Картинки символов — заранее в кэш, чтобы лента не мигала при смене кадра.
+if (typeof window !== "undefined")
+  for (const s of SYMBOLS) {
+    const img = new Image();
+    img.src = s.img;
+    void img.decode?.().catch(() => {});
+  }
 
 const EMPTY: Grid = [0, 1, 2, 3, 4].map(() => ["bar1", "bar2", "bar3"] as SymbolId[]);
 const LINE_CYCLE_MS = 900;
@@ -46,33 +57,11 @@ function Cell({
         src={symbolOf(id).img}
         alt=""
         className={cn(
-          "absolute inset-[10%] h-[80%] w-[80%] object-contain",
+          "slot-symbol absolute object-contain",
           (pulse || gold) && "animate-slot-pulse",
           gold && "drop-shadow-[0_0_14px_#f3ca62]",
         )}
       />
-    </div>
-  );
-}
-
-function ReelStrip({ reel, spinId, slow }: { reel: number; spinId: number; slow: boolean }) {
-  const strip = useMemo(() => {
-    const s: SymbolId[] = [];
-    for (let i = 0; i < 6; i++) s.push(rollSymbol(reel));
-    return [...s, ...s];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reel, spinId]);
-  return (
-    <div
-      className={cn(
-        "absolute inset-x-0 top-0 grid",
-        slow ? "animate-slot-reel-slow blur-[0.5px]" : "animate-slot-reel blur-[1.5px]",
-      )}
-      style={{ gridTemplateRows: "repeat(12, 1fr)", height: "400%" }}
-    >
-      {strip.map((id, i) => (
-        <Cell key={i} id={id} dim={false} pulse={false} />
-      ))}
     </div>
   );
 }
@@ -95,18 +84,29 @@ export function SlotReels({
   /** Выиграна бонус-игра: все «Бонусы» на экране горят золотом. */
   highlightBonus?: boolean;
 }) {
-  const [stopped, setStopped] = useState(REELS);
   const timing = useMemo(() => reelTiming(spinning ? grid : null), [grid, spinning]);
-  // Новый спин — все барабаны крутятся. Остановки ставим, только когда сервер
-  // прислал итог: до ответа барабаны просто крутятся, не вставая на старое.
-  useEffect(() => {
-    if (spinning) setStopped(0);
-  }, [spinning, spinId]);
-  useEffect(() => {
-    if (!spinning || !grid) return;
-    const timers = timing.stops.map((ms, i) => window.setTimeout(() => setStopped(i + 1), ms));
-    return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [spinning, spinId, grid, timing]);
+  // Что было в окне до спина — с этого лента и трогается (21.10: «каждый прокрут
+  // начинался с одной картинки» — первый кадр спина показывал заготовку EMPTY).
+  const lastGrid = useRef<Grid>(EMPTY);
+  if (!spinning && grid) lastGrid.current = grid;
+  // Сколько барабанов этого спина встало. Счёт привязан к спину: с первого же кадра
+  // нового спина все барабаны крутятся (раньше счётчик сбрасывался эффектом — на
+  // один кадр окно стояло пустым, отсюда дёрганье).
+  const [landed, setLanded] = useState({ spinId, count: REELS });
+  const stopped = landed.spinId === spinId ? landed.count : spinning ? 0 : REELS;
+  const gridRef = useRef(grid);
+  gridRef.current = grid;
+  const onStop = useCallback(
+    (reel: number) => {
+      if (gridRef.current) notifyReelLanding(spinId, gridRef.current, reel);
+    },
+    [spinId],
+  );
+  const onLand = useCallback(
+    (reel: number) =>
+      setLanded((l) => ({ spinId, count: Math.max(l.spinId === spinId ? l.count : 0, reel + 1) })),
+    [spinId],
+  );
 
   // Перебор выигрышных линий по одной.
   const [cycle, setCycle] = useState(0);
@@ -123,7 +123,7 @@ export function SlotReels({
     if (!spinning) for (const w of shownWins) for (const [r, c] of w.cells) set.add(`${r}:${c}`);
     return set;
   }, [shownWins, spinning]);
-  const shown = grid ?? EMPTY;
+  const shown = grid ?? lastGrid.current;
   const overlayLines =
     showLines && !spinning ? Array.from({ length: activeLines }, (_, i) => i + 1) : [];
   const overlayWins = !spinning && !showLines ? shownWins : [];
@@ -135,14 +135,14 @@ export function SlotReels({
     : 0;
 
   return (
-    <div className="slot-reels p-2">
+    <div className="slot-reels">
       {/* Номера линий — поверх боковых полей, высоту задаёт только окно барабанов
           (иначе на узком экране колонка номеров растягивала окно пустой полосой). */}
-      <div className="relative px-6">
-        <div className="absolute inset-y-1 left-0 w-5">
+      <div className="slot-reels-layout relative">
+        <div className="slot-line-rail absolute inset-y-1 left-0">
           <SlotLineBadges side="left" active={activeLines} />
         </div>
-        <div className="absolute inset-y-1 right-0 w-5">
+        <div className="slot-line-rail absolute inset-y-1 right-0">
           <SlotLineBadges side="right" active={activeLines} />
         </div>
         <div className="relative overflow-hidden rounded-xl border border-border/60 bg-background">
@@ -155,15 +155,26 @@ export function SlotReels({
                 <div
                   key={reel}
                   className={cn(
-                    "relative overflow-hidden",
-                    anticipating && "animate-slot-anticipate",
+                    "slot-reel-column relative overflow-hidden",
+                    anticipating && "slot-reel-anticipating",
                   )}
+                  data-spinning={running}
                   style={{ aspectRatio: `1 / ${ROWS}` }}
                 >
                   {running ? (
-                    <ReelStrip reel={reel} spinId={spinId} slow={anticipating} />
+                    <ReelColumn
+                      reel={reel}
+                      spinId={spinId}
+                      prev={lastGrid.current[reel]}
+                      final={grid ? grid[reel] : null}
+                      stopIn={timing.stops[reel]}
+                      anticipate={timing.anticipate[reel]}
+                      anticipationMs={ANTICIPATION_MS}
+                      onStop={onStop}
+                      onLand={onLand}
+                    />
                   ) : (
-                    <div className={cn("grid h-full grid-rows-3", spinning && "animate-slot-stop")}>
+                    <div className="grid h-full grid-rows-3">
                       {Array.from({ length: ROWS }, (_, row) => {
                         const id = shown[reel][row];
                         const key = `${reel}:${row}`;

@@ -1,5 +1,6 @@
 // Ввод NFT «Yupik holder (N million darai)» в стейкинг банка (ПРАВИЛА §8.51) —
-// только админам: у игрока раздел не появляется вовсе. Выбрал NFT — подписал
+// открыт всем игрокам 20.10.2026; раздел виден, если банк в замке построен (владелец,
+// 21.10.2026: до постройки игрок раздела не видит) и в кошельке есть такие NFT. Выбрал NFT — подписал
 // перевод на склад — сервер доказал перевод и завёл вклад: N млн DARAI в банке
 // без лока. Индекс не успел — «Проверить» спросит ещё раз (и обход догонит сам).
 import { useState } from "react";
@@ -8,8 +9,8 @@ import { toast } from "sonner";
 import { Landmark, Loader2 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
-import { getSession } from "@/server/api/user-auth";
 import { getHolderInputInfo, listHolderNfts, stakeHolderNfts } from "@/server/api/bank/holder-nft";
+import { HOLDER_INPUT_INFO_KEY } from "@/components/castle-live/bank/bankKeys";
 import { NFT_PER_TX, sendChunkTx } from "./nftDepositBatch";
 
 export const HOLDER_NFTS_KEY = ["holder-nfts"] as const;
@@ -20,18 +21,18 @@ type Sent = { tokenIds: string[]; txHash: string };
 export function HolderNftSection() {
   const ru = useLang() === "ru";
   const qc = useQueryClient();
-  const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
-  const admin = session.data?.isAdmin === true;
+  // Банк построен (у админа — всегда): постройка перечитывает ключ (refreshBank).
+  const info = useQuery({
+    queryKey: HOLDER_INPUT_INFO_KEY,
+    queryFn: () => getHolderInputInfo(),
+    staleTime: 300_000,
+  });
+  const bankBuilt = info.data?.bankBuilt === true;
   const list = useQuery({
     queryKey: HOLDER_NFTS_KEY,
     queryFn: () => listHolderNfts(),
-    enabled: admin,
-  });
-  const info = useQuery({
-    queryKey: ["holder-input-info"],
-    queryFn: () => getHolderInputInfo(),
-    enabled: admin,
-    staleTime: 300_000,
+    enabled: bankBuilt, // без банка раздела нет — Sendler не спрашиваем
+    staleTime: 60_000, // раздел у всех игроков: не спрашивать Sendler на каждое открытие окна
   });
   const [picked, setPicked] = useState<string[]>([]);
   const [sent, setSent] = useState<Sent | null>(null);
@@ -81,7 +82,7 @@ export function HolderNftSection() {
   });
 
   const items = list.data ?? [];
-  if (!admin || (items.length === 0 && !sent)) return null;
+  if (!bankBuilt || (items.length === 0 && !sent)) return null;
   const toggle = (id: string) =>
     setPicked((p) =>
       p.includes(id) ? p.filter((x) => x !== id) : p.length < NFT_PER_TX ? [...p, id] : p,

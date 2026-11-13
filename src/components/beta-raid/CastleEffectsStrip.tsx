@@ -29,12 +29,14 @@ export function CastleEffectsStrip({
   status = "ready",
   onRetry,
   iconArt,
+  showWhenEmpty = false,
 }: {
   effects?: CastleActiveEffects | null;
   lang: "ru" | "en";
   status?: "ready" | "loading" | "error";
   onRetry?: () => void;
   iconArt?: string;
+  showWhenEmpty?: boolean;
 }) {
   const t = useT();
   const id = useId();
@@ -63,8 +65,7 @@ export function CastleEffectsStrip({
   const visible = ready ? groups : [];
   const label = lang === "ru" ? "Активные эффекты" : "Active effects";
 
-  if (visible.length === 0) return null;
-  if (status === "loading" || !now) return null;
+  if (!showWhenEmpty && (visible.length === 0 || status === "loading" || !now)) return null;
 
   return (
     <div className="castle-main-hud__effects-shell" onKeyDown={(event) => {
@@ -81,7 +82,7 @@ export function CastleEffectsStrip({
         aria-controls={`${id}-panel`}
         onClick={() => setOpen((value) => !value)}
       >
-        {iconArt ? <><img src={iconArt} alt="" draggable={false} /><span className="raid-effects-icon-count">{ready ? visible.length : "…"}</span></> : <span className="castle-main-hud__effects-pill"><span>{label} · {ready ? visible.length : "…"}</span>
+        {iconArt ? <><img src={iconArt} alt="" draggable={false} /><span className="raid-effects-icon-count">{ready ? visible.length : "…"}</span></> : <span className="castle-main-hud__effects-pill"><span className="castle-main-hud__effects-copy"><span className="castle-main-hud__effects-label">{label} · </span><span className="castle-main-hud__effects-count">{ready ? visible.length : "…"}</span></span>
         <ChevronDown aria-hidden="true" /></span>}
       </button>
       <div id={`${id}-panel`} className="castle-main-hud__effects-panel" role="region" aria-label={label} hidden={!open}>

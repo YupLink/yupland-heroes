@@ -8,7 +8,7 @@ import { ChevronDown, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang, useT } from "@/lib/i18n";
 import { prizeIcon, prizeImage } from "@/lib/prizeIcon";
-import { prizeFallbackKey, rewardKindLabelKey } from "@/lib/rewardKinds";
+import { prizeFallbackKey, rewardKindLabelKey, rewardShownAmount } from "@/lib/rewardKinds";
 import { shortAmount } from "@/lib/rewardByPlace";
 import { getEncounterTop } from "@/server/api/beta-raid";
 
@@ -47,7 +47,7 @@ function PrizeRow({ prize, t }: { prize: unknown; t: (key: string) => string }) 
             ) : (
               <Icon className="h-3 w-3 shrink-0" />
             )}
-            {named ? <span className="max-w-[7rem] truncate">{named}</span> : shortAmount(p.amount)}
+            {named ? <span className="max-w-[7rem] truncate">{named}</span> : shortAmount(rewardShownAmount(p.kind, p.amount))}
           </span>
         );
       })}

@@ -13,6 +13,8 @@ import { getCurrentWallet } from "./auth";
 import { Client } from "pg";
 import { noteEvent, noteFanout, noteListeners } from "./perf/hubStats";
 import type { CellPatch, MapDelta } from "@/lib/raid/mapDelta";
+import type { MineLostDigest } from "@/lib/mineLost";
+import type { MineBlastKind } from "@/lib/dynamite";
 
 /**
  * Насколько изменился флот на клетке: судов и занятых из них.
@@ -56,8 +58,9 @@ type RaidEventBody =
   | { type: "restored" }
   // `mine` — задета шахта или её охрана: только тогда клиент перечитывает
   // охрану шахт (раньше перечитывал на каждую постройку — ~10 запросов в
-  // минуту на игрока, 14.10.2026).
-  | { type: "built"; cells: string[]; mine?: boolean }
+  // минуту на игрока, 14.10.2026). `owner` — у шахты сменился владелец не боем
+  // (поломка, починка ничьей — §8.59): флажки перечитывают все, не только хозяин.
+  | { type: "built"; cells: string[]; mine?: boolean; owner?: boolean }
   // Мешочки на клетках изменились (выпал, забрали, закопали, выкопали, истёк):
   // содержимого нет — кто рядом, перечитывает мешочки своего «второго обзора».
   // scope 'chest' — переложили в обычном сундуке: слой мешочков не менялся.
@@ -82,7 +85,17 @@ type RaidEventBody =
     }
   // Дельта карты (map-journal): версия и что именно изменилось. Клиент правит
   // свои колонки на месте; `full` — карту перестроили, брать новый снимок.
-  | ({ type: "map"; mapId: string } & MapDelta);
+  | ({ type: "map"; mapId: string } & MapDelta)
+  // Личное: у аккаунта `to` отняли шахту или гриб (mine-lost-notify). Поток
+  // отдаёт событие только ему и без `to`; кто отнял — в событии нет.
+  | { type: "mineLost"; to?: string; digest: MineLostDigest }
+  // Динамит снёс сломанные шахты (dynamite): всем на карте, ДО дельты, которая
+  // снимает постройку, — клиент сперва проигрывает взрыв вида, потом снимает
+  // шахту. «other» — вид без анимации.
+  | { type: "mine_blast"; cells: Array<{ q: number; r: number; kind: MineBlastKind }> }
+  // Личное: синий динамит взорвал корабль аккаунта `to`, его отнесли в основной город
+  // (dynamite-crew-home). Поток — только ему и без `to`: этаж и центр перечитать.
+  | { type: "sentHome"; to?: string };
 
 /**
  * Событие с меткой автора. Метка нужна ровно затем, чтобы не будить того, кто
@@ -197,8 +210,9 @@ async function ensureBridge(): Promise<void> {
 // Поднимаем мост при загрузке модуля (раз на воркер). Ошибку глотаем — fallback.
 void ensureBridge();
 
-export function publishRaid(event: RaidEvent): void {
-  const wire: RaidWireEvent = { ...event, by: author() };
+/** `by` — автор вместо игрока запроса; null — ничей (перенос чужого героя: не «свой шаг»). */
+export function publishRaid(event: RaidEvent, by: string | null = author()): void {
+  const wire: RaidWireEvent = { ...event, by };
   // Счётчик нагрузки канала (perf/hubStats): событий по типам.
   noteEvent(event.type);
   // Своим — мгновенно, не дожидаясь круга через БД.

@@ -37,13 +37,26 @@ function Points({ points, yes }: { points: Point[]; yes: boolean }) {
   );
 }
 
-const pointsOf = (keys: string[]): Point[] => keys.map((key) => ({ key }));
+const pointsOf = (keys: string[], params?: Point["params"]): Point[] =>
+  keys.map((key) => ({ key, params }));
 
-/** items — имена товаров турнира: у «Зелий скорости» — какие зелья засчитываются. */
-export function TourRulesList({ metric, items = [] }: { metric: TourMetric; items?: string[] }) {
+/**
+ * items — имена товаров турнира: у «Зелий скорости» — какие зелья засчитываются;
+ * clock — время снимка шахт («09:59», UTC) у фарма.
+ */
+export function TourRulesList({
+  metric,
+  items = [],
+  clock = null,
+}: {
+  metric: TourMetric;
+  items?: string[];
+  clock?: string | null;
+}) {
   const t = useT();
   const rules = TOUR_RULES[metric];
-  const yes = pointsOf(rules.yes);
+  const params = { time: clock ?? "—" };
+  const yes = pointsOf(rules.yes, params);
   if (metric === "potion_drink" && items.length > 0)
     yes.push({ key: TOUR_RULES_ITEMS_KEY, params: { items: items.join(", ") } });
   return (
@@ -55,7 +68,7 @@ export function TourRulesList({ metric, items = [] }: { metric: TourMetric; item
       {rules.no.length > 0 && (
         <div>
           <p className={`${CAP} text-destructive`}>{t("tour.rules.no")}</p>
-          <Points points={pointsOf(rules.no)} yes={false} />
+          <Points points={pointsOf(rules.no, params)} yes={false} />
         </div>
       )}
       <p className="text-[11px] text-gold">{t(TOUR_RULES_JOIN_KEY)}</p>

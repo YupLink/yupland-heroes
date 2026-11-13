@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { useLang } from "@/lib/i18n";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import { TradingHouseSheet } from "./TradingHouseSheet";
 import { houseContents, type HouseProduct } from "./model";
 import yupikArt from "./assets/trading-house-yupik-pack-png-optimized.webp";
@@ -10,11 +11,15 @@ import magicalArt from "./assets/trading-house-magical-pack-png-optimized.webp";
 import vikingArt from "./assets/trading-house-viking-pack-png-optimized.webp";
 import "./trading-house.css";
 
+import { thumb } from "@/lib/image";
 export type FeaturedArtifact = { id: string; name: string; imageUrl: string; subtitle?: string };
 type Status = "loading" | "error" | "ready";
 type HouseNotice = { kind: "message"; text: string } | { kind: "purchase"; count: number; requested: number; partial: boolean };
 const plaque = "M15 3 H185 Q197 3 197 15 V125 Q197 137 185 137 H15 Q3 137 3 125 V15 Q3 3 15 3 Z";
 const formatted = (value: number) => value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+// Билетов нет (ПРАВИЛА §8.61): цена пака хранится в билетах, платится золотом ×500.
+export type HouseMethod = "gold" | "darai" | "stars";
+const goldPrice = (product: HouseProduct) => product.priceTickets == null ? null : goldForTicketPrice(product.priceTickets);
 
 function Sparkles() {
   return <>{(["one", "two", "three", "four"] as const).map(key => <span key={key} className={`trading-house__featured-spark trading-house__featured-spark--${key}`} aria-hidden="true" />)}</>;
@@ -33,7 +38,7 @@ function CampProductArt({ product }: { product: HouseProduct }) {
   return <img className={key ? `camp-pack-store__pack-art--${key}` : undefined} src={product.coverImageUrl || (key ? campArt[key] : yupikArt)} alt="" />;
 }
 
-export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPage = "packs", onPageChange, products, catalogStatus, onRetryCatalog, tickets, ticketStatus = "ready", onRetryTickets, daraiBalance, daraiFromAccount = false, walletConnected, purchaseAllowed, accountPurchaseAllowed, maxDaraiQuantity, collectionNames, artifacts = [], ticketPurchaseOpen, onBuyTickets, onPurchase, presentation = "house" }: {
+export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPage = "packs", onPageChange, products, catalogStatus, onRetryCatalog, gold, goldStatus = "ready", onRetryGold, daraiBalance, daraiFromAccount = false, walletConnected, purchaseAllowed, accountPurchaseAllowed, maxDaraiQuantity, collectionNames, artifacts = [], onPurchase, onBuyGold, presentation = "house" }: {
   onClose: () => void;
   onOpenPacks: () => void;
   onOpenMarket?: () => void;
@@ -42,9 +47,9 @@ export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPa
   products: HouseProduct[];
   catalogStatus: Status;
   onRetryCatalog: () => void;
-  tickets: number | null;
-  ticketStatus?: Status;
-  onRetryTickets?: () => void;
+  gold: number | null;
+  goldStatus?: Status;
+  onRetryGold?: () => void;
   daraiBalance: number | null;
   daraiFromAccount?: boolean;
   walletConnected: boolean;
@@ -53,9 +58,9 @@ export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPa
   maxDaraiQuantity?: number;
   collectionNames: Map<string, string>;
   artifacts?: FeaturedArtifact[];
-  ticketPurchaseOpen: boolean;
-  onBuyTickets: () => void;
-  onPurchase: (product: HouseProduct, count: number, method: "tickets" | "darai" | "stars") => Promise<{ count: number; partial?: boolean }>;
+  onPurchase: (product: HouseProduct, count: number, method: HouseMethod) => Promise<{ count: number; partial?: boolean }>;
+  /** «+» у баланса золота — окно покупки золота (§8.66), на месте прежнего «+» билетов. */
+  onBuyGold?: () => void;
   presentation?: "house" | "camp";
 }) {
   const ru = useLang() === "ru";
@@ -67,7 +72,6 @@ export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPa
   const [canScroll, setCanScroll] = useState(false);
   const [canScrollBack, setCanScrollBack] = useState(false);
   const shelfRef = useRef<HTMLDivElement>(null);
-  const ticketTrigger = useRef<HTMLButtonElement>(null);
   const purchasePending = useRef(false);
   const featured = products[0];
   const featuredArtifact = artifacts[0];
@@ -101,7 +105,7 @@ export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPa
     return () => { resize.disconnect(); shelf.removeEventListener("scroll", update); };
   }, [page, products, catalogStatus, presentation]);
 
-  const buy = async (product: HouseProduct, count: number, method: "tickets" | "darai" | "stars") => {
+  const buy = async (product: HouseProduct, count: number, method: HouseMethod) => {
     purchasePending.current = true;
     const result = await onPurchase(product, count, method);
     setNotice({ kind: "purchase", count: result.count, requested: count, partial: Boolean(result.partial) });
@@ -109,24 +113,24 @@ export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPa
   };
 
   if (presentation === "camp") return <main className="camp-pack-store" aria-label={t("Купить паки", "Buy packs")}>
-    <div className="camp-pack-store__balance"><span>{t("Твои билеты", "Your tickets")}</span><strong><ResourceGlyph kind="tickets" /> {tickets == null ? "…" : formatted(tickets)} <button ref={ticketTrigger} type="button" data-ticket-topup aria-label={t("Купить билеты", "Buy tickets")} onClick={onBuyTickets}><Plus size={18} aria-hidden="true" /></button></strong></div>
-    {ticketStatus === "error" && <div className="camp-pack-store__status" role="alert">{t("Баланс недоступен", "Balance unavailable")} <button onClick={onRetryTickets}>{t("Повторить", "Retry")}</button></div>}
+    <div className="camp-pack-store__balance"><span>{t("Твоё золото", "Your gold")}</span><strong><ResourceGlyph kind="gold" /> {gold == null ? "…" : formatted(Math.floor(gold))}{onBuyGold && <button type="button" data-gold-topup aria-label={t("Купить золото", "Buy gold")} onClick={onBuyGold}><Plus size={18} aria-hidden="true" /></button>}</strong></div>
+    {goldStatus === "error" && <div className="camp-pack-store__status" role="alert">{t("Баланс недоступен", "Balance unavailable")} <button onClick={onRetryGold}>{t("Повторить", "Retry")}</button></div>}
     {notice && <div className="camp-pack-store__notice" role={notice.kind === "purchase" && !notice.partial ? "status" : "alert"}>{notice.kind === "message" ? notice.text : <button onClick={onOpenPacks}>{notice.partial ? t(`Подтверждено ${notice.count} из ${notice.requested}. Проверь Мои паки и историю операции.`, `${notice.count} of ${notice.requested} confirmed. Check My packs and transaction history.`) : t("Пак куплен. Открыть Мои паки", "Pack bought. Open My packs")}</button>}</div>}
     {catalogStatus !== "ready" ? <div className="camp-pack-store__empty" role={catalogStatus === "error" ? "alert" : "status"}>{catalogStatus === "error" ? t("Не удалось загрузить паки", "Could not load packs") : t("Загружаем паки…", "Loading packs…")}{catalogStatus === "error" && <button onClick={onRetryCatalog}>{t("Повторить", "Retry")}</button>}</div> : !campFeatured ? <div className="camp-pack-store__empty">{t("Пока нет паков в продаже", "No packs for sale yet")}</div> : <>
       <button className="camp-pack-store__hero" type="button" onClick={() => openProduct(campFeatured)} aria-label={t(`Открыть ${campFeatured.name}`, `Open ${campFeatured.name}`)}><CampProductArt product={campFeatured} /><Sparkles /></button>
-      <div className="camp-pack-store__offer"><PlaqueGlow /><strong>{campFeatured.name.replace(/\s*\(Premium\)$/i, "")}</strong>{campFeatured.kind === "premium" && <small>Premium</small>}<button type="button" onClick={() => openProduct(campFeatured)}>{campFeatured.priceStars != null ? <>{t("Купить", "Buy")} {formatted(campFeatured.priceStars)} ★</> : campFeatured.priceTickets == null ? t("Подробнее", "Details") : <>{t("Купить", "Buy")} <ResourceGlyph kind="tickets" /> {formatted(campFeatured.priceTickets)}</>}</button></div>
+      <div className="camp-pack-store__offer"><PlaqueGlow /><strong>{campFeatured.name.replace(/\s*\(Premium\)$/i, "")}</strong>{campFeatured.kind === "premium" && <small>Premium</small>}<button type="button" onClick={() => openProduct(campFeatured)}>{campFeatured.priceStars != null ? <>{t("Купить", "Buy")} {formatted(campFeatured.priceStars)} ★</> : goldPrice(campFeatured) == null ? t("Подробнее", "Details") : <>{t("Купить", "Buy")} <ResourceGlyph kind="gold" /> {formatted(goldPrice(campFeatured) ?? 0)}</>}</button></div>
       <div ref={shelfRef} className="camp-pack-store__shelf" aria-label={t("Другие паки", "Other packs")}>{campCatalog.map(product => <button key={product.id} className="camp-pack-store__item" type="button" onClick={() => openProduct(product)} aria-label={t(`Открыть ${product.name}`, `Open ${product.name}`)}><CampProductArt product={product} /><span>{product.name}</span></button>)}</div>
       {canScrollBack && <button className="camp-pack-store__shelf-arrow camp-pack-store__shelf-arrow--back" type="button" aria-label={t("Предыдущие паки", "Previous packs")} onClick={() => shelfRef.current?.scrollBy({ left: -shelfRef.current.clientWidth / 3, behavior: "smooth" })}><ChevronRight size={22} aria-hidden="true" /></button>}
       {canScroll && <button className="camp-pack-store__shelf-arrow camp-pack-store__shelf-arrow--next" type="button" aria-label={t("Следующие паки", "Next packs")} onClick={() => shelfRef.current?.scrollBy({ left: shelfRef.current.clientWidth / 3, behavior: "smooth" })}><ChevronRight size={22} aria-hidden="true" /></button>}
     </>}
-    {selected && !ticketPurchaseOpen && <TradingHouseSheet key={selected.id} product={selected} contents={houseContents(selected, collectionNames)} tickets={tickets} daraiBalance={daraiBalance} daraiFromAccount={daraiFromAccount} walletConnected={walletConnected} purchaseAllowed={purchaseAllowed} accountPurchaseAllowed={accountPurchaseAllowed} catalogPending={catalogStatus !== "ready"} maxDaraiQuantity={maxDaraiQuantity} quantity={quantity} onQuantityChange={setQuantity} onClose={() => { purchasePending.current = false; setSelected(null); }} onPurchase={buy} onBuyTickets={onBuyTickets} onReturnFromTopUp={onRetryCatalog} />}
+    {selected && <TradingHouseSheet key={selected.id} product={selected} contents={houseContents(selected, collectionNames)} gold={gold} daraiBalance={daraiBalance} daraiFromAccount={daraiFromAccount} walletConnected={walletConnected} purchaseAllowed={purchaseAllowed} accountPurchaseAllowed={accountPurchaseAllowed} catalogPending={catalogStatus !== "ready"} maxDaraiQuantity={maxDaraiQuantity} quantity={quantity} onQuantityChange={setQuantity} onClose={() => { purchasePending.current = false; setSelected(null); }} onPurchase={buy} onReturnFromTopUp={onRetryCatalog} />}
   </main>;
 
   return <main className="trading-house" aria-label={t("Торговый дом", "Trading House")}>
     <button className="trading-house__back" onClick={onClose}>{t("← Замок", "← Castle")}</button>
     <h1 id="castle-window-title" className="trading-house__title">{t("Торговый дом", "Trading House")}</h1>
-    <div className="trading-house__balance"><span>{t("Твои билеты", "Your tickets")}</span><strong><ResourceGlyph kind="tickets" /> {tickets == null ? "…" : formatted(tickets)}<button ref={ticketTrigger} className="trading-house__balance-add" type="button" aria-label={t("Купить билеты", "Buy tickets")} onClick={onBuyTickets}><Plus size={14} strokeWidth={2.5} aria-hidden="true" /></button></strong></div>
-    {ticketStatus === "error" && <p className="trading-house__notice" role="alert">{t("Баланс билетов недоступен.", "Ticket balance unavailable.")} <button type="button" onClick={onRetryTickets}>{t("Повторить", "Retry")}</button></p>}
+    <div className="trading-house__balance"><span>{t("Твоё золото", "Your gold")}</span><strong><ResourceGlyph kind="gold" /> {gold == null ? "…" : formatted(Math.floor(gold))}{onBuyGold && <button className="trading-house__balance-add" type="button" data-gold-topup aria-label={t("Купить золото", "Buy gold")} onClick={onBuyGold}><Plus size={14} strokeWidth={2.5} aria-hidden="true" /></button>}</strong></div>
+    {goldStatus === "error" && <p className="trading-house__notice" role="alert">{t("Баланс золота недоступен.", "Gold balance unavailable.")} <button type="button" onClick={onRetryGold}>{t("Повторить", "Retry")}</button></p>}
     <nav className="trading-house__tabs" aria-label={t("Разделы торгового дома", "Trading House sections")}>
       <button aria-pressed={page === "packs"} onClick={() => { setPage("packs"); onPageChange?.("packs"); }}>{t("Паки фишек", "Chip packs")}</button>
       <button aria-pressed={page === "artifacts"} onClick={() => { setPage("artifacts"); onPageChange?.("artifacts"); }}>{t("Артефакты", "Artifacts")}</button>
@@ -146,13 +150,13 @@ export function TradingHouseView({ onClose, onOpenPacks, onOpenMarket, initialPa
     {page === "packs" && catalogStatus === "ready" && !featured && <div className="trading-house__featured-offer trading-house__featured-offer--empty"><strong>{t("Паки фишек", "Chip packs")}</strong><small>{t("Пока нет в продаже", "None for sale yet")}</small></div>}
     {page === "packs" && catalogStatus === "ready" && featured && <>
       <button className={`trading-house__featured-art${selected?.id === featured.id ? " trading-house__featured-art--selected" : ""}`} aria-label={t(`Открыть ${featuredName}`, `Open ${featuredName}`)} onClick={() => openProduct(featured)}><ProductArt product={featured} /><Sparkles /></button>
-      <div className="trading-house__featured-offer"><PlaqueGlow /><strong>{featuredName}</strong>{featured.kind === "premium" && <small>Premium</small>}<button onClick={() => openProduct(featured)}>{featured.priceStars != null ? <>{t("Купить", "Buy")} {formatted(featured.priceStars)} ★</> : featured.priceTickets == null ? t("Подробнее", "Details") : <>{t("Купить", "Buy")} <ResourceGlyph kind="tickets" /> {formatted(featured.priceTickets)}</>}</button></div>
+      <div className="trading-house__featured-offer"><PlaqueGlow /><strong>{featuredName}</strong>{featured.kind === "premium" && <small>Premium</small>}<button onClick={() => openProduct(featured)}>{featured.priceStars != null ? <>{t("Купить", "Buy")} {formatted(featured.priceStars)} ★</> : goldPrice(featured) == null ? t("Подробнее", "Details") : <>{t("Купить", "Buy")} <ResourceGlyph kind="gold" /> {formatted(goldPrice(featured) ?? 0)}</>}</button></div>
       <div ref={shelfRef} className="trading-house__shelf" aria-label={t("Паки фишек", "Chip packs")}>
         {catalog.map(product => <button key={product.id} className={`trading-house__item${selected?.id === product.id ? " trading-house__item--selected" : ""}`} aria-label={t(`Открыть ${product.name}`, `Open ${product.name}`)} onClick={() => openProduct(product)}><ProductArt product={product} /><span>{product.name.includes(" (Premium)") ? <>{product.name.replace(" (Premium)", "")}<br />(Premium)</> : product.name}</span></button>)}
       </div>
       {canScroll && <button className="trading-house__next" aria-label={t("Следующие паки", "Next packs")} onClick={() => shelfRef.current?.scrollBy({ left: shelfRef.current.clientWidth * .68, behavior: "smooth" })}><ChevronRight size={23} /></button>}
     </>}
-    {page === "artifacts" && (featuredArtifact ? <><div className="trading-house__featured-art trading-house__featured-art--artifact"><img src={featuredArtifact.imageUrl} alt={featuredArtifact.name} /><Sparkles /></div><div className="trading-house__featured-offer trading-house__featured-offer--artifact"><PlaqueGlow /><strong>{featuredArtifact.name}</strong>{featuredArtifact.subtitle && <small>{featuredArtifact.subtitle}</small>}</div></> : <div className="trading-house__featured-offer trading-house__featured-offer--empty"><strong>{t("Артефакты", "Artifacts")}</strong><small>{t("Пока нет в продаже", "None for sale yet")}</small></div>)}
-    {selected && !ticketPurchaseOpen && <TradingHouseSheet key={selected.id} product={selected} contents={houseContents(selected, collectionNames)} tickets={tickets} daraiBalance={daraiBalance} daraiFromAccount={daraiFromAccount} walletConnected={walletConnected} purchaseAllowed={purchaseAllowed} accountPurchaseAllowed={accountPurchaseAllowed} catalogPending={catalogStatus !== "ready"} maxDaraiQuantity={maxDaraiQuantity} quantity={quantity} onQuantityChange={setQuantity} onClose={() => { purchasePending.current = false; setSelected(null); }} onPurchase={buy} onBuyTickets={onBuyTickets} onReturnFromTopUp={onRetryCatalog} />}
+    {page === "artifacts" && (featuredArtifact ? <><div className="trading-house__featured-art trading-house__featured-art--artifact"><img src={thumb(featuredArtifact.imageUrl, 400)} alt={featuredArtifact.name} /><Sparkles /></div><div className="trading-house__featured-offer trading-house__featured-offer--artifact"><PlaqueGlow /><strong>{featuredArtifact.name}</strong>{featuredArtifact.subtitle && <small>{featuredArtifact.subtitle}</small>}</div></> : <div className="trading-house__featured-offer trading-house__featured-offer--empty"><strong>{t("Артефакты", "Artifacts")}</strong><small>{t("Пока нет в продаже", "None for sale yet")}</small></div>)}
+    {selected && <TradingHouseSheet key={selected.id} product={selected} contents={houseContents(selected, collectionNames)} gold={gold} daraiBalance={daraiBalance} daraiFromAccount={daraiFromAccount} walletConnected={walletConnected} purchaseAllowed={purchaseAllowed} accountPurchaseAllowed={accountPurchaseAllowed} catalogPending={catalogStatus !== "ready"} maxDaraiQuantity={maxDaraiQuantity} quantity={quantity} onQuantityChange={setQuantity} onClose={() => { purchasePending.current = false; setSelected(null); }} onPurchase={buy} onReturnFromTopUp={onRetryCatalog} />}
   </main>;
 }

@@ -4,6 +4,7 @@
 // нужен, пока казино не открыли.
 import { lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
+import { CasinoTransition } from "@/components/slot/CasinoTransition";
 
 const SlotScreen = lazy(() =>
   import("@/components/slot/SlotScreen").then((m) => ({ default: m.SlotScreen })),
@@ -12,9 +13,10 @@ const SlotScreen = lazy(() =>
 export function CasinoOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <Suspense fallback={null}>
+    <Suspense fallback={<CasinoTransition />}>
       <SlotScreen onClose={onClose} />
     </Suspense>,
     document.body,
   );
 }
+

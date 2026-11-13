@@ -23,10 +23,13 @@ export const PLAYERS_KEY = ["beta-raid-players"] as const;
 const EMPTY: PlayerDots = new Map();
 
 let dots: PlayerDots = EMPTY;
+let online: PlayerDots = EMPTY;
 const listeners = new Set<() => void>();
 
 /** Точки чужих игроков «q,r» → сколько их на клетке. */
 export const getPlayerDots = (): PlayerDots => dots;
+/** Из них сейчас в игре (лагерь онлайн, 09.11): «q,r» → сколько; клеток без онлайна нет. */
+export const getPlayerOnline = (): PlayerDots => online;
 
 export function subscribePlayerDots(fn: () => void): () => void {
   listeners.add(fn);
@@ -35,9 +38,10 @@ export function subscribePlayerDots(fn: () => void): () => void {
   };
 }
 
-function setDots(next: PlayerDots): void {
-  if (next === dots) return;
+function setDots(next: PlayerDots, nextOnline: PlayerDots = EMPTY): void {
+  if (next === dots && nextOnline === online) return;
   dots = next;
+  online = nextOnline;
   for (const fn of listeners) fn();
 }
 
@@ -52,8 +56,12 @@ export function playersPusher(hide: boolean): (data: Players | undefined) => voi
     if (!data || data.cells === seen) return;
     seen = data.cells;
     const next = new Map<string, number>();
-    for (const cell of data.cells) next.set(`${cell.q},${cell.r}`, cell.count);
-    setDots(next);
+    const on = new Map<string, number>();
+    for (const cell of data.cells) {
+      next.set(`${cell.q},${cell.r}`, cell.count);
+      if (cell.online > 0) on.set(`${cell.q},${cell.r}`, cell.online);
+    }
+    setDots(next, on);
   };
 }
 

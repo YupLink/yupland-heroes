@@ -9,11 +9,50 @@
 // через 24 часа после закапывания — и выкапывают обратно.
 //
 // Таблицы — migrations/bag-01-loot-bags.sql, сервер —
-// server/api/beta-raid/loot-bag/, правило целиком — ПРАВИЛА §8.21.
+// server/api/beta-raid/loot-bag/, правило целиком — ПРАВИЛА §8.21. Ресурсы
+// счёта в мешочке (разборка шахты) — §8.70.
 import { FOG_ACTIVE_RADIUS } from "@/lib/raid/fogRadius";
+import { isMineV2, type MineV2Resource } from "@/lib/mineV2";
 
 /** Сколько живёт порция с попадания в мешочек; у бугорка — с закапывания. */
 export const LOOT_BAG_TTL_HOURS = 24;
+
+/**
+ * Ресурс счёта в мешочке (разборка шахты, ПРАВИЛА §8.70): стопка
+ * «resource:<вид>» — тот же ключ, что у ресурса на полке склада. Забранное
+ * уходит на счёт (res_move), а не в рюкзак; положить ресурс в мешочек нельзя.
+ */
+export const BAG_RES_PREFIX = "resource:";
+
+export const bagResKey = (res: MineV2Resource): string => `${BAG_RES_PREFIX}${res}`;
+
+/**
+ * Артефакт в мешочке (ПРАВИЛА §8.73 п. 4: надетое на проданном в ломбард герое): стопка
+ * «art:<id предмета>», одна штука. Забранное — в инвентарь (не в рюкзак), с прежним износом.
+ */
+export const BAG_ART_PREFIX = "art:";
+
+/** id предмета-артефакта стопки мешочка; не артефакт — null. */
+export function bagArtOf(stackKey: string | null | undefined): string | null {
+  const key = String(stackKey ?? "");
+  return key.startsWith(BAG_ART_PREFIX) && key.length > BAG_ART_PREFIX.length
+    ? key.slice(BAG_ART_PREFIX.length)
+    : null;
+}
+
+/** Вид ресурса стопки мешочка; не ресурс (или чужой ресурс) — null. */
+export function bagResOf(stackKey: string | null | undefined): MineV2Resource | null {
+  const key = String(stackKey ?? "");
+  if (!key.startsWith(BAG_RES_PREFIX)) return null;
+  const res = key.slice(BAG_RES_PREFIX.length);
+  return isMineV2(res) ? res : null;
+}
+
+/** Ресурс в мешочке не сгорает: срок — десять лет (как бугорок сундука, lib/plainChest). */
+export const LOOT_BAG_KEEP_HOURS = 87_600;
+
+/** Срок дальше года — порция не сгорает: «осталось N ч» у неё не пишем. */
+export const bagNeverBurns = (leftMs: number): boolean => Number(leftMs) > 365 * 24 * 3_600_000;
 
 /** Мешочки видно во «втором обзоре» — в круге активной зоны тумана. */
 export const LOOT_BAG_SEE = FOG_ACTIVE_RADIUS;
@@ -34,10 +73,15 @@ export type LootBagSpot = {
   leftMs: number;
   /** Закопал я (02.10): виден с любого расстояния, вокруг — первый обзор. */
   mine?: boolean;
+  /** Рыба, всплывшая от красного динамита (30.10.2026): тот же мешочек, рисуется рыбой. */
+  fish?: true;
 };
 
-/** Клетка слоя: сколько там мешочков и бугорков и закопаны ли все. */
-export type LootBagCell = { n: number; buried: boolean };
+/**
+ * Клетка слоя: сколько там мешочков и бугорков и закопаны ли все; fish — всё, что
+ * лежит сверху (не закопано), — рыба: рисуем рыбу, а не мешочек.
+ */
+export type LootBagCell = { n: number; buried: boolean; fish?: true };
 /** Слой карты: «q,r» → клетка. */
 export type LootBagMarks = Record<string, LootBagCell>;
 
@@ -51,6 +95,8 @@ export type LootBagItem = {
   count: number;
   /** До ближайшего сгорания порции этого вида, мс — на момент ответа. */
   leftMs: number;
+  /** Артефакт (art:<id>) зачарован, % (§8.87); нет поля — нет. */
+  enchantPct?: number;
 };
 
 /** Мешочек в окне: leftMs — до сгорания последней порции (бугорка — целиком). */
@@ -66,6 +112,10 @@ export type LootBagView = {
   open?: boolean;
   /** Цена «Открыть», энергия. */
   price?: number;
+  /** Рыба от красного динамита (30.10.2026): окно зовёт её рыбой. */
+  fish?: boolean;
+  /** Находка лопатой (31.10.2026): «Открыть» говорит «Выкопано: …». */
+  dig?: boolean;
 };
 
 /** Окно клетки: все мешочки и бугорки на ней и есть ли у героя лопата. */
@@ -76,8 +126,12 @@ export type LootBagCellView = {
   bags: LootBagView[];
 };
 
-/** Ответ «забрать»: сколько чего легло в рюкзак (сумку зелий). */
-export type LootBagTaken = { taken: Array<{ stackKey: string; qty: number }> };
+/** Ответ «забрать»: сколько чего легло в рюкзак (сумку зелий) или на счёт. */
+export type LootBagTaken = {
+  taken: Array<{ stackKey: string; qty: number }>;
+  /** «Забрать всё» унесло не всё: что осталось в мешочке (имя — как у позиции). */
+  left?: Array<{ stackKey: string; name: string; qty: number }>;
+};
 
 /** Ответ «положить»: сколько ушло из рюкзака в мешочек. */
 export type LootBagPut = { qty: number };
@@ -90,13 +144,30 @@ export const bagCellKey = (q: number, r: number): string => `${q},${r}`;
  */
 export function bagMarksOf(spots: readonly LootBagSpot[] | undefined): LootBagMarks {
   const out: LootBagMarks = {};
+  const top = new Map<string, { fish: number; bag: number }>();
   for (const s of Array.isArray(spots) ? spots : []) {
     const key = bagCellKey(Number(s.q), Number(s.r));
     const cur = out[key];
     out[key] = { n: (cur?.n ?? 0) + 1, buried: (cur?.buried ?? true) && s.buried === true };
+    if (s.buried === true) continue;
+    const t = top.get(key) ?? { fish: 0, bag: 0 };
+    if (s.fish === true) t.fish += 1;
+    else t.bag += 1;
+    top.set(key, t);
   }
+  for (const [key, t] of top) if (t.fish > 0 && t.bag === 0) out[key].fish = true;
   return out;
 }
+
+/**
+ * Тап по клетке берёт корабль, а не мешочек: корабль важнее (окно посадки). Кроме рыбы
+ * от красного динамита под моим кораблём — я в экипаже, стою на этой клетке, и иначе
+ * рыбу с борта не открыть (30.10.2026).
+ */
+export const shipTakesTap = (
+  cell: LootBagCell | undefined,
+  ship: { mine: boolean } | undefined,
+): boolean => !!ship && !(ship.mine && cell?.fish === true);
 
 /**
  * Мешочки и бугорки, не накрытые декором. Дерево, выросшее поверх (дополнение

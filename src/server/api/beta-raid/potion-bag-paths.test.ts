@@ -4,6 +4,7 @@
 // настоящие (market-backpack), база — фейк, считающий тем же SQL.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { bag, bagCells, bagDb, resetBag } from "@/test/potionBagFake";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const caps = vi.hoisted(() => ({ heroId: "h1", capacity: 5, potionCapacity: 1 }));
 
@@ -77,7 +78,7 @@ beforeEach(() => {
 });
 
 describe("сумка полна, рюкзак свободен — зелье не приходит ни одним путём", () => {
-  beforeEach(() => bag.rows.set("custom:cst_speed", 20));
+  beforeEach(() => bag.rows.set("custom:cst_speed", CELL_SIZE));
 
   it("маркет, город и скупка (deliverGood)", async () => {
     await expect(buy("cst_heal", 1)).rejects.toThrow("market.potion_bag_need:1:0");
@@ -102,7 +103,7 @@ describe("сумка полна, рюкзак свободен — зелье н
   it("после всех попыток в рюкзаке ни одного зелья, а товар ложится", async () => {
     await Promise.allSettled([buy("cst_heal", 1), reward("cst_heal", 1), harvest("cst_heal", 1)]);
     expect(bagCells()).toEqual({ items: 0, potions: 1 });
-    await expect(buy("cst_apple", 100)).resolves.toMatchObject({ target: "backpack" });
+    await expect(buy("cst_apple", 5 * CELL_SIZE)).resolves.toMatchObject({ target: "backpack" });
     expect(bagCells()).toEqual({ items: 5, potions: 1 });
   });
 });
@@ -110,40 +111,40 @@ describe("сумка полна, рюкзак свободен — зелье н
 describe("частичная выдача — сколько влезет в СУМКУ", () => {
   it("склад: долив своей ячейки + свободная ячейка сумки, остаток на полке", async () => {
     caps.potionCapacity = 2;
-    bag.rows.set(HEAL, 14);
-    bag.shelf = 60;
+    bag.rows.set(HEAL, CELL_SIZE - 6);
+    bag.shelf = 3 * CELL_SIZE;
     // Рюкзак свободен на все пять ячеек — зелью это ничего не даёт.
-    await expect(take(60)).resolves.toMatchObject({ qty: 26 });
-    expect(bag.rows.get(HEAL)).toBe(40);
-    expect(bag.shelf).toBe(34);
+    await expect(take(3 * CELL_SIZE)).resolves.toMatchObject({ qty: CELL_SIZE + 6 });
+    expect(bag.rows.get(HEAL)).toBe(2 * CELL_SIZE);
+    expect(bag.shelf).toBe(2 * CELL_SIZE - 6);
     expect(bagCells()).toEqual({ items: 0, potions: 2 });
   });
 
   it("склад, гонка за последнюю ячейку сумки: легло одно, второе вернулось на полку", async () => {
-    bag.rows.set("custom:cst_speed", 20);
+    bag.rows.set("custom:cst_speed", CELL_SIZE);
     caps.potionCapacity = 2;
-    bag.shelf = 40;
-    const res = await Promise.allSettled([take(20), take(20)]);
+    bag.shelf = 2 * CELL_SIZE;
+    const res = await Promise.allSettled([take(CELL_SIZE), take(CELL_SIZE)]);
     expect(res.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const lost = res.find((r) => r.status === "rejected") as PromiseRejectedResult;
     expect(String(lost.reason)).toContain("market.potion_bag_need:1:0");
-    expect(bag.rows.get(HEAL)).toBe(20);
-    expect(bag.shelf).toBe(20);
+    expect(bag.rows.get(HEAL)).toBe(CELL_SIZE);
+    expect(bag.shelf).toBe(CELL_SIZE);
     expect(bagCells()).toEqual({ items: 0, potions: 2 });
   });
 
   it("склад: обычный товар по-прежнему меряет рюкзак", async () => {
-    bag.rows.set("custom:cst_speed", 20);
+    bag.rows.set("custom:cst_speed", CELL_SIZE);
     bag.potionIds.delete("cst_heal");
-    bag.shelf = 60;
-    await expect(take(60)).resolves.toMatchObject({ qty: 60 });
+    bag.shelf = 3 * CELL_SIZE;
+    await expect(take(3 * CELL_SIZE)).resolves.toMatchObject({ qty: 3 * CELL_SIZE });
   });
 });
 
 describe("переполненный герой: ничего не отбираем и новое не принимаем", () => {
   beforeEach(() => {
-    bag.rows.set(HEAL, 14);
-    bag.rows.set("custom:cst_speed", 20);
+    bag.rows.set(HEAL, CELL_SIZE - 6);
+    bag.rows.set("custom:cst_speed", CELL_SIZE);
   });
 
   it("ни долив, ни новый вид, ни склад", async () => {
@@ -153,14 +154,14 @@ describe("переполненный герой: ничего не отбира�
     await expect(reward("cst_rage", 1)).rejects.toThrow("market.potion_bag_need:2:0");
     await expect(take(5)).rejects.toThrow("market.potion_bag_full");
     expect([...bag.rows]).toEqual([
-      [HEAL, 14],
-      ["custom:cst_speed", 20],
+      [HEAL, CELL_SIZE - 6],
+      ["custom:cst_speed", CELL_SIZE],
     ]);
     expect(bag.shelf).toBe(5);
   });
 
   it("освобождённые рюкзаком ячейки — только товарам и только до ёмкости", async () => {
-    await expect(buy("cst_apple", 100)).resolves.toMatchObject({ target: "backpack" });
+    await expect(buy("cst_apple", 5 * CELL_SIZE)).resolves.toMatchObject({ target: "backpack" });
     await expect(buy("cst_milk", 1)).rejects.toThrow("market.backpack_need:1:0");
     expect(bagCells()).toEqual({ items: 5, potions: 2 });
   });

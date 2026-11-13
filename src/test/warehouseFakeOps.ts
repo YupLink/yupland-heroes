@@ -3,6 +3,7 @@
 // чтение полок и сверки меток. Строки живут в warehouseFake.ts; метки здесь
 // ведутся тем же правилом, что в SQL (stack-origin): прежние — не больше count,
 // мобы первыми, плюс прибавка.
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { dec, decNum } from "@/test/numeric";
 import {
   LABELS,
@@ -81,7 +82,7 @@ export function fakeDeposit(o: {
   const key = `${o.item.kind}:${o.item.id}`;
   const cur = db.bp.get(key)?.count ?? 0n;
   const after = new Map(db.bp).set(key, { ...item("0"), count: cur + dec(o.qty) });
-  const cells = [...after.values()].reduce((n, r) => n + Math.ceil(decNum(r.count) / 20), 0);
+  const cells = [...after.values()].reduce((n, r) => n + Math.ceil(decNum(r.count) / CELL_SIZE), 0);
   if (cells > db.capacity) throw new Error("market.backpack_need:1:0");
   if (!db.bp.has(key)) db.bp.set(key, item("0"));
   grow(db.bp.get(key)!, dec(o.qty), marksOf(originAdds(o.qty, o.origin, o.mob)));

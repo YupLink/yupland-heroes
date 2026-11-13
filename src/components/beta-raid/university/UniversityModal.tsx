@@ -3,7 +3,7 @@
 // Устроено как прежний стейкинг, и намеренно: игрок уже знает этот экран.
 // Сверху — что даёт здание и сколько накоплено, ниже — сетка мест, куда
 // кладут фишки. Занятое место возвращает фишку нажатием, пустое открывает
-// выбор, закрытое — покупку за билеты.
+// выбор, закрытое — покупку за золото (§8.61).
 //
 // Числа считает сервер, но подписи берутся из общего с ним модуля
 // @/lib/university: показать одну доходность, а начислить другую нельзя.
@@ -50,7 +50,7 @@ export function UniversityModal({ q, r, onClose }: { q: number; r: number; onClo
     qc.invalidateQueries({ queryKey: ["beta-raid-building", q, r] });
     qc.invalidateQueries({ queryKey: ["my-like-balance"] });
     qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
-    qc.invalidateQueries({ queryKey: ["my-tickets"] });
+    qc.invalidateQueries({ queryKey: ["my-resources"] });
   };
   const fail = (e: Error) => toast.error(humanError(e));
 

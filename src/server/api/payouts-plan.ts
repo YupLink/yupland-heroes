@@ -2,8 +2,10 @@
 // (по требованию):
 //   50%   → darai_duplo.near (дупло)
 //   25%   → поровну между держателями NFT "Yup'ik YupLink (legendary)"
-//   12.5% → admin2.example.tg
-//   12.5% → owner.example.tg
+//   12.5% → партнёр (TEAM_PARTNER_WALLET)
+//   12.5% → владелец (TEAM_OWNER_WALLET)
+// Кошельки команды — из env (server/team): в превью пустой виден как есть, а
+// список перевода (distributionItems) без них не собирается.
 // Чистый расчёт без проверки прав: его зовут экран раздачи (payouts.ts, там
 // requireAdmin) и авторассылка (autodist/free-darai.ts).
 import type { DaraiPools } from "./darai-pools";
@@ -13,13 +15,12 @@ import {
   LEGENDARY_NFT_CONTRACT,
   SYSTEM_WALLETS_EXCLUDED_FROM_HOLDERS,
 } from "./payouts-legendary";
+import { requireTeamWallet, teamWallet, teamWalletTag } from "../team";
 
 export const DARAI_FT_CONTRACT = "darai.tkn.near";
 export const DARAI_DECIMALS = 18;
 const SOURCE_WALLET = "darai_gdrop.near";
 const DUPLO_WALLET = "darai_duplo.near";
-const YARSIB_WALLET = "admin2.example.tg";
-const MIPLIX_WALLET = "owner.example.tg";
 
 /** Делим bigint на 100 умножая на проценты (×100 чтобы поддержать половинки). */
 function takePercent(totalRaw: bigint, pctTimes10: bigint): bigint {
@@ -66,8 +67,8 @@ export async function distributionPreview(pools: DaraiPools, amountHuman?: numbe
   // 4) Доли (×10 чтобы поддержать половинки: 125 = 12.5%)
   const duploRaw = takePercent(totalRaw, 500n); // 50%
   const legendaryRaw = takePercent(totalRaw, 250n); // 25%
-  const yarsibRaw = takePercent(totalRaw, 125n); // 12.5%
-  const miplixRaw = takePercent(totalRaw, 125n); // 12.5%
+  const partnerRaw = takePercent(totalRaw, 125n); // 12.5%
+  const ownerRaw = takePercent(totalRaw, 125n); // 12.5%
 
   // 5) Делим legendary-долю по КОЛИЧЕСТВУ NFT, не по держателям.
   //    Кто держит больше копий — получит пропорционально больше.
@@ -149,29 +150,33 @@ export async function distributionPreview(pools: DaraiPools, amountHuman?: numbe
       amountRaw: duploRaw.toString(),
       amountHuman: rawToHumanDarai(duploRaw),
     },
-    player03: {
-      wallet: YARSIB_WALLET,
+    partner: {
+      title: teamWalletTag("partner"),
+      wallet: teamWallet("partner"),
       sharePercent: 12.5,
-      amountRaw: yarsibRaw.toString(),
-      amountHuman: rawToHumanDarai(yarsibRaw),
+      amountRaw: partnerRaw.toString(),
+      amountHuman: rawToHumanDarai(partnerRaw),
     },
-    miplix: {
-      wallet: MIPLIX_WALLET,
+    owner: {
+      title: teamWalletTag("owner"),
+      wallet: teamWallet("owner"),
       sharePercent: 12.5,
-      amountRaw: miplixRaw.toString(),
-      amountHuman: rawToHumanDarai(miplixRaw),
+      amountRaw: ownerRaw.toString(),
+      amountHuman: rawToHumanDarai(ownerRaw),
     },
   };
 }
 
 export type DistributionPreview = Awaited<ReturnType<typeof distributionPreview>>;
 
-/** Получатели батча: дупло, Ярослав, Миша, держатели legendary. */
+/** Получатели батча: дупло, партнёр, владелец, держатели legendary. Кошелёк команды не задан — ошибка. */
 export function distributionItems(preview: DistributionPreview) {
+  const partner = requireTeamWallet("partner");
+  const owner = requireTeamWallet("owner");
   return [
     { recipient: preview.duplo.wallet, amountHuman: preview.duplo.amountHuman, tag: "duplo 50%" },
-    { recipient: preview.yarsib.wallet, amountHuman: preview.yarsib.amountHuman, tag: "player03 12.5%" },
-    { recipient: preview.miplix.wallet, amountHuman: preview.miplix.amountHuman, tag: "miplix 12.5%" },
+    { recipient: partner, amountHuman: preview.partner.amountHuman, tag: `${preview.partner.title} 12.5%` },
+    { recipient: owner, amountHuman: preview.owner.amountHuman, tag: `${preview.owner.title} 12.5%` },
     ...preview.legendary.holders.map((h) => ({
       recipient: h.wallet,
       amountHuman: h.amountHuman,

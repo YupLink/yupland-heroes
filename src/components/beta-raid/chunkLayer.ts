@@ -29,6 +29,7 @@ import type { HexTileCache } from "./hexTileCache";
 import { bakeCells, imgReady } from "./chunkBake";
 import type { RoadRibbonCache } from "./roadRibbonCache";
 import { ChunkIndex, CHUNK, SEAM, chunkId, chunkRect } from "./chunkIndex";
+import { freeCanvas } from "./freeCanvas";
 
 /**
  * Потолок памяти под куски: суммарно по всем разрешениям. Скромный нарочно:
@@ -160,6 +161,7 @@ export class ChunkLayer {
     const at = list.findIndex((o) => o.bucket === bucket);
     if (at >= 0) {
       this.bytes -= list[at].bytes;
+      this.recycle(list[at].cv); // перепечённый (догрузились картинки) — в пул, не в мусор
       list[at] = b;
     } else list.push(b);
     this.baked.set(id, list);
@@ -197,7 +199,7 @@ export class ChunkLayer {
   }
 
   private recycle(cv: HTMLCanvasElement): void {
-    if (this.pool.length >= POOL_MAX) return;
+    if (this.pool.length >= POOL_MAX) return freeCanvas(cv); // память графики — сразу
     this.pool.push(cv);
   }
 
@@ -228,7 +230,10 @@ export class ChunkLayer {
     }
   }
 
+  /** Всё забыть и отдать память графики сразу (смена карты, окно «Карта» поверх). */
   clear(): void {
+    for (const list of this.baked.values()) for (const b of list) freeCanvas(b.cv);
+    this.pool.forEach(freeCanvas);
     this.pool.length = 0;
     this.baked.clear();
     this.bytes = 0;

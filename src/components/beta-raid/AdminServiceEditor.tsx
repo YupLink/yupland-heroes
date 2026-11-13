@@ -7,6 +7,7 @@ import { AdminBoostEditor } from "@/components/beta-raid/AdminBoostEditor";
 import { AdminChambersEditor } from "@/components/beta-raid/AdminChambersEditor";
 import { AdminOblivionEditor } from "@/components/beta-raid/AdminOblivionEditor";
 import { AdminSpellbookEditor } from "@/components/beta-raid/AdminSpellbookEditor";
+import { AdminArtGenEditor } from "@/components/beta-raid/art-gen/AdminArtGenEditor";
 
 export function AdminServiceEditor({
   effect,
@@ -25,5 +26,7 @@ export function AdminServiceEditor({
   if (effect === "chambers") return <AdminChambersEditor config={config} onSave={onSave} />;
   // «Забвение»: цена, уровень и время эффекта.
   if (effect === "oblivion") return <AdminOblivionEditor config={config} onSave={onSave} />;
+  // Генератор артефактов: цена каждой редкости и цена уникальности (§8.122).
+  if (effect === "art_gen") return <AdminArtGenEditor config={config} onSave={onSave} />;
   return null;
 }

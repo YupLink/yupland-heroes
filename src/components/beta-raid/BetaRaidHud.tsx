@@ -1,14 +1,17 @@
+import { useAuctionUnread } from "@/components/trade/useAuctionUnread";
+import { AuctionUnreadBadge } from "@/components/trade/AuctionUnreadBadge";
 import type { KeySet } from "./fogMask";
 import type { Landscape } from "./strategic-map/terrainGeometry";
 import { lazy, memo, Suspense, useRef, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getHomeCastle } from "@/server/api/beta-raid/home-castle";
 import { toast } from "sonner";
-import { ChevronUp, Plus, User, Gavel } from "lucide-react";
+import { ChevronUp, Plus, User } from "lucide-react";
 import { getSession } from "@/server/api/user-auth";
+import { useResources } from "@/lib/hooks/useResources";
+import { compactGold } from "@/lib/goldShop";
 import { listAuctions } from "@/server/api/game-auction";
-import { openAuction } from "@/lib/auctionBus";
-import { AuctionCount } from "@/components/chips/auctions/AuctionCount";
+import { openTrade } from "@/lib/tradeBus";
 import { useCastleMode } from "./castleMode";
 import { RaidEnergyHud } from "./RaidEnergyHud";
 import { RaidEffectsHud } from "./RaidEffectsHud";
@@ -20,19 +23,20 @@ import { RaidLivePresetQuickAccess } from "./gear/RaidLivePresetQuickAccess";
 import { SatietyBar, satietyLabel, useSatiety } from "./SatietyBar";
 import "./raid-hero-group.css";
 const HeroQuickModal = lazy(() => import("./HeroQuickModal").then(m => ({ default: m.HeroQuickModal })));
+const GoldBuyDialog = lazy(() => import("@/components/castle-live/gold-buy/GoldBuyDialog").then(m => ({ default: m.GoldBuyDialog })));
 import type { RaidHeroUi } from "./useRaidHeroUi";
 import { HUD_ART } from "@/lib/gameArt";
 import { HudRoundButton } from "./HudRoundButton";
 import { HarvestModal } from "./hud/HarvestModal";
 import { GiftsModal } from "./hud/GiftsModal";
 import type { MyGift } from "@/server/api/gifts";
-import { useHarvest, useGifts } from "./hud/useHarvest";
+import { useHarvest, useGifts, useHudPanel } from "./hud/useHarvest";
 import { MainToolBadge } from "./tool/MainToolBadge";
-import { FishingButton } from "./fishing/FishingButton";
+import { HudContextActions } from "./hand/HudContextActions";
 import { RaidLowerActions } from "./RaidLowerActions";
 import { IslandAdminButton } from "./island/IslandAdminButton";
+import { ReferralRewardDot } from "@/components/referrals/ReferralRewardDot";
 import "./raid-hud-art.css";
-
 function Hud({
   seen,
   landscape,
@@ -86,7 +90,7 @@ function Hud({
   // Два кружка под мини-картой. Верхний — «Добыча»: шахты, поля и очередь
   // наград, которые раньше висели плашками НАД картой и съедали её высоту.
   // Нижний — «Подарки»: он появляется, только когда подарок есть.
-  const [open, setOpen] = useState<null | "harvest" | "gifts">(null);
+  const [open, setOpen] = useHudPanel();
   const [rightOpen, setRightOpen] = useState(false);
   const harvest = useHarvest();
   const gifts = useGifts();
@@ -101,11 +105,18 @@ function Hud({
     enabled: auctionsOn,
     refetchInterval: 30_000,
   });
+  const { unreadCount } = useAuctionUnread();
   const auctionCount = auctionsLive.data?.auctions?.length ?? 0;
   const showAuction = auctionsOn && (auctionAdmin || auctionCount > 0);
   const castleMode = useCastleMode();
   const satiety = useSatiety();
   const [heroOpen, setHeroOpen] = useState(false);
+  const resources = useResources();
+  const [goldOpen, setGoldOpen] = useState(false);
+  const goldButton = useRef<HTMLButtonElement>(null);
+  const gold = resources.data?.gold;
+  const fullGold = gold == null ? null : new Intl.NumberFormat(lang === "ru" ? "ru-RU" : "en-US", { maximumFractionDigits: 0 }).format(Math.floor(gold));
+  const closeGold = () => { setGoldOpen(false); requestAnimationFrame(() => goldButton.current?.focus()); };
   const homeStatus = useQuery({ queryKey: ["home-castle"], queryFn: () => getHomeCastle(), enabled: !!castleMode });
   // «У замка ли я» — когда герой остановился, а не на каждый шаг: запрос на
   // шаг удваивал нагрузку (446 тыс. в сутки, как и самих шагов, 11.10.2026).
@@ -150,12 +161,18 @@ function Hud({
       <div className={castleMode ? "raid-hero-group" : "contents"}>
       {castleMode && (
         <>
+          <div data-hud-top className="raid-hero-group__gold" role="group" aria-label={lang === "ru" ? "Золото" : "Gold"}>
+            <img src="/resources/gold.webp" alt="" />
+            <strong title={fullGold ?? undefined} aria-label={fullGold ?? undefined}>{gold == null ? (resources.isPending ? "…" : "—") : compactGold(gold)}</strong>
+            <button ref={goldButton} type="button" className="raid-energy__buy" aria-label={lang === "ru" ? "Купить золото" : "Buy gold"} onClick={() => setGoldOpen(true)}><Plus aria-hidden="true" /></button>
+          </div>
           <div data-hud-top className="raid-hero-group__energy">
             <RaidEnergyHud ru={lang === "ru"} />
           </div>
           
         </>
       )}
+      {castleMode?.musicControl?.()}
       <div className={castleMode ? "raid-hero-group__portrait" : "contents"}>
         {castleMode && <SatietyBar ru={lang === "ru"} variant="ring" />}
         <button
@@ -171,6 +188,7 @@ function Hud({
         >
           {heroAvatarUrl ? <img src={heroAvatarUrl} alt="" className="h-full w-full object-cover" /> : <User aria-hidden="true" />}
         </button>
+        <ReferralRewardDot className={cn("pointer-events-none absolute z-[31]", castleMode ? "right-1.5 top-1.5" : "right-2 top-2")} />
       </div>
       {!castleMode && (
         <div data-hud-top data-hud-right className="pointer-events-none absolute right-2 top-[68px] z-30 w-24">
@@ -179,18 +197,18 @@ function Hud({
       )}
       </div>
       <Suspense fallback={null}>{heroOpen && <HeroQuickModal onClose={closeHero} onProfile={castleMode?.openProfile ? () => { setHeroOpen(false); castleMode.openProfile?.(); } : undefined} />}</Suspense>
+      <Suspense fallback={null}>{goldOpen && <GoldBuyDialog open ru={lang === "ru"} onClose={closeGold} returnFocus={() => goldButton.current?.focus()} />}</Suspense>
       <div data-hud-right className="raid-right-menu">
         <button type="button" className="raid-right-menu__toggle" aria-label={lang === "ru" ? rightOpen ? "Свернуть действия" : "Показать действия" : rightOpen ? "Collapse actions" : "Show actions"} aria-expanded={rightOpen} aria-controls="raid-right-menu-items" onClick={() => setRightOpen(value => !value)}>
           {rightOpen ? <ChevronUp aria-hidden="true" /> : <Plus aria-hidden="true" />}
-          {!rightOpen && auctionsOn && <AuctionCount n={auctionCount} />}
+          {!rightOpen && <AuctionUnreadBadge count={harvest.count + gifts.count + (auctionsOn ? (unreadCount ?? 0) : 0)} en={lang === "en"} label={lang === "ru" ? "Есть что забрать" : "To collect"} />}
         </button>
         {rightOpen && <div id="raid-right-menu-items" className="raid-right-menu__items">
-          <RaidQuickAccess ru={lang === "ru"} entry="spells" />
           <RaidMiniMapButton ru={lang === "ru"} art="/resources/raid-hud-art-map.webp" map={{ seen, landscape, playerQ, playerR, castle, castleShown, centerQ, c0q, onPick: onShowCell ?? onLook }} />
           <HudRoundButton art="/resources/raid-hud-art-pickaxe.webp" count={harvest.count} label={t("harvest.title")} hud="harvest" onClick={() => setOpen("harvest")} />
           {gifts.count > 0 && <HudRoundButton art="/resources/raid-hud-art-gift.webp" count={gifts.count} label={t("gifts.title")} tone="gift" pulse onClick={() => setOpen("gifts")} />}
-          {showAuction && <HudRoundButton icon={<Gavel className="h-5 w-5" />} count={auctionCount} tone="camp" label={lang === "ru" ? "Аукционы" : "Auctions"} onClick={() => openAuction()} />}
-          {auctionAdmin && <IslandAdminButton />}
+          <HudRoundButton icon={<><img src="/resources/trade-market.webp" alt="" draggable={false} className="h-[38px] w-[38px] object-contain" /><AuctionUnreadBadge count={unreadCount} en={lang === "en"} /></>} label={lang === "ru" ? "Торговля" : "Trade"} onClick={() => openTrade({auctionAvailable:showAuction,auctionCount})} />
+          {auctionSession.data?.isIslandTester && <IslandAdminButton />}
         </div>}
       </div>
 
@@ -219,8 +237,9 @@ function Hud({
         toolAction={<RaidLowerActions ru={lang === "ru"} heroSprite={heroSprite} walking={walking} canCenter={playerQ != null && playerR != null} onCenter={onCenterHero} onStop={onStop}
           hand={<MainToolBadge />}
           backpack={<RaidQuickAccess ru={lang === "ru"} entry="backpack" />}
+          spellbook={<RaidQuickAccess ru={lang === "ru"} entry="spells" />}
           presets={<RaidLivePresetQuickAccess ru={lang === "ru"} atCastle={entering} />}
-          action={walking ? null : <FishingButton q={playerQ} r={playerR} />}
+          action={walking ? null : <HudContextActions q={playerQ} r={playerR} />}
         />}
       /></div>
     </>
@@ -229,6 +248,3 @@ function Hud({
 
 // Слой живёт поверх канваса, который перерисовывается каждый кадр камеры.
 export const BetaRaidHud = memo(Hud);
-
-
-

@@ -339,12 +339,12 @@ function HistoryTab() {
             </div>
             <div className="mb-2 flex items-center gap-2 text-[11px]">
               <div className="text-muted-foreground">
-                {b.iAmCreator ? t("pvp.you") : "@" + (b.creatorUsername ?? b.creatorWallet)}
+                {b.iAmCreator ? t("pvp.you") : (b.creatorUsername ?? b.creatorWallet)}
               </div>
               <Swords className="h-3 w-3 text-rose-400" />
               <div className="text-muted-foreground">
                 {b.iAmCreator
-                  ? "@" + (b.opponentUsername ?? b.opponentWallet ?? "—")
+                  ? (b.opponentUsername ?? b.opponentWallet ?? "—")
                   : t("pvp.you")}
               </div>
             </div>
@@ -419,7 +419,7 @@ function BattleCard({
   return (
     <div className="rounded-2xl border border-border bg-card/60 p-3">
       <div className="mb-2 flex items-center gap-2">
-        <div className="text-sm font-semibold">@{creator}</div>
+        <div className="text-sm font-semibold">{creator}</div>
         <div className="text-[10px] text-muted-foreground">
           {relTime(createdAt)}
         </div>

@@ -16,7 +16,8 @@
 import { axialToPixel } from "./hexGeometry";
 import type { Cell, PackedCells } from "./unpackMap";
 import { makeCellsProxy } from "./mapCellsProxy";
-import { buildRoadMasks } from "./mapRoadMasks";
+import { roadMasksOf } from "./mapRoadMasks";
+import { syncVeins } from "./veinStore";
 
 export { STORE, storeOf } from "./mapCellsProxy";
 
@@ -42,6 +43,8 @@ type Geometry = {
   x1: number;
   y0: number;
   y1: number;
+  /** Ключи «q,r» по номеру клетки — лениво; общие для всех снимков с этими колонками. */
+  keys: string[];
 };
 
 const geometries = new WeakMap<object, Geometry>();
@@ -104,6 +107,7 @@ function geometryOf(p: PackedCells, centerQ: number, c0q: number): Geometry {
     x1,
     y0,
     y1,
+    keys: new Array<string>(n),
   };
   geometries.set(key, g);
   return g;
@@ -118,6 +122,8 @@ export class MapStore {
   readonly dome: Set<number>;
   /** Клетка-ратуша → её координаты: тап по ней открывает окно города. */
   readonly hallByIdx: Map<number, { q: number; r: number }>;
+  /** Клетки с шахтой: стена для героя (hexPassable). */
+  readonly mines: Set<number>;
   readonly bypassVoid: boolean;
   /** Готовые ключи тайлов местности по индексу словаря ("t:<id>"). */
   readonly tileKeys: string[];
@@ -135,13 +141,15 @@ export class MapStore {
     this.dead = new Set(packed.defeated);
     this.runners = new Set(packed.runners ?? []);
     this.dome = bypassVoid ? new Set() : new Set(packed.voidFog ?? []);
+    this.mines = new Set(packed.mines ?? []);
     this.bypassVoid = bypassVoid;
     this.hallByIdx = new Map();
     for (const i of packed.townHalls ?? [])
       this.hallByIdx.set(i, { q: packed.q[i], r: packed.r[i] });
     this.tileKeys = packed.terrainIds.map((id) => "t:" + id);
-    this.keyCache = new Array(this.n);
+    this.keyCache = this.geom.keys; // событие карты — новый store, но ключи те же: не пересобираем
     this.cells = makeCellsProxy(this);
+    syncVeins(packed); // жилы этой карты — ответ veinAt(q, r)
   }
 
   /** Номер клетки по координатам; -1 — такой клетки нет. */
@@ -212,6 +220,7 @@ export class MapStore {
     cell.buildingId = undefined;
     cell.voidFog = undefined;
     cell.townHall = undefined;
+    cell.mine = undefined;
     const t = p.t[i];
     if (t >= 0) cell.terrainId = p.terrainIds[t];
     const road = p.road[i];
@@ -229,12 +238,13 @@ export class MapStore {
     if (this.dome.has(i)) cell.voidFog = true;
     const hall = this.hallByIdx.get(i);
     if (hall) cell.townHall = hall;
+    if (this.mines.has(i)) cell.mine = true;
     return cell;
   }
 
   /** Маска соседей с ТОЙ ЖЕ дорогой (roadRibbonCache) — считается один раз. */
   roadMask(i: number): number {
-    if (!this.roadMasks) this.roadMasks = buildRoadMasks(this);
+    if (!this.roadMasks) this.roadMasks = roadMasksOf(this);
     return this.roadMasks[i];
   }
 }

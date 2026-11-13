@@ -119,6 +119,10 @@ describe("подтяжка журналов", () => {
     const sql = flat(farmSql("tour_1", 3));
     expect(sql).toContain("'farm:3:' || m.owner_account AS ref");
     expect(sql).toContain("c.building_id IS NOT NULL");
+    // Сломанная шахта v2 (§8.59) ничья — в фарм не идёт, даже до уборки.
+    expect(sql).toContain(
+      "AND NOT (m.accrue_from IS NOT NULL AND yuplink.raid_mine_v2_std(c.building_config) IS NOT NULL AND yuplink.raid_mine_break_at(m.mode, m.life_left, m.life_at) <= now())",
+    );
     expect(sql).toContain("t.snapshots < 3");
     expect(sql).toContain("SET snapshots = GREATEST(snapshots, 3)");
   });

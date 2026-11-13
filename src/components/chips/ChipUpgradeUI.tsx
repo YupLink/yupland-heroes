@@ -1,7 +1,7 @@
 import { ArrowRight, X } from "lucide-react";
 import { ChipImage } from "@/components/ChipImage";
 import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
-import { fmtTickets } from "@/components/chips/collectionsHelpers";
+import { fmtGold } from "@/lib/craftGold";
 import { useLang } from "@/lib/i18n";
 import "./chip-upgrade.css";
 
@@ -36,9 +36,11 @@ export function UpgradeHero({ imageUrl, name, level, templateNo }: { imageUrl: s
   </div>;
 }
 
-export function UpgradeCurrency({ label, value }: { label: string; value: number }) {
+/** Сумма в золоте (цена улучшения, баланс). null — пока неизвестна. */
+export function UpgradeCurrency({ label, value }: { label: string; value: number | null }) {
   const ru = useLang() === "ru";
-  return <span className="chip-upgrade__currency" aria-label={`${label}: ${fmtTickets(value)} ${ru ? "билетов" : "tickets"}`}><span>{label}</span><strong><ResourceGlyph kind="tickets" /> {fmtTickets(value)}</strong></span>;
+  const shown = value == null ? "…" : fmtGold(value, ru);
+  return <span className="chip-upgrade__currency" aria-label={`${label}: ${shown} ${ru ? "золота" : "gold"}`}><span>{label}:</span><strong><ResourceGlyph kind="gold" /> {shown}</strong></span>;
 }
 
 export function UpgradeChip({ imageUrl, name, level, templateNo, selected = false, onClick, disabled = false }: {

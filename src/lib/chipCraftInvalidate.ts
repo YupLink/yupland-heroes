@@ -7,7 +7,14 @@
 // остальное помечается устаревшим и перечитается, когда его откроют.
 import type { QueryClient } from "@tanstack/react-query";
 
-const ON_SCREEN = ["my-chip-inventory", "my-chip-history", "my-tickets", "chip-collection-detail"];
+// my-resources — золото: улучшение платится им (с 20.10.2026, вместо билетов).
+const ON_SCREEN = [
+  "my-chip-inventory",
+  "my-chip-history",
+  "my-tickets",
+  "my-resources",
+  "chip-collection-detail",
+];
 
 export function invalidateAfterCraft(qc: QueryClient, templateId: string): void {
   void qc.invalidateQueries({

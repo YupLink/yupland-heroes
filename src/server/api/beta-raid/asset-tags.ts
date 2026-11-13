@@ -6,26 +6,38 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
-import { getCurrentWallet, isAdminWallet } from "../../auth";
 import { sqlStr } from "../raid-shared";
-import { cleanList, type AssetTagKind, type AssetTags } from "@/lib/raid/assetTags";
+import {
+  ASSET_NATURES,
+  cleanList,
+  natureOf,
+  type AssetTagKind,
+  type AssetTags,
+} from "@/lib/raid/assetTags";
 import { RACES } from "@/components/heroMeta";
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
+import { requireCatalogEditor } from "@/server/api/catalog-auth";
 
 /** Метки меняются галочками админа — минуты кэша генератору хватает. */
 const TTL_MS = 60_000;
 let cache: { expires: number; value: Map<string, AssetTags> } | null = null;
 
-type Row = { ref_id: string; terrains: unknown; races: unknown; auto: boolean };
+type Row = { ref_id: string; terrains: unknown; races: unknown; auto: boolean; nature?: unknown };
 
 /** Массив строк для SQL: text[] без пустышек. */
 export const sqlTextArray = (list: readonly string[]): string =>
   list.length === 0 ? `'{}'::text[]` : `ARRAY[${list.map(sqlStr).join(",")}]::text[]`;
 
-/** Все метки: id → местности/расы. Нет таблицы (свежая база) — пусто, без меток. */
+/**
+ * Все метки: id → местности/расы/природа. Нет таблицы (свежая база) — пусто.
+ * Природу читаем через to_jsonb: до миграции minev2-20 колонки ещё нет, и
+ * прямое `nature` уронило бы чтение — генераторы остались бы без меток.
+ */
 export async function loadAssetTags(): Promise<Map<string, AssetTags>> {
   if (cache && cache.expires > Date.now()) return cache.value;
   const rows = ((await mcpExec(
-    `SELECT ref_id, terrains, races, auto FROM yuplink.raid_asset_tags;`,
+    `SELECT t.ref_id, t.terrains, t.races, t.auto, to_jsonb(t)->>'nature' AS nature
+       FROM yuplink.raid_asset_tags t;`,
     { wrapJson: true },
   ).catch(() => [])) ?? []) as Row[];
   const value = new Map<string, AssetTags>();
@@ -34,6 +46,7 @@ export async function loadAssetTags(): Promise<Map<string, AssetTags>> {
       terrains: cleanList(r.terrains),
       races: cleanList(r.races),
       auto: r.auto !== false,
+      nature: natureOf(r.nature),
     });
   }
   cache = { expires: Date.now() + TTL_MS, value };
@@ -68,18 +81,13 @@ export async function dropAssetTagsCaches(): Promise<void> {
   dropBuildingCatalogCache();
 }
 
-function requireAdmin(): void {
-  const w = getCurrentWallet();
-  if (!w || !isAdminWallet(w)) throw new Error("Только админ размечает ассеты");
-}
-
 /** Метки нужных id + список местностей для галочек. */
 export const adminGetAssetTags = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) =>
     z.object({ ids: z.array(z.string().min(1).max(80)).max(50) }).parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireDesigner();
     // Автоматика догоняет новые ассеты сама — не чаще раза в 10 минут.
     const { autoTagAssetsIfStale } = await import("./asset-tags-auto");
     await autoTagAssetsIfStale().catch(() => {});
@@ -104,22 +112,31 @@ export const adminSetAssetTags = createServerFn({ method: "POST" })
         kind: z.enum(["decoration", "building", "skin"]),
         terrains: z.array(z.string().min(1).max(80)).max(200),
         races: z.array(z.enum(RACES)).max(RACES.length),
+        /** Природа декора (§8.59.8): null — снять, пропущено — не трогать. */
+        nature: z.enum(ASSET_NATURES).nullable().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     const kind: AssetTagKind = data.kind;
     const terrains = cleanList(data.terrains);
     const races = cleanList(data.races);
+    // Природа — только у декора: дерево и гора бывают лишь им. Пропущена —
+    // колонку не трогаем (запрос пишет её, только когда она пришла).
+    const nature = kind === "decoration" ? data.nature : undefined;
+    const has = nature !== undefined;
     await mcpExec(
-      `INSERT INTO yuplink.raid_asset_tags (ref_id, kind, terrains, races, auto, updated_at)
+      `INSERT INTO yuplink.raid_asset_tags (ref_id, kind, terrains, races, auto, updated_at${has ? ", nature" : ""})
        VALUES (${sqlStr(data.refId)}, ${sqlStr(kind)}, ${sqlTextArray(terrains)},
-               ${sqlTextArray(races)}, false, now())
+               ${sqlTextArray(races)}, false, now()${has ? `, ${nature ? sqlStr(nature) : "NULL"}` : ""})
        ON CONFLICT (ref_id) DO UPDATE
          SET kind = EXCLUDED.kind, terrains = EXCLUDED.terrains, races = EXCLUDED.races,
-             auto = false, updated_at = now();`,
+             auto = false, updated_at = now()${has ? ", nature = EXCLUDED.nature" : ""};`,
     );
     await dropAssetTagsCaches();
-    return { ok: true as const, tags: { terrains, races, auto: false } };
+    return {
+      ok: true as const,
+      tags: { terrains, races, auto: false, ...(has ? { nature } : {}) },
+    };
   });

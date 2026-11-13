@@ -8,7 +8,8 @@
 //    добытое киркой (decor-interact → tour-hooks);
 //  • прибыль — «Золото»: только прибыль с продаж за золото по журналу сделок
 //    (goldProfit.ts, tour-profit.ts);
-//  • снимок — фарм: раз в сутки от старта, 1 балл = 1 шахта во владении;
+//  • снимок — фарм: раз в сутки за минуту до конца по UTC, 1 балл = 1 шахта
+//    во владении;
 //  • своё — турнир рыбаков (12.10.2026): улов — живой хук в выдаче улова
 //    (fishing-note), продажа рыбы (своей и купленной в плюс) и выпитые свои
 //    зелья — штучный учёт по журналу сделок (pieceFlow.ts, tour-own.ts).
@@ -87,33 +88,67 @@ export const isStoneItem = (name: string | null | undefined): boolean =>
 
 export const TOUR_DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Час и минута суточного снимка фарма, UTC (владелец, 04.10.2026: «в 23:59 по UTC»). */
-export const TOUR_FARM_SNAP_UTC = { h: 23, m: 59 };
+/**
+ * Снимок фарма — каждый день за минуту до конца турнира, по UTC (владелец,
+ * 07.11.2026: «конец турнира в 10 ютц — снимки каждый день в 9:59 по ютц,
+ * пока турнир не закончится»; до того — в 23:59 UTC).
+ */
+export const TOUR_FARM_SNAP_LEAD_MS = 60_000;
 
 /**
- * Сколько суточных снимков фарма уже положено. Снимок — каждый день в 23:59
- * UTC, если этот момент внутри турнира: [старт, конец]. В последний день
- * сначала снимок, потом конец — неделя с ПН 00:00 до ВС 23:59 даёт ровно 7.
- * Финиш делает последнюю подтяжку до подведения итогов, так что снимок в
- * момент конца не теряется. days — не используется (сутки считаются по часам).
+ * Назначенный конец — от него время снимков. Тот же выбор, что у старта
+ * (tour-start.startSql): end_at, если он позже начала, иначе начало + N
+ * дней. «Остановить» сдвигает ends_at, но не время снимков.
+ */
+export function farmPlanEndMs(o: {
+  startedMs: number;
+  endAtMs: number | null;
+  days: number;
+}): number {
+  if (o.endAtMs != null && o.endAtMs > o.startedMs) return o.endAtMs;
+  return o.startedMs + Math.max(0, Number(o.days) || 0) * TOUR_DAY_MS;
+}
+
+/**
+ * Сколько суточных снимков фарма уже положено. Снимок — каждый день в
+ * (назначенный конец − 1 мин) по UTC, если этот момент внутри турнира:
+ * [старт, конец]. Последний — за минуту до конца; турнир с 18:00 по 10:00
+ * через трое суток даёт 3 снимка (09:59). Финиш делает последнюю подтяжку до
+ * подведения итогов, так что снимок перед концом не теряется. Остановили
+ * раньше — только наступившие до остановки.
  */
 export function farmSnapshotsDue(o: {
   startedMs: number;
   endsMs: number;
   nowMs: number;
-  days?: number;
+  /** Назначенный конец (farmPlanEndMs); нет — ends_at. */
+  planEndMs?: number;
 }): number {
-  const until = Math.min(o.nowMs, o.endsMs);
-  if (!Number.isFinite(o.startedMs) || !Number.isFinite(until)) return 0;
-  const d = new Date(o.startedMs);
-  let first = Date.UTC(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate(),
-    TOUR_FARM_SNAP_UTC.h,
-    TOUR_FARM_SNAP_UTC.m,
-  );
-  if (first < o.startedMs) first += TOUR_DAY_MS;
+  const last = (o.planEndMs ?? o.endsMs) - TOUR_FARM_SNAP_LEAD_MS;
+  const until = Math.min(o.nowMs, o.endsMs, last);
+  if (!Number.isFinite(o.startedMs) || !Number.isFinite(until) || last < o.startedMs) return 0;
+  const first = last - Math.floor((last - o.startedMs) / TOUR_DAY_MS) * TOUR_DAY_MS;
   if (until < first) return 0;
   return Math.floor((until - first) / TOUR_DAY_MS) + 1;
+}
+
+const pad2 = (n: number): string => String(n).padStart(2, "0");
+
+/**
+ * Время снимка «09:59» (UTC) для условий на плашке. Конец турнира = end_at,
+ * если он позже начала, иначе начало + N дней — то же время суток, что у
+ * начала. Нет ни начала, ни конца — null.
+ */
+export function farmSnapClock(t: {
+  startedAt: string | null;
+  startAt: string | null;
+  endAt: string | null;
+}): string | null {
+  const ms = (v: string | null) => (v ? Date.parse(v) : NaN);
+  const base = ms(t.startedAt ?? t.startAt);
+  const end = ms(t.endAt);
+  const plan = Number.isFinite(end) && !(end <= base) ? end : base;
+  if (!Number.isFinite(plan)) return null;
+  const d = new Date(plan - TOUR_FARM_SNAP_LEAD_MS);
+  return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
 }

@@ -1,16 +1,18 @@
+import { useBuildingWindowAudio } from '@/hooks/useBuildingWindowAudio';
 // Полноэкранное окно аукциона в дизайне замка (Russo/Golos, золото). Открывается
 // шиной (кружок в HUD замка или на карте), поверх всего. Монтируется один раз в
 // корне ChipsPage и CastleGame, поэтому работает и из замка, и из мира.
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useLang } from "@/lib/i18n";
-import { onAuctionToggle, closeAuction, type AuctionTab } from "@/lib/auctionBus";
+import { onAuctionToggle, closeAuction, takeAuctionLink, type AuctionTab } from "@/lib/auctionBus";
 import { AuctionScreen } from "./AuctionScreen";
 import "./auction-screen.css";
 
 export function AuctionOverlay() {
   const en = useLang() === "en";
   const [open, setOpen] = useState(false);
+  useBuildingWindowAudio(open);
   const [tab, setTab] = useState<AuctionTab>("game");
 
   useEffect(
@@ -21,6 +23,10 @@ export function AuctionOverlay() {
       }),
     [],
   );
+  // Кнопка «К аукциону» в анонсе бота ведёт на /chips?auction=1 — окно сразу открыто.
+  useEffect(() => {
+    if (takeAuctionLink()) setOpen(true);
+  }, []);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -34,7 +40,7 @@ export function AuctionOverlay() {
 
   return (
     <section
-      className="auction-window"
+      className="auction-window auction-window--approved"
       role="dialog"
       aria-modal="true"
       aria-label={en ? "Auctions" : "Аукционы"}

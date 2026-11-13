@@ -89,6 +89,19 @@ export const takeBuildingBoost = createServerFn({ method: "POST" })
     // Иммунитет — тем же правилом: пока висит такой же, второй не продаём.
     // Забвение складывается (уровни, время) — ему этот гард не нужен.
     // Бафф храма замка (07.10.2026) алтарю не мешает: складываются.
+    // Одна покупка у алтаря за 3 с на героя (аудит 11.11.2026): параллельные
+    // запросы с разными ключами проходили проверку «бафф уже висит» все разом и
+    // накладывали бафф N раз. Счётчик — в базе (rateGate), общий на процессы.
+    // «Забвение» складывается само (уровни, время) — ему предел не нужен.
+    if (!rolls.every((r) => r.stat === "oblivion")) {
+      try {
+        const { rateGate } = await import("../../rateGate");
+        await rateGate(`boost-buy:${hero.id}`, { limit: 1, windowMs: 3000 });
+      } catch (e) {
+        await releaseBoostOp(data.op);
+        throw e;
+      }
+    }
     const [active, immune] = await Promise.all([
       loadBuffsFor(wallet, "castle_temple"),
       loadImmuneTargetsFor(wallet),

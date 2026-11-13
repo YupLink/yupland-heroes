@@ -7,6 +7,7 @@
 //   • цена — не фикс из лавки, а кривая ратуши по объёму сделки (townPricing);
 //   • склад один на весь город: купил в одной лавке — меньше во всех;
 //   • голод: лавки ничего не продают и принимают только еду жителей;
+//     на острове новичка продают ещё ресурсы портала (06.11.2026, «защита от дурака»);
 //   • особый спрос (09.10.2026): запас сутки на НЗ и ниже — до НЗ скупка ×4.
 // Лавки без привязки работают как раньше — этот модуль их не касается.
 import { readTown } from "./town-state";
@@ -14,6 +15,7 @@ import { shopTown } from "./town-binding";
 import { readTownStock, seedTownStock, type TownKey } from "./town-stock";
 import { readLowSince } from "./town-rush";
 import { isUpkeep, type TownConfig, type TownGood } from "@/lib/townConfig";
+import { isIslandMapId } from "@/lib/raid/island/ids";
 import {
   availableToBuy,
   ceilMoney,
@@ -83,15 +85,34 @@ export function townGoodFor(cfg: TownConfig, it: Omit<ListingLike, "side">): Tow
 
 export type CityLine = { good: TownGood; curve: TownCurve; stock: number };
 
+/** Ресурсы ремонта портала острова: 100 дерева, 10 камня, 2 алмаза (+50 золота — им и платят). */
+const PORTAL_RES = new Set(["wood", "stone", "diamonds"]);
+
+/**
+ * Голодный город острова всё равно продаёт ресурсы портала (владелец,
+ * 06.11.2026: «защита от дурака») — иначе новичок на заброшенной копии
+ * упирается в закрытые лавки и не уходит в мир. Большой мир — как было.
+ */
+function sellsWhileStarving(shop: CityShop, good: TownGood): boolean {
+  return (
+    isIslandMapId(shop.town.mapId) &&
+    good.kind === "resource" &&
+    PORTAL_RES.has(good.refId ?? "")
+  );
+}
+
 /**
  * Что позиции лавки можно в этом городе. null — позиции в городе нет вовсе:
  * товара нет в ратуше. Товар ратуши город и продаёт, и покупает (владелец,
- * 03.10.2026); в голод — ничего не продаёт и принимает только еду.
+ * 03.10.2026); в голод — принимает только еду, а продаёт только ресурсы
+ * портала острова (sellsWhileStarving).
  */
 export function cityLine(shop: CityShop, it: ListingLike): CityLine | null {
   const good = townGoodFor(shop.cfg, it);
   if (!good) return null;
-  if (shop.starving && (it.side === "buy" || !isUpkeep(good))) return null;
+  if (shop.starving && !(it.side === "buy" ? sellsWhileStarving(shop, good) : isUpkeep(good))) {
+    return null;
+  }
   const base = townCurve(good, shop.cfg.residents, shop.cfg.rules);
   const stock = shop.stock[good.id] ?? base.norm;
   const rush = isRush(base, stock, shop.lowSince?.[good.id] ?? null, Date.now());

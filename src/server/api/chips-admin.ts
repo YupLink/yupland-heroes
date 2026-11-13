@@ -320,6 +320,7 @@ export const adminCreateChipPack = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const wallet = requireAdmin();
+    await (await import("./chips-pack-fallback")).assertPackSaveRight(null, data.fallbackPackId);
     const id = `cp_${nanoid(10)}`;
     const now = new Date().toISOString();
     const row: PgChipPack = {
@@ -426,9 +427,8 @@ export const adminUpdateChipPack = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     requireAdmin();
-    const patch: Partial<PgChipPack> = {
-      updated_at: new Date().toISOString(),
-    };
+    await (await import("./chips-pack-fallback")).assertPackSaveRight(data.id, data.fallbackPackId);
+    const patch: Partial<PgChipPack> = { updated_at: new Date().toISOString() };
     if (data.marketHidden !== undefined) patch.market_hidden = data.marketHidden;
     if (data.name !== undefined) patch.name = data.name.trim();
     if (data.description !== undefined) patch.description = data.description?.trim() || null;

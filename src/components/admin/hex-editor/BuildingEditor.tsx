@@ -162,9 +162,10 @@ export function BuildingEditor({
             </option>
             <option value="tournament">Турнир — таблицы турниров и прошлые итоги</option>
             <option value="casino">Казино — слот «Раскопки» на золото</option>
-            <option value="portal">
-              Портал — переносит по сети или берёт плату за проход (дверь)
-            </option>
+            <option value="buckwheat">Гречневое королевство — мини-игра на золото</option>
+            <option value="enchant">Зачарование — заклинания на артефакты</option>
+            <option value="hero_enchant">Зачарование героев — N героев в одного сильнее</option>
+            <option value="portal">Портал — переносит по сети или плата за проход (дверь)</option>
             <option value="tavern">
               Таверна — смена героя за лайки (2-й тир: раз в сутки, 3-й: дважды)
             </option>

@@ -60,6 +60,20 @@ const SERVER_PHRASE_KEYS: Array<[RegExp, string]> = [
   // Отказ базы: изношенный инструмент из рюкзака не уходит (CHECK, §8.19) —
   // любым путём, что не ловит его сам (сундук, раздача), вместо текста SQL.
   [/raid_hero_backpack_worn_stays/, "braid.tool_worn_stays"],
+  // Крафт за золото и банк (§8.60): ru-фраза сервера → словарь.
+  [/^цена изменилась/, "err.price_changed"],
+  [/^сначала построй банк/, "err.no_bank"],
+  [/^маркет фишек закрыт/, "err.market_closed"],
+  [/^сумма изменилась/, "err.sum_changed"],
+  [/^обнови страницу — цены теперь в золоте/, "err.reload_gold"],
+  // Магазина билетов нет (§8.61): ручки покупки отказывают этой фразой.
+  [/^билетов больше нет/, "err.tickets_gone"],
+  // Вывод Google-игрока: отказ триггера базы (google-01), если ручка его не опередила.
+  [/google_no_withdraw/, "google.noWithdraw"],
+  // Аккаунт не в белом списке вывода (§8.127): отказ триггера базы entry-01.
+  [/withdraw_not_listed/, "withdraw.notListed"],
+  // Долг (§8.129): отказы базы debt_pay.
+  [/debt_none/, "debt.none"],
 ];
 
 /**
@@ -114,18 +128,29 @@ function translateParamKey(raw: string): string | null {
   }
 }
 
+// Коды замка кошелька (walletVault, 11.11.2026).
+const VAULT_CODES: Record<string, string> = {
+  APP_PWD_SETUP: "wvault.need_setup",
+  APP_LOCKED: "wvault.locked",
+};
+
 /** Текст ошибки для игрока: свой понятный или общий про обновление. */
 export function humanError(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e ?? "");
   const low = raw.toLowerCase();
   if (DEPLOY_MARKERS.some((m) => low.includes(m))) return deployText();
   if (NETWORK_MARKERS.some((m) => low.includes(m))) return offlineText();
+  const vault = VAULT_CODES[raw.trim()];
+  if (vault) return tFor(lang(), vault);
   const withNums = translateNeedKey(raw.trim()) ?? translateParamKey(raw.trim());
   if (withNums) return withNums;
   const byKey = translateKey(raw.trim());
   if (byKey) return byKey;
   const known = translateServerPhrase(low.trim());
   if (known) return known;
+  const gold = /^не хватает золота: нужно ([\d.]+)(?:, у тебя ([\d.]+))?/.exec(low.trim());
+  if (gold && lang() === "en")
+    return `${tFor("en", "err.no_gold")}: need ${gold[1]}${gold[2] ? `, you have ${gold[2]}` : ""}`;
   // Пустая или чисто техническая ошибка игроку ничего не объясняет.
   if (!raw.trim() || low.startsWith("internal server error")) return deployText();
   return raw;

@@ -10,14 +10,14 @@ import { myChipInventory } from "@/server/api/chips-pack";
 import { CHIP_BUSY_HINT, chipBusyView, useNowTick } from "@/components/chips/chipBusy";
 import { chipBusyImageClass } from "@/components/chips/ChipBusyNotice";
 import { CRAFT_RULES } from "@/server/api/chips-craft";
-import { getMyTickets } from "@/server/api/user-tickets";
+import { levelKey } from "@/components/chips/collectionsHelpers";
+import { useResources } from "@/lib/hooks/useResources";
+import { useCraftGoldPrice } from "@/components/chips/useCraftGoldPrice";
+import { goldAtMultiplier } from "@/lib/craftGold";
 import { ChipDetailModal } from "@/components/chips/ChipDetailModal";
 
+import { thumb } from "@/lib/image";
 type ChipSort = "level_desc" | "level_asc" | "date_new" | "date_old" | "serial" | "craftable";
-
-function levelKey(lvl: number): string {
-  return Number.isInteger(lvl) ? String(lvl) : lvl.toFixed(1);
-}
 
 const SORT_OPTIONS: Array<{ key: ChipSort; labelKey: string }> = [
   { key: "level_desc", labelKey: "chips.sort_level_desc" },
@@ -38,10 +38,9 @@ function TemplateInstancesView({ templateId, onBack }: { templateId: string; onB
     queryKey: ["my-chip-inventory"],
     queryFn: () => myChipInventory(),
   });
-  const tickets = useQuery({
-    queryKey: ["my-tickets"],
-    queryFn: () => getMyTickets(),
-  });
+  // Улучшение — за золото: баланс со счёта ресурсов, цена — стандарт × множитель.
+  const gold = useResources();
+  const goldMult = useCraftGoldPrice().data?.multiplier;
   const [openChip, setOpenChip] = useState<string | null>(null);
   // Оглушение и отдых берём из общего инвентаря: getMyChipsForTemplate знает
   // только про отдых, а выбитая боссом фишка должна быть видна и здесь.
@@ -59,10 +58,7 @@ function TemplateInstancesView({ templateId, onBack }: { templateId: string; onB
   if (!q.data) return null;
   const { template, chips } = q.data;
 
-  const ticketsAvailable =
-    (tickets.data as { availableRaw?: number } | undefined)?.availableRaw ??
-    tickets.data?.available ??
-    0;
+  const goldAvailable = gold.data?.gold ?? 0;
   const allItems = inv.data ?? [];
   const busyById = new Map(allItems.flatMap((g) => g.chips.map((c) => [c.id, c] as const)));
   function chipCanCraft(chip: { id: string; level: number; studying?: boolean }): boolean {
@@ -72,7 +68,7 @@ function TemplateInstancesView({ templateId, onBack }: { templateId: string; onB
     if (chip.level >= 5) return false;
     const rule = CRAFT_RULES[levelKey(chip.level)];
     if (!rule) return false;
-    if (ticketsAvailable < rule.costTickets) return false;
+    if (goldMult == null || goldAvailable < goldAtMultiplier(rule.costGold, goldMult)) return false;
     const sacrLevel = rule.sacrificeLevel ?? chip.level;
     const sameLvl = allItems.filter(
       (i) => i.collectionId === template.collectionId && i.level === sacrLevel,
@@ -197,7 +193,7 @@ function TemplateInstancesView({ templateId, onBack }: { templateId: string; onB
                 >
                   <div className="relative">
                     <ChipImage
-                      src={template.imageUrl}
+                      src={thumb(template.imageUrl, 640)}
                       level={c.level}
                       alt={template.name}
                       className={cn("w-full", chipBusyImageClass(busy))}

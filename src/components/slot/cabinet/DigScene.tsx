@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { findKind } from "@/lib/slot/bonus";
 import { FindArt, Finds, findName } from "./Finds";
+import { DigDirt } from "./DigDirt";
 import { YupikSprite, type Motion } from "./YupikSprite";
 import { num, text, useTimeline, vars, type SceneProps } from "./shared";
 import { useFindFlight } from "./useFindFlight";
@@ -256,6 +257,7 @@ export function DigScene({ state, act, ru, acting }: SceneProps) {
               })}
             >
               <span className="mound-art" />
+              {target === index && motion === "dig" && <DigDirt />}
               <span className="mound-find">
                 {chosen && <FindArt kind={kind} />}
               </span>

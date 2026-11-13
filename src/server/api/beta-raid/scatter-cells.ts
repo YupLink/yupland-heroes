@@ -21,6 +21,7 @@
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { FREE_CELL, cellOrder, pickAnyLand, type CellRef } from "./scatter-land";
+import { mobGroundSql } from "./mob-ground";
 
 // SQL свободной клетки, порядок жребия и добор с суши живут в scatter-land.ts
 // (лимит 250 строк); прежние импорты отсюда продолжают работать.
@@ -35,6 +36,8 @@ export type LandRequest = {
   terrainId: string | null;
   count: number;
   terrains?: readonly string[] | null;
+  /** Мобы, боссы и убегающие существа: ни дороги, ни жилы (владелец, 22.10.2026; mob-ground). */
+  mob?: boolean;
 };
 
 /** Раздача мест: сколько удалось дать под каждую заявку и чего не хватило. */
@@ -55,6 +58,8 @@ const GROUPS_PER_QUERY = 40;
 
 type Pools = Map<string, CellRef[]>;
 
+const keyOf = (c: CellRef): string => `${c.q},${c.r}`;
+
 const cellRows = (rows: unknown[]): Array<{ tid?: string; q: number; r: number }> =>
   (rows ?? []) as Array<{ tid?: string; q: number; r: number }>;
 
@@ -70,6 +75,7 @@ async function pickByTerrain(
   mapId: string,
   need: Map<string, number>,
   seed?: number | null,
+  mob = false,
 ): Promise<Pools> {
   const pools: Pools = new Map();
   const groups = [...need.entries()].filter(([, n]) => n > 0);
@@ -83,7 +89,7 @@ async function pickByTerrain(
                 FROM yuplink.raid_map_cells c
                WHERE c.map_id = ${sqlStr(mapId)}
                  AND c.terrain_id IN (SELECT tid FROM need)
-                 AND ${FREE_CELL}
+                 AND ${FREE_CELL}${mob ? ` AND ${mobGroundSql("c")}` : ""}
             )
        SELECT need.tid, p.q, p.r
          FROM need
@@ -126,17 +132,34 @@ export async function pickCells(
   if (requests.length === 0) return grants;
 
   const need = new Map<string, number>();
+  const needMob = new Map<string, number>();
   for (const req of requests) {
     const n = want(req);
-    if (req.terrainId && n > 0) need.set(req.terrainId, (need.get(req.terrainId) ?? 0) + n);
+    const into = req.mob ? needMob : need;
+    if (req.terrainId && n > 0) into.set(req.terrainId, (into.get(req.terrainId) ?? 0) + n);
   }
+  // Мобы — своим жребием (без дорог и жил). Прочим той же местности берём с
+  // запасом на число мобов и вычитаем выданное мобам: два жребия по одной
+  // местности иначе отдали бы клетку двоим.
+  const mobPools: Pools =
+    needMob.size > 0 ? await pickByTerrain(mapId, needMob, seed, true) : new Map();
+  for (const [tid, n] of needMob) if (need.has(tid)) need.set(tid, (need.get(tid) ?? 0) + n);
   const pools = await pickByTerrain(mapId, need, seed);
+  for (const [tid, got] of mobPools) {
+    const busy = new Set(got.map(keyOf));
+    const rest = pools.get(tid);
+    if (rest)
+      pools.set(
+        tid,
+        rest.filter((c) => !busy.has(keyOf(c))),
+      );
+  }
 
   // Раздаём своё. `taken` копится общим списком: он же вычитается из котла суши.
   const taken: CellRef[] = [];
   requests.forEach((req, i) => {
     if (!req.terrainId) return;
-    const pool = pools.get(req.terrainId);
+    const pool = (req.mob ? mobPools : pools).get(req.terrainId);
     if (!pool) return;
     const got = pool.splice(0, want(req));
     grants[i].cells.push(...got);
@@ -146,18 +169,21 @@ export async function pickCells(
   // Добор с суши: и заявки «куда угодно», и те, кому своей местности не хватило.
   // Котлов столько, сколько разных ограничений «только эти местности»: заявка
   // с уровнем местности добирает только из своих местностей.
-  const poolKey = (req: LandRequest) => (req.terrains ? [...req.terrains].sort().join("|") : "*");
-  const pools2 = new Map<string, { terrains: readonly string[] | null; idx: number[] }>();
+  // Мобам — свой котёл (без дорог и жил).
+  const poolKey = (req: LandRequest) =>
+    `${req.mob ? "mob" : ""}:${req.terrains ? [...req.terrains].sort().join("|") : "*"}`;
+  type Pool2 = { terrains: readonly string[] | null; mob: boolean; idx: number[] };
+  const pools2 = new Map<string, Pool2>();
   requests.forEach((req, i) => {
     if (want(req) - grants[i].cells.length <= 0) return;
     const k = poolKey(req);
-    const e = pools2.get(k) ?? { terrains: req.terrains ?? null, idx: [] };
+    const e = pools2.get(k) ?? { terrains: req.terrains ?? null, mob: !!req.mob, idx: [] };
     e.idx.push(i);
     pools2.set(k, e);
   });
-  for (const { terrains, idx } of pools2.values()) {
+  for (const { terrains, mob, idx } of pools2.values()) {
     const missing = idx.reduce((sum, i) => sum + want(requests[i]) - grants[i].cells.length, 0);
-    const land = await pickAnyLand(mapId, missing, taken, seed, terrains);
+    const land = await pickAnyLand(mapId, missing, taken, seed, terrains, mob);
     taken.push(...land);
     for (const i of idx) {
       const req = requests[i];

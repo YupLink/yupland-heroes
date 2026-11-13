@@ -6,9 +6,10 @@
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { loadSlowRows, slowExtraOf, type SlowRow } from "./encounter-effects";
-import { WEAKEN_KINDS, type WeakenKind } from "./abilities";
+import { STRIP_IMMUNE_KIND, WEAKEN_KINDS, type WeakenKind } from "./abilities";
 import { BUFF_KINDS } from "./hero-buff";
 import { IMMUNE_PREFIX } from "@/lib/hero/boostImmune";
+import { SIGHT_KIND } from "@/lib/raid/sight";
 
 export type ActiveChipEffect = {
   chipId: string;
@@ -44,9 +45,13 @@ export type ActiveSlow = {
   source: string | null;
 };
 
-/** Ослабление героя: вид, сколько пунктов снято, когда отпустит и от кого. */
+/**
+ * Ослабление героя: вид, сколько пунктов снято, когда отпустит и от кого.
+ * Снятие иммунитетов (strip_immune) едет тем же списком — дебафф героя со
+ * сроком; силы у него нет, значок рисуется без числа (effectGroups).
+ */
 export type ActiveWeaken = {
-  kind: WeakenKind;
+  kind: WeakenKind | typeof STRIP_IMMUNE_KIND;
   value: number;
   expiresAt: string;
   source: string | null;
@@ -102,8 +107,8 @@ export async function loadActiveEffects(account: string): Promise<ActiveEffects>
     // Ослабления героя лежат там же, где замедление, — берём их тем же рейсом.
     mcpExec(
       `SELECT kind, value, expires_at, source FROM yuplink.beta_raid_player_effects
-        WHERE kind IN (${WEAKEN_KINDS.map(sqlStr).join(",")}) AND expires_at > now()
-          AND account_id = ${sqlStr(account)}
+        WHERE kind IN (${[...WEAKEN_KINDS, STRIP_IMMUNE_KIND].map(sqlStr).join(",")})
+          AND expires_at > now() AND account_id = ${sqlStr(account)}
         ORDER BY expires_at DESC;`,
       { wrapJson: true },
     ).catch(() => []) as Promise<EffectRow[]>,
@@ -112,7 +117,7 @@ export async function loadActiveEffects(account: string): Promise<ActiveEffects>
     // (immune_*) едет в том же списке: форма ответа та же, значок свой.
     mcpExec(
       `SELECT kind, value, expires_at, source FROM yuplink.beta_raid_player_effects
-        WHERE (kind IN (${BUFF_KINDS.map(sqlStr).join(",")})
+        WHERE (kind IN (${[...BUFF_KINDS, SIGHT_KIND].map(sqlStr).join(",")})
                OR left(kind, ${IMMUNE_PREFIX.length}) = ${sqlStr(IMMUNE_PREFIX)})
           AND expires_at > now()
           AND account_id = ${sqlStr(account)}
@@ -141,7 +146,7 @@ export async function loadActiveEffects(account: string): Promise<ActiveEffects>
     const prev = strongest.get(row.kind);
     if (!prev || value > prev.value) {
       strongest.set(row.kind, {
-        kind: row.kind as WeakenKind,
+        kind: row.kind as ActiveWeaken["kind"],
         value,
         expiresAt: row.expires_at,
         source: row.source ?? null,

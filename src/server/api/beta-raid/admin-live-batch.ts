@@ -8,9 +8,16 @@ import { dropOrphanGroupsSql, ensureGroupColumns } from "./map-groups-schema";
 import { patchSchema } from "./admin-cell-patch";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
-import { requireAdmin } from "../../auth";
 import { sqlStr } from "../raid-shared";
-import { godMapId } from "./god-map";
+import {
+  designerBuildings,
+  designerPatch,
+  liveMapPatch,
+  requireGodMap,
+} from "./island/island-editor-auth";
+import { stripCellsMoney } from "./god-money";
+import { isCreatorMapId } from "@/lib/raid/creator/ids";
+import { keepTerrain } from "./admin-cell-patch";
 import { assertUsdtPatches } from "../usdt-cells";
 import { publishRaid } from "../../raidLive";
 import { purgeMapBase } from "./map-base";
@@ -20,6 +27,12 @@ import { roadColumn } from "./map-roads";
 import { readDaraiHold, settleDaraiHold } from "./map-darai-hold";
 import { ensureTownSchema, handleBuildingChange, readOldBuildings } from "./town-resolve";
 import { cellStatements } from "./admin-cell-sql";
+import { journalBatch } from "@/server/api/beta-raid/admin-batch-journal";
+import {
+  blockMineProbe,
+  blockMinesMoved,
+  readBlockMines,
+} from "@/server/api/beta-raid/mine-block-sync";
 
 /**
  * Сколько клеток берём за одну выгрузку. Клиент режет очередь на пачки по
@@ -44,8 +57,17 @@ export const adminPatchCells = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
-    const mapId = await godMapId();
+    // Админ — карта, где стоит; дизайнер замка — только свой остров новичка, и
+    // правки его вычищены до местности, дорог, декора и построек (island-editor-auth).
+    const god = await requireGodMap();
+    const mapId = god.mapId;
+    const town = god.admin ? null : await designerBuildings();
+    if (town) data.cells = data.cells.map((c) => designerPatch(c, town));
+    // Право island_god (свой остров, без денег): из настроек — токены вон.
+    if (god.money === false) data.cells = await stripCellsMoney(data.cells);
+    // Стереть местность (ластик «Местность») — только в мире креатора: на живой
+    // карте клетка без земли пропала бы у игроков (map-base её не отдаёт).
+    if (!isCreatorMapId(mapId)) data.cells = data.cells.map(keepTerrain);
     // USDT на объектах — живые деньги: сверх «свободно − запас» не пишем (§8.49а).
     await assertUsdtPatches(mapId, data.cells, "кисть с USDT");
     // Блоки (group_id/icon_scale): колонки дорастают перед первой выгрузкой.
@@ -59,6 +81,10 @@ export const adminPatchCells = createServerFn({ method: "POST" })
       mapId,
       data.cells.filter((c) => c.buildingId !== undefined),
     );
+    // Не админ и не свой остров (право god_map): объекты и постройки игроков — мимо.
+    if (town && !god.ownIsland) {
+      data.cells = data.cells.map((c) => liveMapPatch(c, oldBuildings, town));
+    }
     // Черновик мог накопиться на ДРУГОЙ карте: админ ушёл порталом на другой
     // этаж, пока красил, или черновик пролежал в localStorage с прошлого раза.
     // Без сверки правки легли бы по тем же координатам чужой карты.
@@ -108,12 +134,23 @@ export const adminPatchCells = createServerFn({ method: "POST" })
       (c) => c.objectId !== undefined || c.objectConfig !== undefined || c.alive !== undefined,
     );
     const hold = await readDaraiHold(mapId, daraiCells);
+    // Блоки-шахты: кто из членов блока шахта только по блоку — ДО правки и
+    // после (mine-block-sync). Сбой чтения — полный снимок: он надёжнее.
+    const probe = blockMineProbe(applied);
+    const minesBefore = await readBlockMines(mapId, probe.cells, probe.groups).catch(() => null);
 
     await mcpExec(statements.join("\n"), { wrapJson: false });
     // Пачка трогала блоки — снимаем группу с одиночек (отменённый член и т.п.).
     if (applied.some((c) => c.groupId !== undefined)) {
       await mcpExec(dropOrphanGroupsSql(sqlStr(mapId)), { wrapJson: false }).catch(() => undefined);
     }
+    const minesMoved =
+      probe.cells.length > 0 &&
+      (!minesBefore ||
+        (await readBlockMines(mapId, probe.cells, minesBefore.groups).then(
+          (now) => blockMinesMoved(minesBefore, now, probe.lifted),
+          () => true,
+        )));
     // Новые объекты закладывают номинал, снятые невскрытыми — возвращают.
     await settleDaraiHold(hold);
     // Ратуши: сравнить старое/новое building_id и обновить реестр.
@@ -141,60 +178,9 @@ export const adminPatchCells = createServerFn({ method: "POST" })
     // например) откатывался бы обратно — «удалил постройку, всё вернулось
     // до F5» (жалоба владельца).
     purgeMapBase(mapId);
-    // Журнал карты: пачка уходит игрокам дельтой (со словарями новых ассетов);
-    // «alive» в патче — не слой, слой объектов клетки перечитывается из базы.
-    // Постройки меняют окна и список ратуш — тогда «перестроена».
-    {
-      const { noteAdminPatches, noteMapRebuilt, noteCellsChanged } =
-        await import("./map-change-hooks");
-      const touchesTown = applied.some((c) => c.buildingId !== undefined);
-      if (touchesTown || applied.length > 500) await noteMapRebuilt(mapId);
-      else {
-        const layers = applied.filter(
-          (c) =>
-            c.terrainId !== undefined ||
-            c.roadId !== undefined ||
-            c.decorationId !== undefined ||
-            c.objectId !== undefined ||
-            c.buildingSkinId !== undefined ||
-            c.tier !== undefined ||
-            c.voidFog !== undefined ||
-            c.groupId !== undefined ||
-            c.iconScale !== undefined,
-        );
-        if (layers.length > 0)
-          await noteAdminPatches(
-            mapId,
-            layers.map((c) => ({
-              q: c.q,
-              r: c.r,
-              ...(c.terrainId !== undefined ? { terrainId: c.terrainId ?? null } : {}),
-              ...(c.roadId !== undefined ? { roadId: c.roadId ?? null } : {}),
-              ...(c.decorationId !== undefined ? { decorationId: c.decorationId ?? null } : {}),
-              // Живость — из черновика: кисть может положить объект сразу
-              // «добытым» (alive: false), и дельта не должна оживлять его.
-              ...(c.objectId !== undefined
-                ? { objectId: c.objectId ?? null, alive: c.alive !== false, runner: false }
-                : {}),
-              ...(c.buildingSkinId !== undefined
-                ? { buildingSkinId: c.buildingSkinId ?? null }
-                : {}),
-              ...(c.tier !== undefined ? { tier: c.tier } : {}),
-              ...(c.voidFog !== undefined ? { voidFog: c.voidFog } : {}),
-              // Блоки: без этого объединение не доехало бы до игроков и второй
-              // вкладки админа до F5 — и не подняло бы editSeq редактора карт.
-              ...(c.groupId !== undefined ? { groupId: c.groupId ?? null } : {}),
-              ...(c.iconScale !== undefined ? { iconScale: c.iconScale ?? null } : {}),
-            })),
-          );
-        const alive = applied.filter((c) => c.alive !== undefined && c.objectId === undefined);
-        if (alive.length > 0)
-          await noteCellsChanged(
-            mapId,
-            alive.map((c) => `${c.q},${c.r}`),
-          );
-      }
-    }
+    // Журнал карты: пачка уходит игрокам дельтой (со словарями новых ассетов)
+    // или «перестроена» — правила в admin-batch-journal.
+    await journalBatch(mapId, applied, minesMoved);
     publishRaid({ mapId, type: "restored" });
     // Опыт карты для генератора зон (какой декор на какой местности) считается
     // по этим же клеткам — после выгрузки пусть пересчитается, а не ждёт 5 мин.

@@ -15,6 +15,7 @@ import {
 import type { FieldReward } from "@/lib/fieldConfig";
 import type { MarketItem } from "@/lib/marketItem";
 import { isRewardResource } from "@/lib/rewardKinds";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 
 export async function giveFieldReward(opts: {
   wallet: string;
@@ -34,9 +35,13 @@ export async function giveFieldReward(opts: {
     // шахтную функцию урожай ложился видом 'mine' и не отличался от шахты
     // (владелец 28.09: «поля и шахты — отдельная разметка»). Прочее (лайки,
     // билеты, энергия, токен) — прежним путём: у энергии вид решает таяние
-    // (ПРАВИЛА §8.6.1), у Darai — пул карты.
-    const credit = isRewardResource(reward.resource)
-      ? `yuplink.res_move(${sqlStr(account)}, ${sqlStr(reward.resource)}, ${units}, 'field',
+    // (ПРАВИЛА §8.6.1), у Darai — пул карты. Билетов нет (§8.61): грядка
+    // «билетов» растит золото — 100 за билет, тем же видом 'field'.
+    const tix = reward.resource === "tickets";
+    const res = tix ? "gold" : reward.resource;
+    const qty = tix ? goldForEarnedTickets(units) : units;
+    const credit = isRewardResource(res)
+      ? `yuplink.res_move(${sqlStr(account)}, ${sqlStr(res)}, ${qty}, 'field',
               ${sqlStr(ref)})`
       : `yuplink.raid_mine_credit(${sqlStr(account)}, ${sqlStr(wallet)},
               ${sqlStr(reward.resource)}, ${reward.token ? sqlStr(reward.token) : "NULL"},

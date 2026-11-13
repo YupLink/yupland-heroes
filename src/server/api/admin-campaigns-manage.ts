@@ -21,7 +21,7 @@ export const updateDropEvent = createServerFn({ method: "POST" })
         maxTotalPool: z.number().int().positive().optional().nullable(),
         maxUsers: z.number().int().positive().optional().nullable(),
         freeClaim: z.boolean().optional().default(false),
-        ticketCost: z.number().positive().optional().default(1),
+        ticketCost: z.number().int().positive().optional().default(1), // колонка integer: дробь округлилась бы до 0 (бесплатный дроп)
         recurring: z.boolean().optional().default(false),
       })
       .parse(d)

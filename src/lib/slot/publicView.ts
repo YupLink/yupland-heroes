@@ -5,6 +5,8 @@
 // Карты удвоения после выбора открываются ВСЕ (владелец, 15.10.2026): игрок
 // видит, что лежало рядом. Это безопасно — раунд уже разыгран, а следующий
 // (risk-next) сдаёт новые четыре карты, старые больше ни на что не влияют.
+//
+// Ступень динамических барабанов (reels) браузеру не отдаётся вовсе.
 import type { SlotState } from "./state";
 
 /** Значение под неоткрытой кучкой и сторона неразыгранной попытки. */
@@ -35,5 +37,5 @@ export function publicView(s: SlotState): SlotState {
         hand: s.risk.picked === null ? s.risk.hand.map(() => ({ rank: 0, suit: 0 })) : s.risk.hand,
       }
     : null;
-  return { ...s, bonus, superGame, risk };
+  return { ...s, bonus, superGame, risk, reels: undefined };
 }

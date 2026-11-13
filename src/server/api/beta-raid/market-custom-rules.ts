@@ -38,6 +38,8 @@ type Kinds = {
   plainChest?: boolean;
   isRod?: boolean;
   isMap?: boolean;
+  isBinocular?: boolean;
+  isLadder?: boolean;
 };
 
 /** Лопата не зелье и не сундук (то же держат ограничения базы, bag-01 и pchest-01). */
@@ -65,16 +67,26 @@ export function assertMapFits(d: Kinds) {
 }
 
 /**
- * «Сундук», «Магический сундук», «Зелье», «Лопата», «Удочка» и «Карта»
- * взаимоисключающие (29.09, ограничение raid_custom_item_kind_ok, pchest-01;
- * удочка — fish-01, карта — map-01): не больше одной.
+ * «Сундук», «Магический сундук», «Зелье», «Лопата», «Удочка», «Карта»,
+ * «Бинокль» и «Лестница» взаимоисключающие (29.09, ограничение
+ * raid_custom_item_kind_ok, pchest-01; удочка — fish-01, карта — map-01;
+ * бинокль и лестница — binocular-01): не больше одной.
  */
 export function assertOneKind(d: Kinds) {
-  const on = [d.isShovel, d.isPotion, d.magicChest, d.plainChest, d.isRod, d.isMap].filter(
-    (v) => v === true,
-  );
+  const on = [
+    d.isShovel,
+    d.isPotion,
+    d.magicChest,
+    d.plainChest,
+    d.isRod,
+    d.isMap,
+    d.isBinocular,
+    d.isLadder,
+  ].filter((v) => v === true);
   if (on.length > 1) {
-    throw new Error("Сундук, магический сундук, зелье, лопата, удочка и карта — не вместе");
+    throw new Error(
+      "Сундук, магический сундук, зелье, лопата, удочка, карта, бинокль и лестница — не вместе",
+    );
   }
 }
 

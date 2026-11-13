@@ -2,20 +2,19 @@
 // заданное время. Можно выпить несколько за раз — результат тот же, что у
 // стольких же нажатий подряд.
 //
-// Порядок тот же, что у алтаря: занять ключ нажатия → забрать товар → повесить
-// бафф. Сорвалось начисление — товар возвращаем: платить съеденным зельем за
-// бонус, которого нет, игрок не подписывался. Выпитое — в журнал сделок
+// Ключ нажатия, списание и все эффекты — одной транзакцией (potion-drink.ts):
+// сорвалось хоть что-то — не списано и не наложено ничего; повтор нажатия
+// второй раз не списывает и не накладывает. Выпитое — в журнал сделок
 // (econ/drink-note: турнир «Зелья скорости» считает по нему).
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { requireWallet } from "../../auth";
 import { sqlStr } from "../raid-shared";
-import { resolveBackpack, returnToBackpackStack, takeFromBackpackStack } from "./market-backpack";
+import { resolveBackpack } from "./market-backpack";
 import { canonRef } from "./item-alias";
-import { boostOpAmount, claimBoostOp, releaseBoostOp } from "./hero-boost";
-import { applyBoostRoll } from "./hero-buff";
 import { noteDrink } from "@/server/api/beta-raid/econ/drink-note";
+import { drinkPotions } from "@/server/api/beta-raid/potion-drink";
 import {
   parseBoostEffects,
   rollBoostQty,
@@ -62,42 +61,24 @@ export const applyItemBoost = createServerFn({ method: "POST" })
 
     const rolls = rollBoostQty(effects, data.qty);
     const total = rolls.reduce((n, r) => n + r.amount, 0);
-    const fresh = await claimBoostOp({
-      op: data.op,
+    const out = await drinkPotions({
+      wallet,
       heroId: bp.heroId,
-      stat: rolls[0]?.stat ?? "spd",
-      amount: total,
+      op: data.op,
       source: `item:${canon}`,
+      lines: [{ stackKey: `${kind}:${canon}`, qty: data.qty, rolls }],
     });
-    if (!fresh) {
+    if (out.state === "repeat") {
       return {
         ok: true as const,
         repeat: true as const,
         rolls: [] as Roll[],
-        total: await boostOpAmount(data.op),
+        total: out.amount,
         qty: data.qty,
         heroName: bp.heroName,
       };
     }
-
-    const key = `${kind}:${canon}`;
-    // Списание может и бросить (изношенный инструмент, §8.19) — ключ отпускаем.
-    const taken = await takeFromBackpackStack(bp.heroId, key, data.qty).catch(async (e) => {
-      await releaseBoostOp(data.op);
-      throw e;
-    });
-    if (!taken) {
-      await releaseBoostOp(data.op);
-      throw new Error("Столько штук в сумке нет");
-    }
-
-    try {
-      for (const r of rolls) await applyBoostRoll(wallet, r);
-    } catch (e) {
-      await returnToBackpackStack(bp.heroId, key, data.qty, taken).catch(() => {});
-      await releaseBoostOp(data.op);
-      throw e;
-    }
+    if (out.state === "short") throw new Error("Столько штук в сумке нет");
 
     // Статы изменились — сбрасываем кэш силы героя, иначе бой ещё 15 секунд
     // считал бы по прежним числам.

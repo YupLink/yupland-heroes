@@ -5,12 +5,12 @@ import { heroCardStats, heroSkillCard } from "./heroes-skill-card";
 import { heroStatsAt } from "@/lib/heroStats";
 
 describe("heroSkillCard", () => {
-  it("рар 30: потолок 20, 17 очков, свободно за вычетом вложенного", () => {
+  it("рар 30: потолок 20, 60 очков, свободно за вычетом вложенного", () => {
     expect(heroSkillCard("rare", 30, { atk: 5, trade: 2 })).toEqual({
       baseLevel: 20,
       skills: { atk: 5, trade: 2 },
-      skillEarned: 17,
-      skillFree: 10,
+      skillEarned: 60,
+      skillFree: 53,
     });
   });
 

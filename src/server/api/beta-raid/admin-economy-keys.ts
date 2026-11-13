@@ -4,7 +4,7 @@
 // Правила:
 //   resource:<res>            для gold/stone/wood/diamonds/energy/likes/tickets
 //   resource:token:<sym>      для kind=resource + refId=token с символом токена
-//   pack:<refId>              и так же hero/art/boss
+//   pack:<refId>              и так же hero/art/boss и tree (дерево для посадки)
 //   custom:name:<slug>        свои товары дедупятся по имени
 //
 // item_id (mkt_…) — это ID строки маркета, не имя товара; два одинаковых
@@ -26,7 +26,17 @@ export function goodKey(kind: string, refId: string | null, name: string, token?
     if (!refId) return null;
     return `resource:${refId}`;
   }
-  if (kind === "pack" || kind === "hero" || kind === "art" || kind === "boss") {
+  if (
+    kind === "pack" ||
+    kind === "hero" ||
+    kind === "art" ||
+    kind === "boss" ||
+    kind === "tree" ||
+    kind === "rock" ||
+    kind === "land" ||
+    kind === "vein" ||
+    kind === "building"
+  ) {
     if (!refId) return null;
     return `${kind}:${refId}`;
   }

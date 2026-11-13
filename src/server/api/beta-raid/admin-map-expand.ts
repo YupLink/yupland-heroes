@@ -17,8 +17,8 @@ import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { requireAdmin } from "../../auth";
 import { sqlStr } from "../raid-shared";
-import { godMapId } from "./god-map";
 import { publishRaid } from "../../raidLive";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 /** 6 соседей flat-top axial-гекса. */
 const DIRS = [
@@ -48,8 +48,7 @@ export const adminExpandMapEdges = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }): Promise<{ ok: true; added: number }> => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
 
     // Рамкой raid_maps.size НЕ ограничиваем: владелец сам ставит клетки
     // далеко за 128×128, и рамка тут — только валидатор hex-editor'а, а не

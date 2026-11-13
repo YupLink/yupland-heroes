@@ -2,6 +2,7 @@
 // Убывает на глазах — шаг правит её в кэше состояния карты до ответа сервера
 // (stepCache), бой и захват перечитывают состояние. На нуле — значок голода
 // и красная полоска: характеристики героя ×0,5.
+import { memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Apple, UtensilsCrossed } from "lucide-react";
 import { getBetaRaidState } from "@/server/api/beta-raid";
@@ -26,7 +27,7 @@ export function satietyLabel(s: Sat, ru: boolean): string {
 }
 
 /** compact — под героем, ring — вокруг портрета в рейде, full — со значениями. */
-export function SatietyBar({
+function SatietyBarView({
   ru,
   variant = "full",
   className = "",
@@ -68,3 +69,7 @@ export function SatietyBar({
     </div>
   );
 }
+
+// memo: экран рейда перерисовывается на каждый шаг героя, а этому компоненту
+// шаг ни при чём — без memo он с иконками шёл следом (замер 06.11.2026).
+export const SatietyBar = memo(SatietyBarView);

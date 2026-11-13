@@ -16,6 +16,8 @@ export type CostEntry = {
   need: number;
   /** Имя шаблона предметной цены: «1 Слиток железа» вместо «1 артефакт». */
   name: string | null;
+  /** Картинка того же шаблона (у доп. ингредиентов — своя, §8.104 п. 1а). */
+  image?: string | null;
 };
 export type CartLine = { it: MarketItemView; qty: number };
 
@@ -49,6 +51,7 @@ export function cartCost(lines: CartLine[]): CostEntry[] {
     token: string | null,
     amount: number,
     name: string | null,
+    image: string | null = null,
   ) => {
     if (amount <= 0) return;
     const key = costKey(resource, token);
@@ -57,7 +60,7 @@ export function cartCost(lines: CartLine[]): CostEntry[] {
     // режем хвост, иначе он полезет в подпись «спишется» и в сравнение с балансом.
     // Имя у ключа одно: разные шаблоны различаются token и в один ключ не сходятся.
     if (e) e.need = Math.round((e.need + amount) * 1000) / 1000;
-    else cost.set(key, { resource, token, need: Math.round(amount * 1000) / 1000, name });
+    else cost.set(key, { resource, token, need: Math.round(amount * 1000) / 1000, name, image });
   };
   const city = cityCartTotals(lines);
   for (const l of lines) {
@@ -78,6 +81,8 @@ export function cartCost(lines: CartLine[]): CostEntry[] {
       add(l.it.priceResource, l.it.priceToken, l.it.priceAmount * l.qty, names.first);
       if (l.it.price2Resource && l.it.price2Amount)
         add(l.it.price2Resource, l.it.price2Token, l.it.price2Amount * l.qty, names.second);
+      for (const m of l.it.priceMore ?? [])
+        add(m.resource, m.token, m.amount * l.qty, m.name ?? null, m.image ?? null);
     }
   }
   return Array.from(cost.values());

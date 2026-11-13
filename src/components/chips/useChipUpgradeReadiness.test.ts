@@ -7,16 +7,17 @@ const { UPGRADE_READY_KEY, watchUpgradeSources } = await import("./useChipUpgrad
 const { upgradeBlockText } = await import("@/lib/chips/upgradeBlock");
 
 describe("фильтр «можно улучшить»", () => {
-  it("обновились фишки или билеты — ответ устарел; прочее не трогает", () => {
+  it("обновились фишки или золото — ответ устарел; прочее не трогает", () => {
     const qc = new QueryClient();
-    qc.setQueryData(UPGRADE_READY_KEY, { haveTickets: 0, chips: {} });
+    qc.setQueryData(UPGRADE_READY_KEY, { haveGold: 0, chips: {} });
     const stop = watchUpgradeSources(qc);
     const stale = () => qc.getQueryState(UPGRADE_READY_KEY)?.isInvalidated;
     qc.setQueryData(["beta-raid-state"], 1);
-    expect(stale()).toBe(false);
     qc.setQueryData(["my-tickets"], { available: 5 });
+    expect(stale()).toBe(false);
+    qc.setQueryData(["my-resources"], { gold: 500, stone: 0, diamonds: 0, wood: 0 });
     expect(stale()).toBe(true);
-    qc.setQueryData(UPGRADE_READY_KEY, { haveTickets: 5, chips: {} });
+    qc.setQueryData(UPGRADE_READY_KEY, { haveGold: 500, chips: {} });
     qc.setQueryData(["my-chip-inventory"], []);
     expect(stale()).toBe(true);
     stop();
@@ -25,8 +26,11 @@ describe("фильтр «можно улучшить»", () => {
   it("причины по-русски и по-английски", () => {
     const ru = (k: string, p?: Record<string, string | number>) => tFor("ru", k, p);
     const en = (k: string, p?: Record<string, string | number>) => tFor("en", k, p);
-    expect(upgradeBlockText({ kind: "tickets", need: 3.53, have: 1.2 }, ru)).toBe(
-      "Не хватает билетов: нужно 3.53, есть 1.2",
+    expect(upgradeBlockText({ kind: "gold", need: 1059, have: 120 }, ru)).toBe(
+      "Не хватает золота: нужно 1059, у тебя 120",
+    );
+    expect(upgradeBlockText({ kind: "gold", need: 9, have: 0 }, en)).toBe(
+      "Not enough gold: need 9, you have 0",
     );
     expect(
       upgradeBlockText(

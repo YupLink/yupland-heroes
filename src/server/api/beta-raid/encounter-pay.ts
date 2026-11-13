@@ -27,12 +27,14 @@ export async function payForHit(
     throw new Error(error.message);
   }
   void noteEnergySpendByWallet(wallet, cost, reason);
-  // Бой стоит герою сытости (−10, lib/hero/satiety); не состоялся — вернём.
+  // Бой стоит герою сытости (−10, lib/hero/satiety; на острове ×0,1); не
+  // состоялся — вернём ровно списанное.
   const fight = reason === "fight";
-  if (fight) await spendSatiety(wallet, -SATIETY_COST.fight);
+  const sat = fight ? await fightSatiety(wallet) : 0;
+  if (sat > 0) await spendSatiety(wallet, -sat);
   return {
     refund: async () => {
-      if (fight) await spendSatiety(wallet, SATIETY_COST.fight);
+      if (sat > 0) await spendSatiety(wallet, sat);
       // Возврат сам по себе тоже может не пройти — тогда хотя бы останется
       // след в логе: молча терять чужую энергию нельзя.
       try {
@@ -47,6 +49,14 @@ export async function payForHit(
       }
     },
   };
+}
+
+/** Сытость за бой на карте игрока: остров — в 10 раз меньше. */
+async function fightSatiety(wallet: string): Promise<number> {
+  const { myMapId } = await import("./encounter-where");
+  const { satietyMultOf, scaleSatiety } = await import("@/lib/raid/island/satiety");
+  const mapId = await myMapId(wallet).catch(() => null);
+  return scaleSatiety(SATIETY_COST.fight, satietyMultOf(mapId));
 }
 
 /** Сытость героя за бой — без героя или при сбое бой идёт как раньше. */

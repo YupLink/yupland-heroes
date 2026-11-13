@@ -18,7 +18,15 @@ import { spellCooldownMinutes, spellEnergyCost } from "@/lib/hero/spellPower";
  * ТЕХНИЧЕСКИЕ: они двигают по карте корабль или самого героя (create_ship —
  * спускает новый, repair_ship — чинит), и эффекты у них могут быть пустыми.
  */
-export const SPELL_KINDS = ["boost", "summon_ship", "teleport_town", "create_ship", "repair_ship"] as const;
+export const SPELL_KINDS = [
+  "boost",
+  "summon_ship",
+  "teleport_town",
+  "create_ship",
+  "repair_ship",
+  // Большой корабль — на любую воду, океан тоже (владелец, 30.10.2026; spell-03).
+  "create_big_ship",
+] as const;
 export type SpellKind = (typeof SPELL_KINDS)[number];
 
 export type SpellTpl = {

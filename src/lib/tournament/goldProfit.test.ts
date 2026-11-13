@@ -46,19 +46,19 @@ describe("золото — прибыль с продаж", () => {
     expect(sum([buy(10, 500, { cur: "stone" }), sell(10, 300)])).toBe(300);
   });
 
-  it("накопленное до турнира прибыли не даёт — считаем только нажитое в нём", () => {
-    // Владелец, 08.10.2026: «только то, что было накоплено после начала
-    // турнира». Купил до старта — продажа внутри идёт как распродажа запасов.
+  it("запасы до старта — тоже в зачёт: купленное сверх своей цены (03.11.2026)", () => {
+    // Владелец, 03.11.2026: «и что что запасы — тоже нужно учитывать их — это
+    // же продажа». Было (08.10): купленное до старта прибыли не давало.
     const rows = [buy(10, 100), sell(4, 60), sell(6, 90)];
-    expect(goldProfitFlow(rows, rows[2].at, 1e9)).toEqual([]);
-    // Та же покупка внутри турнира — прибыль сверх своей цены.
+    // Продажа до старта в зачёт не идёт, но свои 4 штуки по цене 10 снимает.
+    expect(goldProfitFlow(rows, rows[2].at, 1e9).map((p) => p.profit)).toEqual([30]);
     expect(goldProfitFlow(rows, 0, 1e9).reduce((n, p) => n + p.profit, 0)).toBe(50);
   });
 
-  it("урожай в личные ячейки склада — добытое; выращенное до старта — запасы", () => {
+  it("урожай в личные ячейки склада — добытое, и выращенное до старта тоже", () => {
     const rows = [row({ side: "take", source: "field", qty: 4, place: "m:1,2" }), sell(4, 40)];
     expect(sum(rows)).toBe(40);
-    expect(goldProfitFlow(rows, rows[1].at, 1e9)).toEqual([]);
+    expect(goldProfitFlow(rows, rows[1].at, 1e9).map((p) => p.profit)).toEqual([40]);
   });
 });
 
@@ -124,15 +124,18 @@ describe("окно подтяжки, улов и выпитое (12.10.2026)", (
   it("купленное в турнире раньше окна подтяжки — не запасы: прибыль сверх цены", () => {
     const rows = [buy(10, 100), sell(10, 150)];
     // Окно началось после покупки, турнир — раньше неё.
-    const pts = goldProfitFlow(rows, rows[1].at, 1e9, {}, 0);
+    const pts = goldProfitFlow(rows, rows[1].at, 1e9);
     expect(pts.map((p) => p.profit)).toEqual([50]);
   });
 
-  it("улов до старта — запасы, после — добытое", () => {
+  it("улов до старта и после — весь в зачёт (03.11.2026)", () => {
     const fish = (qty: number) => row({ side: "take", source: "fish", qty, cur: "" });
-    const rows = [fish(5), sell(5, 50), fish(3), sell(3, 30)];
-    const pts = goldProfitFlow(rows, 0, 1e9, {}, rows[2].at);
-    expect(pts.map((p) => p.profit)).toEqual([30]);
+    // 125 поймано до старта, 26 после, продано 85 и 66 — вся выручка.
+    const rows = [fish(125), fish(26), sell(85, 850), sell(66, 660)];
+    expect(goldProfitFlow(rows, rows[1].at, 1e9).map((p) => p.profit)).toEqual([850, 660]);
+    // Купленное за золото уходит первым — вычитается его цена.
+    const mixed = [fish(10), buy(5, 50), fish(4), sell(7, 140)];
+    expect(goldProfitFlow(mixed, mixed[2].at, 1e9).map((p) => p.profit)).toEqual([90]);
   });
 
   it("выпитое уходит со счёта: купленное первым", () => {

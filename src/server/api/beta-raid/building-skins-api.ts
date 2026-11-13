@@ -4,6 +4,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getCurrentWallet, isAdminWallet } from "../../auth";
+import { requireDesigner } from "./island/island-editor-auth";
 import { godMapId } from "./god-map";
 import {
   addGroup,
@@ -16,6 +17,7 @@ import {
 } from "./building-skins";
 import { publishRaid } from "../../raidLive";
 import { purgeMapBase } from "./map-base";
+import { requireCatalogEditor } from "@/server/api/catalog-auth";
 
 /** Облики меняют вид построек на всех этажах — игрокам «карта перестроена». */
 async function noteActiveMapRebuilt(): Promise<void> {
@@ -30,7 +32,8 @@ function requireAdmin(): void {
 
 /** Категории с картинками — окно выбора вида в режиме бога. */
 export const getBuildingSkins = createServerFn({ method: "GET" }).handler(async () => {
-  requireAdmin();
+  // Читать облики — и дизайнеру замка: кисть на его острове новичка.
+  await requireDesigner();
   return { groups: await listGroups() };
 });
 
@@ -44,7 +47,7 @@ export const createSkinGroup = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     return await addGroup(data.name, data.templateId);
   });
 
@@ -59,7 +62,7 @@ export const patchSkinGroup = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     await updateGroup(data.id, { name: data.name, templateId: data.templateId });
     return { ok: true as const };
   });
@@ -67,7 +70,7 @@ export const patchSkinGroup = createServerFn({ method: "POST" })
 export const deleteSkinGroup = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     await removeGroup(data.id);
     // Жёсткий сброс: сам админ сразу прочитает карту, а stale-снапшот
     // вернул бы клеткам удалённый облик (жалоба «удалил один облик —
@@ -93,7 +96,7 @@ export const addSkinImages = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     return { skins: await addSkins(data.groupId, data.items) };
   });
 
@@ -109,7 +112,7 @@ export const renameSkinImage = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     const { renameSkin } = await import("./building-skins");
     await renameSkin(data.id, data.name);
     // Карта тянет skin.name через тот же mapBase (map.buildings[skin:id].name),
@@ -123,7 +126,7 @@ export const renameSkinImage = createServerFn({ method: "POST" })
 export const deleteSkinImage = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     await removeSkin(data.id);
     // Жёсткий сброс — иначе клетки со снятым обликом ещё несколько секунд
     // показывают его через stale-снапшот и «удалилось всё» на глаз.

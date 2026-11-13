@@ -22,6 +22,7 @@ import { sqlStr } from "../raid-shared";
 import { sb } from "../../db/pg";
 import { publishRaid } from "../../raidLive";
 import { stepEnergyCost } from "@/lib/shipRules";
+import { stepMultOf } from "./move-weather";
 import { ownCell } from "./encounter-where";
 import { areNeighbors } from "./helpers";
 import { slowExtraCost } from "./encounter-effects";
@@ -134,7 +135,9 @@ export async function boardShipCore(
   // На борт забирается судно, а не ноги: скидку героя посадка не знает.
   // Возврат на борт НА СВОЕЙ клетке бесплатен: игрок никуда не переезжает, и
   // брать с него энергию за починку чужой поломки нечестно.
-  const spent = sameCell ? 0 : stepEnergyCost({ boarding: true, slowExtra });
+  const spent = sameCell
+    ? 0
+    : stepEnergyCost({ boarding: true, slowExtra, mult: await stepMultOf(mapId) });
   try {
     if (spent > 0) await spendEnergy(wallet, spent);
     await setPlayerCell(wallet, mapId, q, r);
@@ -185,6 +188,7 @@ export async function leaveShipCore(
     cellCost: ashore.land.cost,
     slowExtra,
     heroStepDiscountPct: hero?.field.stepDiscountPct,
+    mult: await stepMultOf(mapId), // остров — в 10 раз дешевле; погода — ход героя
   });
   await spendEnergy(wallet, spent);
   void noteEnergySpend(account, spent, "ship");

@@ -65,19 +65,19 @@ describe("settleEnergy — таяние", () => {
   });
 });
 
-describe("settleEnergy — реген (как было)", () => {
-  it("150/200 через 1300 с = 152, метка +1200, следующий через 500", () => {
+describe("settleEnergy — реген: +5 за 300 с (владелец, 25.10.2026)", () => {
+  it("150/200 через 1300 с = 170 (4 тика по 5), метка +1200, следующий через 200", () => {
     const r = settleEnergy({ ...base({ energy: 150 }), nowMs: T0 + sec(1300) });
-    expect(r).toMatchObject({ energy: 152, regen: 2, nextSecs: 500, trend: "regen" });
+    expect(r).toMatchObject({ energy: 170, regen: 20, nextSecs: 200, trend: "regen" });
     expect(r.updatedMs).toBe(T0 + sec(1200));
   });
 
-  it("интеллект ускоряет реген: 130 % → шаг 260.87 с", () => {
+  it("интеллект ускоряет реген: 130 % → шаг 130.43 с, 7 тиков по 5", () => {
     const r = settleEnergy({
       ...base({ energy: 10, max: 95, regenPct: 130 }),
       nowMs: T0 + sec(1000),
     });
-    expect(r.regen).toBe(3);
+    expect(r.regen).toBe(35);
     expect(r.nextSecs).toBe(44);
   });
 
@@ -89,7 +89,7 @@ describe("settleEnergy — реген (как было)", () => {
 
   it("метка из будущего — времени не прошло", () => {
     const r = settleEnergy({ ...base({ energy: 10, max: 30 }), nowMs: T0 - sec(100) });
-    expect(r).toMatchObject({ energy: 10, regen: 0, nextSecs: 600 });
+    expect(r).toMatchObject({ energy: 10, regen: 0, nextSecs: 300 });
   });
 });
 
@@ -148,7 +148,7 @@ describe("addEnergy — вид начисления", () => {
 
   it("реген продолжается — остаток времени сохраняется", () => {
     const r = addEnergy(base({ energy: 10, max: 30 }), 5, "energy_like", T0 + sec(700));
-    expect(r).toMatchObject({ energy: 16, bought: 5, lastMs: T0 + sec(600) });
+    expect(r).toMatchObject({ energy: 25, bought: 5, lastMs: T0 + sec(600) });
   });
 });
 

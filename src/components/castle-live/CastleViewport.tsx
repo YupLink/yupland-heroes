@@ -1,3 +1,4 @@
+import type {CastlePurchaseDestination} from './TownHallPurchaseSuccess';
 import {ModularCastleViewport} from "./ModularCastleViewport";
 // Карта замка занимает весь экран и перемещается во всех направлениях под HUD.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -205,5 +206,6 @@ function LegacyCastleViewport({
   );
 }
 
-export function CastleViewport(props:Parameters<typeof LegacyCastleViewport>[0]&{modular?:boolean;editing?:boolean;onDone?:()=>void}){return props.modular?<ModularCastleViewport {...props}/>:<LegacyCastleViewport {...props}/>;}
+export function CastleViewport(props:Parameters<typeof LegacyCastleViewport>[0]&{modular?:boolean;editing?:boolean;onDone?:()=>void;purchaseDestination?:CastlePurchaseDestination|null}){return props.modular?<ModularCastleViewport {...props}/>:<LegacyCastleViewport {...props}/>;}
+
 

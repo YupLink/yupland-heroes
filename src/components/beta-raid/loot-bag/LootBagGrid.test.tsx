@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { LootBagView } from "@/lib/lootBag";
 import type { BackpackView } from "@/server/api/beta-raid/market-backpack";
 import { dict } from "@/lib/translations";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const v = vi.hoisted(() => ({ lang: "ru" as "ru" | "en" }));
 
@@ -30,7 +31,7 @@ const bag = (over: Partial<LootBagView> = {}): LootBagView => ({
       refId: "cst_b",
       name: "Банан",
       image: null,
-      count: 25,
+      count: CELL_SIZE + 5,
       leftMs: 5 * H + 10 * 60_000,
     },
   ],
@@ -76,13 +77,13 @@ beforeEach(() => {
 });
 
 describe("мешочек", () => {
-  it("рюкзак слева (плитка и пустые ячейки), мешочек справа: 25 бананов — две плитки", () => {
+  it("рюкзак слева (плитка и пустые ячейки), мешочек справа: ячейка и ещё 5 бананов — две плитки", () => {
     const html = render(bag());
     expect(html).toContain("Рюкзак · Лис · 1/3");
     expect(html).toContain("Яблоко");
     expect(html).toContain("Банан");
-    expect(html).toContain("20/20");
-    expect(html).toContain("5/20");
+    expect(html).toContain(`${CELL_SIZE}/${CELL_SIZE}`);
+    expect(html).toContain(`5/${CELL_SIZE}`);
     // Яблоко + две плитки бананов — кнопки; пустые ячейки рюкзака — не кнопки.
     expect(tiles(html)).toBe(3);
   });
@@ -99,6 +100,42 @@ describe("мешочек", () => {
   it("английский", () => {
     v.lang = "en";
     expect(render(bag())).toContain("5 h left");
+  });
+
+  it("ресурс разборки шахты (§8.70): одна плитка, значок и имя ресурса, без срока", () => {
+    const wood = {
+      stackKey: "resource:wood",
+      kind: "resource",
+      refId: "wood",
+      name: "Дерево",
+      image: null,
+      count: 9000,
+      leftMs: 87_600 * H,
+    };
+    const html = render(bag({ items: [wood], leftMs: 87_600 * H }));
+    expect(tiles(html)).toBe(2);
+    expect(html).toContain("Дерево");
+    expect(html).toContain('src="/resources/wood.webp"');
+    expect(html).not.toContain("осталось");
+    v.lang = "en";
+    expect(render(bag({ items: [wood] }))).toContain("Wood");
+  });
+
+  it("у плитки ресурса — только число: на счёт, а не в ячейку, «/N» нет", () => {
+    const wood = {
+      stackKey: "resource:wood",
+      kind: "resource",
+      refId: "wood",
+      name: "Дерево",
+      image: null,
+      count: 300,
+      leftMs: 87_600 * H,
+    };
+    const html = render(bag({ items: [wood] }));
+    expect(html).toMatch(/>300<\/span>/);
+    expect(html).not.toContain(`300/${CELL_SIZE}`);
+    // Плитка рюкзака рядом — ячейка, у неё «/N» остаётся.
+    expect(html).toContain(`4/${CELL_SIZE}`);
   });
 });
 

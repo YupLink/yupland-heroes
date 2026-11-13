@@ -1,0 +1,130 @@
+name: UI release verification
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-build:
+    name: UI exact commit build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      newspaper-postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: newspaper_test_only
+          POSTGRES_DB: newspaper_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies in disposable runner
+        run: npm ci
+      - name: Verify shop header variants and image budget
+        run: node --test scripts/ui-release/raid-shop-headers.test.cjs
+      - name: Verify market ownership and price-image sizing
+        run: node --test scripts/ui-release/market-ownership.test.cjs
+      - name: Verify mine group repair scope and cost
+        run: node --test scripts/ui-release/mine-group-repair.test.cjs
+      - name: Verify regression controls
+        run: node --test scripts/ui-release/contracts.test.cjs
+      - name: Verify harvest source behavior
+        run: node --test scripts/ui-release/harvest-sources.test.cjs scripts/ui-release/harvest-capture-claim.test.cjs
+      - name: Verify frost HUD lifecycle and update budget
+        run: node --test scripts/ui-release/hud-frost.test.cjs
+      - name: Verify weather rendering budget and fog anchoring
+        run: node --test scripts/ui-release/weather-scheduler.test.cjs scripts/ui-release/weather-fog-world.test.cjs
+      - name: Verify weather administration permissions and writes
+        run: node --test scripts/ui-release/weather-admin.test.cjs
+      - name: Verify tool action sounds
+        run: node --test scripts/ui-release/raid-action-audio.test.cjs
+      - name: Verify hero run atlas and animation lifecycle
+        run: node --test scripts/ui-release/hero-run.test.cjs
+      - name: Verify footsteps lifecycle
+        run: node --test scripts/ui-release/footsteps.test.cjs
+      - name: Verify building window audio
+        run: node --test scripts/design/building-window-audio.test.cjs
+      - name: Verify casino transitions
+        run: node --test scripts/casino-focus.test.mjs scripts/casino-transition.test.mjs
+      - name: Verify castle music lifecycle
+        run: node --test scripts/design/castle-music.test.mjs
+      - name: Verify commit dependencies and CSS contracts
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/ui-release/check.cjs > ui-contract-report.json || { cat ui-contract-report.json; exit 1; }
+      - name: Verify isolated world art and WebP fallback
+        run: node --test scripts/ui-release/world-art.test.cjs scripts/ui-release/midgard-water.test.cjs
+      - name: Verify world arrival title lifecycle
+        run: node --test scripts/ui-release/world-arrival.test.cjs
+      - name: Verify world portal map isolation
+        run: node --test scripts/ui-release/world-portals.test.cjs
+      - name: Verify manual castle placement and save compatibility
+        run: node --test scripts/ui-release/castle-placement.test.cjs
+      - name: Verify five tool strikes and contact audio
+        run: node scripts/design/tool-strikes.test.cjs
+      - name: Verify map enchanter animation and rendering fallback
+        run: node --test scripts/ui-release/map-enchanter.test.cjs
+      - name: Verify raid HUD loading and image budgets
+        run: node --test scripts/ui-release/raid-hud-optimization.test.cjs
+      - name: Verify newspaper edition SQL against isolated PostgreSQL
+        if: ${{ !cancelled() }}
+        env:
+          NEWSPAPER_TEST_DATABASE_URL: postgres://postgres:newspaper_test_only@127.0.0.1:5432/newspaper_test
+        run: node --test scripts/ui-release/newspaper-editions-sql.test.cjs scripts/ui-release/newspaper-edition-schema.test.cjs
+      - name: Verify original newspaper upload and publication retries
+        if: ${{ !cancelled() }}
+        run: node --import tsx --test scripts/newspaper-publish.test.ts scripts/newspaper-editions.test.ts
+      - name: Verify short island tutorial route and rewards
+        run: node --test scripts/ui-release/short-tutorial.test.cjs
+      - name: Verify explicit newspaper collection and deferred map filtering
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ui-release/newspaper-collect.test.cjs scripts/ui-release/newspaper-player.test.cjs scripts/ui-release/newspaper-worlds.test.cjs
+      - name: Verify bounded procedural water rendering
+        run: node --test scripts/ui-release/water-ripples.test.cjs
+      - name: Verify water textures, world isolation and bounded tile cache
+        run: node --test scripts/ui-release/midgard-water.test.cjs scripts/ui-release/world-water.test.cjs
+      - name: Production game build (no deploy)
+        if: ${{ !cancelled() }}
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: npm run build
+      - name: Preserve checked revision
+        if: always()
+        run: git rev-parse HEAD > checked-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-release-evidence
+          path: |
+            checked-sha.txt
+            ui-contract-report.json
+
+
+
+
+
+
+
+
+
+
+
+
+
+

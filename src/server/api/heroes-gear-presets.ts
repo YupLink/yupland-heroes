@@ -21,10 +21,10 @@ import { loadSelectedHero } from "./beta-raid/hero-load";
 import { writeEquipped } from "./heroes-gear-read";
 import { buildEquipped, unequipFromOthers } from "./heroes-gear-presets-equip";
 import { preferFreeCopies } from "./heroes-gear-copies";
+import { artBrokenOn } from "./art-repair/art-repair-gate";
 import { heroSlots, isKnownSlotType, parseHeroSlotKey } from "@/lib/hero/heroSlots";
 
-/** Больше дюжины наборов — это уже не память, а свалка. */
-const MAX_PRESETS = 12;
+const MAX_PRESETS = 12; // больше дюжины наборов — это уже не память, а свалка
 
 export type GearPreset = {
   id: string;
@@ -202,11 +202,10 @@ export const applyGearPreset = createServerFn({ method: "POST" })
     const row = rows?.[0];
     if (!row) throw new Error("Комплект не найден");
 
-    const { applied, missing, skipped } = await buildEquipped(
-      account,
-      hero.rarity,
-      parseSlots(row.slots),
-    );
+    // Сломанное при запущенной механике не надевается (§8.63 п.3) — в broken.
+    const on = await artBrokenOn(wallet);
+    const built = await buildEquipped(account, hero.rarity, parseSlots(row.slots), on, hero.equipped);
+    const { applied, missing, skipped, broken } = built;
 
     // Предмет мог остаться надетым на другом герое — снимаем там, иначе один
     // экземпляр числился бы в двух местах сразу. Ошибку глотать нельзя:
@@ -244,6 +243,7 @@ export const applyGearPreset = createServerFn({ method: "POST" })
       missing,
       /** Сколько не влезло: у этого героя таких мест нет (редкость ниже). */
       skipped,
+      broken, // сломаны — не надеты, «почини в кузнице»
       /** Свежие слоты+статы для мгновенной подстановки в ["my-hero-gear"]. */
       gear,
     };

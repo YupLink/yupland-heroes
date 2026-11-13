@@ -54,6 +54,9 @@ class CellView implements Cell {
   get townHall(): { q: number; r: number } | undefined {
     return this.s.hallByIdx.get(this.i);
   }
+  get mine(): boolean {
+    return this.s.mines.has(this.i);
+  }
   get groupId(): string | undefined {
     return blockAt(this.s, this.i)?.gid;
   }

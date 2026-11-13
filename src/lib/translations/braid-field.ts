@@ -38,4 +38,12 @@ export const dict: Record<string, Entry> = {
   "hero.not_yours": { ru: "Это не твой герой", en: "This isn't your hero" },
   // Герой уже батрачит на другом поле — где именно (координаты поля).
   "braid.field_busy_at": { ru: "ферма {at}", en: "farm {at}" },
+  // Улучшения игрока за алмаз (lib/accountUpgrade, 31.10.2026).
+  "upgrade.buy": {
+    ru: "Улучшить: фермы +{pct}% и +1 ячейка склада · 💎{n}",
+    en: "Upgrade: farms +{pct}% and +1 storage cell · 💎{n}",
+  },
+  "upgrade.done": { ru: "Улучшено", en: "Upgraded" },
+  "upgrade.no_diamonds": { ru: "Нужен алмаз", en: "You need a diamond" },
+  "upgrade.failed": { ru: "Не удалось улучшить", en: "Upgrade failed" },
 };

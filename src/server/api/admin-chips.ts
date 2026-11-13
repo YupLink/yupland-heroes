@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
 import { requireAdmin } from "../auth";
 import { assertCampaignNoUsdt } from "./admin-campaigns-schemas";
+import { assertPackMoneyRight } from "./mystic-money";
 
 export const adminListChipCollectionsForDrops = createServerFn({
   method: "GET",
@@ -85,6 +86,9 @@ export const adminCreateChipDrop = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     requireAdmin();
     assertCampaignNoUsdt(data.rewardToken, data.rewardTiers);
+    for (const t of data.rewardTiers ?? []) {
+      if (t.kind === "pack") await assertPackMoneyRight(t.packId);
+    }
     const col = await pg.chipCollections.findOne({
       id: data.chipCollectionId,
     });

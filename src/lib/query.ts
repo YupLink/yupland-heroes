@@ -1,7 +1,8 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, notifyManager } from "@tanstack/react-query";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import { persistIfChanged } from "./persistIfChanged";
+import { makeFrameScheduler } from "./frameNotify";
 import { refetchTypeFor } from "./queryWindows";
 
 let client: QueryClient | null = null;
@@ -36,6 +37,11 @@ export function getQueryClient(): QueryClient {
   // мгновенно, без ожидания сервера. В фоне идёт refetch свежего.
   if (!persistInitialized && typeof window !== "undefined") {
     persistInitialized = true;
+    // Ответы, пришедшие до кадра, — одна перерисовка вместо нескольких
+    // (lib/frameNotify; в тестах остаётся планировщик библиотеки).
+    if (import.meta.env.MODE !== "test" && typeof window.requestAnimationFrame === "function") {
+      notifyManager.setScheduler(makeFrameScheduler());
+    }
     try {
       // persistIfChanged: сохранение зовётся на каждое событие кэша, а шаг по
       // карте рейда — это несколько записей подряд. Без фильтра каждая из них
@@ -105,7 +111,13 @@ export function getQueryClient(): QueryClient {
         // v36: рыбалка — заброс на минуты (у состояния появились tries/plan) и
         // улов с долями видов. Суточный кэш со старым ответом показывал бы
         // заброс без счёта попыток, пока не перечитается.
-        buster: "v37-hero-ability", // v36: рыбалка; v35: турнир — entryPrice; v34: без зоны города
+        // v38: улучшение фишек за золото — «можно улучшить» и план автоподбора
+        // отдают gold вместо tickets; суточный кэш показывал бы старую форму.
+        // v40: подписки esub-07 — 4 тарифа, новый состав, blockedUntil (одна за раз).
+        // v42: по одной каждого вида (esub-10) — blockedUntil только у своего тарифа;
+        // v41 (апгрейд, откатан) успел осесть в кэше у части игроков.
+        // v43: лицензии банка по одной каждого вида — paid стал списком.
+        buster: "v43-bank-license-kinds", // v42: подписки по видам; v40: тарифы подписки; v39: износ артефактов; v38: крафт за золото; v37: способность героя; v36: рыбалка; v35: турнир — entryPrice
         dehydrateOptions: {
           shouldDehydrateQuery: (query) => {
             const k0 = Array.isArray(query.queryKey) ? query.queryKey[0] : undefined;
@@ -175,6 +187,11 @@ export function getQueryClient(): QueryClient {
             if (k0 === "nft-storage") return false;
             // Остров новичка — задание одного аккаунта и шаги «прямо сейчас».
             if (k0 === "beta-raid-island") return false;
+            // Поломка артефактов (§8.63 п.3): флаг — свой у каждого входа (админ/игрок),
+            // плашки — очередь «ещё не показано»; вчерашний снимок всплыл бы повторно.
+            if (k0 === "art-broken-on" || k0 === "art-break-notices") return false;
+            // Меню входа: «новичок или уже играет» решается свежим ответом на вход.
+            if (k0 === "game-start") return false;
             // Просмотр героя по id из таверны (["my-heroes","view",…], gear/backpack/
             // spellbook с "view") и источник письма о турнирах живут, пока открыто
             // окно (gcTime 0). Из localStorage вернулись бы на сутки и успехом — окно
@@ -195,84 +212,17 @@ export function getQueryClient(): QueryClient {
   return client;
 }
 
-/**
- * Ключи, которые врут после ЛЮБОГО изменения героя — уровня, выбранного
- * основного, экипировки или превращения фишки в героя.
- *
- * Зачем списком в одном месте: владелец трижды ловил «прокачал — карточка
- * показывает старый уровень». Каждый раз причина была одна — мутация знала
- * про свой экран и не знала про соседний. Пока список живёт рядом с каждой
- * мутацией, забыть ключ можно снова; пока он один — нельзя.
- *
- * Почему именно эти:
- *   my-heroes        — список героев (уровень, максимум, цена следующего);
- *   my-selected-hero — плашка «кем ходим» и её уровень;
- *   hero-card        — карточка героя в инвентаре (префикс: ключ с templateId);
- *   my-hero-gear     — слоты и статы со снаряжением (слотов зависит от редкости);
- *   my-hero-squad    — отряд привязан к герою и со сменой героя меняется;
- *   my-game-items    — инвентарь стакает героев по уровню, прокачка бьёт стопку;
- *   beta-raid-state  — фигурка на карте, скидка шага, обзор, кнопка замка;
- *   my-hero-backpack — рюкзак ВЫБРАННОГО героя: ёмкость зависит от редкости и
- *                      торговли (уровень + арты), значит со сменой/прокачкой
- *                      героя и с надеванием арта число ячеек меняется.
- *   hero-spellbook   — книга заклинаний тоже принадлежит герою: сменил героя —
- *                      книга чужая, а прокачал интеллект — поехали цена и
- *                      откат в каждой плитке.
- */
-export const HERO_QUERY_KEYS = [
-  "my-heroes",
-  "my-selected-hero",
-  "hero-card",
-  "my-hero-gear",
-  "my-hero-squad",
-  "my-game-items",
-  "beta-raid-state",
-  "my-hero-backpack",
-  "hero-spellbook",
-  // Окно склада несёт СВОЮ копию рюкзака героя (getWarehouse отдаёт полки и
-  // рюкзак одним ответом): забрал награды из очереди — в окне склада ячейки
-  // оставались пустыми до перезагрузки (владелец, 21.09).
-  "beta-warehouse",
-  // Окна магического сундука тоже везут рюкзак героя: сеть владельца — стеки
-  // с собранными штуками, добыча грабителя — ёмкость и занятое.
-  "beta-chest-net",
-  "beta-chest-loot",
-  // Значки «магия столба забрана» на карте считаются по книге ВЫБРАННОГО
-  // героя (spell-pillar-marks.ts): сменил героя — отметки у столбов свои.
-  "beta-raid-spell-pillars",
-  // Эффект «Забвение» (значок над героем и «Забыть» в книге) дают зелье, каст
-  // и алтарь — их мутации гасят этот список, и без ключа тут значок ждал бы F5.
-  "my-oblivion",
-  // Склад замка везёт рюкзак ВЫБРАННОГО героя: сменил героя в таверне — на
-  // складе висел рюкзак прежнего до перезапуска (жалоба 09.10.2026).
-  "castle-warehouse",
-  // Рыбалка идёт у выбранного героя (его удочка, его заброс).
-  "beta-fishing",
-] as const;
+// Ключи героя и их перечит — в своём модуле (≤250 строк); импортёры прежние.
+export { HERO_QUERY_KEYS, invalidateHeroQueries } from "./heroQueryKeys";
+// Ключи фишек (обычные + тренировочные) — перечит после выдачи фишек.
+export { CHIP_QUERY_KEYS, invalidateChipQueries } from "./chipQueryKeys";
 
-/**
- * Перечитать всё, что зависит от героя.
- *
- * refetchType: "all" — обязателен. Обычная инвалидация трогает только ЖИВЫЕ
- * запросы, а тут половина ключей лежит в неактивных: карта рейда открыта в
- * соседнем экране, инвентарь свёрнут, да ещё и persist-кэш (yuplink-rq-cache)
- * держит ответ сутки. Без "all" игрок закрывает окно, возвращается на карту —
- * и видит прежний уровень, потому что запрос «просто помечен устаревшим».
- *
- * extra — ключи, которые задевает не всякое действие: лайки (прокачка,
- * превращение) и инвентарь фишек (превращение сжигает фишку).
- */
 /**
  * Рюкзак героя живёт в двух ответах: своём (my-hero-backpack) и в окне склада
  * (beta-warehouse, полки + рюкзак). Любая мутация рюкзака бьёт оба ключа.
  */
 export function invalidateBackpack(qc: QueryClient): void {
   for (const key of ["my-hero-backpack", "beta-warehouse", "castle-warehouse"]) {
-    void qc.invalidateQueries({ queryKey: [key], refetchType: refetchTypeFor(key) });
-  }
-}
-export function invalidateHeroQueries(qc: QueryClient, extra: readonly string[] = []): void {
-  for (const key of [...HERO_QUERY_KEYS, ...extra]) {
     void qc.invalidateQueries({ queryKey: [key], refetchType: refetchTypeFor(key) });
   }
 }

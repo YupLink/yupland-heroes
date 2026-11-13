@@ -1,33 +1,36 @@
 // Шапка главного экрана замка (дизайн Ангелины, design/app-preview/CastleMainHud):
-// билеты, лайки, энергия и строка действующих эффектов героя. При переносе
+// золото, лайки, энергия и строка действующих эффектов героя. Билетов нет с
+// 20.10.2026 (§8.61): их место заняло золото — всегда коротко K/M, полное число в
+// подписи, «+» — окно покупки золота (§8.66). При переносе
 // 07.10.2026 панель выпала вместе с мастерской — вернул на настоящих данных:
 // те же общие ключи, что у Казны, рейда и окон трат (без перезагрузки),
 // «+» открывают настоящие окна покупки игры, а не примерку из мастерской.
-import { lazy, Suspense, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, lazy, Suspense, useLayoutEffect, useRef, useState } from "react";
 import { Info, Plus } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { myLikeBalance } from "@/server/api/likes";
 import { getSession } from "@/server/api/user-auth";
 import { getBetaRaidState } from "@/server/api/beta-raid";
-import { useTickets, TICKETS_KEY } from "@/lib/hooks/useTickets";
 import { useEnergy } from "@/lib/hooks/useEnergy";
+import { useResources } from "@/lib/hooks/useResources";
+import { compactGold } from "@/lib/goldShop";
 import { CastleEffectsStrip, type CastleActiveEffects } from "@/components/beta-raid/CastleEffectsStrip";
 import { CastleLikesInfo } from "./CastleLikesInfo";
 import { isWalletLinked } from "@/lib/walletLinked";
 import { EnergyRecoveryCountdown } from "./EnergyRecoveryCountdown";
-import type { EnergyReturn } from "./energy-buy/EnergyBuyDialog";
 import "./castle-main-hud.css";
 
-const TicketPurchaseLive = lazy(() =>
-  import("@/components/chips/trading-house/TicketPurchaseLive").then((m) => ({ default: m.TicketPurchaseLive })),
-);
 const EnergyBuyDialog = lazy(() =>
   import("./energy-buy/EnergyBuyDialog").then((m) => ({ default: m.EnergyBuyDialog })),
 );
+const GoldBuyDialog = lazy(() =>
+  import("./gold-buy/GoldBuyDialog").then((m) => ({ default: m.GoldBuyDialog })),
+);
 
-type Item = "tickets" | "likes" | "energy";
+type Item = "gold" | "likes" | "energy";
+type Buy = "gold" | "energy";
 const ICONS: Record<Item, string> = {
-  tickets: "/resources/tickets.png",
+  gold: "/resources/gold.webp",
   likes: "/resources/likes.webp",
   energy: "/resources/energy.webp",
 };
@@ -56,7 +59,10 @@ function HudValue({ value }: { value: string }) {
     if (probe.current) observer.observe(probe.current);
     void document.fonts?.ready.then(measure);
     return () => observer.disconnect();
-  }, [value]);
+    // Новое число меняет ширину пробы — её и так ловит наблюдатель (после
+    // раскладки кадра). Перезапуск на каждое значение (энергия — на каждый шаг
+    // героя) заставлял браузер раскладывать страницу синхронно посреди шага.
+  }, []);
   return (
     <strong ref={box} title={value} aria-label={value} data-compact={short || undefined}>
       <span aria-hidden="true">{short ? value.split("/").map(compactNumber).join("/") : value}</span>
@@ -67,28 +73,37 @@ function HudValue({ value }: { value: string }) {
   );
 }
 
-export function CastleMainHud({ ru }: { ru: boolean }) {
-  const qc = useQueryClient();
+/** Золото — всегда K/M (Ангелина: «устойчивое сокращение»), полное — в подписи. */
+function GoldValue({ value, full }: { value: number; full: string }) {
+  return (
+    <strong title={full} aria-label={full}>
+      <span aria-hidden="true">{compactGold(value)}</span>
+    </strong>
+  );
+}
+
+export function CastleMainHud({ ru, music }: { ru: boolean; music?: ReactNode }) {
   const fmt = new Intl.NumberFormat(ru ? "ru-RU" : "en-US", { maximumFractionDigits: 2 });
-  const tickets = useTickets();
   const energy = useEnergy();
+  const resources = useResources();
   const likes = useQuery({ queryKey: ["my-like-balance"], queryFn: () => myLikeBalance(), staleTime: 30_000 });
   // Эффекты — из того же ответа, что у карты рейда (общий ключ).
   const state = useQuery({ queryKey: ["beta-raid-state"], queryFn: () => getBetaRaidState() });
   const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
   const [likesInfo, setLikesInfo] = useState(false);
-  const [buy, setBuy] = useState<"tickets" | "energy" | null>(null);
-  const [pendingEnergy, setPendingEnergy] = useState<EnergyReturn | null>(null);
+  const [buy, setBuy] = useState<Buy | null>(null);
   // Переключатель из дизайна Ангелины: окно покупки глазами игрока с кошельком
   // или звездочника (вход только через Telegram). Меняет только вид окна.
   const linked = isWalletLinked(session.data?.wallet);
   const walletView = linked;
-  const buttons = useRef<Record<"tickets" | "energy", HTMLButtonElement | null>>({ tickets: null, energy: null });
+  const buyButtons = useRef<Record<Buy, HTMLButtonElement | null>>({ gold: null, energy: null });
+  const gold = resources.data?.gold;
 
-  const ticketsRaw =
-    (tickets.data as { availableRaw?: number } | undefined)?.availableRaw ?? tickets.data?.available;
   const values: Record<Item, { value: string | null; pending: boolean }> = {
-    tickets: { value: ticketsRaw == null ? null : fmt.format(ticketsRaw), pending: tickets.isPending },
+    gold: {
+      value: gold == null ? null : fmt.format(Math.floor(gold + 1e-9)),
+      pending: resources.isPending,
+    },
     likes: {
       value: likes.data?.available == null ? null : fmt.format(likes.data.available),
       pending: likes.isPending,
@@ -101,29 +116,22 @@ export function CastleMainHud({ ru }: { ru: boolean }) {
     },
   };
   const labels = ru
-    ? { tickets: "Билеты", likes: "Лайки", energy: "Энергия" }
-    : { tickets: "Tickets", likes: "Likes", energy: "Energy" };
+    ? { gold: "Золото", likes: "Лайки", energy: "Энергия" }
+    : { gold: "Gold", likes: "Likes", energy: "Energy" };
   const buyLabels = ru
-    ? { tickets: "Купить билеты", energy: "Купить энергию" }
-    : { tickets: "Buy tickets", energy: "Buy energy" };
+    ? { gold: "Купить золото", energy: "Купить энергию" }
+    : { gold: "Buy gold", energy: "Buy energy" };
   const effects = (state.data as { effects?: CastleActiveEffects } | undefined)?.effects ?? null;
   const closeBuy = () => {
     const item = buy;
-    if (item === "tickets" && pendingEnergy) {
-      void qc.invalidateQueries({ queryKey: TICKETS_KEY, refetchType: "all" });
-      setBuy("energy");
-      return;
-    }
     setBuy(null);
-    setPendingEnergy(null);
-    void qc.invalidateQueries({ queryKey: TICKETS_KEY, refetchType: "all" });
-    requestAnimationFrame(() => item && buttons.current[item]?.focus());
+    requestAnimationFrame(() => item && buyButtons.current[item]?.focus());
   };
 
   return (
     <div className="castle-main-hud" aria-label={ru ? "Игровые ресурсы и эффекты" : "Game resources and effects"}>
       <div className="castle-main-hud__balances" role="group" aria-label={ru ? "Балансы" : "Balances"}>
-        {(["tickets", "likes", "energy"] as const).map((item) => (
+        {(["gold", "likes", "energy"] as const).map((item) => (
           <div className={`castle-main-hud__balance castle-main-hud__balance--${item}`} key={item}>
             <img className={`castle-main-hud__icon castle-main-hud__icon--${item}`} src={ICONS[item]} alt="" />
             <div className="castle-main-hud__numbers">
@@ -142,6 +150,8 @@ export function CastleMainHud({ ru }: { ru: boolean }) {
               </span>
               {values[item].value == null ? (
                 <strong aria-live="polite">{values[item].pending ? "…" : "—"}</strong>
+              ) : item === "gold" && gold != null ? (
+                <GoldValue value={gold} full={values.gold.value ?? ""} />
               ) : (
                 <HudValue value={values[item].value} />
               )}
@@ -151,14 +161,11 @@ export function CastleMainHud({ ru }: { ru: boolean }) {
               <button
                 type="button"
                 ref={(node) => {
-                  buttons.current[item] = node;
+                  buyButtons.current[item] = node;
                 }}
                 className="castle-main-hud__buy"
                 aria-label={buyLabels[item]}
-                onClick={() => {
-                  setPendingEnergy(null);
-                  setBuy(item);
-                }}
+                onClick={() => setBuy(item)}
               >
                 <Plus aria-hidden="true" />
               </button>
@@ -166,7 +173,9 @@ export function CastleMainHud({ ru }: { ru: boolean }) {
           </div>
         ))}
       </div>
+      {music}
       <CastleEffectsStrip
+        showWhenEmpty
         effects={effects}
         lang={ru ? "ru" : "en"}
         status={state.isError ? "error" : state.isPending ? "loading" : "ready"}
@@ -174,14 +183,8 @@ export function CastleMainHud({ ru }: { ru: boolean }) {
       />
       <CastleLikesInfo ru={ru} open={likesInfo} onOpenChange={setLikesInfo} />
       <Suspense fallback={null}>
-        {buy === "tickets" && (
-          <TicketPurchaseLive
-            open
-            walletConnected={walletView}
-            accountOpen={session.data?.accountOpen === true}
-            onClose={closeBuy}
-            returnFocus={() => !pendingEnergy && buttons.current.tickets?.focus()}
-          />
+        {buy === "gold" && (
+          <GoldBuyDialog open ru={ru} onClose={closeBuy} returnFocus={() => buyButtons.current.gold?.focus()} />
         )}
         {buy === "energy" && (
           <EnergyBuyDialog
@@ -189,12 +192,7 @@ export function CastleMainHud({ ru }: { ru: boolean }) {
             ru={ru}
             walletView={walletView}
             onClose={closeBuy}
-            returnFocus={() => buttons.current.energy?.focus()}
-            resume={pendingEnergy}
-            onNeedTickets={(selection) => {
-              setPendingEnergy(selection);
-              setBuy("tickets");
-            }}
+            returnFocus={() => buyButtons.current.energy?.focus()}
           />
         )}
       </Suspense>

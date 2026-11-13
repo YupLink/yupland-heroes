@@ -59,6 +59,7 @@ export function ShipyardAction({
       )}
       <button
         type="button"
+        data-build-small-ship
         onClick={() => ship.mutate("small")}
         disabled={ship.isPending || !extra.can}
         className="flex w-full items-center justify-center gap-1.5 rounded-2xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-50"

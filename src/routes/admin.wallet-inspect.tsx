@@ -59,7 +59,7 @@ function WalletInspectPage() {
         <input
           value={wallet}
           onChange={(e) => setWallet(e.target.value)}
-          placeholder="alice.tg или player08.tg"
+          placeholder="alice.tg или 123456789-hot1.tg"
           className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
         />
         <button

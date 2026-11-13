@@ -1,0 +1,41 @@
+name: Castle purchase slot transactions
+on:
+  pull_request:
+    paths:
+      - 'migrations/townhall-02-atomic-legacy-purchases.sql'
+      - 'src/server/api/game-auction/house-fn.ts'
+      - 'tests/slot-*'
+      - 'tests/townhall-original.sql'
+      - '.github/workflows/castle-slot-regression.yml'
+permissions:
+  contents: read
+jobs:
+  concurrent-purchases:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: isolated-test-only
+          POSTGRES_DB: slot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Verify real concurrent PostgreSQL purchases
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: isolated-test-only
+          PGDATABASE: slot_test
+          SLOT_ISOLATED_TEST_DB: '1'
+        run: python3 tests/slot-concurrency.py

@@ -183,6 +183,15 @@ export const claimAllFreeRewards = createServerFn({ method: "POST" }).handler(
           continue;
         }
 
+        if (pickedRaw && pickedRaw.tier?.kind === "custom") {
+          // Товар — в «Подарки» (user-claims-goods); в итоге — «+N Имя».
+          const { creditDropGoods } = await import("./user-claims-goods");
+          await creditDropGoods({ wallet: it.owner_id ?? wallet, campaign: drop, tokenId: it.token_id, tier: pickedRaw.tier, amount: pickedRaw.amount, ticketCost: 0 })
+            .then((g) => { claimed++; byToken[g.name] = (byToken[g.name] ?? 0) + g.qty; claimedSet.add(key); })
+            .catch((err) => console.warn("[claimAllFree] goods grant failed:", err));
+          continue;
+        }
+
         if (pickedRaw && pickedRaw.tier?.kind === "energy") {
           try {
             const amt = await creditDropEnergy({

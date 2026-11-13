@@ -1,0 +1,8 @@
+.raid-fog-corners{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;contain:layout paint}
+.raid-fog-corner{position:absolute;width:min(70vw,322px);aspect-ratio:1.2;contain:paint;pointer-events:none;image-rendering:pixelated;background-image:url('./fog-frames.webp');background-size:2400% 100%;background-repeat:no-repeat;animation:fog-frames 3s steps(24,end) infinite}
+.raid-fog-corner:first-child{left:-2px;bottom:-2px}
+.raid-fog-corner:last-child{right:-2px;top:-2px;rotate:180deg;animation-delay:-1.5s}
+@keyframes fog-frames{from{background-position-x:0%}to{background-position-x:104.347826087%}}
+@media(prefers-reduced-motion:reduce){.raid-fog-corner{animation:none}}
+
+.raid-fog-corners[data-paused="true"] .raid-fog-corner{animation-play-state:paused}

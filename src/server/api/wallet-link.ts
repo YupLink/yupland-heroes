@@ -13,7 +13,16 @@
 //  · новый кошелёк — только с подписью (NEP-413, connectWalletSigned): он
 //    пристёгивается к Telegram сессии; чужой Telegram — отказ.
 import { pg } from "../db/pg";
-import { setCurrentWallet } from "../auth";
+import { isAdminWalletLinked, setCurrentWallet } from "../auth";
+import { isGoogleOnlyTg } from "@/lib/auth/googleTg";
+
+/**
+ * Google-аккаунту кошелёк не привязывается (владелец, 09.11.2026: «к гуглу кошелька
+ * не привязать»): с блокчейном он не связан никак — ни ввода, ни вывода.
+ */
+export function assertWalletLinkAllowed(tg: number | null | undefined): void {
+  if (isGoogleOnlyTg(tg)) throw new Error("google.noWallet");
+}
 
 /**
  * Тип коша и где хранится ключ — по имени (детерминированно). Кош = атрибут
@@ -43,7 +52,9 @@ export async function switchToLinkedWallet(
   const w = wallet.toLowerCase();
   const row = await pg.users.findOne({ wallet: w });
   if (!row || Number(row.telegram_id) !== tg || row.disconnected) throw new Error(NOT_LINKED);
-  if (opts.sameAccountAs) {
+  // Админский кошелёк (владелец, 21.10.2026: «к darai_collection может подключаться
+  // не один аккаунт — это админский кош») — из любого аккаунта этого же Telegram.
+  if (opts.sameAccountAs && !(await isAdminWalletLinked(w))) {
     const cur = await pg.users.findOne({ wallet: opts.sameAccountAs });
     if (!cur?.account_id || cur.account_id !== row.account_id) throw new Error(NOT_LINKED);
   }
@@ -61,10 +72,17 @@ export async function linkSignedWallet(
   tg: number,
   opts: { stay?: boolean } = {},
 ): Promise<{ wallet: string }> {
+  assertWalletLinkAllowed(tg);
   const w = wallet.toLowerCase();
   const row = await pg.users.findOne({ wallet: w });
   if (row?.telegram_id && Number(row.telegram_id) !== tg) {
-    throw new Error("Этот кошелёк привязан к другому Telegram");
+    // Номер входа по кошельку (06.11.2026) — не Telegram: уступает настоящему.
+    const { isWalletTg } = await import("@/lib/auth/googleTg");
+    if (!isWalletTg(row.telegram_id)) throw new Error("Этот кошелёк привязан к другому Telegram");
+    const { releaseWalletTg } = await import("./wallet-login/walletLoginStore");
+    await releaseWalletTg(Number(row.telegram_id), tg);
+    const { adoptTelegramAccount } = await import("./user-account-adopt");
+    await adoptTelegramAccount(tg).catch(() => {});
   }
   const now = new Date().toISOString();
   // findFirst: у одного Telegram несколько кошельков, findOne на них падает.
@@ -96,6 +114,12 @@ export async function linkSignedWallet(
   const after = await pg.users.findOne({ wallet: w });
   if (Number(after?.telegram_id) !== tg)
     throw new Error("Этот кошелёк привязан к другому Telegram");
+  // Кошелёк принёс с собой второй аккаунт этого Telegram — по правилу владельца
+  // (06.11.2026) остаётся тот, где больше ресурсов, второй уходит в архив.
+  const { oneAccountPerTg } = await import("../accountArchive");
+  await oneAccountPerTg(tg, "wallet-link").catch((e) =>
+    console.warn("[one-per-tg]", e instanceof Error ? e.message : e),
+  );
   // stay — только пристегнуть (новый кошелёк в «Моём кошельке»), игра остаётся на прежнем.
   if (!opts.stay) setCurrentWallet(w, tg);
   return { wallet: w };

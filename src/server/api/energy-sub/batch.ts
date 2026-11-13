@@ -4,8 +4,9 @@
 //  · «$ → карта» (sub_usd_map — 30 % USDT-оплат): сразу после покупки, без
 //    порога — обмен на DARAI, весь приход в пул карты (владелец, 03.10);
 //  · «$» (sub_usd — 70 % USDT-оплат): по порогу — 50 из 70 разработчикам в
-//    USDT как есть, 20 из 70 меняются на DARAI и уходят в дупло.
-//  · «Сжечь» (sub_burn): DARAI в дупло. «Разработчики» (sub_dev): DARAI по долям.
+//    USDT как есть, 20 из 70 меняются на DARAI и ложатся в пул сжигания.
+//  · «Сжечь» (sub_burn) — пул сжигания: в дупло одной транзакцией от 250 млн
+//    (burn-pool.ts, §8.68). «Разработчики» (sub_dev): DARAI по долям.
 //  · «Аукционы» (auc_darai / auc_usd): выигрыши лотов админа — целиком
 //    разработчикам по долям, своим порогом (владелец, 14.10). Виды — batch-kinds.ts.
 //
@@ -22,6 +23,7 @@ import { bucketBalances } from "./buckets";
 import { loadDist, type DistSettings } from "../autodist/rules";
 import { firstRow } from "./grant";
 import { revertIfUntouched, shouldNotify } from "./batch-revert";
+import { BURN_POOL_MIN, creditBurnPool } from "./burn-pool";
 import {
   BURN_WALLET,
   batchSummary,
@@ -136,7 +138,7 @@ async function execute(b: BatchRow, dist: DistSettings): Promise<void> {
     });
     await pushStep(b.id, { name: "map", state: "done", amount: toMap });
   }
-  await sendOnce(b.id, steps, "burn", DARAI_FT, BURN_WALLET, received - toMap);
+  await creditBurnPool(b.id, steps, received - toMap);
   await sendDevOnce(b.id, steps, USDT_FT, dist.devWallets, plan.dev);
 }
 
@@ -222,7 +224,8 @@ async function runDue(trigger: "auto" | { force: Kind }, by: string): Promise<st
   if (force === "usd_map" || (trigger === "auto" && bal.sub_usd_map >= SWAP_MIN)) todo.push("usd_map");
   if (force === "bank_usd" || (trigger === "auto" && bal.bank_usd >= SWAP_MIN)) todo.push("bank_usd");
   if (force === "usd" || (auto(rules.sub_usd.mode) && usdIncomeOf(bal) >= rules.sub_usd.threshold)) todo.push("usd");
-  if (force === "burn" || daraiDue) todo.push("burn");
+  // Пул сжигания — своим порогом: одна транзакция в дупло от 250 млн (§8.68).
+  if (force === "burn" || (auto(rules.sub_darai.mode) && bal.sub_burn >= BURN_POOL_MIN)) todo.push("burn");
   if (force === "dev" || daraiDue) todo.push("dev");
   // Аукционы админа — целиком разработчикам, свой порог по самой корзине.
   if (force === "auc_darai" || (auto(rules.auc_darai.mode) && bal.auc_darai >= rules.auc_darai.threshold)) {

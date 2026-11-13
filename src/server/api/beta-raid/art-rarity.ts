@@ -13,6 +13,7 @@
 // героя: поиск «чем заплатить» — там, здесь только разбор псевдо-шаблона.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
+import { droppable, notMount } from "../craft/crafted-sql";
 
 export type ArtRarity = "common" | "rare" | "epic" | "legendary";
 
@@ -39,6 +40,7 @@ export async function pickArtTemplateByRarity(
     `SELECT id, name, image_url AS image
        FROM yuplink.mystic_item_template
       WHERE kind = 'artifact' AND active = true AND rarity = ${sqlStr(rarity)}
+        AND ${droppable()} AND ${notMount()}
       ORDER BY random() LIMIT 1;`,
     { wrapJson: true },
   )) as Array<{ id: string; name: string; image: string | null }>;

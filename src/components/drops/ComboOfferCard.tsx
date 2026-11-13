@@ -7,10 +7,11 @@ import {
   Layers,
   Loader2,
   Sparkles,
-  Ticket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { goldForTicketPrice } from "@/lib/ticketGold";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { NftImage } from "@/components/NftImage";
 import type { listMyNfts } from "@/server/api/user-drops";
 import { TiersBreakdown } from "./shop-shared";
@@ -20,13 +21,13 @@ type Group = Awaited<ReturnType<typeof listMyNfts>>["groups"][number];
 
 export const ComboOfferCard = memo(function ComboOfferCard({
   group,
-  ticketsAvailable,
+  goldAvailable,
   claiming,
   onClaim,
   onHide,
 }: {
   group: Group;
-  ticketsAvailable: number;
+  goldAvailable: number;
   claiming: boolean;
   onClaim: () => void;
   onHide: () => void;
@@ -34,12 +35,13 @@ export const ComboOfferCard = memo(function ComboOfferCard({
   const t = useT();
   const reqs = group.requirements ?? [];
   const availableSets = group.availableClaims ?? 0;
-  const ticketCost = group.ticketCost ?? 1;
+  // Цена комбо хранится в билетах, платится золотом ×500 (ПРАВИЛА §8.61).
+  const goldCost = goldForTicketPrice(group.ticketCost ?? 1);
   const claimableSets = group.freeClaim
     ? availableSets
     : Math.min(
         availableSets,
-        Math.floor(ticketsAvailable / Math.max(1, ticketCost))
+        Math.floor(goldAvailable / Math.max(1, goldCost))
       );
 
   const rewardPerSet =
@@ -81,9 +83,9 @@ export const ComboOfferCard = memo(function ComboOfferCard({
         ) : (
           <span
             className="inline-flex items-center gap-1 rounded-full border border-gold/40 bg-gold/15 px-1.5 py-0.5 text-[10px] font-medium text-gold"
-            title={t("mynfts.paid_claim_per_combo", { n: ticketCost })}
+            title={t("mynfts.paid_claim_per_combo", { n: goldCost })}
           >
-            <Ticket className="h-3 w-3" />×{ticketCost} {t("mynfts.combo_per_set_short")}
+            <ResourceGlyph kind="gold" className="h-3 w-3" />{goldCost} {t("mynfts.combo_per_set_short")}
           </span>
         )}
         <DropExpiryTimer expiresAt={group.expiresAt} className="ml-auto" />
@@ -136,7 +138,7 @@ export const ComboOfferCard = memo(function ComboOfferCard({
           </div>
         ) : claimableSets === 0 ? (
           <Link to="/referrals" className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground">
-            <Ticket className="h-3.5 w-3.5" /> {t("mynfts.need_tickets")}
+            <ResourceGlyph kind="gold" className="h-3.5 w-3.5" /> {t("mynfts.need_tickets")}
           </Link>
         ) : (
           <button

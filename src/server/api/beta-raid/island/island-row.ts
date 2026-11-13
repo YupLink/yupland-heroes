@@ -11,6 +11,10 @@ export type IslandRow = {
   done: string[];
   back: { mapId: string; q: number; r: number } | null;
   finishedAt: string | null;
+  /** Обучение пропущено (на аккаунт: «Новый остров» и выход порталом его не сбрасывают). */
+  skippedAt: string | null;
+  /** Обучение начато заново (island-tutorial-reset): «Герой в подарок» — по выбору, не по герою. */
+  resetAt: string | null;
 };
 
 /** Строка живого острова — карта есть. */
@@ -25,7 +29,8 @@ const strings = (v: unknown): string[] => {
 
 export async function loadIsland(account: string): Promise<IslandRow | null> {
   const rows = (await mcpExec(
-    `SELECT account_id, map_id, places, done, back_map, back_q, back_r, finished_at
+    `SELECT account_id, map_id, places, done, back_map, back_q, back_r, finished_at,
+            tutorial_skipped_at, tutorial_reset_at
        FROM yuplink.raid_island WHERE account_id = ${sqlStr(account)} LIMIT 1;`,
     { wrapJson: true },
   )) as Array<Record<string, unknown>>;
@@ -44,18 +49,45 @@ export async function loadIsland(account: string): Promise<IslandRow | null> {
         ? { mapId: backMap, q: Number(r.back_q), r: Number(r.back_r) }
         : null,
     finishedAt: r.finished_at ? String(r.finished_at) : null,
+    skippedAt: r.tutorial_skipped_at ? String(r.tutorial_skipped_at) : null,
+    resetAt: r.tutorial_reset_at ? String(r.tutorial_reset_at) : null,
   };
 }
 
+/**
+ * Пропустить обучение (skip) или вернуть его. Пропуск — отметка на аккаунт:
+ * засчитанное остаётся, повторно проходить не нужно, наград за пропуск нет
+ * (подарок сундука и герой и так раз на аккаунт). Повтор — ничего не меняет.
+ */
+export async function setTutorialSkip(account: string, skip: boolean): Promise<void> {
+  await mcpExec(
+    `UPDATE yuplink.raid_island
+        SET tutorial_skipped_at = ${skip ? "COALESCE(tutorial_skipped_at, now())" : "NULL"}
+      WHERE account_id = ${sqlStr(account)};`,
+  );
+}
+
 /** Дописать засчитанные шаги (объединение, порядок не важен). */
-export async function markDone(account: string, steps: readonly string[]): Promise<void> {
+export async function markDone(account: string, steps: readonly string[], mapId?: string): Promise<void> {
   if (steps.length === 0) return;
   await mcpExec(
     `UPDATE yuplink.raid_island
         SET done = (SELECT jsonb_agg(DISTINCT x) FROM jsonb_array_elements_text(
                       done || ${sqlStr(JSON.stringify(steps))}::jsonb) x)
-      WHERE account_id = ${sqlStr(account)};`,
+      WHERE account_id = ${sqlStr(account)}${mapId ? ` AND map_id = ${sqlStr(mapId)}` : ""};`,
   );
+}
+
+/** A view from an old tab must not update an island restarted during the request. */
+export async function markViewedForMap(account: string, mapId: string, steps: readonly ("hero" | "chest" | "chest_backpack")[]): Promise<boolean> {
+  if (!steps.length) return false;
+  const rows = await mcpExec(`UPDATE yuplink.raid_island
+    SET done = (SELECT jsonb_agg(DISTINCT x) FROM jsonb_array_elements_text(
+      done || ${sqlStr(JSON.stringify(steps))}::jsonb) x)
+    WHERE account_id = ${sqlStr(account)} AND map_id = ${sqlStr(mapId)}
+      AND tutorial_skipped_at IS NULL AND places->'lesson'->>'version' = '1'
+    RETURNING account_id;`, { wrapJsonCte: true }) as unknown[];
+  return !!rows?.length;
 }
 
 /** Запомнить, откуда админ пришёл на остров (новичку не нужно — он выйдет к замку). */
@@ -77,3 +109,4 @@ export async function markFinished(account: string): Promise<void> {
       WHERE account_id = ${sqlStr(account)};`,
   );
 }
+

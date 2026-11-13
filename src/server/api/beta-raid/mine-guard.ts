@@ -15,6 +15,9 @@ import { accAccountId } from "../currency/move";
 import { loadCellBuilding } from "./building-action";
 import { isBuilt } from "@/lib/buildingEffect";
 import { cellMineConfig } from "@/lib/mineConfig";
+import { mineIslandOf } from "@/lib/mineV2";
+import { isMushroomConfig } from "@/lib/mushroomKinds";
+import { isIslandMapId } from "@/lib/raid/island/ids";
 import { nanoid } from "nanoid";
 import { createHash } from "node:crypto";
 import { packGuards, type GuardView, type GuardsWire } from "@/lib/mineGuardsWire";
@@ -86,15 +89,20 @@ export const placeMineGuard = createServerFn({ method: "POST" })
       const b = await loadCellBuilding(mapId, data.q, data.r);
       if (!b) throw new Error("Здесь нет постройки");
       if (b.effect !== "mine") throw new Error("Это не шахта");
+      // На DARAI-шахту охрану не ставят (владелец, 22.10.2026; lib/daraiMine).
+      if (isMushroomConfig(b.config)) throw new Error("dmine.no_guard");
       if (!isBuilt(b.tier, b.tiers.length)) throw new Error("Шахта ещё не построена");
+      // Шахта острова (§8.59 п. 11) живёт 7 дней и истощается — босс сбежал бы.
+      if (mineIslandOf(b.config) && isIslandMapId(mapId)) {
+        throw new Error("braid.mine_island_no_guard");
+      }
 
       // Владелец шахты — я (охрану ставят только на свою захваченную шахту).
-      const own = (await mcpExec(
-        `SELECT owner_account FROM yuplink.raid_mine_state
-          WHERE map_id=${sqlStr(mapId)} AND q=${data.q} AND r=${data.r} LIMIT 1;`,
-        { wrapJson: true },
-      ).catch(() => [])) as Array<{ owner_account: string }>;
-      if (own?.[0]?.owner_account !== account) {
+      // Сломанная v2 (§8.59) ничья: охрана с неё сбежит при уборке — не ставим.
+      const { loadMineCell } = await import("./mine-v2-read");
+      const cell = await loadMineCell(mapId, data.q, data.r);
+      if (cell.view?.broken) throw new Error("braid.mine_broken");
+      if (cell.owner !== account) {
         throw new Error("Охрану можно поставить только на свою шахту");
       }
     }
@@ -129,7 +137,13 @@ export const placeMineGuard = createServerFn({ method: "POST" })
     const claimed = await mcpExec(
       claimGuardSql({ mapId, q: data.q, r: data.r, account, templateId, tpl, op }),
     ).then(
-      (rows) => sqlRow<{ placed: boolean }>(rows as unknown[])?.placed === true,
+      (rows) => {
+        const row = sqlRow<{ placed: boolean; mine?: boolean }>(rows as unknown[]);
+        if (row?.placed === true) return true;
+        // Под локом шахты её уже нет или она не моя (забрали, отбили).
+        if (row?.mine === false) throw new Error("Охрану можно поставить только на свою шахту");
+        return false;
+      },
       async (e: unknown) => {
         if (await opDone(op)) return true;
         throw e;

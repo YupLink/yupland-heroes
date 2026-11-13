@@ -1,4 +1,6 @@
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
 // Battle figures are shown only when the live feature state is known.
+// Цена — в золоте (с 21.10.2026): подпись «Цена в золоте», «Купить за N» со значком.
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -22,7 +24,7 @@ type MarketLot = {
   collectionName: string | null;
   sellerUsername: string | null;
   sellerWallet: string;
-  priceTickets: number;
+  priceGold: number;
 };
 
 export function MarketListingDetail({ listing, mine, buying, buyBlockedReason, buyError, bonusEnabled, onBuy, onClose }: {
@@ -37,6 +39,7 @@ export function MarketListingDetail({ listing, mine, buying, buyBlockedReason, b
 }) {
   const ru = useLang() === 'ru';
   const label = (a: string, b: string) => ru ? a : b;
+  usePurchaseMusic(!mine);
   const [confirm, setConfirm] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const buyRef = useRef<HTMLButtonElement>(null);
@@ -50,7 +53,7 @@ export function MarketListingDetail({ listing, mine, buying, buyBlockedReason, b
   const bossAttack = `${Math.round(baseMin * attackScale)}–${Math.round(baseMax * attackScale)}`;
   const bossLife = Math.round(baseLife * lifeScale).toLocaleString(ru ? 'ru-RU' : 'en-US');
   const duelAttack = `${baseMin}–${baseMax}`;
-  const price = listing.priceTickets.toLocaleString(ru ? 'ru-RU' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const price = listing.priceGold.toLocaleString(ru ? 'ru-RU' : 'en-US', { maximumFractionDigits: 2 });
   const attackBonusPct = bonusEnabled ? bonus.atkPct : 0;
   const lifeBonusPct = bonusEnabled ? bonus.hpPct : 0;
   const addedLife = Math.round(baseLife * lifeBonusPct / 100).toLocaleString(ru ? 'ru-RU' : 'en-US');
@@ -116,16 +119,18 @@ export function MarketListingDetail({ listing, mine, buying, buyBlockedReason, b
           <p>{label(`В дуэли бонус коллекции не действует: сила ${duelAttack}.`, `The collection bonus does not apply in a duel: power ${duelAttack}.`)}</p>
         </div>
       </details>}
-      <div className="market-detail__seller"><span>{label('Продавец', 'Seller')}</span><strong title={listing.sellerUsername ?? listing.sellerWallet}>@{listing.sellerUsername ?? listing.sellerWallet}</strong></div>
-      <div className="market-detail__price"><ResourceGlyph kind="tickets" /><span>{price}</span></div>
+      <div className="market-detail__seller"><span>{label('Продавец', 'Seller')}</span><strong title={listing.sellerUsername ?? listing.sellerWallet}>{listing.sellerUsername ?? listing.sellerWallet}</strong></div>
+      <p className="mt-3 text-center text-xs text-[#c9b48a]">{label('Цена в золоте', 'Price in gold')}</p>
+      <div className="market-detail__price !mt-1"><ResourceGlyph kind="gold" label={label('золото', 'gold')} /><span>{price}</span></div>
       {mine ? <p className="market-detail__own">{label('Это твоё объявление', 'This is your listing')}</p> : confirm ?
         <div className="market-detail__confirm" role="group" aria-label={label('Подтверждение покупки', 'Confirm purchase')}>
-          <p>{label('Купить фишку за', 'Buy this chip for')} <ResourceGlyph kind="tickets" /> {price}?</p>
+          <p>{label('Купить фишку за', 'Buy this chip for')} <ResourceGlyph kind="gold" /> {price}?</p>
           <div><button ref={cancelRef} type="button" disabled={buying} onClick={cancelConfirm}>{label('Отмена', 'Cancel')}</button><button type="button" disabled={buying||!!buyBlockedReason} onClick={onBuy}>{buying ? label('Покупаем…', 'Buying…') : label('Подтвердить', 'Confirm')}</button></div>
         </div> :
-        <button ref={buyRef} type="button" className="market-detail__buy" disabled={buying||!!buyBlockedReason} onClick={() => setConfirm(true)}>{label('Купить', 'Buy')}</button>}
+        <button ref={buyRef} type="button" className="market-detail__buy" disabled={buying||!!buyBlockedReason} onClick={() => setConfirm(true)}>{label('Купить за', 'Buy for')} <ResourceGlyph kind="gold" className="h-4 w-4 align-[-3px]" /> {price}</button>}
       {!mine&&buyBlockedReason&&<p className="market-detail__blocked" role="status">{buyBlockedReason}</p>}
       {!mine&&buyError&&<p className="market-detail__blocked" role="alert">{buyError}</p>}
     </section>
   </div>, document.body);
 }
+

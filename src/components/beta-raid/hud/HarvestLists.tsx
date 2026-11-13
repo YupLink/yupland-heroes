@@ -6,10 +6,13 @@
 // схода на берег.
 import { HandCoins, Sprout } from "lucide-react";
 import { useT } from "@/lib/i18n";
-import { livePendingAmount } from "@/lib/minePending";
 import { formatQty } from "@/lib/formatQty";
+import { lostMarkKey, mineRowReady } from "@/lib/mineLost";
+import { mineBrokenNow, type MineClockStamps } from "@/lib/mineV2Clock";
 import type { MineRow } from "@/server/api/beta-raid/mine-pendings";
 import type { HarvestField } from "@/server/api/beta-raid/harvest-fields";
+import { MineLeftLine, MineModeSwitch } from "./MineModeSwitch";
+import { useMineListNow } from "./useMineListNow";
 
 /** Ресурсы знаем по имени, монеты показываем под их символом. */
 const KNOWN = new Set([
@@ -73,11 +76,15 @@ function PlaceLink({
 export function MineList({
   mines,
   onShowCell,
+  clock,
 }: {
   mines: MineRow[];
   onShowCell?: (q: number, r: number) => void;
+  /** Метки часов ответа «Добычи»: срок шахт v2 — по часам сервера. */
+  clock?: MineClockStamps;
 }) {
   const t = useT();
+  const now = useMineListNow(clock, mines);
   const label = (key: string) => (KNOWN.has(key) ? t(`mine.res.${key}`) : key);
   if (mines.length === 0) {
     return <p className="text-center text-[11px] text-muted-foreground">{t("harvest.no_mines")}</p>;
@@ -86,35 +93,42 @@ export function MineList({
     <div className="space-y-1.5">
       {mines.map((m) => {
         const name = m.resource === "token" ? (m.token ?? "token") : m.resource;
-        const ready = livePendingAmount(
-          m.capturedAt,
-          m.claimedHours,
-          m.yield,
-          Date.now(),
-          m.maxHours,
-        );
+        // Отнятая (§8.71) — сумма её строки журнала, выхода в час нет.
+        const ready = mineRowReady(m);
+        // Режим меняют у своей работающей v2; остров — только «Бережно».
+        const v2 = m.v2;
+        const switchable = !m.island && !!v2 && !mineBrokenNow(v2, now);
         return (
           <div
-            key={`${m.mapId}:${m.q},${m.r}`}
-            className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2"
+            key={m.lost ? m.lost.id : `${m.mapId}:${m.q},${m.r}`}
+            className="rounded-xl border border-border px-3 py-2"
           >
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-sm font-semibold">
-                <HandCoins className="h-3.5 w-3.5 text-amber-300" />
-                <span className="truncate">{label(name)}</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                  <HandCoins className="h-3.5 w-3.5 text-amber-300" />
+                  <span className="truncate">{label(name)}</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  <PlaceLink q={m.q} r={m.r} floor={m.floor} onShow={onShowCell} />
+                </div>
               </div>
-              <div className="text-[11px] text-muted-foreground">
-                <PlaceLink q={m.q} r={m.r} floor={m.floor} onShow={onShowCell} />
+              <div className="shrink-0 text-right">
+                <div className="text-sm font-bold text-amber-300">
+                  {/* Отнятая — метка вместо выхода; алмаз острова — выход в сутки. */}
+                  {m.lost
+                    ? t(lostMarkKey(m.lost.kind))
+                    : m.stepHours === 24
+                      ? t("mine2.per_day", { n: num(m.yield * 24) })
+                      : t("harvest.per_hour", { n: num(m.yield) })}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {ready > 0 ? t("harvest.ready", { n: num(ready) }) : t("harvest.nothing_ready")}
+                </div>
+                {v2 && <MineLeftLine v2={v2} now={now} />}
               </div>
             </div>
-            <div className="shrink-0 text-right">
-              <div className="text-sm font-bold text-amber-300">
-                {t("harvest.per_hour", { n: num(m.yield) })}
-              </div>
-              <div className="text-[11px] text-muted-foreground">
-                {ready > 0 ? t("harvest.ready", { n: num(ready) }) : t("harvest.nothing_ready")}
-              </div>
-            </div>
+            {v2 && switchable && <MineModeSwitch row={m} v2={v2} clock={clock} />}
           </div>
         );
       })}

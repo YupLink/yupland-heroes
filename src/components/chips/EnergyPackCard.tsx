@@ -1,6 +1,10 @@
-import { Zap, ChevronDown, Ticket, Coins } from "lucide-react";
+// Энергопак в старом окне энергии: платится только золотом (вместо билетов,
+// ×500), DARAI и звёздами (владелец, 20.10.2026, §8.61) — токенов нет.
+import { Zap, ChevronDown, Coins } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { useAccountEnabled } from "@/lib/hooks/useAccountBalances";
 import { useEnergyPurchase } from "./useEnergyPurchase";
 import { EnergyPayRow as PayRow } from "./EnergyPayRow";
@@ -12,6 +16,8 @@ type EnergyPackPublic = {
   amount: number;
   priceTickets: number | null;
   effectivePriceTickets: number | null;
+  /** Та же цена в золоте ×500 — столько спишется. */
+  effectivePriceGold: number | null;
   priceDarai: number | null;
   dailyLimit: number;
   dailyUsed: number;
@@ -24,6 +30,8 @@ type EnergyPackPublic = {
     ftContract: string | null;
     decimals: number | null;
     price: number | null;
+    /** Ступень «в билетах» — в золоте ×500 со скидкой подписки. */
+    gold?: number | null;
     /** Тариф в $: цена следующей ступени в USDT / DARAI / звёздах. */
     usd?: UsdPrices | null;
     used: number;
@@ -33,24 +41,40 @@ type EnergyPackPublic = {
   token: { ftContract: string; amount: number; decimals: number; symbol: string } | null;
 };
 
+/** Подпись валюты ступени: «золото» — из словаря (ru/en), прочее — как пришло. */
+const goldLabel = (o: { kind: string; label: string }, t: (k: string) => string) =>
+  o.kind === "tickets" || o.kind === "gold" ? t("energy.pay_gold") : o.label;
+
 export function EnergyPackCard({
   pack,
-  availableTickets,
+  availableGold,
   availableDarai,
 }: {
   pack: EnergyPackPublic;
-  availableTickets: number;
+  availableGold: number;
   availableDarai: number;
 }) {
-  const { buyTk, buyDr, buyTok, buyAcc, buyUsd, busy, open, setOpen } = useEnergyPurchase(pack);
+  const t = useT();
+  const offerLabel = (o: { kind: string; label: string }) => goldLabel(o, t);
+  const { buyTk, buyDr, buyAcc, buyUsd, busy, open, setOpen } = useEnergyPurchase(pack);
   const accountOn = useAccountEnabled();
+  // Плашки и строки — только золото и DARAI; USDT-лесенка — лишь якорь звёзд.
+  const shown = (pack.offers ?? []).filter((o) => o.kind === "tickets" || o.kind === "darai");
+  const priceOf = (o: { kind: string; price: number | null; gold?: number | null }) =>
+    o.kind === "tickets" ? (o.gold ?? null) : o.price;
+  const noGold = (need: number) =>
+    toast.error(
+      t("chips.upg_gold", {
+        need: need.toLocaleString("ru-RU"),
+        have: Math.floor(availableGold).toLocaleString("ru-RU"),
+      }),
+    );
   // С умным предложением лимит у каждой валюты свой: пак закрыт, только
   // когда ни одной валютой купить уже нельзя.
   const limitReached = pack.offers
     ? pack.offers.every((o) => o.price == null)
     : pack.dailyLimit > 0 && pack.dailyUsed >= pack.dailyLimit;
-  const priceTk = pack.effectivePriceTickets;
-  const canTk = priceTk != null && availableTickets >= priceTk && !limitReached;
+  const priceTk = pack.effectivePriceGold;
   const canDr = pack.priceDarai != null && !limitReached;
 
   return (
@@ -75,7 +99,7 @@ export function EnergyPackCard({
         </div>
         <div className="flex min-w-0 shrink-0 items-center gap-1.5">
           {pack.offers
-            ? pack.offers.slice(0, 2).map((o) => (
+            ? shown.slice(0, 2).map((o) => (
                 <span
                   key={o.key}
                   className={cn(
@@ -85,8 +109,8 @@ export function EnergyPackCard({
                       : "bg-gold/10 text-gold",
                   )}
                 >
-                  {o.price == null ? o.total : o.price}
-                  <span className="ml-0.5 text-[9px] font-medium opacity-70">{o.label}</span>
+                  {o.price == null ? o.total : priceOf(o)?.toLocaleString("ru-RU")}
+                  <span className="ml-0.5 text-[9px] font-medium opacity-70">{offerLabel(o)}</span>
                 </span>
               ))
             : pack.dailyLimit > 0 && (
@@ -94,8 +118,8 @@ export function EnergyPackCard({
                   {pack.dailyUsed}/{pack.dailyLimit}
                 </span>
               )}
-          {pack.offers && pack.offers.length > 2 && (
-            <span className="text-[10px] text-muted-foreground">+{pack.offers.length - 2}</span>
+          {shown.length > 2 && (
+            <span className="text-[10px] text-muted-foreground">+{shown.length - 2}</span>
           )}
           <ChevronDown
             className={cn(
@@ -116,46 +140,45 @@ export function EnergyPackCard({
             <>
               {/* Звёзды — первыми (владелец, 07.10.2026: звездочнику — сначала звёзды). */}
               {accountOn && (
-                <EnergyAccountRows part="stars" offers={pack.offers ?? []} pending={buyUsd.isPending} busy={busy} onBuy={(a) => buyAcc.mutate(a)} onBuyUsd={(a) => buyUsd.mutate(a)} />
+                <EnergyAccountRows
+                  part="stars"
+                  offers={pack.offers ?? []}
+                  pending={buyUsd.isPending}
+                  busy={busy}
+                  onBuy={(a) => buyAcc.mutate(a)}
+                  onBuyUsd={(a) => buyUsd.mutate(a)}
+                />
               )}
-              {(pack.offers ?? [])
-                // Счёт открыт — валютные строки платятся с него (строки ниже).
-                // Тариф в $ платится только со счёта — строки ниже.
-                .filter((o) => o.kind !== "usd")
-                .filter((o) => !(accountOn && (o.kind === "token" || o.kind === "darai")))
+              {shown
+                // Счёт открыт — DARAI платится с него (строки ниже).
+                .filter((o) => !(accountOn && o.kind === "darai"))
                 .map((o) => {
                   const gone = o.price == null;
                   const pending =
                     (o.kind === "tickets" && buyTk.isPending) ||
-                    (o.kind === "darai" && buyDr.isPending) ||
-                    (o.kind === "token" && buyTok.isPending);
+                    (o.kind === "darai" && buyDr.isPending);
                   return (
                     <PayRow
                       key={o.key}
                       icon={
                         o.kind === "tickets" ? (
-                          <Ticket className="h-4 w-4 text-gold" />
+                          <ResourceGlyph kind="gold" className="h-4 w-4" />
                         ) : (
-                          <Coins
-                            className={cn(
-                              "h-4 w-4",
-                              o.kind === "darai" ? "text-gold" : "text-emerald-400",
-                            )}
-                          />
+                          <Coins className="h-4 w-4 text-gold" />
                         )
                       }
                       label={
                         <span className="inline-flex items-baseline gap-1 tabular-nums">
-                          {gone ? "—" : o.price?.toLocaleString("ru-RU")}
+                          {gone ? "—" : priceOf(o)?.toLocaleString("ru-RU")}
                           <span className="text-[11px] font-medium text-muted-foreground">
-                            {o.label}
+                            {offerLabel(o)}
                           </span>
                           <span className="text-[10px] text-muted-foreground/70">
                             {o.used}/{o.total}
                           </span>
                         </span>
                       }
-                      // Не хватает билетов — кнопку НЕ гасим: серая кнопка без
+                      // Не хватает золота — кнопку НЕ гасим: серая кнопка без
                       // объяснения читается как поломка («даже не кликабельно»).
                       // Причину говорим по нажатию.
                       disabled={gone}
@@ -163,25 +186,11 @@ export function EnergyPackCard({
                       busy={busy}
                       onClick={() => {
                         if (o.kind === "tickets") {
-                          if (o.price != null && availableTickets < o.price) {
-                            toast.error(
-                              `Нужно ${o.price} билетов, у тебя ${availableTickets.toFixed(2)}`,
-                            );
-                            return;
-                          }
+                          const need = priceOf(o);
+                          if (need != null && availableGold < need) return noGold(need);
                           return buyTk.mutate();
                         }
-                        if (o.kind === "darai") return buyDr.mutate(o.price ?? undefined);
-                        if (!o.symbol || !o.ftContract || o.decimals == null || o.price == null) {
-                          toast.error(`Токен ${o.label} не сконфигурирован`);
-                          return;
-                        }
-                        buyTok.mutate({
-                          symbol: o.symbol,
-                          ftContract: o.ftContract,
-                          amount: o.price,
-                          decimals: o.decimals,
-                        });
+                        buyDr.mutate(o.price ?? undefined);
                       }}
                     />
                   );
@@ -201,20 +210,12 @@ export function EnergyPackCard({
               {/* Пак без лестницы — старые одиночные цены (легаси-паки). */}
               {!pack.offers && priceTk != null && (
                 <PayRow
-                  icon={<Ticket className="h-4 w-4 text-gold" />}
-                  label={`${priceTk} билетов`}
+                  icon={<ResourceGlyph kind="gold" className="h-4 w-4" />}
+                  label={t("braid.price_tickets", { n: priceTk.toLocaleString("ru-RU") })}
                   disabled={limitReached}
                   pending={buyTk.isPending}
                   busy={busy}
-                  onClick={() => {
-                    if (availableTickets < priceTk) {
-                      toast.error(
-                        `Нужно ${priceTk} билетов, у тебя ${availableTickets.toFixed(2)}`,
-                      );
-                      return;
-                    }
-                    buyTk.mutate();
-                  }}
+                  onClick={() => (availableGold < priceTk ? noGold(priceTk) : buyTk.mutate())}
                 />
               )}
               {!pack.offers && pack.priceDarai != null && (
@@ -225,16 +226,6 @@ export function EnergyPackCard({
                   pending={buyDr.isPending}
                   busy={busy}
                   onClick={() => buyDr.mutate(undefined)}
-                />
-              )}
-              {!pack.offers && pack.token && (
-                <PayRow
-                  icon={<Coins className="h-4 w-4 text-emerald-400" />}
-                  label={`${pack.token.amount.toLocaleString("ru-RU")} ${pack.token.symbol}`}
-                  disabled={false}
-                  pending={buyTok.isPending}
-                  busy={busy}
-                  onClick={() => buyTok.mutate(undefined)}
                 />
               )}
             </>

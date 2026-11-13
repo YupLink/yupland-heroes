@@ -5,6 +5,7 @@
 // идут первыми и подсвечены; пустые остаются рядом, приглушённые.
 import { ArrowUpFromLine, Loader2, Plus, Star } from "lucide-react";
 import { useAccountBalances } from "@/lib/hooks/useAccountBalances";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
 export type TokenInfo = {
   symbol: string;
@@ -28,6 +29,8 @@ export function AccountBalances({
   onWithdraw: (symbol: string) => void;
 }) {
   const q = useAccountBalances();
+  // §8.127: звёзды — только с Telegram; «только Google» не пополняет; вывод — списку.
+  const rules = useEntryRules();
 
   if (q.isLoading) {
     return (
@@ -48,7 +51,7 @@ export function AccountBalances({
   // STARS всегда первым и отдельно — это внутренний ресурс за Telegram Stars,
   // с собственным оформлением и без вывода. Остальные монеты — как обычно:
   // деньги вверх, дальше по алфавиту.
-  const stars = all.find((t) => t.stars);
+  const stars = rules.stars ? all.find((t) => t.stars) : undefined;
   const rest = all
     .filter((t) => !t.stars)
     .sort(
@@ -103,7 +106,7 @@ export function AccountBalances({
                 {value.toLocaleString("ru-RU", { maximumFractionDigits: 8 })}
               </div>
             </div>
-            <button
+            {!rules.googleOnly && <button
               type="button"
               onClick={() => onTopUp(t.symbol)}
               title={`Пополнить ${t.symbol}`}
@@ -111,8 +114,8 @@ export function AccountBalances({
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-gold/30 bg-gold/10 text-gold transition hover:bg-gold/20 disabled:opacity-30"
             >
               <Plus className="h-4 w-4" />
-            </button>
-            <button
+            </button>}
+            {rules.canWithdraw && <button
               type="button"
               onClick={() => onWithdraw(t.symbol)}
               title={has ? `Вывести ${t.symbol}` : `На счету нет ${t.symbol} — выводить нечего`}
@@ -120,7 +123,7 @@ export function AccountBalances({
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground transition hover:bg-secondary disabled:opacity-25"
             >
               <ArrowUpFromLine className="h-4 w-4" />
-            </button>
+            </button>}
           </div>
         );
       })}

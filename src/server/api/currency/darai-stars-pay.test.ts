@@ -11,7 +11,7 @@ describe("сервер: чем списать цену в DARAI", () => {
   beforeEach(() => balance.mockReset());
   it("полноценный игрок (кошелёк) — всегда DARAI", async () => {
     balance.mockResolvedValue(0);
-    expect(await starsInsteadOfDarai("owner.example.near", 100_000)).toBeNull();
+    expect(await starsInsteadOfDarai("owner.near", 100_000)).toBeNull();
   });
   it("звездочник, DARAI хватает — DARAI", async () => {
     balance.mockResolvedValue(200_000);

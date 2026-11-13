@@ -14,15 +14,14 @@ import { myLikeBalance } from "@/api";
 import { useEnergy } from "@/lib/hooks/useEnergy";
 import { useResources } from "@/lib/hooks/useResources";
 import { useAccountBalances } from "@/lib/hooks/useAccountBalances";
-import { useTickets } from "@/lib/hooks/useTickets";
 import type { MarketPriceResource } from "@/lib/marketItem";
+import { TICKET_SPEND_GOLD } from "@/lib/ticketGold";
 
 export type HaveFn = (resource: MarketPriceResource, token: string | null) => number | null;
 
 export function usePlayerFunds(): HaveFn {
   const resBal = useResources().data;
   const energyBal = useEnergy().data;
-  const ticketsBal = useTickets().data;
   const accBal = useAccountBalances().data;
   const likesBal = useQuery({
     queryKey: ["my-like-balance"],
@@ -40,7 +39,9 @@ export function usePlayerFunds(): HaveFn {
       return resBal ? (resBal[resource] ?? 0) : null;
     if (resource === "energy") return energyBal ? (energyBal.energy ?? 0) : null;
     if (resource === "likes") return likesBal ? (likesBal.available ?? 0) : null;
-    if (resource === "tickets") return ticketsBal ? (ticketsBal.available ?? 0) : null;
+    // Билетов нет (§8.61): цена «в билетах» платится золотом ×500 — сколько
+    // таких «билетов» по цене покрывает золото на счёте.
+    if (resource === "tickets") return resBal ? (resBal.gold ?? 0) / TICKET_SPEND_GOLD : null;
     if (resource === "token")
       return accBal ? (accBal.balances?.find((b) => b.token === token)?.balance ?? 0) : null;
     // Предметная цена лежит в рюкзаке героя — его состав тут не читаем: хватает

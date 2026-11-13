@@ -1,19 +1,18 @@
 // Вклады стейкинга и DARAI холдеров на счёте (ПРАВИЛА §8.51). Снять — двумя
-// нажатиями: в локе раньше срока подтверждение называет, сколько золота вернуть
-// (половина начисленного). Выводы DARAI холдеров, ждущие срок, — с отменой.
+// нажатиями: «Забрать раньше срока» (в локе) открывает подтверждение «будет списано
+// N золота (половина начисленного), вернётся M DARAI»; сервер берёт не больше
+// показанного (confirmGold), сначала золото, потом DARAI. Без лока золото не берётся.
+// Выводы DARAI холдеров, ждущие срок; свой вывод игрок может отменить.
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Coins, Gem, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cancelHolderWithdraw, closeBankStake, type getBankStake } from "@/server/api/bank/bank-stake";
-import { earlyBack, stakeLocked, stakePlan, type MyStake } from "@/lib/bankStake";
-import { ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
-import { RESOURCES_KEY } from "@/lib/hooks/useResources";
+import { earlyBack, stakeHeld, stakeLocked, stakePlan, type MyStake } from "@/lib/bankStake";
 import { fmtNum } from "./bankUi";
-import { BANK_LICENSE_KEY } from "./BankLicenses";
+import { refreshBank } from "./bankKeys";
 
 type Data = Awaited<ReturnType<typeof getBankStake>>;
-const STAKE_KEY = ["bank-stake"] as const;
 
 export function BankStakeList({ ru, data }: { ru: boolean; data: Data }) {
   const qc = useQueryClient();
@@ -21,15 +20,16 @@ export function BankStakeList({ ru, data }: { ru: boolean; data: Data }) {
   const loc = ru ? "ru-RU" : "en-US";
   const date = (s: string) => new Date(s).toLocaleDateString(loc, { day: "numeric", month: "short", year: "numeric" });
   const mln = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString(loc, { maximumFractionDigits: 2 })} ${ru ? "млн" : "M"}` : fmtNum(n, ru));
-  const refresh = () => {
-    for (const key of [STAKE_KEY, BANK_LICENSE_KEY, ACC_BALANCES_KEY, RESOURCES_KEY]) void qc.invalidateQueries({ queryKey: key });
-  };
+  const refresh = () => void refreshBank(qc);
   const close = useMutation({
-    mutationFn: (id: string) => closeBankStake({ data: { stakeId: id } }),
+    mutationFn: (v: { id: string; gold: number }) =>
+      closeBankStake({ data: { stakeId: v.id, confirmGold: v.gold } }),
     onSuccess: (r) =>
       toast.success(
         r.goldBack > 0
-          ? `${ru ? "Снято" : "Unstaked"} ${mln(r.darai)} DARAI, ${ru ? "возвращено золота" : "gold returned"} ${fmtNum(r.goldBack, ru)}`
+          ? ru
+            ? `Списано ${fmtNum(r.goldBack, ru)} золота, вернулось ${mln(r.darai)} DARAI`
+            : `${fmtNum(r.goldBack, ru)} gold taken, ${mln(r.darai)} DARAI returned`
           : `${ru ? "Снято" : "Unstaked"} ${mln(r.darai)} DARAI`,
       ),
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
@@ -48,54 +48,36 @@ export function BankStakeList({ ru, data }: { ru: boolean; data: Data }) {
   const row = (s: MyStake) => {
     const plan = stakePlan(s.plan);
     const locked = stakeLocked(s);
+    // Вклад NFT-холдера до срока не снять вовсе (§8.51 п. 3): дата вместо кнопки.
+    const held = stakeHeld(s);
     const back = locked ? earlyBack(s.goldPaid) : 0;
-    return (
-      <li key={s.id} className="auction-lot">
-        <div className="auction-lot__top">
-          <span className="auction-lot__media auction-rarity--rare" aria-hidden="true">
-            {s.source === "holder" ? <Gem /> : <Coins />}
-          </span>
-          <div className="auction-lot__info">
-            <p className="auction-lot__title flex flex-wrap items-center gap-2">
-              {mln(s.amount)} DARAI
-              {s.holder > 0 && <span className="auction-kind">{ru ? "холдер" : "holder"}</span>}
-            </p>
-            <p className="auction-lot__meta">
-              {s.pct} % · {fmtNum(s.goldDay, ru)} {ru ? "золота в сутки" : "gold a day"} · {ru ? "начислено" : "earned"} {fmtNum(s.goldPaid, ru)}
-            </p>
-            <p className="auction-lot__meta">
-              {s.lockUntil ? `${ru ? plan?.ru : plan?.en} · ${ru ? "до" : "until"} ${date(s.lockUntil)}` : ru ? "Без лока" : "No lock"}
-            </p>
-          </div>
-        </div>
-        {asking === s.id ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <p className="flex-1 text-sm text-[#fbeccb]">
-              {back > 0
-                ? ru ? <>Вернуть <b>{fmtNum(back, ru)}</b> золота и снять?</> : <>Return <b>{fmtNum(back, ru)}</b> gold and unstake?</>
-                : ru ? <>Снять <b>{mln(s.amount)}</b> DARAI?</> : <>Unstake <b>{mln(s.amount)}</b> DARAI?</>}
-            </p>
-            <button type="button" className="auction-secondary" onClick={() => setAsking(null)}>
-              {ru ? "Отмена" : "Cancel"}
-            </button>
-            <button type="button" className="auction-primary" disabled={close.isPending} onClick={() => close.mutate(s.id)}>
-              {close.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {ru ? "Снять" : "Unstake"}
-            </button>
-          </div>
-        ) : (
-          <button type="button" className="auction-secondary mt-3 w-full" onClick={() => setAsking(s.id)}>
-            {ru ? "Снять" : "Unstake"}
-          </button>
-        )}
-      </li>
-    );
+    const forecast = plan && plan.days > 0 ? s.goldDay * plan.days : null;
+    return <li key={s.id} className="bank-player__owned">
+      <div className="bank-player__owned-top">
+        <div><strong>{mln(s.amount)} DARAI</strong><small>{s.lockUntil ? `${ru ? plan?.ru : plan?.en} · ${s.pct}% ${ru ? "годовых" : "annual"}` : `${ru ? "Без лока" : "No lock"} · ${s.pct}%`}{s.holder > 0 ? (ru ? " · холдер" : " · holder") : ""}</small></div>
+        <span>{held && s.holdUntil ? `${ru ? "До" : "Until"} ${date(s.holdUntil)}` : s.lockUntil ? `${ru ? "До" : "Until"} ${date(s.lockUntil)}` : ru ? "Снять можно сейчас" : "Available now"}</span>
+      </div>
+      <div className="bank-player__owned-bottom">
+        <dl><dt>{ru ? "Уже начислено" : "Earned so far"}</dt><dd>{fmtNum(s.goldPaid, ru)} {ru ? "золота" : "gold"}</dd></dl>
+        <dl><dt>{forecast !== null ? (ru ? "Прогноз за весь срок" : "Term forecast") : (ru ? "В сутки" : "Per day")}</dt><dd>{fmtNum(forecast ?? s.goldDay, ru)} {ru ? "золота" : "gold"}</dd></dl>
+        <button type="button" className="bank-player__withdraw" disabled={held} onClick={() => setAsking(s.id)}>{ru ? "Снять" : "Withdraw"}</button>
+      </div>
+      {asking === s.id && <div className="bank-player__stake-confirm" role="alertdialog" aria-labelledby={`stake-ask-${s.id}`}>
+        <p id={`stake-ask-${s.id}`}>{back > 0
+          ? ru ? <>При досрочном снятии спишется <b>{fmtNum(back, ru)} золота</b> (половина начисленного). Вернётся <b>{mln(s.amount)} DARAI</b>.</>
+            : <>Early withdrawal takes <b>{fmtNum(back, ru)} gold</b> (half of earned gold). <b>{mln(s.amount)} DARAI</b> returns.</>
+          : ru ? <>Вернётся <b>{mln(s.amount)} DARAI</b>.</> : <><b>{mln(s.amount)} DARAI</b> returns.</>}</p>
+        <div><button type="button" onClick={() => setAsking(null)} disabled={close.isPending}>{ru ? "Отмена" : "Cancel"}</button>
+        <button type="button" onClick={() => close.mutate({ id: s.id, gold: back })} disabled={close.isPending}>{close.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{ru ? "Подтвердить" : "Confirm"}</button></div>
+      </div>}
+    </li>;
   };
 
   const tagged = data.tag.d7 + data.tag.d30;
   return (
     <>
-      {data.stakes.length > 0 && <ul>{data.stakes.map(row)}</ul>}
+      <div className="bank-player__owned-section"><div className="bank-player__section-head"><h3>{ru ? "Мои вклады" : "My deposits"}</h3><small>{data.stakes.length} {ru ? "вкладов" : "deposits"}</small></div>
+      {data.stakes.length > 0 ? <ul>{data.stakes.map(row)}</ul> : <p className="bank-player__empty">{ru ? "Пока нет вкладов" : "No deposits yet"}</p>}</div>
       {tagged > 0 && (
         <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-[#b9a885]">
           <span>{ru ? "DARAI холдеров на счёте" : "Holder DARAI on account"}:</span>

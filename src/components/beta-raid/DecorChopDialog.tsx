@@ -16,9 +16,9 @@
 // Несколько инструментов (05.10): имя, картинка и износ — того, которым рубят
 // (used); нет ни одного — «Требуется Топор или Кирка» со всеми допустимыми.
 //
-// Руками (17.10, §8.56): нет ни одного, а декор берёт деревянный или каменный
-// топор — под неактивной «Требуется …» вторая кнопка «Срубить руками»
-// (DecorHandChop, её отдаёт useDecorInteract готовым элементом).
+// Руками (17.10, §8.56; с 29.10 — и при топоре): декор берёт деревянный или
+// каменный топор — под основной кнопкой вторая «Срубить руками» (DecorHandChop,
+// её отдаёт useDecorInteract готовым элементом): топор не тратится.
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Axe, Hand, Loader2, X, Zap } from "lucide-react";
@@ -28,6 +28,8 @@ import { labelFor } from "@/lib/raid/decorInteract";
 import { decorToolsOf, orList, type DecorToolView } from "@/lib/raid/decorTools";
 import { shownDurability } from "@/lib/raid/mainTool";
 import type { DecorInteractView } from "@/server/api/beta-raid/decor-interact";
+import { scaleEnergy } from "@/lib/raid/island/energy";
+import { ChopWalkCost } from "./ChopWalkCost";
 
 export type DecorChopProps = {
   conf: DecorInteractView;
@@ -44,6 +46,10 @@ export type DecorChopProps = {
   onClose: () => void;
   /** «Срубить руками» (§8.56) — под основной кнопкой; нет — не предлагается. */
   hand?: ReactNode;
+  /** Множитель карты (useEnergyMult): на острове рубка в 10 раз дешевле. */
+  energyMult?: number;
+  /** Энергия на дорогу к декору (окно открыто издалека, 13.11); 0 / null — не пишем. */
+  walk?: number | null;
 };
 
 function Pic({ src }: { src: string | null | undefined }) {
@@ -68,6 +74,8 @@ export function DecorChopDialog({
   onTake,
   onClose,
   hand,
+  energyMult = 1,
+  walk,
 }: DecorChopProps) {
   const t = useT();
   const lang = useLang();
@@ -133,7 +141,7 @@ export function DecorChopDialog({
           </div>
           {conf.cost > 0 && (
             <span className="flex items-center gap-1 font-semibold tabular-nums">
-              <Zap className="h-4 w-4 text-gold" />−{conf.cost}
+              <Zap className="h-4 w-4 text-gold" />−{scaleEnergy(conf.cost, energyMult)}
             </span>
           )}
           <div className="flex min-w-0 items-center gap-2">
@@ -162,8 +170,9 @@ export function DecorChopDialog({
             : state === "idle"
               ? t("tool.take", { tool })
               : t("braid.decor_need_tool", { tool })}
+          {state === "ok" && <ChopWalkCost cost={walk} />}
         </button>
-        {!hasTool && hand}
+        {hand}
       </div>
     </div>,
     document.body,

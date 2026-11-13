@@ -22,15 +22,28 @@ export async function spendArt(
   // Штучный предмет дробями не считается — половину артефакта отдать нечем.
   if (!Number.isInteger(amount) || amount <= 0) throw new Error("market.bad_qty");
   const { isArtAny, artAnyRarity } = await import("./art-rarity");
-  const { takeArtifacts, freeArtifactStat } = await import("./art-stock");
   const rarity = isArtAny(token) ? artAnyRarity(token) : null;
+  // Ломбард: несколько артефактов разом — у каждой группы своя проверка, снятие
+  // одним запросом (market-art-groups). Группы кладёт в pick только скупка
+  // ломбарда (market-sell-input.sellSpendPick).
+  if (rarity && pick?.artGroups?.length) {
+    const { spendArtGroups } = await import("./market-art-groups");
+    return spendArtGroups(wallet, account, rarity, pick.artGroups, amount, ref);
+  }
+  const { takeArtifacts, freeArtifactStat } = await import("./art-stock");
   // У витрины «любой арт редкости X» шаблон выбирает игрок; у именной позиции
   // он задан самой позицией, и выбирать нечего.
   const chosen = rarity ? pick?.artTemplateId?.trim() || null : token;
+  // Износ, который принимает позиция. По умолчанию — только целые (0). Иной
+  // кладёт в pick лишь скупка ломбарда (market-sell-input.sellSpendPick): он
+  // берёт и сломанные и перепродаёт их починенными (владелец, 23.10.2026).
+  // Ровно эта группа, а не «любая»: игрок отдаёт сломанный, а целый того же
+  // шаблона остаётся у него.
+  const wear = pick?.artWear ?? 0;
   if (rarity && chosen) {
     // Выбор игрока приходит с клиента — значит проверяем и владение, и
     // редкость. Иначе за «любой обычный» ушёл бы легендарный.
-    const stat = await freeArtifactStat(account, chosen);
+    const stat = await freeArtifactStat(account, chosen, wear);
     if (!stat || stat.count < amount) throw new Error("market.art_rarity_none");
     if (stat.rarity !== rarity) throw new Error("market.art_rarity_wrong");
   }
@@ -38,7 +51,7 @@ export async function spendArt(
     account,
     wallet,
     qty: amount,
-    pick: { templateId: chosen, rarity },
+    pick: { templateId: chosen, rarity, wear },
     op: ref,
   });
   // Отказ объясняем по существу позиции: у «любого арта редкости X» виноват

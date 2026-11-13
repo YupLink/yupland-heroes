@@ -11,7 +11,7 @@
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { blockedSql } from "./ships";
-import { WATER_SQL } from "./cell-sql";
+import { WATER_SQL, bridgeCellSql } from "./cell-sql";
 
 export type StuckShip = { id: string; q: number; r: number; objectId: string | null };
 
@@ -22,7 +22,7 @@ export async function findStuckShips(mapId: string): Promise<StuckShip[]> {
        FROM yuplink.beta_raid_ship s
        JOIN yuplink.raid_map_cells c
          ON c.map_id = s.map_id AND c.q = s.q AND c.r = s.r
-      WHERE s.map_id = ${sqlStr(mapId)} AND ${blockedSql(false)}
+      WHERE s.map_id = ${sqlStr(mapId)} AND (${blockedSql(false)} OR ${bridgeCellSql("c")})
       ORDER BY s.q, s.r;`,
     { wrapJson: true },
   ).catch(() => [])) as Array<{ id: string; q: number; r: number; object_id: string | null }>;
@@ -53,6 +53,7 @@ async function nearestFreeWater(
         AND c.r BETWEEN ${r - 2} AND ${r + 2}
         AND NOT (c.q = ${q} AND c.r = ${r})
         AND ${WATER_SQL}
+        AND NOT ${bridgeCellSql("c")}
         AND NOT ${blockedSql(false)}
         AND NOT EXISTS (
               SELECT 1 FROM yuplink.beta_raid_ship s
@@ -104,6 +105,7 @@ export async function findStrandedPlayers(mapId: string): Promise<Stranded[]> {
        JOIN yuplink.raid_map_cells c ON c.map_id = ${sqlStr(mapId)} AND c.q = p.q AND c.r = p.r
        JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
       WHERE ${WATER_SQL}
+        AND NOT ${bridgeCellSql("c")}
         AND NOT EXISTS (SELECT 1 FROM yuplink.beta_raid_ship s
                          WHERE s.map_id = ${sqlStr(mapId)} AND s.crew_account = p.account_id)
       ORDER BY p.updated_at DESC;`,

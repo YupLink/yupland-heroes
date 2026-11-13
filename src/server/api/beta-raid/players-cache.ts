@@ -15,11 +15,15 @@ import { sqlStr } from "../raid-shared";
 import { swrCache } from "../../cache/swr";
 import { POS_MAP_SQL } from "./pos-map-sql";
 import { RECENTLY_SEEN_SQL } from "../account-seen";
+import { ONLINE_SQL } from "../raid-presence";
 
 export type SharedPlayers = {
-  cells: Array<{ q: number; r: number; count: number }>;
+  /** online — сколько из count сейчас в игре (raid_presence, 09.11). */
+  cells: Array<{ q: number; r: number; count: number; online: number }>;
   /** account_id → «q,r»: где снимок видел каждого. */
   at: Map<string, string>;
+  /** Кто из снимка сейчас в игре. */
+  online: Set<string>;
   dead: Array<{ q: number; r: number; cycle_no: number; expired: boolean }>;
 };
 
@@ -29,15 +33,27 @@ async function load(mapId: string): Promise<SharedPlayers> {
   const m = sqlStr(mapId);
   const [rows, dead] = await Promise.all([
     mcpExec(
-      `SELECT p.q, p.r, count(*) AS players, array_agg(p.account_id) AS accounts
+      `SELECT p.q, p.r, count(*) AS players, array_agg(p.account_id) AS accounts,
+              count(*) FILTER (WHERE ${ONLINE_SQL("s")}) AS online,
+              array_agg(p.account_id) FILTER (WHERE ${ONLINE_SQL("s")}) AS online_accounts
          FROM yuplink.beta_raid_positions p
+         LEFT JOIN yuplink.raid_presence s ON s.account_id = p.account_id
         -- только соседи по ЭТОЙ карте (мультикарта); пустая карта — главный мир.
         WHERE ${POS_MAP_SQL("p")} = ${m}
           -- лагерь того, кто не заходил 7 дней, другим не показываем (15.10).
           AND ${RECENTLY_SEEN_SQL("p")}
         GROUP BY p.q, p.r;`,
       { wrapJson: true },
-    ) as Promise<Array<{ q: number; r: number; players: number; accounts: unknown }>>,
+    ) as Promise<
+      Array<{
+        q: number;
+        r: number;
+        players: number;
+        accounts: unknown;
+        online: number;
+        online_accounts: unknown;
+      }>
+    >,
     mcpExec(
       `SELECT h.q, h.r, h.cycle_no,
               (h.killed_at IS NOT NULL AND h.killed_at < now() - interval '5 seconds') AS expired
@@ -49,16 +65,19 @@ async function load(mapId: string): Promise<SharedPlayers> {
     ) as Promise<Array<{ q: number; r: number; cycle_no: number; expired: boolean }>>,
   ]);
   const at = new Map<string, string>();
+  const online = new Set<string>();
   const cells = (rows ?? []).map((r) => {
     const q = Number(r.q);
     const rr = Number(r.r);
     // row_to_json отдаёт array_agg JSON-массивом строк (как cells в dead-sweep).
     if (Array.isArray(r.accounts)) for (const a of r.accounts) at.set(String(a), `${q},${rr}`);
-    return { q, r: rr, count: Number(r.players) };
+    if (Array.isArray(r.online_accounts)) for (const a of r.online_accounts) online.add(String(a));
+    return { q, r: rr, count: Number(r.players), online: Number(r.online) || 0 };
   });
   return {
     cells,
     at,
+    online,
     dead: (dead ?? []).map((r) => ({
       q: Number(r.q),
       r: Number(r.r),

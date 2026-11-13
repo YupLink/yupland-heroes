@@ -12,6 +12,7 @@ import type { GroundMarks } from "@/lib/digHole";
 import type { MyGift } from "@/server/api/gifts";
 
 export type CanvasProps = {
+  newspapers?: import("@/lib/newspaper").NewspaperSpot[];
   onOpenGiftPack?: (gift: MyGift) => void;
   /** main — главный мир (там замок); снимок до этажей поля не несёт. */
   map: { id: string; name: string; size: number; main?: boolean };
@@ -60,13 +61,16 @@ export type CanvasProps = {
   availableMoves: Array<{ q: number; r: number; cost: number }>;
   /** Энергия игрока: метка маршрута гасит «Идти», когда на путь не хватает. */
   energy: number;
-  onCellClick: (q: number, r: number) => void;
+  /** blind — неразведанная клетка в досягаемости (sight/fogReach): только маршрут. */
+  onCellClick: (q: number, r: number, blind?: boolean) => void;
   /** Идём по маршруту — показываем это поверх карты. */
   walking?: boolean;
   /** Встать посреди маршрута — кружок героя в панели во время ходьбы. */
   onStop?: () => void;
   /** Вид фигурки: спрайт расы героя игрока (boar/dragon/…). */
   heroSprite?: string | null;
+  /** Вид коня из состояния рейда; отсутствие коня — none. */
+  heroMount?: string | null;
   /** Аватар выбранного героя для кнопки в углу карты. */
   heroAvatarUrl?: string | null;
   onPickHero?: () => void;
@@ -95,14 +99,15 @@ export type CanvasProps = {
    * метка достаёт имя и уровень постройки для подписи кнопки.
    */
   pendingAction?: {
-    kind: "collect" | "build" | "battle" | "decor" | "dig" | "ship";
+    kind: "collect" | "build" | "battle" | "decor" | "dig" | "ship" | "mineplan";
     q: number;
     r: number;
     extraCost: number;
   } | null;
   /** Цены дверей «q,r» → настройка: плашка считает плату за ворота на пути. */
   doorTolls?: DoorTollMap;
-  onConfirmPath?: () => void;
+  /** reach — идти только первые N шагов (энергии до цели не хватает). */
+  onConfirmPath?: (reach?: number | null) => void;
   onCancelPath?: () => void;
   /** Админ видит дополнительные ресурсы (дерево/камень/золото/алмазы). */
   isAdmin?: boolean;
@@ -118,3 +123,4 @@ export type CanvasProps = {
   /** Клетка замка от сервера (hero.castle): в главном мире — ратуша Юпленда. */
   castleCell?: { q: number; r: number } | null;
 };
+

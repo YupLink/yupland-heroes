@@ -7,6 +7,8 @@ const s = vi.hoisted(() => ({
   sql: [] as string[],
   moves: [] as Array<{ mapId: string; q: number; r: number; ship: unknown }>,
   events: [] as Array<{ mapId: string; type: string }>,
+  /** Второй аргумент publishRaid (автор), как передан: [] — не передан. */
+  bys: [] as unknown[][],
   left: 0,
   floor: "map_1",
 }));
@@ -19,7 +21,10 @@ vi.mock("../../db/mcpClient", () => ({
   },
 }));
 vi.mock("../../raidLive", () => ({
-  publishRaid: (e: { mapId: string; type: string }) => void s.events.push(e),
+  publishRaid: (e: { mapId: string; type: string }, ...by: unknown[]) => {
+    s.events.push(e);
+    s.bys.push(by);
+  },
 }));
 vi.mock("./owner", () => ({ raidOwner: async () => "acc_me" }));
 vi.mock("./encounter-where", () => ({
@@ -61,6 +66,7 @@ vi.mock("./hero-buff", () => ({ applyBoostRoll: async () => {} }));
 vi.mock("@/lib/hero/boost", () => ({ rollBoostEffect: (e: unknown) => e }));
 
 import { applySpellEffects } from "./spell-effects";
+import { teleportHome } from "./spell-teleport-home";
 import type { SpellTpl } from "./spell-tpl";
 
 const tpl = { id: "spell_home", kind: "teleport_town", effects: [] } as unknown as SpellTpl;
@@ -70,6 +76,7 @@ describe("телепорт в замок", () => {
     s.sql = [];
     s.moves = [];
     s.events = [];
+    s.bys = [];
     s.left = 0;
   });
 
@@ -95,5 +102,16 @@ describe("телепорт в замок", () => {
         { mapId: "map_1", type: "moved" },
       ]),
     );
+  });
+
+  it("экипаж под синим динамитом (§8.75а): события ничьи; у заклинания — автор запроса", async () => {
+    s.floor = "map_1";
+    const res = await teleportHome("acc_cap", { by: null });
+    expect(res).toMatchObject({ ok: true, moved: { q: 41, r: 10 }, map: null });
+    expect(s.bys.length).toBeGreaterThan(0);
+    expect(s.bys.every((b) => b.length === 1 && b[0] === null)).toBe(true);
+    s.bys = [];
+    await applySpellEffects("w.near", tpl);
+    expect(s.bys.every((b) => b[0] === undefined)).toBe(true);
   });
 });

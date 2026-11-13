@@ -6,6 +6,7 @@
 // chest-sql.test.ts). Операторы одной строки идут под локами сети и рюкзака —
 // фейк выполняет их по одному, как их выстроит Postgres. Сундук клетки (via:
 // стоит, не закопан, чей; живая охрана) — cs.chest и cs.guard.
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { dec, decNum } from "@/test/numeric";
 import { evalSql, setsOf, type SqlEnv } from "@/test/sqlExpr";
 
@@ -77,7 +78,7 @@ const envOf = (r: BagRow): SqlEnv => ({
   "b.loot_count": r.loot,
   "b.wear": r.wear,
 });
-const cells = (c: bigint): number => Math.ceil(decNum(c) / 20);
+const cells = (c: bigint): number => Math.ceil(decNum(c) / CELL_SIZE);
 const COLS = ["count", "mob", "mine", "field", "loot"] as const;
 const colOf = (k: (typeof COLS)[number]) => (k === "count" ? "count" : `${k}_count`);
 

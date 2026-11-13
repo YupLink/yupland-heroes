@@ -75,6 +75,13 @@ export function TownGoodNumbers({
           className={inputClass}
         />
       </Field>
+      <Field label="Наценка продажи, %" hint={good.markupPct == null ? "как у города" : undefined}>
+        <NumField
+          value={good.markupPct ?? null}
+          onChange={(v) => onChange({ markupPct: v ?? undefined })}
+          className={inputClass}
+        />
+      </Field>
     </div>
   );
 }

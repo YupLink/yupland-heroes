@@ -7,7 +7,10 @@
 //                     pk_ → инвентарь NFT-паков)
 //   hero            → экземпляр в инвентаре user_game_item(kind='hero')
 //   art             → экземпляр в инвентаре user_game_item(kind='artifact')
-//   boss|custom     → рюкзак ВЫБРАННОГО героя (raid_hero_backpack, стек по виду)
+//   boss|custom|tree → рюкзак ВЫБРАННОГО героя (raid_hero_backpack, стек по виду;
+//                      дерево — tree:<шаблон>, lib/treePlant)
+//   land            → туда же: land:<местность>, штук = клеток в пачке × qty
+//   recipe          → бросок по шансам, выпавшее — по своему виду (market-recipe)
 //
 // Контракт возврата: { target, delivered }. Все ветки, кроме pack, атомарны —
 // это ОДНА многострочная вставка на весь qty, поэтому либо всё (delivered=qty),
@@ -59,8 +62,13 @@ export type DeliveryTarget =
   | "game-items"
   | "backpack";
 
-/** Результат выдачи: куда легло и сколько единиц реально доставлено (≤ qty). */
-export type DeliveryResult = { target: DeliveryTarget; delivered: number };
+/** Результат выдачи: куда легло и сколько единиц реально доставлено (≤ qty).
+ *  prizes — у рецепта: что выпало (market-recipe). */
+export type DeliveryResult = {
+  target: DeliveryTarget;
+  delivered: number;
+  prizes?: import("@/lib/marketRecipe").RecipePrize[];
+};
 
 export async function deliverGood(opts: {
   wallet: string;
@@ -73,6 +81,12 @@ export async function deliverGood(opts: {
   nonce: string;
 }): Promise<DeliveryResult> {
   const { wallet, account, item, qty, payRef, nonce } = opts;
+
+  // Рецепт: бросок на каждую штуку, выпавшее — этой же выдачей (market-recipe).
+  if (item.kind === "recipe") {
+    const { deliverRecipe } = await import("./market-recipe");
+    return deliverRecipe(opts, deliverGood);
+  }
 
   if (item.kind === "resource") {
     if (!item.refId) throw new Error("market.give_failed");
@@ -158,12 +172,20 @@ export async function deliverGood(opts: {
   // buyMarketItem вернёт обе цены и запас.
   const bp = await resolveBackpack(wallet);
   if (!bp) throw new Error("market.need_hero");
-  await assertBackpackRoom(bp, await stackKeyFor(item), qty);
+  // Земля и жила — пачка клеток: в стопку ложится «клеток в пачке × qty»
+  // (lib/landPlace, lib/veinPlace).
+  const pack = item.kind === "land" || item.kind === "vein";
+  const units = pack ? wholeCount(item.giveAmount, qty) : qty;
+  // Постройка — чертёж (снимок шаблона, облика и настройки) и стопка по нему.
+  const { ensureBlueprint, forBackpack } = await import("./building-sale/bsale-blueprint");
+  if (item.kind === "building") await ensureBlueprint(item);
+  const good = forBackpack(item);
+  await assertBackpackRoom(bp, await stackKeyFor(good), units);
   await depositToBackpack({
     heroId: bp.heroId,
     account,
-    item,
-    qty,
+    item: good,
+    qty: units,
     nonce,
     capacity: bp.capacity,
     potionCapacity: bp.potionCapacity,

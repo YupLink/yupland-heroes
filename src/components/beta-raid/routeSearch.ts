@@ -13,7 +13,7 @@
 import { toast } from "sonner";
 import { findWalkablePath, findWalkablePathToAny, type ShipMap } from "./usePathfinding";
 import type { ShipMark } from "./drawShips";
-import type { TerrainInfo } from "./hexStepCost";
+import type { MoveMult, TerrainInfo } from "./hexStepCost";
 import type { Cell } from "./unpackMap";
 
 export type Step = { q: number; r: number; cost: number };
@@ -23,6 +23,7 @@ export type RouteSearchOpts = {
   cells: Record<string, Cell> | undefined;
   terrains: Record<string, TerrainInfo> | undefined;
   roads?: Record<string, TerrainInfo> | undefined;
+  decorations?: Record<string, { bridge?: unknown }>;
   onShip?: boolean;
   ships?: ShipMap;
   slowExtra?: number;
@@ -31,6 +32,10 @@ export type RouteSearchOpts = {
   doors?: ReadonlySet<string>;
   /** Двери-стены и для повторного поиска; undefined — повтора нет. */
   hardDoors?: ReadonlySet<string>;
+  /** Множитель хода (useMoveMult): остров — 0,1, погода — ноги/судно; нет — мировые. */
+  energyMult?: MoveMult;
+  /** Пегас (§8.84): маршрут может прыгать через клетку. */
+  jump?: boolean;
 };
 
 /** Своё судно стоит на клетке игрока: mineBig — вид ИМЕННО моего судна (не
@@ -65,6 +70,9 @@ export function routeToAny(
       o.stepDiscount ?? 0,
       walls,
       aboardBigOf(o),
+      o.energyMult ?? 1,
+      !!o.jump,
+      o.decorations,
     );
   return run(o.doors) ?? (canRetryThroughDoors(o) ? run(o.hardDoors) : null);
 }
@@ -116,6 +124,9 @@ export function routeTo(o: RouteSearchOpts, q: number, r: number): Step[] | null
       o.stepDiscount ?? 0,
       walls,
       aboardBigOf(o),
+      o.energyMult ?? 1,
+      !!o.jump,
+      o.decorations,
     );
   return run(o.doors) ?? (canRetryThroughDoors(o) ? run(o.hardDoors) : null);
 }

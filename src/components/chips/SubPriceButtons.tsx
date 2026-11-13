@@ -3,6 +3,7 @@
 // DARAI неактивна. Скидка DARAI и наценка Stars игроку не показываются.
 import { useLang } from "@/lib/i18n";
 import { SUB_TOKENS, subPriceText, type SubToken } from "@/lib/energySub";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
 export function SubPriceButtons({
   prices,
@@ -14,9 +15,11 @@ export function SubPriceButtons({
   onPick: (token: SubToken, price: number) => void;
 }) {
   const lang = useLang();
+  // Звёзды — только аккаунту с настоящим Telegram (§8.127).
+  const stars = useEntryRules().stars;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {SUB_TOKENS.map((tok) => {
+      {SUB_TOKENS.filter((tok) => stars || tok !== "STARS").map((tok) => {
         // Ответ лежит в суточном кэше — число проверяем, а не верим форме.
         const raw = prices?.[tok];
         const price = typeof raw === "number" && raw > 0 ? raw : null;

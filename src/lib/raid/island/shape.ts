@@ -11,10 +11,13 @@ import { pickWeighted, unit } from "@/lib/raid/worldgen/rand";
 import { isWaterId, type World } from "@/lib/raid/worldgen/field";
 import type { Cell } from "@/lib/raid/worldgen/geo";
 
-/** Рамка карты острова, клеток (offset). Было 20 — «чуть территория побольше» (17.10). */
-export const ISLAND_SIZE = 26;
-/** Радиус суши от центра — около 19 клеток поперёк (было 7). */
-export const ISLAND_LAND_R = 9;
+/**
+ * Рамка карты острова, клеток (offset): 64 × 64 (Архан через владельца, 19.10:
+ * «масштаб мира 64x64», демо на 3–7 дней). Было 26 (17.10), до того 20.
+ */
+export const ISLAND_SIZE = 64;
+/** Радиус суши от центра — та же доля рамки, что была при 26 × 26 (9 из 26). */
+export const ISLAND_LAND_R = 22;
 /** Мелководье за сушей, клеток. */
 const SHALLOW_RING = 2.5;
 /** Насколько гуляет берег (± клеток). */

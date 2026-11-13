@@ -101,7 +101,8 @@ describe("repairShipNearHero", () => {
 
   it("запись идемпотентна: условие только по id (повтор моста не даёт «0 строк»)", async () => {
     await repairShipNearHero("w.near");
-    expect(updates()[0]).toMatch(/WHERE id = 'ship_a'\s+RETURNING id/);
+    // Плюс «не подбит»: повтор после удачной записи строку всё равно находит (штампа нет).
+    expect(updates()[0]).toMatch(/WHERE id = 'ship_a' AND blasted_at IS NULL\s+RETURNING id/);
   });
 
   it("судно убрали между выбором и записью — отказ", async () => {

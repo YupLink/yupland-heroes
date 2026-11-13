@@ -11,6 +11,7 @@ import { accAccountId, humanizeAccError } from "../currency/move";
 import { ensureAuctionSchema } from "./schema";
 import { settleDueAuctions, settleOne } from "./settle";
 import { lotState, activeBidsFor } from "./lots";
+import { artDurability } from "@/lib/hero/artWear";
 
 /** Машинный ответ функции → понятная игроку причина. */
 async function bidError(raw: string, auctionId: string): Promise<string> {
@@ -46,6 +47,8 @@ export const placeBid = createServerFn({ method: "POST" })
     await settleDueAuctions().catch(() => {});
     const accountId = await accAccountId(wallet);
     if (!accountId) throw new Error("У кошелька нет аккаунта — войди заново");
+    // Должник не ставит на лоты игроков (§8.129): ставка — перевод продавцу.
+    await debtBidGate(accountId, data.auctionId);
 
     const { data: rows, error } = await sb.rpc("auction_place_bid", {
       p_auction: data.auctionId,
@@ -76,6 +79,8 @@ type LiveRow = {
   seller_account_id: string | null;
   top_bid_id: string | null;
   esc_image: string | null;
+  esc_wear: string | null;
+  esc_enchant: string | null;
 };
 
 export const listAuctions = createServerFn({ method: "GET" }).handler(async () => {
@@ -85,7 +90,8 @@ export const listAuctions = createServerFn({ method: "GET" }).handler(async () =
   const accountId = wallet ? await accAccountId(wallet).catch(() => null) : null;
   const rows = ((await mcpExec(
     `SELECT id, title, prize_kind, prize_ref, prize_qty, currency, start_price, min_step_pct,
-            end_at, winners, source, seller_account_id, top_bid_id, escrow->>'image' AS esc_image
+            end_at, winners, source, seller_account_id, top_bid_id, escrow->>'image' AS esc_image,
+            escrow->>'wear' AS esc_wear, escrow->>'enchant' AS esc_enchant
        FROM yuplink.auction WHERE status='live'
       ORDER BY end_at ASC, series_id NULLS FIRST, series_no ASC LIMIT 100;`,
     { wrapJson: true },
@@ -109,6 +115,11 @@ export const listAuctions = createServerFn({ method: "GET" }).handler(async () =
       prizeName: m?.name || r.title || r.prize_ref,
       prizeImage: m?.image ?? r.esc_image ?? null,
       prizeInfo: m?.info ?? null,
+      // Артефакт лота игрока — с износом продавца (escrow.wear); у игровых — новый.
+      prizeDurability: r.prize_kind === "artifact" ? artDurability(r.esc_wear) : null,
+      // Зачарованный лот игрока (§8.87): ✦ на карточке, победителю — с зачарованием.
+      prizeEnchantPct:
+        r.prize_kind === "artifact" && r.esc_enchant != null ? Number(r.esc_enchant) || 0 : null,
       prizeKind: r.prize_kind,
       prizeQty: Number(r.prize_qty),
       currency: r.currency,
@@ -124,3 +135,15 @@ export const listAuctions = createServerFn({ method: "GET" }).handler(async () =
   });
   return { auctions };
 });
+
+async function debtBidGate(account: string, auctionId: string): Promise<void> {
+  const { openDebt } = await import("../debt/debt-read");
+  if (!(await openDebt(account))) return;
+  const { mcpExec } = await import("../../db/mcpClient");
+  const { sqlStr } = await import("../raid-shared");
+  const rows = (await mcpExec(
+    `SELECT seller_account_id FROM yuplink.auction WHERE id = ${sqlStr(auctionId)}`,
+    { wrapJson: true },
+  )) as Array<{ seller_account_id: string | null }>;
+  if (rows?.[0]?.seller_account_id) throw new Error("debt.p2pClosed");
+}

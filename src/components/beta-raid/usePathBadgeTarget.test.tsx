@@ -25,6 +25,7 @@ function Probe({ lang, cells }: { lang: Lang; cells: Record<string, Cell> }) {
   const target = usePathBadgeTarget(
     { pendingPath: path, pendingAction: { kind: "decor", q: 2, r: 0, extraCost: 5 }, cells },
     lang,
+    100,
   );
   return <b>{target?.actionLabel}</b>;
 }
@@ -69,7 +70,7 @@ const { shovelOffer } = await import("./tool/shovelOffer");
 type Step = { q: number; r: number; cost: number };
 function Dig({ steps }: { steps: Step[] }) {
   const action = steps.length ? { kind: "dig" as const, q: 2, r: 0, extraCost: 2 } : null;
-  const target = usePathBadgeTarget({ pendingPath: steps, pendingAction: action, cells: {} }, "ru");
+  const target = usePathBadgeTarget({ pendingPath: steps, pendingAction: action, cells: {} }, "ru", 100);
   if (!target) return <b>none</b>;
   return <b>{`${target.actionLabel ?? "-"}|${target.cost}|${target.here === true}`}</b>;
 }

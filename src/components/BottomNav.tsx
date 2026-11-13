@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { getSession } from "@/server/api/user-auth";
 import { useT } from "@/lib/i18n";
 import type { LucideIcon } from "lucide-react";
+import { BottomNavIcon } from "./BottomNavIcon";
 
 type NavTo =
   | "/"
@@ -219,7 +220,6 @@ export function BottomNav() {
       >
         <div className="mx-auto grid max-w-6xl grid-cols-4">
           {primaryItems.map((item) => {
-            const Icon = item.icon;
             const active = item.exact
               ? location.pathname === item.to
               : location.pathname.startsWith(item.to);
@@ -234,12 +234,7 @@ export function BottomNav() {
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon
-                  className={cn(
-                    "h-5 w-5 transition",
-                    active && "drop-shadow-[0_0_8px_var(--color-gold)]"
-                  )}
-                />
+                <BottomNavIcon icon={item.icon} active={active} refDot={item.to === "/referrals"} />
                 <span className="font-medium">{t(item.labelKey)}</span>
               </Link>
             );

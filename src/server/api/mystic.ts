@@ -12,7 +12,8 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
 import type { PgChipPack, PgChipPackGrant } from "../db/pg";
-import { getCurrentWallet, isAdminWallet } from "../auth";
+import { getCurrentWallet, isAdminWallet, requirePayoutsAdmin } from "../auth";
+import { packPaysMoney, poolPaysMoney } from "./mystic-money";
 import { MYSTIC_KINDS, type MysticKind } from "@/lib/mysticKinds";
 import type { MysticPrize } from "./mystic-grant";
 import {
@@ -27,6 +28,7 @@ export { MYSTIC_KINDS, mysticPoolSchema, parseMysticPool };
 export type { MysticKind, MysticPrize, MysticTier };
 // Открытие и симулятор — в своих файлах (лимит 250 строк); импорты прежние.
 export { openMysticBox } from "./mystic-open";
+export { openMysticBoxes, type MysticBatchResult } from "./mystic-open-batch";
 export { simulateMysticOpens } from "./mystic-sim";
 
 function requireAdmin(): string {
@@ -58,6 +60,8 @@ export const adminCreateMysticPack = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const wallet = requireAdmin();
+    // DARAI/Stars в боксе — деньги: только админ выплат (mystic-money.ts).
+    if (await poolPaysMoney(data.pool)) requirePayoutsAdmin();
     const id = `cp_${nanoid(10)}`;
     const now = new Date().toISOString();
     const row: PgChipPack = {
@@ -101,6 +105,7 @@ export const adminUpdateMysticPack = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     requireAdmin();
+    if (data.pool && (await poolPaysMoney(data.pool, new Set([data.id])))) requirePayoutsAdmin();
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.name !== undefined) patch.name = data.name.trim();
     if (data.description !== undefined) patch.description = data.description?.trim() || null;
@@ -153,6 +158,7 @@ export const adminGrantMysticBox = createServerFn({ method: "POST" })
     const admin = requireAdmin();
     const pack = await pg.chipPacks.findOne({ id: data.packId });
     if (!pack || pack.kind !== "mystic") throw new Error("Это не мистический бокс");
+    if (await packPaysMoney(pack.id)) requirePayoutsAdmin();
     const { accountOf } = await import("./user-shared");
     const account = await accountOf(data.wallet);
     const { createGift } = await import("./gifts-create");

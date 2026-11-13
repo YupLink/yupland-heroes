@@ -7,16 +7,19 @@ import { licenseTier } from "@/lib/bankLicense";
 import { gameSpent, type PayOpt } from "./energyOffers";
 import { EnergyTierGlyph, PaymentGlyph } from "./energyGlyphs";
 import { boxesWord, energyWord, methodName, num, priceText } from "./energyFormat";
+import { CardPayRow } from "../card-pay/CardPayRow";
 
 const BOX_ART = "/design-assets/purchase/bonus-box.webp";
 
-function MethodList({ ru, opts, onPick }: { ru: boolean; opts: PayOpt[]; onPick: (o: PayOpt) => void }) {
+type ListProps = { ru: boolean; opts: PayOpt[]; onPick: (o: PayOpt) => void; locked?: boolean };
+
+function MethodList({ ru, opts, onPick, locked = false }: ListProps) {
   const stars = opts.filter((o) => o.method === "stars");
   const rest = opts.filter((o) => o.method !== "stars");
   return (
     <div className="energy-buy__methods">
       {stars.map((o) => (
-        <button type="button" key={o.key} className="energy-buy__method" disabled={gameSpent(o)} onClick={() => onPick(o)}>
+        <button type="button" key={o.key} className="energy-buy__method" disabled={locked || gameSpent(o)} onClick={() => onPick(o)}>
           <PaymentGlyph method="stars" />
           <span>
             <strong>{methodName(o, ru)}</strong>
@@ -29,7 +32,7 @@ function MethodList({ ru, opts, onPick }: { ru: boolean; opts: PayOpt[]; onPick:
       {rest.length > 0 && (
         <section className="energy-buy__wallet-methods">
           {rest.map((o) => (
-            <button type="button" key={o.key} className="energy-buy__method" disabled={gameSpent(o)} onClick={() => onPick(o)}>
+            <button type="button" key={o.key} className="energy-buy__method" disabled={locked || gameSpent(o)} onClick={() => onPick(o)}>
               <PaymentGlyph method={o.method} />
               <span>
                 <strong>{methodName(o, ru)}</strong>
@@ -72,6 +75,7 @@ export function SubMethods({
   saving,
   opts,
   onPick,
+  cardOnly = false,
 }: {
   ru: boolean;
   tier: SubOffer;
@@ -79,6 +83,8 @@ export function SubMethods({
   saving: number | null;
   opts: PayOpt[];
   onPick: (o: PayOpt) => void;
+  /** «Только Google» (§8.127): платит только картой. */
+  cardOnly?: boolean;
 }) {
   const name = !ru && tier.nameEn ? tier.nameEn : tier.name;
   const total = tier.boxesPerDay * tier.days;
@@ -122,12 +128,25 @@ export function SubMethods({
                 (ru
                   ? ` · лицензия банка «${licenseTier(tier.licenseTier)?.ru}»`
                   : ` · bank license “${licenseTier(tier.licenseTier)?.en}”`)}
+              {tier.withdrawBonus > 0 &&
+                (ru
+                  ? ` · +${num(tier.withdrawBonus / 1_000_000, ru)} млн DARAI к выводу в месяц`
+                  : ` · +${num(tier.withdrawBonus / 1_000_000, ru)}M DARAI withdrawal per month`)}
             </small>
           </span>
         </div>
       </div>
       <h3 className="energy-buy__payment-heading">{ru ? "Выбери способ оплаты" : "Choose a payment method"}</h3>
-      <MethodList ru={ru} opts={opts} onPick={onPick} />
+      {/* Одна подписка за раз (esub-07): своя действует — оплата закрыта до её конца. */}
+      {tier.blockedUntil && (
+        <p className="energy-buy__error" role="status">
+          {ru ? "Подписка активна до" : "Subscription active until"}{" "}
+          {new Date(tier.blockedUntil).toLocaleDateString(ru ? "ru-RU" : "en-GB")}
+        </p>
+      )}
+      {/* Картой — только «только Google» (§8.127), сервер решает. */}
+      <CardPayRow sku={tier.id} usd={tier.priceUsd} ru={ru} locked={!!tier.blockedUntil} offText={cardOnly} />
+      <MethodList ru={ru} opts={opts} onPick={onPick} locked={!!tier.blockedUntil} />
     </>
   );
 }

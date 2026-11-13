@@ -104,11 +104,11 @@ export function CastleTasks() {
             ? "Задание уже выполнено"
             : "Task already completed"
           : ru
-            ? "Задание выполнено: +1 билет"
-            : "Task completed: +1 ticket",
+            ? "Задание выполнено: +100 золота"
+            : "Task completed: +100 gold",
       );
       void qc.invalidateQueries({ queryKey: ["my-tasks"] });
-      void qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      void qc.invalidateQueries({ queryKey: ["my-resources"] });
     },
     onError: (e: Error) => toast.error(humanError(e)),
   });

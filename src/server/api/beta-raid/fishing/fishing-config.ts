@@ -12,7 +12,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "@/server/db/mcpClient";
 import { sqlStr } from "@/server/api/raid-shared";
-import { requireAdmin } from "@/server/auth";
 import {
   FISH_CHANCE_MAX,
   FISH_CHANCE_MIN,
@@ -23,6 +22,8 @@ import {
   type FishingConfig,
 } from "@/lib/raid/fishing";
 import { normalizeFish, type FishItem } from "@/lib/raid/fishChances";
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
+import { requireCatalogEditor } from "@/server/api/catalog-auth";
 
 export const FISHING_KEY = "fishing_config";
 
@@ -49,7 +50,7 @@ export function dropFishingConfigCache(): void {
 /** Админ: настройка как есть (свежая, мимо кэша). */
 export const getFishingAdmin = createServerFn({ method: "GET" }).handler(
   async (): Promise<FishingConfig> => {
-    requireAdmin();
+    await requireDesigner();
     cache = null;
     return loadFishingConfig();
   },
@@ -80,7 +81,7 @@ export const saveFishingAdmin = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }): Promise<FishingConfig> => {
-    requireAdmin();
+    await requireCatalogEditor();
     const raw: FishItem[] = data.items.map((x) =>
       typeof x === "string" ? { id: x, pct: 0 } : { id: x.id, pct: x.pct },
     );

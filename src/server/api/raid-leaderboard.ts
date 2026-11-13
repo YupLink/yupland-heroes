@@ -8,6 +8,7 @@ import { sqlStr, parseRewardConfig, computeRewardByPlace } from "./raid-shared";
 import { raidWhere } from "./raid-helpers";
 import { raidOwner } from "./beta-raid/owner";
 import { liveRewardSql } from "./raid-reward-live";
+import { customNameSql } from "@/server/api/player-name/player-name-sql";
 
 export const getRaidLeaderboard = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -25,7 +26,7 @@ export const getRaidLeaderboard = createServerFn({ method: "POST" })
     if (!loc) return { rows: [] };
     const rows = (await mcpExec(
       `SELECT min(r.wallet) AS wallet,
-              COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
+              COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
               SUM(r.damage)::int AS total,
               bool_or(r.account_id = ${sqlStr(meAcc)}) AS mine
          FROM yuplink.chip_boss_run r
@@ -37,8 +38,10 @@ export const getRaidLeaderboard = createServerFn({ method: "POST" })
         ORDER BY total DESC LIMIT ${Math.floor(data.limit)};`,
       { wrapJson: true }
     )) as Array<{ wallet: string; name: string; total: number; mine: boolean }>;
+    // Telegram-номер (кошелёк tg<id>) наружу — меткой (publicWallet, аудит 11.11.2026).
+    const { publicRows } = await import("../publicWallet");
     return {
-      rows: rows.map((r) => ({
+      rows: (await publicRows(rows)).map((r) => ({
         wallet: r.wallet,
         name: r.name,
         total: Number(r.total),
@@ -61,14 +64,19 @@ export const getRaidTournament = createServerFn({ method: "POST" })
     const bossBoard = async (bossId: string, limit: number) => {
       const rows = (await mcpExec(
         `SELECT min(r.wallet) AS wallet,
-                COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
+                COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
                 SUM(r.damage)::int AS total, bool_or(r.account_id = ${sqlStr(meAcc)}) AS mine
            FROM yuplink.chip_boss_run r LEFT JOIN yuplink.users u ON u.wallet=r.wallet
           WHERE r.boss_id=${sqlStr(bossId)} AND r.raid_cycle_no=${cycle}
           GROUP BY r.account_id ORDER BY total DESC LIMIT ${limit};`,
         { wrapJson: true }
       )) as Array<{ wallet: string; name: string; total: number; mine: boolean }>;
-      return rows.map((r) => ({ name: r.name, total: Number(r.total), mine: !!r.mine }));
+      const { publicRows } = await import("../publicWallet");
+      return (await publicRows(rows)).map((r) => ({
+        name: r.name,
+        total: Number(r.total),
+        mine: !!r.mine,
+      }));
     };
     const myRankFor = async (bossId: string): Promise<number | null> => {
       const md = (await mcpExec(
@@ -177,7 +185,7 @@ export const getRaidTournament = createServerFn({ method: "POST" })
     }
 
     const locRows = (await mcpExec(
-      `SELECT COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
+      `SELECT COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
               SUM(r.damage)::int AS total, bool_or(r.account_id = ${sqlStr(meAcc)}) AS mine
          FROM yuplink.chip_boss_run r LEFT JOIN yuplink.users u ON u.wallet=r.wallet
         WHERE r.raid_location_id=${sqlStr(data.locationId)} AND r.raid_cycle_no=${cycle}

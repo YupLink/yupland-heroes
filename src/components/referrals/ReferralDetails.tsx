@@ -76,7 +76,7 @@ export function ReferralDetails({ data }: { data: Stats | undefined }) {
           {data.tierProgress.nextThreshold ? (
             <div className="mt-2 text-[11px] text-muted-foreground">
               {t("ref.until_next_ticket", {
-                count: data.tierProgress.nextThreshold - totalFriends,
+                count: data.tierProgress.nextThreshold - data.tierProgress.count,
               })}
             </div>
           ) : (

@@ -10,6 +10,18 @@
 // Считаем floor ОСТАТКА, а не floor всего времени: у части шахт claimed_hours
 // остался дробным после вчерашних сборов, и хвост должен доживать до
 // следующего целого часа, а не пропадать.
+//
+// Шахты v2 (§8.59) считаются этой же формулой: сервер отдаёт им секундомер =
+// начало отрезка добычи, выход = стандарт × режим, maxHours = часы до поломки
+// (lib/mineV2Row.ts) — результат равен minePendingV2 (проверено в mineV2.test).
+// Алмазная шахта острова платит целыми сутками: шаг stepHours = 24 (SQL
+// raid_mine_v2_period); без шага или шаг 1 — целые часы, как было.
+//
+// Погода (владелец, 26.10.2026): у шахты v2 каждый час × коэффициент «шахты» слота,
+// где он начался (lib/mineWeather, SQL raid_mine_weather_delta). Слотов нет — счёт
+// прежний до цифры.
+import { mineWeatherDelta, type MineWeather } from "@/lib/mineWeather";
+
 const HOUR_MS = 3_600_000;
 
 /** Сколько часов (с долями) накопилось и ещё не собрано. */
@@ -19,11 +31,15 @@ export function livePendingHours(
   now = Date.now(),
   /** Предел добычи от захвата (лесопилка острова — неделя); нет — без предела. */
   maxHours?: number | null,
+  /** Шаг выплаты, часов (алмаз острова — 24); нет или 1 — каждый час. */
+  stepHours?: number | null,
 ): number {
   if (!capturedAt) return 0;
   const raw = (now - capturedAt) / HOUR_MS;
   const hours = maxHours && maxHours > 0 ? Math.min(raw, maxHours) : raw;
-  return Math.max(0, Math.floor(hours - (claimedHours || 0)));
+  const left = hours - (claimedHours || 0);
+  if (stepHours && stepHours > 1) return Math.max(0, Math.floor(left / stepHours) * stepHours);
+  return Math.max(0, Math.floor(left));
 }
 
 /** Готовая к сбору добыча (часы × выход), округлено до 4 знаков (как в SQL). */
@@ -33,8 +49,13 @@ export function livePendingAmount(
   yieldAmount: number,
   now = Date.now(),
   maxHours?: number | null,
+  stepHours?: number | null,
+  /** Слоты погоды несобранной части (шахта v2); нет — без погоды. */
+  weather?: MineWeather | null,
 ): number {
-  const raw = livePendingHours(capturedAt, claimedHours, now, maxHours) * (yieldAmount || 0);
+  const hours = livePendingHours(capturedAt, claimedHours, now, maxHours, stepHours);
+  const delta = capturedAt ? mineWeatherDelta(weather, capturedAt, claimedHours || 0, hours) : 0;
+  const raw = (hours + delta) * (yieldAmount || 0);
   return Math.round(raw * 10_000) / 10_000;
 }
 

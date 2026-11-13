@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ChestNetView, ChestPickupView } from "@/lib/magicChest";
 import { dict } from "@/lib/translations";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const v = vi.hoisted(() => ({
   lang: "ru" as "ru" | "en",
@@ -24,8 +25,14 @@ vi.mock("@/components/beta-raid/chest/useChestViews", () => ({
   useChestPickupView: () => ({ data: v.pickup, isLoading: false, isFetching: false }),
 }));
 vi.mock("@/components/beta-raid/chest/useChestActions", () => ({
-  useChestNetActions: () => ({ put: { mutate: vi.fn() }, take: { mutate: vi.fn() }, busy: null }),
+  useChestNetActions: () => ({
+    put: { mutate: vi.fn() },
+    take: { mutate: vi.fn() },
+    busy: null,
+    move: { pending: false, blocked: false },
+  }),
 }));
+vi.mock("@/components/beta-raid/useStorageMove", () => ({ StorageMoveStatus: () => null }));
 vi.mock("@/components/beta-raid/chest/chestGuard", () => ({
   guardOf: () => null,
   useGuardLite: () => ({ lite: null }),
@@ -73,10 +80,10 @@ beforeEach(() => {
 
 describe("окно сундука: сколько можно положить", () => {
   it("у плитки — число собранного, у купленной — ни числа, ни нажатия", () => {
-    // Бананы: 25 штук, из них 12 собрано → плитки 20 и 5, числа 12 и 0.
+    // Бананы: ячейка и ещё 5, из них 12 собрано → плитки полная и 5, числа 12 и 0.
     // Пшеница куплена целиком.
     v.net = netView([
-      stack("custom:banana", "Банан", 25, 12),
+      stack("custom:banana", "Банан", CELL_SIZE + 5, 12),
       stack("custom:wheat", "Пшеница", 7, 0),
     ]);
     const html = renderToStaticMarkup(<ChestOwnerPanel q={1} r={2} />);
@@ -128,14 +135,16 @@ describe("«Забрать сундук»: не влезшее — мешочк�
     renderToStaticMarkup(
       <ChestPickupConfirm q={1} r={2} busy={false} onConfirm={() => {}} onClose={() => {}} />,
     );
-  const slots = [{ stackKey: "custom:ore", kind: "custom", name: "Руда", image: null, count: 30 }];
+  const slots = [
+    { stackKey: "custom:ore", kind: "custom", name: "Руда", image: null, count: CELL_SIZE + 15 },
+  ];
 
   it("последний: в рюкзак — сколько влезло, остаток — «В мешочек», «Пропадёт» нет", () => {
     v.pickup = pickupView({
       last: true,
       slots,
-      taken: [{ stackKey: "custom:ore", qty: 20 }],
-      bagged: [{ stackKey: "custom:ore", qty: 10 }],
+      taken: [{ stackKey: "custom:ore", qty: CELL_SIZE }],
+      bagged: [{ stackKey: "custom:ore", qty: 15 }],
     });
     const html = confirm();
     expect(html).toContain("В рюкзак");

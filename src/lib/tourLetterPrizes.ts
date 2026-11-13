@@ -4,6 +4,7 @@
 //
 // Виды призов и «артефакт по редкости» — те же, что у подарка
 // (tournament/prizeText.ts): письмо обещает ровно то, что выдаст финиш.
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import type { PortalPrice } from "@/lib/portal";
 import { parsePlaces } from "@/lib/tournament/places";
 import { artRarityOf } from "@/lib/tournament/prizeText";
@@ -75,8 +76,8 @@ export function letterPrize(p: TourPrize, lang: LetterLang): string {
     const w = WORDS[ref];
     return w ? counted(n, w, lang) : `${letterNum(n, lang)} ${p.title || ref}`;
   }
-  if (p.kind === "energy" || p.kind === "likes" || p.kind === "tickets")
-    return counted(n, WORDS[p.kind], lang);
+  if (p.kind === "tickets") return counted(goldForEarnedTickets(n), WORDS.gold, lang);
+  if (p.kind === "energy" || p.kind === "likes") return counted(n, WORDS[p.kind], lang);
   const rarity = p.kind === "art" ? artRarityOf(ref) : null;
   if (rarity) return rarityArt(rarity, n, lang);
   return named(p.title || ref || KIND_NAME[p.kind]?.[lang] || p.kind, n, lang);

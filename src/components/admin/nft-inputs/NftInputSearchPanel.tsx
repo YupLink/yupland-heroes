@@ -42,7 +42,7 @@ export function NftInputSearchPanel() {
           onKeyDown={(e) => {
             if (e.key === "Enter") run();
           }}
-          placeholder="напр. player05.tg, 226228 или AmZFpU…"
+          placeholder="напр. player1.tg, 226228 или AmZFpU…"
           className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-gold/50"
         />
         <button

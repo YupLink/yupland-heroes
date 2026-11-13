@@ -10,6 +10,7 @@ import { portalProfile } from "./user-portal-profile";
 import { invalidateTicketsCache } from "./user-tickets-shared";
 import { verifyFtTransfer } from "../near";
 import { fetchSubscriptionDiscount, applyDiscountCeil } from "./user-shop-subscription";
+import { refuseTicketPurchase } from "./tickets-shop-closed";
 
 const TOKEN_BURN_RECEIVER = "darai_gdrop.near";
 
@@ -37,6 +38,8 @@ export const purchaseTicketsViaToken = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     assertNotMaintenance();
     requireFreshClient();
     // Тот же гейт, что и у второй копии этой ручки: после раскатки счёта
@@ -91,15 +94,6 @@ export const purchaseTicketsViaToken = createServerFn({ method: "POST" })
         near_tx_hash: data.txHash,
         idempotency_key: idempotencyKey,
       });
-      // Баланс живёт в леджере; ref = ключ идемпотентности покупки, поэтому
-      // повторный вызов с тем же txHash денег не задвоит.
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet: creditedWallet,
-        delta: totalTickets,
-        kind: "purchase",
-        ref: idempotencyKey,
-      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       const isUniqueViolation = /23505|duplicate|idempotency_key|unique constraint/i.test(msg);
@@ -143,6 +137,8 @@ export const purchaseTicketsViaEnergy = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     assertNotMaintenance();
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Кошелёк не подключён");
@@ -209,10 +205,6 @@ export const purchaseTicketsViaEnergy = createServerFn({ method: "POST" })
       yupland_tx_id: null,
       idempotency_key: idempotencyKey,
     });
-    {
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({ wallet, delta: totalTickets, kind: "purchase", ref: idempotencyKey });
-    }
 
     return {
       ok: true,

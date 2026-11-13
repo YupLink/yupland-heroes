@@ -179,9 +179,9 @@ setAppLockHook(() => seedCache.clear());
 // НЕЛЬЗЯ было обойти мимо UI (консоль, demo-роуты, прямые dApp-URL). UI-гейты
 // остаются как UX поверх этого.
 function assertAppUnlocked(): void {
-  if (hasAppPassword() && !isAppUnlocked()) {
-    throw new Error("APP_LOCKED");
-  }
+  // С 11.11.2026 пароль кошелька обязателен: им зашифрованы ключи (walletVault).
+  if (!hasAppPassword()) throw new Error("APP_PWD_SETUP");
+  if (!isAppUnlocked()) throw new Error("APP_LOCKED");
 }
 
 export interface NewWalletResult {

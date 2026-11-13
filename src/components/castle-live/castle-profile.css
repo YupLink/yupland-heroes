@@ -1,6 +1,6 @@
 /* First approved profile: same composition, graphite palette. */
-@font-face { font-family: "Castle Profile Russo"; src: url("../../assets/tavern/RussoOne.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Castle Profile Golos"; src: url("../../assets/tavern/GolosText.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Castle Profile Russo"; src: url("../../assets/tavern/RussoOne.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Castle Profile Golos"; src: url("../../assets/tavern/GolosText.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
 .castle-profile-window { background: #08090f; color: #eee5d2; }
 .castle-profile-window > header { border-color: #34363f; }
 .castle-profile-window > header h1 { font-family: "Castle Profile Russo", var(--font-display), sans-serif; font-weight: 400; }

@@ -1,6 +1,7 @@
 // Чистая логика окна турниров: «осталось N д N ч», строка статуса под
 // заголовком плашки, склейка страниц таблицы («Ещё 20»), подписи мест и
 // призов. Без React — проверяется tourView.test.ts.
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import { parsePlaces } from "@/lib/tournament/places";
 import { ruPlural } from "@/lib/tourLetterText";
 import {
@@ -168,7 +169,9 @@ export function prizeName(p: TourPrize, t: T): string {
 
 /** Приз строкой: имя и количество. */
 export function prizeText(p: TourPrize, t: T, lang: string): string {
-  const n = Number(p.amount) || 0;
+  // Билетов нет (§8.61): приз видом tickets приходит золотом ×100.
+  const n =
+    p.kind === "tickets" ? goldForEarnedTickets(Number(p.amount) || 0) : Number(p.amount) || 0;
   const amount = COUNTABLE.has(p.kind) ? `×${n}` : formatScore(n, lang);
   return `${prizeName(p, t)} ${amount}`;
 }

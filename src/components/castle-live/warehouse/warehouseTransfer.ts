@@ -31,7 +31,8 @@ export async function executeTransfer(parts:TransferPart[],place:ItemPlace,send:
    if(typeof result==='string')return {moved:exact9(moved),total,error:result};
    if(!result||typeof result!=='object')return {moved:exact9(moved),total,error:'No transfer receipt',unknown:true};
    if('unknown' in result)return {moved:exact9(moved),total,error:result.error,unknown:true};
-   const actual=Math.max(0,Math.min(part.qty,result.moved));moved=exact9(moved+actual);
+   if(!Number.isFinite(result.moved)||result.moved<0||result.moved>part.qty)return {moved,total,error:'Invalid transfer receipt',unknown:true};
+   const actual=result.moved;moved=exact9(moved+actual);
    if(actual<part.qty)return {moved,total,error:result.error??'partial'};
    if(result.error)return {moved,total,error:result.error};
   }catch(e){return {moved:exact9(moved),total,error:e instanceof Error?e.message:'failed',unknown:true}}

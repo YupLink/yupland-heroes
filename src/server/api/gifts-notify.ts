@@ -15,7 +15,11 @@ const GAP_MS = 250;
  * Кому писать. Что именно подарили, письму знать не нужно: текст один на все
  * виды, а состав игрок читает в окне подарка.
  */
-export type GiftNotice = { accountId: string };
+export type GiftNotice = {
+  accountId: string;
+  /** Начисление по подписке — своё письмо: имя тарифа по языкам (владелец 25.10.2026). */
+  esubTier?: { ru: string; en: string };
+};
 
 type Row = { account_id: string; telegram_id: number | string | null };
 
@@ -46,7 +50,8 @@ export async function notifyGifts(list: GiftNotice[]): Promise<number> {
   const targets = list.filter((g) => tgByAccount.has(g.accountId));
   if (targets.length === 0) return 0;
 
-  const { tgSendIfEnabled } = await import("../tg");
+  // Письма о подарках — от игрового бота с кнопкой в игру (владелец 20.10).
+  const { gameBotSendIfEnabled, gamePlayButton } = await import("../tgGameBot");
   const { getUserLang } = await import("../userLang");
   const { tFor } = await import("@/lib/i18n");
 
@@ -54,12 +59,20 @@ export async function notifyGifts(list: GiftNotice[]): Promise<number> {
     const tgId = tgByAccount.get(g.accountId) as number;
     const lang = await getUserLang(tgId).catch(() => "ru" as const);
     // Только зов, без описи: что именно дали, игрок прочтёт в окне подарка.
-    const text = [
-      `<b>${tFor(lang, "bot.gift_title")}</b>`,
-      "",
-      tFor(lang, "bot.gift_footer"),
-    ].join("\n");
-    return tgSendIfEnabled(tgId, text).catch(() => false);
+    // Подписка — «начисление», забрать день в день; прочее — подарок на 48 ч.
+    const raw = g.esubTier && ((lang === "en" ? g.esubTier.en : g.esubTier.ru) || g.esubTier.ru);
+    // Письмо — HTML: «&» или «<» в имени тарифа Telegram отклонил бы молча.
+    const tier = raw && raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const text = tier
+      ? [
+          `<b>${tFor(lang, "bot.esub_title", { tier })}</b>`,
+          "",
+          tFor(lang, "bot.esub_footer"),
+        ].join("\n")
+      : [`<b>${tFor(lang, "bot.gift_title")}</b>`, "", tFor(lang, "bot.gift_footer")].join("\n");
+    return gameBotSendIfEnabled(tgId, text, gamePlayButton(tFor(lang, "bot.game_play"))).catch(
+      () => false,
+    );
   };
 
   let sent = 0;

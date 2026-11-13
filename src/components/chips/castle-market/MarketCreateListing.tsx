@@ -1,4 +1,5 @@
 // Shared market listing dialog. The workshop intercepts these API calls in its fixture adapter.
+// Цена — целое золото от 1 (с 21.10.2026): подпись «Цена в золоте» и значок золота.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,7 @@ import { useLang, useT } from '@/lib/i18n';
 import './market-create-listing.css';
 import { useMarketSweep } from './useMarketSweep';
 import { MarketBatchConfirm } from './MarketBatchConfirm';
+import { GOLD_PRICE_MAX, GOLD_PRICE_MIN, fmtGoldAmt, goldSellerGets, parseGoldPrice } from '../market-gold/goldMarket';
 
 const PAGE = 120;
 type Group = Awaited<ReturnType<typeof myChipInventory>>[number];
@@ -68,14 +70,13 @@ export function MarketCreateListing({ onClose, onListed, initialChipId }: { onCl
   const shown = useMemo(() => chips.filter(c => (!collection || c.collectionId === collection) &&
     (!search || `${c.collectionName} ${c.serialNo ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()))), [chips, collection, search]);
   const drawn = shown.slice(0, limit);
-  const amount = Number(price.replace(',', '.'));
-  const overMax = amount > 1_000_000;
-  const validPrice = Number.isFinite(amount) && amount >= .1 && !overMax && Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-7;
+  const amount = parseGoldPrice(price) ?? 0;
+  const overMax = Number(price.replace(',', '.')) > GOLD_PRICE_MAX;
+  const validPrice = amount > 0;
   const total = amount * picked.length;
   // The market rounds the 9% fee for each sold listing, then credits the seller.
-  const feePerChip = validPrice ? Math.round(amount * .09 * 100) / 100 : 0;
-  const sellerTotal = validPrice ? (amount - feePerChip) * picked.length : 0;
-  const money = (n: number) => n.toLocaleString(ru ? 'ru' : 'en', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sellerTotal = validPrice ? goldSellerGets(amount) * picked.length : 0;
+  const money = (n: number) => fmtGoldAmt(n, ru);
   const chipNoun = (n: number) => n % 10 === 1 && n % 100 !== 11 ? 'фишка' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'фишки' : 'фишек';
   const busyChip = (c: Chip) => [c.restUntil, c.stunUntil].some(value => value && new Date(value).getTime() > now);
   const failureReason = (reason: string, minutes?: number) => {
@@ -87,7 +88,7 @@ export function MarketCreateListing({ onClose, onListed, initialChipId }: { onCl
       ?? 'This chip could not be listed';
   };
   const mutation = useMutation({
-    mutationFn: () => createMarketListingsBatch({ data: { chipIds: picked, priceTickets: amount } }),
+    mutationFn: () => createMarketListingsBatch({ data: { chipIds: picked, priceGold: amount } }),
     onSuccess: result => {
       setConfirming(false);
       // Выставленные фишки уходят из списка сразу, не дожидаясь перечитки инвентаря.
@@ -198,10 +199,11 @@ export function MarketCreateListing({ onClose, onListed, initialChipId }: { onCl
           <summary>{label('Причины по фишкам', 'Reasons by chip')}</summary>
           <ul>{failedDetails.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
         </details>}
-        {overMax && <p className="market-listing__feedback" role="alert">{label('Цена за фишку не может быть выше 1 000 000 билетов.', 'Price per chip cannot exceed 1,000,000 tickets.')}</p>}
+        {overMax && <p className="market-listing__feedback" role="alert">{label('Цена за фишку не может быть выше 1 000 000 золота.', 'Price per chip cannot exceed 1,000,000 gold.')}</p>}
+        {!overMax && price.trim() !== '' && !validPrice && <p className="market-listing__feedback" role="alert">{label(`Цена — целое золото от ${GOLD_PRICE_MIN}.`, `Price must be whole gold from ${GOLD_PRICE_MIN}.`)}</p>}
         <div className="market-listing__price-row">
-          <label><span>{label('Цена за фишку', 'Price per chip')}</span><span className="market-listing__price-input"><ResourceGlyph kind="tickets" /><input type="number" inputMode="decimal" min="0.1" max="1000000" step="0.01" value={price} onChange={event => {setPrice(event.target.value);setFailure('');setFailedDetails([]);}} placeholder="0,00" aria-label={label('Цена за фишку в билетах', 'Price per chip in tickets')} /></span></label>
-          <div className="market-listing__total"><span>{picked.length} {label(`${chipNoun(picked.length)} · всего`, picked.length === 1 ? 'chip · total' : 'chips · total')}</span><div className="market-listing__total-values"><strong><ResourceGlyph kind="tickets" />{picked.length && validPrice ? money(total) : '—'}</strong><small className="market-listing__net">{label('После комиссии 9%', 'After 9% fee')} · {picked.length && validPrice ? money(sellerTotal) : '—'}</small></div></div>
+          <label><span>{label('Цена в золоте · за фишку', 'Price in gold · per chip')}</span><span className="market-listing__price-input"><ResourceGlyph kind="gold" label={label('золото', 'gold')} /><input type="number" inputMode="numeric" min={GOLD_PRICE_MIN} max={GOLD_PRICE_MAX} step="1" value={price} onChange={event => {setPrice(event.target.value);setFailure('');setFailedDetails([]);}} placeholder={label(`от ${GOLD_PRICE_MIN}`, `from ${GOLD_PRICE_MIN}`)} aria-label={label('Цена за фишку в золоте', 'Price per chip in gold')} /></span></label>
+          <div className="market-listing__total"><span>{picked.length} {label(`${chipNoun(picked.length)} · всего`, picked.length === 1 ? 'chip · total' : 'chips · total')}</span><div className="market-listing__total-values"><strong><ResourceGlyph kind="gold" label={label('золото', 'gold')} />{picked.length && validPrice ? money(total) : '—'}</strong><small className="market-listing__net">{label('После комиссии 9%', 'After 9% fee')} · {picked.length && validPrice ? money(sellerTotal) : '—'}</small></div></div>
         </div>
         <button type="button" className="market-listing__submit" disabled={!picked.length || !validPrice || mutation.isPending || inv.isPending || inv.isError} onClick={() => setConfirming(true)}>{mutation.isPending ? label('Выставляем…', 'Listing…') : label(`Выставить${picked.length ? ` · ${picked.length}` : ''}`, `List${picked.length ? ` · ${picked.length}` : ''}`)}</button>
       </footer>

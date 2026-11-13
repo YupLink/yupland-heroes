@@ -7,9 +7,16 @@
 // Долю считаем как поле/работников: `raid_field_settle` делит `yield` поровну
 // между теми, у кого стоит герой. Накопленное показываем живым — к тому, что
 // уже записано в `accrued`, добавляем текущий незакрытый отрезок.
+//
+// Погода (владелец, 26.10.2026; weather-02): секунды отрезка — × коэффициент «фермы»
+// своего слота, как считает raid_field_settle (raid_field_weather_dsec = Σ(коэф − 1) ×
+// секунды; влияние выключено, остров, нет погоды — 0, и число прежнее).
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { parseFieldConfig, type FieldReward } from "@/lib/fieldConfig";
+import { stackCells } from "@/lib/warehouseCells";
+import { ownCellsOf, upgradesOf } from "./account-upgrade";
+import { farmMultWith } from "@/lib/accountUpgrade";
 
 export type HarvestField = {
   /** Карта поля: в «Добыче» поля со всех этажей сразу. */
@@ -38,6 +45,8 @@ export type HarvestField = {
   stored: number | null;
   /** Склад, к которому относится stored — чтобы подписать координаты. */
   storedAt: { q: number; r: number } | null;
+  /** Занятость личных ячеек ближайшего склада этого поля. */
+  personalSlots: { used: number; total: number } | null;
   /** Кто работает от меня. null — героя сняли, накопленное осталось. */
   heroName: string | null;
   /** Сколько всего работников на поле — чтобы объяснить размер доли. */
@@ -75,7 +84,8 @@ async function storedByCellStack(mapId: string, account: string): Promise<Map<st
 export async function myHarvestFields(mapId: string, account: string): Promise<HarvestField[]> {
   const rows = (await mcpExec(
     `SELECT w.q, w.r, w.hero_id, w.accrued,
-            extract(epoch from (now() - w.since)) AS since_sec,
+            extract(epoch from (now() - w.since))
+              + yuplink.raid_field_weather_dsec(w.map_id, w.since, now()) AS since_sec,
             COALESCE(NULLIF(t.name, ''), 'Герой') AS hero_name,
             c.building_config AS cfg,
             (SELECT count(*) FROM yuplink.raid_field_worker o
@@ -87,6 +97,7 @@ export async function myHarvestFields(mapId: string, account: string): Promise<H
        LEFT JOIN yuplink.hero_instance h ON h.id = w.hero_id
        LEFT JOIN yuplink.mystic_item_template t ON t.id = h.template_id
       WHERE w.map_id = ${sqlStr(mapId)} AND w.account_id = ${sqlStr(account)}
+        AND w.hero_id IS NOT NULL
       ORDER BY w.q, w.r;`,
     { wrapJson: true },
   ).catch(() => [])) as Row[];
@@ -97,20 +108,29 @@ export async function myHarvestFields(mapId: string, account: string): Promise<H
   const { WAREHOUSE_RADIUS } = await import("./field-settle");
   // Склад поля — тот же, что у сеттла (ближайший в радиусе). Склады карты — одним
   // запросом на всё окно: по запросу на грядку выходило 40 мс × 35 грядок (16.10).
-  const [stored, warehouses] = await Promise.all([
+  const [stored, ownCells, upg, warehouses] = await Promise.all([
     storedByCellStack(mapId, account),
+    ownCellsOf(account),
+    upgradesOf(account),
     warehouseCells(mapId).catch(() => [] as Array<{ q: number; r: number }>),
   ]);
   const warehouseOf = (q: number, r: number) => nearestOf(warehouses, q, r, WAREHOUSE_RADIUS);
+  const usedByWarehouse = new Map<string, number>();
+  for (const [key, count] of stored) {
+    const at = key.split("|")[0];
+    usedByWarehouse.set(at, (usedByWarehouse.get(at) ?? 0) + stackCells(count));
+  }
 
   const out: HarvestField[] = [];
   for (const r of rows ?? []) {
+    if (!r.hero_id) continue;
     const cfg = parseFieldConfig(r.cfg);
     if (!cfg) continue;
     const workers = Math.max(1, Number(r.workers) || 0);
     // Доля капает, только пока стоит герой: снял — накопленное осталось, но
     // счётчик встал (ровно так же считает raid_field_settle).
-    const perHour = r.hero_id ? cfg.yield / workers : 0;
+    // Улучшение ферм игрока (lib/accountUpgrade) — как в базе (account_farm_mult).
+    const perHour = r.hero_id ? (cfg.yield / workers) * farmMultWith(upg) : 0;
     const openSec = r.hero_id ? Math.max(0, Number(r.since_sec) || 0) : 0;
     const pending = (Number(r.accrued) || 0) + (openSec / 3600) * perHour;
     // На склад уезжают ЦЕЛЫЕ единицы, дробный хвост остаётся зреть — показываем
@@ -135,6 +155,10 @@ export async function myHarvestFields(mapId: string, account: string): Promise<H
       growing: Math.max(0, pending - ready),
       stored: canonId && wh ? (stored.get(`${wh.q},${wh.r}|custom:${canonId}`) ?? 0) : null,
       storedAt: canonId && wh ? wh : null,
+      personalSlots:
+        canonId && wh
+          ? { used: usedByWarehouse.get(`${wh.q},${wh.r}`) ?? 0, total: ownCells }
+          : null,
       heroName: r.hero_id ? (r.hero_name ?? "Герой") : null,
       workers: Number(r.workers) || 0,
     });

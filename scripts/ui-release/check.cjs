@@ -1,0 +1,15 @@
+const {execFileSync}=require('node:child_process');
+const fs=require('node:fs');
+const {checkFiles,checkStyles}=require('./contracts.cjs');
+const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
+const sha=git('rev-parse','HEAD');
+if(process.env.EXPECTED_SHA && sha!==process.env.EXPECTED_SHA)throw Error('Wrong checkout SHA');
+git('diff','--exit-code','HEAD','--');
+const files=new Set(git('ls-tree','-r','--name-only',sha).split('\n'));
+const entries=[...files].filter(p=>p.startsWith('src/')&&/\.(tsx?|css)$/.test(p)&&!p.includes('.test.')&&!p.includes('/api_backup_')&&!p.startsWith('src/test/'));
+const read=p=>fs.readFileSync(p,'utf8');
+const result=checkFiles(files,read,entries);
+const errors=[...result.errors,...checkStyles(read)];
+const consumers=entries.filter(p=>/\.(tsx?|css)$/.test(p)&&/auction-(?:lot|window|primary|secondary)/.test(read(p)));
+console.log(JSON.stringify({sha,trackedFiles:files.size,scanned:result.scanned,consumers,errors},null,2));
+if(errors.length)process.exitCode=1;

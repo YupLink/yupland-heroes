@@ -74,7 +74,7 @@ export function OrphanFtClaimPanel() {
           <input
             value={sender}
             onChange={(e) => setSender(e.target.value)}
-            placeholder="напр. player04.tg"
+            placeholder="напр. 123456789.tg"
             title="Кошелёк, с которого платили — ему и зачислим билеты."
             className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs outline-none focus:border-rose-500/50"
           />

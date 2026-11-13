@@ -1,28 +1,23 @@
 // Постройка на клетке и всё, что к ней приклеено: флажок шахты, охранник,
 // значок «занято/всего» у поля. Вынесено из betaCanvasDraw.ts (§13.1).
 import { R } from "./hexGeometry";
+import { drawMapEnchanter, enchanterImageKey } from "./mapEnchanter";
+import { animatesAt } from "./animZone";
 import { flagCacheKey } from "@/lib/gameArt";
 import type { DrawScene } from "./betaCanvasScene";
 import { SPRITE_MAX_BUCKET } from "./drawObject";
-import { drawWarehouseBadge } from "./drawWarehouseBadge";
+import { queueWarehouseBadge } from "./drawWarehouseBadge";
+import { queueMineLifeBar } from "./mine-life/drawMineLifeBars";
+import { drawBrokenMine } from "./mine-art/drawMineArt";
+import { guardImageKey } from "@/components/beta-raid/mine/guardArt";
+import { MUSHROOM_DRAW_SCALE, isMushroomSkinKey } from "@/lib/mushroomKinds";
 
 import type { SceneCell } from "./mapIndex";
 
-/** Бейдж — после тумана, если кадр ведёт очередь; иначе (нет очереди) сразу.
- *  В очередь кладём ключ и X, а не SceneCell: он один на кадр и к концу обхода
- *  указывал бы на последнюю клетку — бейджи уезжали в чужую клетку. */
-function queueWarehouseBadge(scene: DrawScene, c: { key: string; x: number }, top: number): void {
-  if (!scene.warehouseBadges?.[c.key]) return;
-  if (scene.deferredBadges) scene.deferredBadges.push({ key: c.key, x: c.x, top });
-  else drawWarehouseBadge(scene, c, top);
-}
-
 /**
- * Где рисовать картинку постройки, если не в своей клетке: объединённый блок
- * (drawMergedBlocks) даёт центр, «пол» и ширину на весь блок. Флажок шахты,
- * охранник, слоты и бейджи при этом тоже центрируются по блоку и растут с ним
- * (k = ширина блока / ширина одиночной) — как у постройки обычного размера.
- * Данные по-прежнему берутся по ключу ведущей клетки `c`.
+ * Картинка постройки блока (drawMergedBlocks): центр, «пол» и ширина на весь блок. Флажок,
+ * охранник, слоты и бейджи центрируются по блоку и растут с ним (k = ширина блока / одиночной).
+ * Данные — по ключу ведущей клетки `c`.
  */
 export type BuildingGeo = { cx: number; bottom: number; w: number };
 
@@ -39,27 +34,22 @@ export function drawBuilding(
   const tier = scene.buildingTiers[c.key] ?? 0;
   const img = scene.images.get(`b:${buildingId}:${tier}`);
   const { g } = scene;
-  const w = geo?.w ?? R * 1.7;
+  // Гриб — втрое меньше (владелец 22.10: «видно очень издалека»), ближе к центру.
+  const mush = !geo && isMushroomSkinKey(buildingId);
+  const w = geo?.w ?? R * 1.7 * (mush ? MUSHROOM_DRAW_SCALE : 1);
   const cx = geo?.cx ?? c.x;
-  const bottom = geo?.bottom ?? c.y + R * 0.55;
+  const bottom = geo?.bottom ?? c.y + R * (mush ? 0.35 : 0.55);
   // Всё приклеенное к постройке (флаг, охранник, значки) — от той же точки и в
   // том же масштабе, что и картинка: у блока k > 1, у одиночной ровно 1.
   const k = geo ? w / (R * 1.7) : 1;
   const at: At = { key: c.key, x: cx, y: bottom - R * 0.55 * k, k };
-  // LOD: картинка не загрузилась — рисуем цветной прямоугольник, чтобы
-  // постройка не пропадала при отдалении или долгой загрузке.
-  if (!img || !img.complete || img.naturalWidth === 0) {
-    const h = w * 0.8;
-    const top = bottom - h;
-    g.fillStyle = "#3a3d4e";
-    g.fillRect(cx - w / 2, top, w, h);
-    g.strokeStyle = "#6b7280";
-    g.lineWidth = 1;
-    g.strokeRect(cx - w / 2, top, w, h);
-    drawMineFlag(scene, at, top, w);
-    queueWarehouseBadge(scene, at, top);
-    return top;
-  }
+  // Сломанная шахта v2 — «разрушено» из набора Ангелины (mine-art), без флажка и охраны.
+  const broken = drawBrokenMine(scene, at, buildingId, bottom, w, !geo);
+  if (broken != null) return broken;
+  // Картинка ещё грузится (качается по требованию кадра, lazyImages) — не рисуем
+  // ничего: серый прямоугольник вместо здания владелец запретил (29.10.2026).
+  // Кадр перерисуется, как только картинка придёт (useImageCache.onload).
+  if (!img || !img.complete || img.naturalWidth === 0) return null;
   const h = w * (img.naturalHeight / img.naturalWidth);
   const top = bottom - h;
   // Флаг рисуем ДО постройки: он стоит ЗА ней, и низ древка должен уходить за
@@ -69,19 +59,27 @@ export function drawBuilding(
   // Картинка — спрайтом под текущий зум (spriteCache), 1:1 на холст. Блок —
   // прямым drawImage: его ширина плавает с масштабом (шаг 5 %), и на каждую
   // ширину кэш пёк бы своего мастера на десятки мегабайт; блоков единицы.
+  // Шаман и прочая анимация — только во втором обзоре и ближе (animZone, 09.11).
+  const animated =
+    scene.images.has(enchanterImageKey(`b:${buildingId}:${tier}`, "idle")) &&
+    animatesAt(scene, c.i) &&
+    drawMapEnchanter(scene, `b:${buildingId}:${tier}`, c.key, cx, bottom, w);
   const sprite =
+    !animated &&
     !geo && scene.bucket <= SPRITE_MAX_BUCKET
       ? scene.sprites?.get(`b:${buildingId}:${tier}`, scene.bucket, w, h, (sg, sw, sh) =>
           sg.drawImage(img, 0, 0, sw, sh),
         )
       : null;
   if (sprite) scene.sprites!.drawBottom(g, sprite, cx, bottom, scene.bucket);
-  else g.drawImage(img, cx - w / 2, top, w, h);
+  else if (!animated) g.drawImage(img, cx - w / 2, top, w, h);
   drawMineGuard(scene, at);
   drawFieldSlots(scene, at, top);
   // Склад: «мои+общие» единицы товара к сбору — той же пилюлей, что у поля,
   // но поверх плёнки тумана (кадр рисует отложенные после drawCells).
   queueWarehouseBadge(scene, at, top);
+  // Шахта v2 — полоса службы над флажком (рисуется после тумана, mine-life).
+  queueMineLifeBar(scene, at, top);
   return top;
 }
 
@@ -144,13 +142,15 @@ function drawFieldSlots(
 
 /**
  * Босс-охранник шахты поверх постройки. Живого охранника отдаёт getMineGuards
- * (только пока он жив), картинка загружена по ключу "mg:<q,r>". Кружок с
- * тревожным красным кольцом — сразу читается «шахту стерегут».
+ * (только пока он жив). Кружок с тревожным красным кольцом — «шахту стерегут».
+ * Картинка и спрайт — по АДРЕСУ картинки (mine/guardArt), не по клетке: спрайт
+ * «mg:<клетка>» пережил смену охранника — при отдалении стоял убитый (21.10).
  */
 function drawMineGuard(scene: DrawScene, c: At): void {
-  if (!scene.mineGuards?.[c.key]) return;
+  const guard = scene.mineGuards?.[c.key];
+  if (!guard) return;
   const { g } = scene;
-  const img = scene.images.get("mg:" + c.key);
+  const img = guard.image ? scene.images.get(guardImageKey(guard.image)) : undefined;
   // Чуть выше центра клетки — сидит на крыше/над шахтой, не заслоняя её низ.
   // У блока — по центру блока и в его масштабе (k), как у обычной шахты.
   const cx = c.x;
@@ -159,10 +159,11 @@ function drawMineGuard(scene: DrawScene, c: At): void {
   if (img && img.complete && img.naturalWidth > 0) {
     // Иконка охранника с красным кольцом — спрайтом под зум, на любом отдалении.
     const d = rad * 2 + 4;
+    const sk = `mg:${guard.image}@${Math.round(d)}`;
     const sprite =
       scene.bucket > SPRITE_MAX_BUCKET
         ? null
-        : scene.sprites?.get(`mg:${c.key}@${Math.round(d)}`, scene.bucket, d, d, (sg, sw, sh) => {
+        : scene.sprites?.get(sk, scene.bucket, d, d, (sg, sw, sh) => {
             const x = sw / 2;
             const y = sh / 2;
             sg.save();
@@ -245,3 +246,4 @@ function drawMineFlag(scene: DrawScene, c: At, buildingTop: number, buildingW: n
   const w = h * (img.naturalWidth / img.naturalHeight);
   g.drawImage(img, c.x - w / 2 + w * 0.1, buildingTop - h * 0.55, w, h);
 }
+

@@ -1,4 +1,4 @@
-import { Coins, ImageIcon, Package, Zap } from "lucide-react";
+import { Backpack, Coins, ImageIcon, Package, Zap } from "lucide-react";
 import { parsePackQty } from "./helpers";
 import type { DropEvent } from "./types";
 
@@ -9,10 +9,22 @@ export function RewardBadge({ drop }: { drop: DropEvent }) {
   const packTiers = tiers.filter((t) => kindOf(t) === "pack") as Array<{ packQty?: number }>;
   const ftTiers = tiers.filter((t) => kindOf(t) === "ft");
   const energyTiers = tiers.filter((t) => kindOf(t) === "energy") as Array<{ rewardMin?: number; rewardMax?: number }>;
-  const onlyNft = nftTiers.length > 0 && ftTiers.length === 0 && packTiers.length === 0 && energyTiers.length === 0;
-  const onlyPack = packTiers.length > 0 && ftTiers.length === 0 && nftTiers.length === 0 && energyTiers.length === 0;
-  const onlyEnergy = energyTiers.length > 0 && ftTiers.length === 0 && nftTiers.length === 0 && packTiers.length === 0;
-  const hasMix = [nftTiers, ftTiers, packTiers, energyTiers].filter((g) => g.length > 0).length > 1;
+  const goodsTiers = tiers.filter((t) => kindOf(t) === "custom") as Array<{ itemName?: string; rewardMin?: number; rewardMax?: number }>;
+  const onlyNft = nftTiers.length > 0 && ftTiers.length === 0 && packTiers.length === 0 && energyTiers.length === 0 && goodsTiers.length === 0;
+  const onlyPack = packTiers.length > 0 && ftTiers.length === 0 && nftTiers.length === 0 && energyTiers.length === 0 && goodsTiers.length === 0;
+  const onlyEnergy = energyTiers.length > 0 && ftTiers.length === 0 && nftTiers.length === 0 && packTiers.length === 0 && goodsTiers.length === 0;
+  const hasMix = [nftTiers, ftTiers, packTiers, energyTiers, goodsTiers].filter((g) => g.length > 0).length > 1;
+
+  if (goodsTiers.length > 0 && !hasMix) {
+    const g = goodsTiers[0];
+    const n = g.rewardMin === g.rewardMax ? `${g.rewardMin}` : `${g.rewardMin}–${g.rewardMax}`;
+    return (
+      <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-neon/40 bg-neon/10 px-2 py-0.5 text-neon">
+        <Backpack className="h-3 w-3 shrink-0" />
+        <span className="truncate">{goodsTiers.length > 1 ? `Товар: ${goodsTiers.length} вида` : `${g.itemName || "Товар"} ×${n}`}</span>
+      </span>
+    );
+  }
 
   if (onlyNft) {
     const titles = Array.from(new Set(nftTiers.map((t) => t.nftTitle).filter(Boolean) as string[]));
@@ -75,6 +87,12 @@ export function RewardBadge({ drop }: { drop: DropEvent }) {
         <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-neon/40 bg-neon/10 px-2 py-0.5 text-neon">
           <Package className="h-3 w-3 shrink-0" />
           <span className="truncate">или Пак</span>
+        </span>
+      )}
+      {hasMix && goodsTiers.length > 0 && (
+        <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-neon/40 bg-neon/10 px-2 py-0.5 text-neon">
+          <Backpack className="h-3 w-3 shrink-0" />
+          <span className="truncate">или товар</span>
         </span>
       )}
       {hasMix && energyTiers.length > 0 && (

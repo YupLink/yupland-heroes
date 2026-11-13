@@ -47,6 +47,8 @@ export const dict: Record<string, Entry> = {
     ru: "Мало энергии — нужно {n}",
     en: "Not enough energy — need {n}",
   },
+  // Дорога до дерева в кнопке рубки (13.11.2026): энергия, чтобы подойти.
+  "braid.decor_walk": { ru: "Дорога: ⚡{n}", en: "Walk there: ⚡{n}" },
   // Админ
   "decor.interact": { ru: "Взаимодействие", en: "Interaction" },
   "decor.energy": { ru: "Энергия", en: "Energy" },

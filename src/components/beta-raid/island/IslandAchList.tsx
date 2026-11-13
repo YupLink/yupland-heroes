@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import {
-  ACH_TRACK_IDS,
+  ISLAND_TRACK_IDS,
   ISLAND_GATE_STEP,
   stepTarget,
   type AchCounts,
@@ -30,7 +30,7 @@ export function IslandAchList({
   return (
     <>
       <ul className="island-ach">
-        {ACH_TRACK_IDS.map((id) => {
+        {ISLAND_TRACK_IDS.map((id) => {
           const goal = stepTarget(id, ISLAND_GATE_STEP);
           const n = Math.min(counts[id] ?? 0, goal);
           const done = n >= goal;

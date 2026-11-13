@@ -2,11 +2,13 @@
 //
 // Отдельным модулем от компонента: ту же строку показывает и окно портала, и
 // подсказка на карте, а держать перевод ресурсов в двух местах — верный способ
-// развести их со временем.
+// развести их со временем. Строка «в билетах» с 20.10.2026 платится золотом ×500
+// (§8.61) — и пишется золотом: игрок видит ровно то, что спишут.
 import type { PortalPrice } from "@/lib/portal";
 import type { MarketPriceResource } from "@/lib/marketItem";
 import { marketResourceIconSrc } from "@/lib/resourceIcons";
 import { starsForDarai } from "@/lib/starsForDarai";
+import { ticketRowAsGold } from "@/lib/ticketPriceGold";
 import type { HaveFn } from "./market/usePlayerFunds";
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
@@ -30,7 +32,8 @@ const KEYS: Record<MarketPriceResource, string> = {
 };
 
 /** Одна строка цены словами: «100 золота», «1000 Darai», «2 × Яблоко». */
-export function priceLine(p: PortalPrice, t: TFn): string {
+export function priceLine(row: PortalPrice, t: TFn): string {
+  const p = ticketRowAsGold(row);
   // Товар называем его именем: ключ стека игроку ничего не скажет.
   if (p.resource === "item") return `${p.amount} × ${p.itemName ?? t("market.res.item")}`;
   // Звездочнику без DARAI — та же цена в звёздах (lib/starsForDarai.ts).
@@ -48,7 +51,8 @@ export function priceText(prices: PortalPrice[], t: TFn): string {
  * Строка цены для плашки маршрута: с картинкой ресурса — только число (как в
  * полосе ресурсов), без картинки (токен, билеты, товар) — словами.
  */
-export function priceRow(p: PortalPrice, t: TFn): { icon: string | null; label: string } {
+export function priceRow(row: PortalPrice, t: TFn): { icon: string | null; label: string } {
+  const p = ticketRowAsGold(row);
   const icon = p.resource === "item" ? null : marketResourceIconSrc(p.resource);
   return { icon, label: icon ? String(p.amount) : priceLine(p, t) };
 }
@@ -57,7 +61,8 @@ export function priceRow(p: PortalPrice, t: TFn): { icon: string | null; label: 
  * Строки цены не хватает (счёт известен и меньше цены). Цена в DARAI, которую
  * звездочник платит звёздами, сверяется со звёздами. Товар — не знаем (сервер).
  */
-export function priceShort(p: PortalPrice, have: HaveFn): boolean {
+export function priceShort(row: PortalPrice, have: HaveFn): boolean {
+  const p = ticketRowAsGold(row);
   if (p.resource === "item") return false;
   const stars = p.resource === "token" && p.token === "Darai" ? starsForDarai(p.amount) : null;
   const owned = stars != null ? have("token", "STARS") : have(p.resource, p.token ?? null);

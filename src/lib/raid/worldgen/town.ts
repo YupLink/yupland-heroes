@@ -64,7 +64,7 @@ export function townCatalog(
 }
 
 /** Своя настройка постройки с образца по её функции: храм — алтарь образца. */
-function configAt(w: World, effect: string | null, q: number, r: number) {
+export function configAt(w: World, effect: string | null, q: number, r: number) {
   const list = effect ? (w.spec.towns.configs?.[effect] ?? []) : [];
   if (list.length === 0) return null;
   return list[hashCell(w.spec.seed ^ 0x2545f491, q, r) % list.length];

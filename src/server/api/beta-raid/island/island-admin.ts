@@ -3,12 +3,14 @@
 import { createIsland, dropIsland } from "./island-create";
 import { isLive, loadIsland, saveBack } from "./island-row";
 import { ensureIslandHero } from "./island-hero";
+import { requireNotKept } from "./island-keep";
 import {
   dropIslandBag,
   mainWorldStart,
   moveAcross,
   positionOf,
   putIslandBag,
+  putNewbieBag,
   type MapCell,
 } from "./island-move";
 
@@ -19,9 +21,16 @@ export async function enterIsland(wallet: string, account: string): Promise<Isla
   const had = await loadIsland(account);
   const row = isLive(had) ? had : await createIsland(account, wallet);
   const here = await positionOf(account);
-  if (here?.mapId === row.mapId) return { ok: true, map: row.mapId };
+  if (here?.mapId === row.mapId) {
+    await putNewbieBag(account);
+    return { ok: true, map: row.mapId };
+  }
   // Возврат — туда, где стоял; на чужом острове (старый, снесённый) — к замку.
-  if (here) await saveBack(account, here);
+  // С демо-острова — туда, откуда пришла на демо (не по кругу, demo-island).
+  if (here) {
+    const { backPastDemo } = await import("./demo-island");
+    await saveBack(account, await backPastDemo(account, here, row.mapId));
+  }
   await ensureIslandHero(wallet, account);
   await putIslandBag(account);
   const spawn: MapCell = { mapId: row.mapId, ...row.places.spawn };
@@ -29,6 +38,8 @@ export async function enterIsland(wallet: string, account: string): Promise<Isla
     await dropIslandBag(account);
     throw new Error("island.move_failed");
   }
+  // Рюкзак новичка — с первого УДАВШЕГОСЯ входа (7 дней не идут впустую).
+  await putNewbieBag(account);
   return { ok: true, map: row.mapId };
 }
 
@@ -55,7 +66,9 @@ export async function leaveIsland(wallet: string, account: string): Promise<Isla
 export async function resetIsland(wallet: string, account: string): Promise<IslandMoveResult> {
   const row = await loadIsland(account);
   if (isLive(row)) {
-    // Оставленное на острове уходит вместе с ним (dropIslandSql).
+    await requireNotKept(row.mapId);
+    // Оставленное на острове уходит вместе с ним (dropIslandSql); добыча шахт
+    // перед сносом — хозяину (dropIsland → island-mine-claim).
     await leaveIsland(wallet, account);
     await dropIsland(row.mapId);
   }

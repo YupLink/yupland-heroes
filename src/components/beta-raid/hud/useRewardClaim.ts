@@ -14,6 +14,7 @@ import { rewardGroupKey } from "@/lib/rewardGroup";
 import { claimRaidRewardGroup, claimRaidRewards } from "@/server/api/raid-rewards";
 import { RESOURCES_KEY } from "@/lib/hooks/useResources";
 import { ENERGY_KEY } from "@/lib/hooks/useEnergy";
+import { ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
 import { invalidateHeroQueries } from "@/lib/query";
 import { HARVEST_KEY } from "./useHarvest";
 
@@ -31,6 +32,8 @@ const TOUCHED: string[][] = [
   ["my-payouts"],
   [...ENERGY_KEY],
   [...RESOURCES_KEY],
+  // DARAI клада (§8.117) — на баланс игры.
+  [...ACC_BALANCES_KEY],
 ];
 
 export type GroupClaimVars = {

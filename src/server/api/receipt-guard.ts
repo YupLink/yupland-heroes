@@ -27,7 +27,7 @@ export const CHECKS: Record<ReceiptPurpose, (tx: string) => string> = {
 };
 
 const HUMAN: Record<ReceiptPurpose, string> = {
-  tickets: "по ней уже выданы билеты",
+  tickets: "по ней уже выдана покупка",
   energy: "по ней уже начислена энергия",
   darai: "она уже зачтена в DARAI-баланс",
   account: "она уже зачтена на ресурсный счёт",

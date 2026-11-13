@@ -1,0 +1,64 @@
+/* Full shop screen. Other building dialogs retain their own shell. */
+[data-raid-shop-overlay]{top:var(--app-top,env(safe-area-inset-top,0px));align-items:stretch;padding:0}
+[data-raid-shop-window]{
+  width:100%;max-width:none;height:100%;max-height:100%;min-height:0;
+  padding:6px;padding-left:max(6px,env(safe-area-inset-left));padding-right:max(6px,env(safe-area-inset-right));padding-bottom:max(6px,env(safe-area-inset-bottom));
+  border:0;border-radius:0;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 0,#1c1e1e 0,#121516 50%,#101213 100%);
+}
+[data-raid-shop-window]>div:first-child{flex:none;margin-bottom:6px}
+[data-raid-shop-window]>[data-raid-shop-content]{flex:1;min-height:0;overflow-y:auto}
+[data-raid-shop-window][data-raid-shop-market] [data-raid-shop-content]{display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden}
+[data-raid-shop-market] [data-raid-shop-content]>*+*{margin-top:6px}
+[data-raid-shop-market] [data-raid-shop-content]>.raid-market{flex:1;min-height:0}
+[data-raid-shop-market] [data-forge-tabs]{display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden}
+[data-raid-shop-market] [data-forge-tabs]>*+*{margin-top:6px}
+[data-raid-shop-market] [data-forge-tabs]>.raid-market{flex:1;min-height:0}
+[data-raid-shop-market] [data-forge-tabs]>[data-forge-repair]{min-height:0;overflow-y:auto}
+[data-raid-shop-header]{
+  position:relative;isolation:isolate;display:block;flex:none;
+  width:100%;height:clamp(76px,15dvh,112px);min-height:0;max-height:none;
+  margin-bottom:6px;overflow:hidden;border-radius:7px;background:#111415;
+}
+[data-raid-shop-panorama]{position:absolute;inset:0;z-index:-2;display:block;width:100%;height:100%;object-fit:cover}
+[data-raid-shop-header]::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#10121310 25%,#10121340 55%,#101213ed 100%)}
+[data-raid-shop-header]>div{position:absolute;right:38px;bottom:6px;left:8px;color:#f7f0df;text-shadow:0 2px 5px #000b}
+[data-raid-shop-header]>div>div{color:#ddd2b8;font-size:9px;line-height:1.15}
+[data-raid-shop-header] h3{overflow:visible;white-space:normal;text-overflow:clip;overflow-wrap:normal;font-size:18px;line-height:1.1}
+[data-raid-shop-header]>button{position:absolute;top:6px;right:6px;width:30px;height:30px;border-color:#b4a17599;background:#101213c9;color:#ead8b6}
+@media(max-height:520px){[data-raid-shop-header]{height:64px}}
+
+
+/* One shop scroller: the panorama leaves, trading controls and checkout stay. */
+[data-raid-shop-window][data-raid-shop-market]{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+[data-raid-shop-window][data-raid-shop-market] [data-raid-shop-content]{flex:1 0 auto;min-height:auto;overflow:visible}
+[data-raid-shop-market] [data-raid-shop-content]>.raid-market,
+[data-raid-shop-market] [data-forge-tabs],
+[data-raid-shop-market] [data-forge-tabs]>.raid-market{flex:1 0 auto;min-height:auto;overflow:visible}
+[data-raid-shop-market] .raid-market-content{flex:1 0 auto;overflow:visible;min-height:auto}
+[data-raid-shop-market] .raid-market-sticky{position:sticky;top:0;z-index:5;padding-bottom:4px;background:#121516}
+[data-raid-shop-market] .raid-market-cart{position:sticky;bottom:0;z-index:7;box-shadow:0 -4px 0 #101213}
+[data-raid-shop-market] [data-forge-tabs]>[role=tablist]{position:sticky;top:0;z-index:6}
+[data-raid-shop-market] [data-forge-tabs] .raid-market-sticky{top:42px}
+[data-raid-shop-window][data-raid-shop-market]>div:first-child{position:relative;z-index:8;overflow:visible}
+[data-raid-shop-market] [data-raid-shop-panorama],
+[data-raid-shop-market] [data-raid-shop-header]::after{border-radius:inherit}
+[data-raid-shop-window][data-raid-shop-market]>div:first-child>button{position:fixed;top:4px;width:28px;height:28px;right:max(6px,env(safe-area-inset-right));z-index:9}
+[data-raid-shop-market] .raid-market-sides{padding-right:36px}
+[data-raid-shop-market] .raid-market-sticky:not(:has(.raid-market-sides))>.raid-market-toolbar{padding-right:36px}
+[data-raid-shop-market] [data-forge-tabs]>[role=tablist]{padding-right:36px}
+[data-raid-shop-market] [data-forge-tabs] .raid-market-sides,
+[data-raid-shop-market] [data-forge-tabs] .raid-market-sticky>.raid-market-toolbar{padding-right:0}
+
+[data-raid-shop-window][data-raid-shop-market]>div:first-child:not([data-raid-shop-header]){padding-right:38px}
+
+
+/* Closing moves into the existing toolbar after the panorama scrolls away. */
+[data-raid-shop-market] .raid-market-sides{padding-right:0}
+[data-raid-shop-market]:has(.raid-market-toolbar) .raid-market-sticky>.raid-market-toolbar{padding-right:0}
+[data-raid-shop-window][data-raid-shop-market]:has(.raid-market-toolbar)>div:first-child>button{position:absolute;top:6px;right:6px}
+[data-raid-shop-market]:has(.raid-market-toolbar) [data-forge-tabs]>[role=tablist]{padding-right:0}
+/* Mask the scrollport padding so cards never bleed above/below fixed controls. */
+[data-raid-shop-market] .raid-market-sticky::before{content:'';position:absolute;bottom:100%;left:-6px;right:-6px;height:6px;background:#121516;pointer-events:none}
+[data-raid-shop-market] .raid-market-cart::after{content:'';position:absolute;top:100%;left:-6px;right:-6px;height:max(6px,env(safe-area-inset-bottom));background:#101213;pointer-events:none}
+[data-raid-shop-window][data-raid-shop-market][data-shop-scrolled]:has(.raid-market-toolbar)>div:first-child>button{visibility:hidden}

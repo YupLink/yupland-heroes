@@ -123,6 +123,10 @@ export function godText(lang: Lang) {
     hintPaint: (name: string) => (ru ? `Тап ставит: ${name}` : `A tap places: ${name}`),
     hintVoidOn: p("Тап накрывает клетку куполом", "A tap covers the tile with the dome"),
     hintVoidOff: p("Тап снимает купол", "A tap lifts the dome"),
+    hintSpawn: p(
+      "Тап ставит точку спавна из шаблона",
+      "A tap places a spawn point from the template",
+    ),
     /** Подсказка для ген-кисти: краску клетка не получает — только пометку. */
     hintGen: p(
       "Тап помечает клетки для биом-генератора",
@@ -138,6 +142,22 @@ export function godText(lang: Lang) {
       "Сначала выбери в палитре, чем красить",
       "Pick something in the palette first",
     ),
+    /** Режимы ластика (eraseTarget.ts). */
+    eraseTargets: {
+      top: p("Сверху", "Top layer"),
+      object: p("Объект", "Object"),
+      decor: p("Декор", "Decor"),
+      building: p("Постройка", "Building"),
+      road: p("Дорога", "Road"),
+      terrain: p("Местность", "Terrain"),
+    },
+    hintEraseOnly: (what: string) =>
+      p(`Тап снимает только: ${what.toLowerCase()}`, `A tap clears only: ${what.toLowerCase()}`),
+    hintEraseTerrain: p(
+      "Тап стирает клетку целиком — с местностью",
+      "A tap wipes the whole tile — terrain included",
+    ),
+    eraseNothing: p("Здесь нечего стирать этим ластиком", "Nothing here for this eraser"),
     eraseEmpty: p(
       "Стирать нечего: на клетке только местность",
       "Nothing to erase: the tile has terrain only",

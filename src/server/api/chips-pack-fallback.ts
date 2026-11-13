@@ -88,3 +88,15 @@ export async function resolveGrantablePack(packId: string): Promise<string> {
   const found = await resolveOpenablePack(packId).catch(() => null);
   return found?.pack.id ?? packId;
 }
+
+/**
+ * Сохранение пака витрины фишек (chips-admin): строки бокса (kind mystic)
+ * правит mystic.ts, а замену-бокс с DARAI/Stars ставит только админ выплат.
+ */
+export async function assertPackSaveRight(id: string | null, fallbackId?: string | null) {
+  if (id && (await pg.chipPacks.findOne({ id }))?.kind === "mystic") {
+    throw new Error("Бокс правят в окне мистических боксов");
+  }
+  const { assertPackMoneyRight } = await import("./mystic-money");
+  await assertPackMoneyRight(fallbackId);
+}

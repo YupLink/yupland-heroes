@@ -57,8 +57,8 @@ describe("planHovHero", () => {
 
 describe("ответы узла", () => {
   it("адрес из слова и строка из ABI", () => {
-    expect(wordToAddress("0x0000000000000000000000006e5aa5b9461e595bc07695a03320e2ff8f430676")).toBe(
-      "0x6e5aa5b9461e595bc07695a03320e2ff8f430676",
+    expect(wordToAddress("0x000000000000000000000000ab12cd34ef56ab12cd34ef56ab12cd34ef56ab12")).toBe(
+      "0xab12cd34ef56ab12cd34ef56ab12cd34ef56ab12",
     );
     const s =
       "0x0000000000000000000000000000000000000000000000000000000000000020" +

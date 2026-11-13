@@ -7,6 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TTL, alive, countOf, db, md5, packOf, resetDb } from "./bag.fake";
 import type { DropItem } from "./bag-deliver";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 vi.mock("@/server/db/mcpClient", async () => (await import("./bag.fake-mocks")).mcp);
 vi.mock("@/server/raidLive", async () => (await import("./bag.fake-mocks")).live);
@@ -40,7 +41,7 @@ beforeEach(() => {
   keys = [];
   db.catalog.set("cst_banana", { name: "Банан" });
   db.catalog.set("cst_milk", { name: "Молоко" });
-  // Одна ячейка рюкзака = 20 штук одного вида.
+  // Одна ячейка рюкзака = CELL_SIZE штук одного вида.
   db.heroes.set("w1", { heroId: "h1", capacity: 1, potionCapacity: 0 });
 });
 
@@ -54,9 +55,9 @@ describe("влезло — рюкзак, не влезло — мешочек", 
   });
 
   it("не влезло: часть в рюкзак, остаток мешочком на клетке — порция на 24 часа, с меткой", async () => {
-    const res = await give(25, { origin: "mob" });
-    expect(packOf("h1").get(BANANA)).toMatchObject({ count: 20, marks: { mob: 20 } });
-    expect(res).toEqual({ items: [row(20, 5)], bagId: `lb_${md5("k1")}` });
+    const res = await give(CELL_SIZE + 5, { origin: "mob" });
+    expect(packOf("h1").get(BANANA)).toMatchObject({ count: CELL_SIZE, marks: { mob: CELL_SIZE } });
+    expect(res).toEqual({ items: [row(CELL_SIZE, 5)], bagId: `lb_${md5("k1")}` });
     expect(bagOf()).toMatchObject({ q: 5, r: 7, droppedBy: "acc1", buried: false });
     expect(bagOf()?.items).toEqual([
       expect.objectContaining({ stackKey: BANANA, count: 5, expiresAt: db.now + TTL }),
@@ -79,12 +80,13 @@ describe("влезло — рюкзак, не влезло — мешочек", 
 
   it("один вид дважды (с мобов и собранный) — одна стопка: помеченное первым в рюкзак", async () => {
     const res = await deliver([
-      { itemId: "cst_banana", amount: 15, origin: "mob" },
+      { itemId: "cst_banana", amount: CELL_SIZE - 5, origin: "mob" },
       { itemId: "cst_banana", amount: 10, origin: "loot" },
     ]);
-    expect(packOf("h1").get(BANANA)).toMatchObject({ count: 20, marks: { mob: 15, loot: 5 } });
+    const marks = { mob: CELL_SIZE - 5, loot: 5 };
+    expect(packOf("h1").get(BANANA)).toMatchObject({ count: CELL_SIZE, marks });
     expect(bagOf()?.items[0]).toMatchObject({ count: 5, marks: { mob: 0, loot: 5 } });
-    expect(res.items).toEqual([row(15, 0), row(5, 5)]);
+    expect(res.items).toEqual([row(CELL_SIZE - 5, 0), row(5, 5)]);
   });
 
   it("нет выбранного героя — всё мешочком", async () => {
@@ -116,32 +118,32 @@ describe("влезло — рюкзак, не влезло — мешочек", 
 
   it("пыль округления мешочком не падает", async () => {
     db.heroes.set("w1", { heroId: "h1", capacity: 1, potionCapacity: 0 });
-    const res = await give(20.0004);
-    expect(packOf("h1").get(BANANA)?.count).toBe(20);
+    const res = await give(CELL_SIZE + 0.0004);
+    expect(packOf("h1").get(BANANA)?.count).toBe(CELL_SIZE);
     expect(db.bags.size).toBe(0);
-    expect(res.items[0]).toMatchObject({ toBackpack: 20, dropped: 0 });
+    expect(res.items[0]).toMatchObject({ toBackpack: CELL_SIZE, dropped: 0 });
   });
 });
 
 describe("гонки и повтор моста", () => {
   it("повтор моста (ответ потерян после записи): мешочек один, содержимое не удвоено", async () => {
     db.replay = 5;
-    await give(25);
+    await give(CELL_SIZE + 5);
     expect(db.bags.size).toBe(1);
     expect(countOf(bagOf(), BANANA)).toBe(5);
   });
 
   it("повтор всей выдачи тем же ключом — второй раз ничего не кладёт и не роняет", async () => {
-    await give(25);
-    await give(25);
-    expect(packOf("h1").get(BANANA)?.count).toBe(20);
+    await give(CELL_SIZE + 5);
+    await give(CELL_SIZE + 5);
+    expect(packOf("h1").get(BANANA)?.count).toBe(CELL_SIZE);
     expect(db.bags.size).toBe(1);
     expect(countOf(bagOf(), BANANA)).toBe(5);
   });
 
   it("место заняли между расчётом и записью — не легло, штуки мешочком, не пропали", async () => {
     packOf("h1").set("custom:cst_other", {
-      count: 20,
+      count: CELL_SIZE,
       marks: { mob: 0, mine: 0, field: 0, loot: 0 },
       wear: 0,
     });
@@ -185,10 +187,10 @@ describe("сбой посреди выдачи", () => {
     const res = await deliver([
       { itemId: "cst_banana", amount: 3, origin: "loot" },
       { itemId: "cst_milk", amount: 2, origin: "loot" },
-      { itemId: "cst_apple", amount: 30, origin: "loot" },
+      { itemId: "cst_apple", amount: CELL_SIZE + 10, origin: "loot" },
     ]);
     expect(packOf("h1").get(BANANA)?.count).toBe(3);
-    expect(packOf("h1").get("custom:cst_apple")?.count).toBe(30);
+    expect(packOf("h1").get("custom:cst_apple")?.count).toBe(CELL_SIZE + 10);
     expect(db.bags.size).toBe(0);
     expect(res.items.map((x) => x.itemId)).toEqual(["cst_banana", "cst_apple"]);
   });
@@ -197,19 +199,19 @@ describe("сбой посреди выдачи", () => {
 describe("мешочек не упал", () => {
   it("упал, но ответ потерян — «забор» видит мешочек: в «Добычу» не дублируем", async () => {
     db.loseOn = "drop";
-    const res = await give(25);
+    const res = await give(CELL_SIZE + 5);
     expect(countOf(bagOf(), BANANA)).toBe(5);
     expect(queued).toEqual([]);
-    expect(res.items).toEqual([row(20, 5)]);
+    expect(res.items).toEqual([row(CELL_SIZE, 5)]);
   });
 
   it("не упал (сбой базы) — надгробие, остаток ждёт в «Добыче» с меткой", async () => {
     db.failOn = ["drop"];
-    const res = await give(25, { origin: "mob" });
+    const res = await give(CELL_SIZE + 5, { origin: "mob" });
     expect(alive(bagOf())).toBe(false);
     expect(queued).toEqual([{ itemId: "cst_banana", amount: 5, origin: "mob" }]);
     expect(keys).toEqual(["k1:q0"]);
-    expect(res.items).toEqual([row(20, 0, 5)]);
+    expect(res.items).toEqual([row(CELL_SIZE, 0, 5)]);
     // Опоздавшая попытка уронить упрётся в надгробие.
     const { mcp } = await import("./bag.fake-mocks");
     const { dropSql } = (await import("./bag.fake-mocks")).bagSql;

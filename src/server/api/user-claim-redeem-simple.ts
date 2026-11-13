@@ -1,12 +1,14 @@
 import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
-import { debitClaim, refundClaim } from "./claim-ticket-debit";
+import { claimBudget, debitClaim, refundClaim } from "./claim-ticket-debit";
 import { awardNftTier } from "./claim-nft-tier";
 import { findMyDropNfts } from "./user-claim-simple-inventory";
 import { normalizeTitle } from "@/lib/normalizeTitle";
-import { computeTickets, invalidateTicketsCache } from "./user-claims-tickets";
+import { invalidateTicketsCache } from "./user-claims-tickets";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import { getSisterWallets } from "./user-claims-core";
 import { creditDropEnergy } from "./user-claims-energy";
+import { creditDropGoods } from "./user-claims-goods";
 import { parseRewardTiers, pickWeightedReward, rollReward } from "../random";
 type DropRow = {
   id: string;
@@ -47,18 +49,11 @@ export async function processSimpleDrop(
   let capped = false;
   const simpleTicketCost = drop.ticket_cost ?? 1;
   // Бесплатный дроп ничего не стоит: в redemptions цена пишется для истории,
-  // но списывать по ней НЕЛЬЗЯ (иначе бесплатный клейм съедает билеты).
+  // но списывать по ней НЕЛЬЗЯ (иначе бесплатный клейм съедает золото).
+  // Цена в билетах, платится золотом ×500 (§8.61, claim-ticket-debit).
   const simpleTicketDebit = drop.free_claim ? 0 : simpleTicketCost;
   if (!drop.free_claim) {
-    const tickets = await computeTickets(wallet);
-    if (tickets.available < simpleTicketCost) {
-      throw new Error(
-        simpleTicketCost === 1
-          ? "Нет доступных клеймов. Пригласи друга или купи билеты."
-          : `Нужно ${simpleTicketCost} билетов за клейм, у тебя ${tickets.available}.`
-      );
-    }
-    const maxAffordable = Math.floor(tickets.available / simpleTicketCost);
+    const maxAffordable = await claimBudget(wallet, simpleTicketCost);
     if (maxAffordable < ready.length) {
       budget = maxAffordable;
       capped = true;
@@ -152,6 +147,18 @@ export async function processSimpleDrop(
       }
       continue;
     }
+    if (picked && picked.tier?.kind === "custom") {
+      // Товар — в «Подарки» аккаунта (user-claims-goods); в итоге — «+N Имя».
+      try {
+        const g = await creditDropGoods({ wallet: it.owner_id ?? wallet, campaign: drop, tokenId: it.token_id, tier: picked.tier, amount: picked.amount, ticketCost: simpleTicketDebit });
+        claimed++;
+        amountByToken[g.name] = (amountByToken[g.name] ?? 0) + g.qty;
+        claimedTokenIds.push(it.token_id);
+      } catch (err) {
+        console.warn("[simple] goods grant failed:", err);
+      }
+      continue;
+    }
     if (picked && picked.tier?.kind === "energy") {
       try {
         const credited = await creditDropEnergy({
@@ -201,20 +208,11 @@ export async function processSimpleDrop(
         ticket_cost: simpleTicketCost,
         redeemed_at: nowIso,
       });
-      // Платный розыгрыш: списываем в леджер (ref — id участия).
-      if (simpleTicketDebit > 0) {
-        const { moveTickets } = await import("./tickets-ledger");
-        // Не хватило билетов — заявка на выплату не должна остаться.
-        const paid = await moveTickets({
-          wallet: it.owner_id ?? wallet,
-          delta: -simpleTicketDebit,
-          kind: "redemption",
-          ref: `redeem:${redId}`,
-        }).catch(() => ({ applied: false }) as { applied: boolean });
-        if (!paid.applied) {
-          await pg.redemptions.delete({ id: redId }).catch(() => undefined);
-          continue;
-        }
+      // Платный розыгрыш: списываем золото (ref — id участия). Не хватило —
+      // заявка на выплату не должна остаться.
+      if (!(await debitClaim({ wallet: it.owner_id ?? wallet, cost: simpleTicketDebit, ref: `redeem:${redId}` }))) {
+        await pg.redemptions.delete({ id: redId }).catch(() => undefined);
+        continue;
       }
       claimed++;
       totalAmount += reward;
@@ -232,6 +230,7 @@ export async function processSimpleDrop(
   invalidateTicketsCache(await getSisterWallets(wallet));
   const ticketsSpent = drop.free_claim ? 0 : claimed * (drop.ticket_cost ?? 1);
   return {
+    goldSpent: drop.free_claim ? 0 : claimed * goldForTicketPrice(simpleTicketCost),
     claimed,
     totalAmount,
     amountByToken,

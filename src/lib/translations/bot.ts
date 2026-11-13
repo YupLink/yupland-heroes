@@ -5,7 +5,6 @@ type Entry = Record<Lang, string>;
 // Часть src/lib/translations.ts — разбита на субдомены.
 // Импортируется через src/lib/translations/index.ts
 export const dict: Record<string, Entry> = {
-
   // ── восстановлено после декомпозиции (потерялись при разбиении) ──
   "bot.link_expired": {
     ru: "Срок ссылки истёк. Создай новую на сайте.",
@@ -43,13 +42,27 @@ export const dict: Record<string, Entry> = {
     ru: "К этому кошельку уже привязан другой Telegram. Привязка постоянная.",
     en: "This wallet is already linked to another Telegram. The link is permanent.",
   },
+  // Игровой бот @yupland_heroes_bot: /start и /app — кнопка в игру.
+  "bot.game_welcome": {
+    ru: "⚔️ <b>YupLand Heroes</b>\n\nОткрой игру кнопкой ниже или кнопкой меню рядом с полем ввода 👇",
+    en: "⚔️ <b>YupLand Heroes</b>\n\nOpen the game with the button below or the menu button next to the input field 👇",
+  },
+  // Пришёл по реф-ссылке (/start ref<id>): кто позвал и подарок (lib/referralShare.ts).
+  "bot.game_welcome_ref": {
+    ru: "⚔️ <b>YupLand Heroes</b>\n\nТебя пригласил {who}. Подарок уже ждёт: свой герой — выбери любую из шести рас 🎁\n\nЖми «Играть» 👇",
+    en: "⚔️ <b>YupLand Heroes</b>\n\nYou were invited by {who}. A gift awaits: your own hero — pick any of six races 🎁\n\nTap “Play” 👇",
+  },
+  "bot.game_play": {
+    ru: "🎮 Играть",
+    en: "🎮 Play",
+  },
   "bot.welcome": {
-    ru: "Привет! Это <b>YupLink</b>.\n\nПодключи NEAR-кошелёк и погашай свои NFT за бонус-токены или собирай комбо для билетов.\n\nОткрой приложение кнопкой ниже или иконкой меню рядом с полем ввода 👇",
-    en: "Hi! This is <b>YupLink</b>.\n\nConnect a NEAR wallet and redeem your NFTs for bonus tokens, or collect combos for tickets.\n\nOpen the app with the button below or the menu icon next to the input field 👇",
+    ru: "Привет! Это <b>YupLink</b>.\n\nПодключи NEAR-кошелёк и погашай свои NFT за бонус-токены или собирай комбо за золото.\n\nОткрой приложение кнопкой ниже или иконкой меню рядом с полем ввода 👇",
+    en: "Hi! This is <b>YupLink</b>.\n\nConnect a NEAR wallet and redeem your NFTs for bonus tokens, or collect combos for gold.\n\nOpen the app with the button below or the menu icon next to the input field 👇",
   },
   "bot.welcome_ref": {
-    ru: "Привет! Это <b>YupLink</b>.\n\nТы пришёл по приглашению друга. Открой приложение — после подключения кошелька и привязки Telegram твой друг получит +1 билет за тебя (тиерная система).\n\nЖми кнопку ниже 👇",
-    en: "Hi! This is <b>YupLink</b>.\n\nYou came via a friend's invite. Open the app — once you connect a wallet and link Telegram, your friend gets +1 ticket for you (tiered system).\n\nTap the button below 👇",
+    ru: "Привет! Это <b>YupLink</b>.\n\nТы пришёл по приглашению друга. Открой приложение — после подключения кошелька и привязки Telegram твой друг получит 100 золота за тебя (тиерная система).\n\nЖми кнопку ниже 👇",
+    en: "Hi! This is <b>YupLink</b>.\n\nYou came via a friend's invite. Open the app — once you connect a wallet and link Telegram, your friend gets 100 gold for you (tiered system).\n\nTap the button below 👇",
   },
 
   // ── Начисление предметов игроку (пакетная выдача из админки) ──
@@ -76,6 +89,21 @@ export const dict: Record<string, Entry> = {
   "bot.gift_title": {
     ru: "🎁 Тебе пришёл подарок",
     en: "🎁 A gift is waiting for you",
+  },
+  // Начисление по подписке (владелец 25.10.2026): не «подарок», и забрать — день в день.
+  "bot.esub_title": {
+    ru: "⚡ Начисление по подписке «{tier}»",
+    en: "⚡ “{tier}” subscription accrual",
+  },
+  "bot.esub_footer": { ru: "Забрать можно только сегодня 👇", en: "Claim it today only 👇" },
+  // Рефка золотом (§8.101): ночное начисление пригласившему
+  "bot.ref_gold_title": {
+    ru: "🤝 С покупок друзей: +{gold} золота",
+    en: "🤝 From your friends' purchases: +{gold} gold",
+  },
+  "bot.ref_gold_footer": {
+    ru: "Обменять на DARAI без лимита можно до {date} 👇",
+    en: "You can swap it to DARAI with no limit until {date} 👇",
   },
   // Письмо короткое намеренно: что именно дали, игрок увидит в самом окне
   // подарка. Перечислять содержимое в боте — лишний шум.

@@ -38,22 +38,22 @@ type Table = {
 
 export function maxHouseQuantity(
   pack: HouseProduct,
-  method: "tickets" | "darai" | "stars",
+  method: "gold" | "darai" | "stars",
   now = Date.now(),
 ): number {
   if (pack.startsAt && Date.parse(pack.startsAt) > now) return 0;
   if (pack.endsAt && Date.parse(pack.endsAt) <= now) return 0;
   const price =
-    method === "tickets"
+    method === "gold"
       ? pack.priceTickets
       : method === "stars"
         ? pack.priceStars
         : pack.priceDarai;
   if (price == null || !Number.isFinite(price) || price < 0) return 0;
   const stock = pack.totalSupply == null ? 50 : Math.max(0, pack.totalSupply - pack.soldCount);
-  // Серверный дневной лимит относится только к оплате билетами.
+  // Серверный дневной лимит относится только к оплате золотом (бывшие билеты).
   const daily =
-    method === "tickets" && pack.dailyLimit > 0
+    method === "gold" && pack.dailyLimit > 0
       ? Math.max(0, pack.dailyLimit - pack.dailyUsedToday)
       : 50;
   return Math.min(50, stock, daily);

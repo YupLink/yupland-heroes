@@ -18,6 +18,7 @@ import { z } from "zod";
 import { pg } from "../db/pg";
 import { mcpExec } from "../db/mcpClient";
 import { requireAdmin } from "../auth";
+import { assertBossTemplateFree, requireCatalogEditor } from "./catalog-auth";
 import { sqlStr } from "./raid-shared";
 import { customCellSql, dropPlainCopiesSql, stampSnapshotSql } from "./beta-raid/boss-snapshot";
 import { readDaraiHold, settleDaraiHold } from "./beta-raid/map-darai-hold";
@@ -95,8 +96,13 @@ export const adminDeleteBossTemplate = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    const actor = await requireCatalogEditor();
     const copies = await loadCopies(data.id);
+    // Не админ: босс без денег в наградах и нигде не стоит — копии на чужих картах не трогает.
+    if (!actor.money) {
+      await assertBossTemplateFree(actor, data.id);
+      if (copies.length > 0) throw new Error("Босс стоит на картах — удаляет только админ");
+    }
     const plain = copies.filter((c) => !c.custom);
     const custom = copies.length - plain.length;
 

@@ -12,7 +12,8 @@ import { z } from "zod";
 import { requireBetaRaid } from "./gate";
 import { myMapId } from "./encounter-where";
 import { accAccountId } from "../currency/move";
-import { OWN_CELLS, SHARED_CELLS, occupiedCells } from "@/lib/warehouseCells";
+import { ownCellsOf } from "./account-upgrade";
+import { SHARED_CELLS, occupiedCells } from "@/lib/warehouseCells";
 import { loadSlots, toStack, warehouseAt } from "./warehouse-store";
 import { resolveBackpack } from "./market-backpack";
 import { settleFieldsForWarehouse } from "./field-settle";
@@ -38,9 +39,10 @@ export const getWarehouse = createServerFn({ method: "GET" })
     // дробный остаток игрока, чтобы показать, что урожай идёт (сбор — целыми).
     const pending = await settleFieldsForWarehouse(mapId, data.q, data.r, account).catch(() => []);
 
-    const [slots, bp] = await Promise.all([
+    const [slots, bp, ownCells] = await Promise.all([
       loadSlots(mapId, data.q, data.r, account),
       resolveBackpack(wallet).catch(() => null),
+      ownCellsOf(account),
     ]);
     const own = slots.filter((s) => s.scope === "own").map(toStack);
     const shared = slots.filter((s) => s.scope === "shared").map(toStack);
@@ -51,7 +53,8 @@ export const getWarehouse = createServerFn({ method: "GET" })
 
     return {
       name: b.name,
-      ownCells: OWN_CELLS,
+      // Личных — 2 + улучшения игрока за алмаз (lib/accountUpgrade).
+      ownCells,
       sharedCells: SHARED_CELLS,
       ownUsed: occupiedCells(own.map((s) => s.count)),
       sharedUsed: occupiedCells(shared.map((s) => s.count)),
@@ -86,7 +89,13 @@ export const storeToWarehouse = createServerFn({ method: "POST" })
     return putToShelf({
       wallet,
       account,
-      at: { mapId, q: data.q, r: data.r, ownCells: OWN_CELLS, sharedCells: SHARED_CELLS },
+      at: {
+        mapId,
+        q: data.q,
+        r: data.r,
+        ownCells: await ownCellsOf(account),
+        sharedCells: SHARED_CELLS,
+      },
       stackKey: data.stackKey,
       asked: data.qty,
       scope: data.scope ?? "auto",

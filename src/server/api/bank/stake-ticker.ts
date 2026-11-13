@@ -53,15 +53,18 @@ async function releaseDue(): Promise<void> {
       ORDER BY release_at LIMIT 20;`,
     { wrapJson: true },
   )) ?? []) as Array<{ id: string }>;
+  // По строке: одна отказавшая (например, триггер google_no_withdraw, §8.91) не
+  // держит выпуск остальных — раньше весь обход падал на первой же.
   for (const r of due)
     await mcpExec(`SELECT yuplink.holder_withdraw_release(${sqlStr(r.id)}) AS ok;`, {
       wrapJson: true,
-    });
+    }).catch(warn(`выпуск ${r.id}`));
   const unbooked = ((await mcpExec(
     `SELECT id, fee FROM yuplink.holder_withdraw WHERE status = 'released' AND NOT booked ORDER BY released_at LIMIT 20;`,
     { wrapJson: true },
   )) ?? []) as Array<{ id: string; fee: number | string }>;
-  for (const r of unbooked) await mcpExec(holderFeeSql({ id: r.id, fee: Number(r.fee) }));
+  for (const r of unbooked)
+    await mcpExec(holderFeeSql({ id: r.id, fee: Number(r.fee) })).catch(warn(`комиссия ${r.id}`));
   if (unbooked.length > 0) await runBuyback();
 }
 

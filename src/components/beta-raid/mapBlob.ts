@@ -42,9 +42,31 @@ export function mapFromBlob(bytes: ArrayBuffer): MapDataV | null {
   };
 }
 
-/** Снимок с сервера: тело + версия из заголовка. 304 — «у тебя актуальная». */
+/**
+ * В снимке есть список шахт (lists.mines, сборка g3+; пустой массив — тоже
+ * список). Поля нет вовсе — снимок старой сборки: при раскатке ответил ещё не
+ * сменённый рабочий или браузер дополнил 304 своим кэшем. Такой снимок водил
+ * бы героя сквозь шахты — в кэш устройства его не кладём (useMapProgressive).
+ */
+export const hasMinesList = (data: MapDataV): boolean => Array.isArray(data.packed?.mines);
+
+/**
+ * В снимке есть список жил (lists.veins, сборка g4+; пустой — тоже список).
+ * Нет — старая сборка или база ещё без таблицы жил (server vein-cells).
+ */
+export const hasVeinsList = (data: MapDataV): boolean => Array.isArray(data.packed?.veins);
+
+/** Снимок нынешней сборки: только такой кладём в кэш устройства и берём из него. */
+export const isCurrentBuild = (data: MapDataV): boolean => hasMinesList(data) && hasVeinsList(data);
+
+/**
+ * Снимок с сервера: тело + версия из заголовка. 304 — «у тебя актуальная».
+ * fresh — мимо HTTP-кэша браузера: без своего If-None-Match и без подмены 304
+ * телом из кэша (повтор за снимком старой сборки).
+ */
 export async function fetchMapBlob(
   etag?: string | null,
+  opts?: { fresh?: boolean },
 ): Promise<
   | { status: "fresh"; bytes: ArrayBuffer; revision: number }
   | { status: "same" }
@@ -53,6 +75,7 @@ export async function fetchMapBlob(
   const res = await fetch("/api/beta-raid/map-blob", {
     headers: etag ? { "if-none-match": etag } : {},
     credentials: "same-origin",
+    ...(opts?.fresh ? { cache: "no-store" as const } : {}),
   });
   if (res.status === 304) return { status: "same" };
   if (!res.ok) return { status: "error", code: res.status };

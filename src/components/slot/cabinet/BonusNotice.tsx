@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { asset, num, text, vars, type SceneProps } from "./shared";
 import { Finds } from "./Finds";
+import { NOTICE_YUPIK, warmArtwork } from "./bonusArtwork";
+import "./bonus-notice.css";
 
 export function BonusNotice({ act, ru, acting }: SceneProps) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -8,18 +10,12 @@ export function BonusNotice({ act, ru, acting }: SceneProps) {
     dialog.current?.showModal();
     return () => dialog.current?.close();
   }, []);
-  useEffect(() => {
-    // Warm only the next scene while the announcement is on screen.
-    for (const name of [
-      "bonus-dig-clean-2026-10-16.webp",
-      "dig-mounds-atlas-2026-10-16.webp",
-      "yupik-dig-actions-2026-10-16.webp",
-    ]) {
-      const image = new Image();
-      image.src = asset(name);
-      void image.decode().catch(() => {});
-    }
-  }, []);
+  useEffect(() => warmArtwork([
+    "bonus-dig-clean-2026-10-16.webp",
+    "dig-mounds-atlas-2026-10-16-lite-v1.webp",
+    "yupik-dig-actions-2026-10-16-lite-v1.webp",
+    "bonus-caves-2026-10-12.webp?v=20261020",
+  ], 1600), []);
   return (
     <dialog
       ref={dialog}
@@ -47,7 +43,8 @@ export function BonusNotice({ act, ru, acting }: SceneProps) {
         </h2>
         <div className="bonus-intro-yupiks" aria-hidden="true">
           {[0, 1, 2].map((i) => (
-            <img key={i} src={asset("yupik-shovel.webp")} alt="" />
+            <img key={i} src={asset(NOTICE_YUPIK)} alt=""
+              width={599} height={656} decoding="async" fetchPriority="high" />
           ))}
         </div>
         <p className="bonus-intro-copy">
@@ -90,3 +87,4 @@ export function BonusEnd({ state, act, ru, acting }: SceneProps) {
     </section>
   );
 }
+

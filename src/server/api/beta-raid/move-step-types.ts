@@ -9,7 +9,17 @@ import type { ObjectInfo } from "./step-object";
  * и сажать в него значило бы списать энергию за путь, который оборвётся на
  * первой клетке океана (жалоба 03.10).
  */
-export type StepTo = { q: number; r: number; big?: boolean };
+export type StepTo = {
+  q: number;
+  r: number;
+  big?: boolean;
+  /**
+   * Лестница (§8.121): шаг через одну клетку по прямой над непроходимой
+   * (вода, преграда) на свободную; лестница из рюкзака этого героя
+   * списывается тем же оператором, что шаг (move-step-sql).
+   */
+  ladder?: { heroId: string };
+};
 
 export type StepResult = {
   success: true;

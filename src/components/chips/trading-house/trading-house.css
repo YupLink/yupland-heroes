@@ -1,5 +1,5 @@
-@font-face{font-family:'Preview Russo';src:url('../../../assets/tavern/RussoOne.ttf') format('truetype');font-weight:400;font-display:swap}
-@font-face{font-family:'Preview Golos';src:url('../../../assets/tavern/GolosText.ttf') format('truetype');font-weight:400 900;font-display:swap}
+@font-face{font-family:'Preview Russo';src:url('../../../assets/tavern/RussoOne.woff2') format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:'Preview Golos';src:url('../../../assets/tavern/GolosText.woff2') format("woff2");font-weight:400 900;font-display:swap}
 .trading-house-window-scroll{padding:0!important;background:#14100d;scrollbar-width:thin}
 [data-trading-house-window] > header{display:none}
 [data-trading-house-window] > div{padding:0!important;background:#14100d}

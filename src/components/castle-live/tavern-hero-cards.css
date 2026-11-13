@@ -325,10 +325,13 @@ section:has(>.castle-location-nav) .market-preview__basket{bottom:calc(52px + en
 [data-tavern-style] [data-compact-rarity] { color:var(--hero-rarity,#afb8c4); }
 [data-tavern-style] [data-tavern-card-art-wrap] { position:relative;display:block;min-width:0;aspect-ratio:1; }
 [data-tavern-style] [data-tavern-card-art-wrap] [data-tavern-card-art] { width:100%;height:100%; }
-[data-tavern-style] [data-tavern-card-busy-hit] { position:absolute;z-index:5;top:-15px;left:-15px;display:grid;place-items:center;width:40px;height:40px;cursor:pointer; }
+[data-tavern-style] [data-tavern-card-busy-hit] { position:absolute;z-index:5;top:-15px;left:-15px;display:grid;place-items:center;width:40px;height:40px; }
+[data-tavern-style] [data-tavern-card-busy-toggle] { display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;background:transparent;cursor:pointer; }
+[data-tavern-style] [data-tavern-card-busy-toggle]:focus-visible,[data-tavern-style] [data-tavern-card-busy-tip] button:focus-visible { outline:2px solid #ffd32e;outline-offset:2px; }
 [data-tavern-style] [data-tavern-card-busy-icon] { display:grid;place-items:center;width:30px;height:30px;border:1px solid #c9a768;border-radius:8px 8px 5px 8px;background:linear-gradient(160deg,#283e35,#111b1a);box-shadow:0 2px 0 #0b1011,0 3px 8px #000c,inset 0 1px #ffffff2b;transform:rotate(-8deg); }
 [data-tavern-style] [data-tavern-card-busy-icon] img { width:26px;height:26px;object-fit:contain;image-rendering:pixelated;transform:rotate(8deg); }
-[data-tavern-style] [data-tavern-card-busy-tip] { position:absolute;z-index:6;top:29px;left:27px;padding:5px 8px;border:1px solid #c9a768;border-radius:6px;background:#101819;color:#f1e9d6;box-shadow:0 4px 12px #000c;font:400 12px/1.1 var(--font-display);white-space:nowrap;pointer-events:none; }
+[data-tavern-style] [data-tavern-card-busy-tip] { position:absolute;z-index:6;top:29px;left:27px;display:grid;gap:2px;min-width:114px;padding:5px 8px;border:1px solid #c9a768;border-radius:6px;background:#111415;color:#f1e9d6;box-shadow:0 4px 12px #000c;font:400 12px/1.1 var(--font-display);white-space:nowrap; }
+[data-tavern-style] [data-tavern-card-busy-tip] button { display:flex;align-items:center;gap:5px;min-height:44px;padding:4px 0;border:0;background:transparent;color:#e9c573;font:400 12px/1.1 var(--font-sans);text-align:left;text-decoration:underline;text-underline-offset:3px;cursor:pointer; }
 [data-tavern-style] [data-compact-chevron] { color:#e4c47c; }
 
 /* Hero detail uses the same dark stone and gold hierarchy as the reference. */
@@ -362,8 +365,8 @@ section:has(>.castle-location-nav) .market-preview__basket{bottom:calc(52px + en
 @media(max-width:359px){[data-tavern-style] [data-other-heroes-grid]{gap:5px}[data-tavern-style] [data-other-heroes-grid] [data-compact-hero]{grid-template-columns:45px minmax(0,1fr) 12px;gap:4px;padding:4px}[data-tavern-style] [data-other-heroes-grid] [data-tavern-card-text]>small{font-size:9px}}
 
 section[data-tavern-style]:has([data-tavern-detail]) > header { display:none; }
-section[data-tavern-style]:has([data-tavern-artifacts-page]) > header { display:none; }
-section[data-tavern-style]:has([data-tavern-artifacts-page]) > div:last-child:not(:has([data-tavern-immersive])) { padding-top:0; }
+section[data-tavern-style]:not([data-armory-preview]):not(:has([data-armory-preview])):has([data-tavern-artifacts-page]) > header { display:none; }
+section[data-tavern-style]:not([data-armory-preview]):not(:has([data-armory-preview])):has([data-tavern-artifacts-page]) > div:last-child:not(:has([data-tavern-immersive])) { padding-top:0; }
 [data-tavern-style] [data-hero-screen=gear] [data-gear-slot] > span[class~="h-6"],
 [data-tavern-style] [data-hero-screen=gear] [data-gear-slot] > span[class~="h-7"] { width:76%;height:65%;flex-shrink:1; }
 [data-tavern-style] [data-tavern-artifacts-page] { min-height:100dvh;padding-top:12px;background:#080c11; }
@@ -496,7 +499,7 @@ section[data-tavern-style]:has([data-tavern-artifacts-page]) > div:last-child:no
 [data-tavern-style] [data-hero-screen=gear] [data-gear-slot] > span.absolute.-right-1.-top-1 { top:-8px;right:-5px;z-index:5;min-width:29px;height:20px;padding:0 5px;display:grid;place-items:center;border:1px solid #0b1017;border-radius:6px;background:var(--gold,#f2c02a);color:#11151a;line-height:1;box-shadow:0 2px 4px #000a; }
 
 /* Approved artifact gallery and comparison sheet. */
-section[data-tavern-style]:has([data-tavern-artifacts-page]) > div:last-child:not(:has([data-tavern-immersive])) { padding:0 0 max(12px,env(safe-area-inset-bottom));background:radial-gradient(ellipse 85% 48% at 100% 34%,#7046152f,transparent 72%),linear-gradient(180deg,#10161d 0%,#080c11 45%); }
+section[data-tavern-style]:not([data-armory-preview]):not(:has([data-armory-preview])):has([data-tavern-artifacts-page]) > div:last-child:not(:has([data-tavern-immersive])) { padding:0 0 max(12px,env(safe-area-inset-bottom));background:radial-gradient(ellipse 85% 48% at 100% 34%,#7046152f,transparent 72%),linear-gradient(180deg,#10161d 0%,#080c11 45%); }
 [data-tavern-style] [data-tavern-artifacts-page] { position:relative;min-height:100dvh;padding-top:4px;background:transparent; }
 [data-tavern-style] [data-tavern-artifacts-page]::before { position:absolute;inset:0 0 auto;height:120px;background:url('/design-assets/gear-scene-png-optimized.webp') center top / 520px auto no-repeat;opacity:.52;mask-image:linear-gradient(#000 0%,transparent 100%);pointer-events:none;content:""; }
 [data-tavern-style] [data-tavern-artifacts-page] > * { position:relative; }

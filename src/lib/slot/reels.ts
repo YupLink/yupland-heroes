@@ -6,12 +6,13 @@
 // выигрыш хоть что-то — 44 % спинов (было 38 %), меньше ставки — 33 % (было 13 %);
 // ни один символ не больше 39 % барабана. Удвоение честное (risk.ts): умный игрок
 // умножает выигрыш линий в 1,969 раза (кроме спинов с бонусом — их не удвоить) —
-// у него автомат 90,0 %, у остальных меньше.
+// у него автомат 90,0 %, у остальных меньше. С 28.10 это ступень 0 динамических
+// барабанов: у каждого игрока отдача тянется к 90 % (reelLevel.ts).
 // Сверять rtp.test.ts.
 import { REELS, ROWS } from "./lines";
 import type { Grid, Rng, SymbolId } from "./types";
 
-type Weights = Record<SymbolId, number>;
+export type Weights = Record<SymbolId, number>;
 
 const W1: Weights = {
   bar1: 236,
@@ -83,12 +84,12 @@ function pick(weights: Weights, rng: Rng): SymbolId {
   return ids[ids.length - 1];
 }
 
-/** Случайный экран 5×3. */
-export function rollGrid(rng: Rng = Math.random): Grid {
+/** Случайный экран 5×3. `weights` — ступень динамических барабанов (reelLevel.ts). */
+export function rollGrid(rng: Rng = Math.random, weights: Weights[] = REEL_WEIGHTS): Grid {
   const grid: Grid = [];
   for (let reel = 0; reel < REELS; reel++) {
     const col: SymbolId[] = [];
-    for (let row = 0; row < ROWS; row++) col.push(pick(REEL_WEIGHTS[reel], rng));
+    for (let row = 0; row < ROWS; row++) col.push(pick(weights[reel], rng));
     grid.push(col);
   }
   return grid;

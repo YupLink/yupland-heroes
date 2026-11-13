@@ -35,7 +35,14 @@ export const dict: Record<string, Entry> = {
   "spell.already_on_ship": { ru: "Ты уже на корабле", en: "You are already aboard" },
   "spell.no_ship": { ru: "Свободных кораблей нет", en: "No free ships left" },
   "spell.no_water_near": { ru: "Рядом нет воды", en: "No water nearby" },
-  "spell.no_ship_to_repair": { ru: "Рядом нет корабля для ремонта", en: "No ship to repair nearby" },
+  "spell.ocean_small": {
+    ru: "Рядом только океан — малый корабль туда не спустить",
+    en: "Only ocean nearby — a small ship can't be launched there",
+  },
+  "spell.no_ship_to_repair": {
+    ru: "Рядом нет корабля для ремонта",
+    en: "No ship to repair nearby",
+  },
   "spell.ship_already_near": {
     ru: "Свободный корабль и так рядом",
     en: "A free ship is already next to you",
@@ -83,6 +90,10 @@ export const dict: Record<string, Entry> = {
     ru: "Призывает ближайший свободный корабль к герою",
     en: "Summons the nearest free ship to the hero",
   },
+  "braid.spell_gift_big_ship_create": {
+    ru: "Спускает большой корабль на воду рядом с героем, и в океан тоже",
+    en: "Launches a big ship next to the hero, ocean included",
+  },
   "braid.spell_gift_ship_create": {
     ru: "Спускает новый корабль на воду рядом с героем",
     en: "Launches a new ship on the water next to the hero",
@@ -105,6 +116,10 @@ export const dict: Record<string, Entry> = {
   "braid.spell_done": { ru: "{name}: {line}", en: "{name}: {line}" },
   "braid.spell_done_plain": { ru: "{name} прочитано", en: "{name} cast" },
   "braid.spell_done_ship": { ru: "{name}: корабль подошёл", en: "{name}: a ship has arrived" },
+  "braid.spell_done_big_ship_create": {
+    ru: "{name}: большой корабль спущен на воду рядом с тобой",
+    en: "{name}: a big ship has been launched next to you",
+  },
   "braid.spell_done_ship_create": {
     ru: "{name}: корабль спущен на воду рядом с тобой",
     en: "{name}: a ship has been launched next to you",

@@ -17,8 +17,9 @@
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { raidOwner } from "./owner";
-import { WATER_SQL, OCEAN_SQL } from "./cell-sql";
+import { WATER_SQL, OCEAN_SQL, bridgeCellSql } from "./cell-sql";
 import { freeWaterAround } from "./ships";
+import { blastedHereSql } from "./ship-blasted";
 import { nearestLand } from "./ship-rescue";
 import { chargeShipHp, releaseShip, seatOnShip, type MyShip } from "./ship-crew";
 import { SHIP_ASHORE_HP, SHIP_BOARD_HP } from "@/lib/shipHealth";
@@ -42,7 +43,8 @@ export async function portalShipContext(
                               JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
                              WHERE c.map_id = ${sqlStr(mapId)}
                                AND c.q = ${exit.q} AND c.r = ${exit.r}
-                               AND ${WATER_SQL}) AS water) ex
+                               AND ${WATER_SQL}
+                               AND NOT ${bridgeCellSql("c")}) AS water) ex
        LEFT JOIN LATERAL (
             SELECT id, q, r, kind FROM yuplink.beta_raid_ship
              WHERE crew_account = ${acc} AND map_id = ${sqlStr(mapId)}
@@ -64,13 +66,16 @@ export async function portalShipContext(
 /**
  * Клетка годится этому судну: вода, малому — не океан. Другие суда на ней не
  * мешают — прежнее «свободна от других» высаживало капитана на берег и
- * бросало его корабль у входа, стоило у выхода стоять чужому борту.
+ * бросало его корабль у входа, стоило у выхода стоять чужому борту. Мешает только
+ * подбитый (dynamite-08): его клетка занята — тогда высадка, как с океаном у малого.
  */
 const berthSql = (mapId: string, q: number, r: number, kind: "small" | "big") =>
   `EXISTS (SELECT 1 FROM yuplink.raid_map_cells c
              JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
             WHERE c.map_id = ${sqlStr(mapId)} AND c.q = ${q} AND c.r = ${r}
-              AND ${WATER_SQL} ${kind === "small" ? `AND NOT ${OCEAN_SQL}` : ""})`;
+              AND ${WATER_SQL} AND NOT ${bridgeCellSql("c")}
+              ${kind === "small" ? `AND NOT ${OCEAN_SQL}` : ""}
+              AND NOT ${blastedHereSql("c")})`;
 
 /**
  * Переход с судном. Позиция игрока и переезд судна пишутся ОДНИМ оператором:

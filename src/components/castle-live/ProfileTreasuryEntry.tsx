@@ -2,10 +2,13 @@
 // отдельной постройки Казны в замке больше нет, вход — отсюда.
 import { ChevronRight, Landmark } from "lucide-react";
 import { useAccountBalances } from "@/lib/hooks/useAccountBalances";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
 export function ProfileTreasuryEntry({ ru, onOpen }: { ru: boolean; onOpen: () => void }) {
   const balances = useAccountBalances();
-  const stars = balances.data?.balances.find((b) => b.token.toLowerCase() === "stars")?.balance;
+  // Звёзды — только аккаунту с настоящим Telegram (§8.127).
+  const starsOn = useEntryRules().stars;
+  const stars = starsOn ? balances.data?.balances.find((b) => b.token.toLowerCase() === "stars")?.balance : undefined;
   return (
     <button
       type="button"
@@ -16,7 +19,7 @@ export function ProfileTreasuryEntry({ ru, onOpen }: { ru: boolean; onOpen: () =
       <span className="flex-1">
         <span className="block font-semibold">{ru ? "Казна" : "Treasury"}</span>
         <span className="block text-xs text-muted-foreground">
-          {ru ? "Звёзды и монеты" : "Stars and coins"}
+          {starsOn ? (ru ? "Звёзды и монеты" : "Stars and coins") : ru ? "Монеты" : "Coins"}
           {stars != null && ` · ★ ${stars.toLocaleString(ru ? "ru-RU" : "en-US")}`}
         </span>
       </span>

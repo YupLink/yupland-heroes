@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
 import type { PgChipPack } from "../db/pg";
 import { requireAdmin } from "../auth";
+import { assertPackMoneyRight } from "./mystic-money";
 
 /**
  * Удалить бокс-конфиг. Защита: если по этому боксу есть НЕоткрытые гранты
@@ -42,6 +43,8 @@ export const adminDuplicateMysticPack = createServerFn({ method: "POST" })
     requireAdmin();
     const src = (await pg.chipPacks.findOne({ id: data.id })) as PgChipPack | null;
     if (!src || src.kind !== "mystic") throw new Error("Бокс не найден");
+    // Копия бокса с DARAI/Stars — новый денежный бокс: только админ выплат.
+    await assertPackMoneyRight(src.id);
     const id = `cp_${nanoid(10)}`;
     const now = new Date().toISOString();
     const wallet = requireAdmin();

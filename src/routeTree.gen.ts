@@ -9,175 +9,115 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WalletRouteImport } from './routes/wallet'
-import { Route as StorageRouteImport } from './routes/storage'
-import { Route as SlotRouteImport } from './routes/slot'
-import { Route as ScreensRouteImport } from './routes/screens'
-import { Route as RoadmapRouteImport } from './routes/roadmap'
-import { Route as ReferralsRouteImport } from './routes/referrals'
-import { Route as RaidHexmapRouteImport } from './routes/raid-hexmap'
-import { Route as MyNftsRouteImport } from './routes/my-nfts'
-import { Route as LookupRouteImport } from './routes/lookup'
-import { Route as JoinRouteImport } from './routes/join'
-import { Route as HomeRouteImport } from './routes/home'
-import { Route as HallwayRouteImport } from './routes/hallway'
-import { Route as EquipRouteImport } from './routes/equip'
-import { Route as ChipsRouteImport } from './routes/chips'
-import { Route as CastleEditorRouteImport } from './routes/castle-editor'
-import { Route as BurnRouteImport } from './routes/burn'
-import { Route as BetaRaidRouteImport } from './routes/beta-raid'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as BetaRaidRouteImport } from './routes/beta-raid'
+import { Route as BurnRouteImport } from './routes/burn'
+import { Route as CastleEditorRouteImport } from './routes/castle-editor'
+import { Route as ChipsRouteImport } from './routes/chips'
+import { Route as CrownRouteImport } from './routes/crown'
+import { Route as EquipRouteImport } from './routes/equip'
+import { Route as HallwayRouteImport } from './routes/hallway'
+import { Route as HomeRouteImport } from './routes/home'
+import { Route as JoinRouteImport } from './routes/join'
+import { Route as LookupRouteImport } from './routes/lookup'
+import { Route as MyNftsRouteImport } from './routes/my-nfts'
+import { Route as NewspaperEditorRouteImport } from './routes/newspaper-editor'
+import { Route as PortalCheckRouteImport } from './routes/portal-check'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RaidHexmapRouteImport } from './routes/raid-hexmap'
+import { Route as ReferralsRouteImport } from './routes/referrals'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as ScreensRouteImport } from './routes/screens'
+import { Route as SlotRouteImport } from './routes/slot'
+import { Route as StorageRouteImport } from './routes/storage'
+import { Route as VestnikRouteImport } from './routes/vestnik'
+import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as WalletSignMessageRouteImport } from './routes/wallet.sign-message'
-import { Route as WalletSignRouteImport } from './routes/wallet.sign'
-import { Route as WalletDocsRouteImport } from './routes/wallet.docs'
-import { Route as WalletConnectRouteImport } from './routes/wallet.connect'
-import { Route as ChipsPvpRouteImport } from './routes/chips.pvp'
-import { Route as ArchiveYuplinkGameParamsGuideRouteImport } from './routes/archive.yuplink-game-params-guide'
-import { Route as ArchiveYuplinkGameArtAllImagesRouteImport } from './routes/archive.yuplink-game-art-all-images'
-import { Route as ApiWhoamiRouteImport } from './routes/api.whoami'
-import { Route as ApiWalletRelayRouteImport } from './routes/api.wallet-relay'
-import { Route as ApiVersionRouteImport } from './routes/api.version'
-import { Route as ApiUploadRouteImport } from './routes/api.upload'
-import { Route as ApiTgWebhookRouteImport } from './routes/api.tg-webhook'
-import { Route as ApiPerfClientRouteImport } from './routes/api.perf-client'
-import { Route as ApiPerfRouteImport } from './routes/api.perf'
-import { Route as ApiImgRouteImport } from './routes/api.img'
-import { Route as AdminWorldgenRouteImport } from './routes/admin.worldgen'
-import { Route as AdminWalletInspectRouteImport } from './routes/admin.wallet-inspect'
-import { Route as AdminTreasuryRouteImport } from './routes/admin.treasury'
-import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments'
-import { Route as AdminTicketsRouteImport } from './routes/admin.tickets'
-import { Route as AdminTestersRouteImport } from './routes/admin.testers'
-import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
-import { Route as AdminSubscriptionsRouteImport } from './routes/admin.subscriptions'
-import { Route as AdminStarterHeroRouteImport } from './routes/admin.starter-hero'
-import { Route as AdminSpellsRouteImport } from './routes/admin.spells'
-import { Route as AdminSolanaRouteImport } from './routes/admin.solana'
-import { Route as AdminShopRouteImport } from './routes/admin.shop'
-import { Route as AdminRoadmapRouteImport } from './routes/admin.roadmap'
-import { Route as AdminRedemptionsRouteImport } from './routes/admin.redemptions'
-import { Route as AdminRaidsRouteImport } from './routes/admin.raids'
-import { Route as AdminPerfRouteImport } from './routes/admin.perf'
-import { Route as AdminPayoutsRouteImport } from './routes/admin.payouts'
-import { Route as AdminOptimizeRouteImport } from './routes/admin.optimize'
-import { Route as AdminNftInputsRouteImport } from './routes/admin.nft-inputs'
-import { Route as AdminNftBatchRouteImport } from './routes/admin.nft-batch'
-import { Route as AdminMintRouteImport } from './routes/admin.mint'
-import { Route as AdminMinesRouteImport } from './routes/admin.mines'
-import { Route as AdminLikesRouteImport } from './routes/admin.likes'
-import { Route as AdminLettersRouteImport } from './routes/admin.letters'
-import { Route as AdminKitsRouteImport } from './routes/admin.kits'
-import { Route as AdminHovRouteImport } from './routes/admin.hov'
-import { Route as AdminHexEditorRouteImport } from './routes/admin.hex-editor'
-import { Route as AdminHallwayRouteImport } from './routes/admin.hallway'
-import { Route as AdminChipsRouteImport } from './routes/admin.chips'
-import { Route as AdminAuctionRouteImport } from './routes/admin.auction'
 import { Route as AdminAssetsRouteImport } from './routes/admin.assets'
-import { Route as AdminWalletIndexRouteImport } from './routes/admin.wallet/index'
+import { Route as AdminAuctionRouteImport } from './routes/admin.auction'
+import { Route as AdminChipsRouteImport } from './routes/admin.chips'
+import { Route as AdminDuelRouteImport } from './routes/admin.duel'
+import { Route as AdminGoogleRouteImport } from './routes/admin.google'
+import { Route as AdminHallwayRouteImport } from './routes/admin.hallway'
+import { Route as AdminHexEditorRouteImport } from './routes/admin.hex-editor'
+import { Route as AdminHovRouteImport } from './routes/admin.hov'
+import { Route as AdminKitsRouteImport } from './routes/admin.kits'
+import { Route as AdminLabRouteImport } from './routes/admin.lab'
+import { Route as AdminLettersRouteImport } from './routes/admin.letters'
+import { Route as AdminLikesRouteImport } from './routes/admin.likes'
+import { Route as AdminMinesRouteImport } from './routes/admin.mines'
+import { Route as AdminMintRouteImport } from './routes/admin.mint'
+import { Route as AdminNftBatchRouteImport } from './routes/admin.nft-batch'
+import { Route as AdminNftInputsRouteImport } from './routes/admin.nft-inputs'
+import { Route as AdminOptimizeRouteImport } from './routes/admin.optimize'
+import { Route as AdminPassportRouteImport } from './routes/admin.passport'
+import { Route as AdminPayoutsRouteImport } from './routes/admin.payouts'
+import { Route as AdminPerfRouteImport } from './routes/admin.perf'
+import { Route as AdminRaidsRouteImport } from './routes/admin.raids'
+import { Route as AdminRedemptionsRouteImport } from './routes/admin.redemptions'
+import { Route as AdminRoadmapRouteImport } from './routes/admin.roadmap'
+import { Route as AdminShopRouteImport } from './routes/admin.shop'
+import { Route as AdminSolanaRouteImport } from './routes/admin.solana'
+import { Route as AdminSpellsRouteImport } from './routes/admin.spells'
+import { Route as AdminStarterHeroRouteImport } from './routes/admin.starter-hero'
+import { Route as AdminSubscriptionsRouteImport } from './routes/admin.subscriptions'
+import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
+import { Route as AdminTestersRouteImport } from './routes/admin.testers'
+import { Route as AdminTicketsRouteImport } from './routes/admin.tickets'
+import { Route as AdminTournamentsRouteImport } from './routes/admin.tournaments'
+import { Route as AdminTreasuryRouteImport } from './routes/admin.treasury'
+import { Route as AdminWalletInspectRouteImport } from './routes/admin.wallet-inspect'
+import { Route as AdminWalletLoginRouteImport } from './routes/admin.wallet-login'
+import { Route as AdminWorldgenRouteImport } from './routes/admin.worldgen'
+import { Route as ApiCspReportRouteImport } from './routes/api.csp-report'
+import { Route as ApiImgRouteImport } from './routes/api.img'
+import { Route as ApiNewsRouteImport } from './routes/api.news'
+import { Route as ApiPerfRouteImport } from './routes/api.perf'
+import { Route as ApiPerfClientRouteImport } from './routes/api.perf-client'
+import { Route as ApiTgGameWebhookRouteImport } from './routes/api.tg-game-webhook'
+import { Route as ApiTgWebhookRouteImport } from './routes/api.tg-webhook'
+import { Route as ApiUploadRouteImport } from './routes/api.upload'
+import { Route as ApiVersionRouteImport } from './routes/api.version'
+import { Route as ApiWalletRelayRouteImport } from './routes/api.wallet-relay'
+import { Route as ApiWhoamiRouteImport } from './routes/api.whoami'
+import { Route as ApiXsollaWebhookRouteImport } from './routes/api.xsolla-webhook'
+import { Route as ArchiveYuplinkGameArtAllImagesRouteImport } from './routes/archive.yuplink-game-art-all-images'
+import { Route as ArchiveYuplinkGameParamsGuideRouteImport } from './routes/archive.yuplink-game-params-guide'
+import { Route as AssetsSplatRouteImport } from './routes/assets.$'
+import { Route as ChipsPvpRouteImport } from './routes/chips.pvp'
+import { Route as WalletConnectRouteImport } from './routes/wallet.connect'
+import { Route as WalletDocsRouteImport } from './routes/wallet.docs'
+import { Route as WalletSignRouteImport } from './routes/wallet.sign'
+import { Route as WalletSignMessageRouteImport } from './routes/wallet.sign-message'
 import { Route as AdminDropsIndexRouteImport } from './routes/admin.drops/index'
-import { Route as ApiCronTownsRouteImport } from './routes/api.cron.towns'
-import { Route as ApiCronRescanCatalogRouteImport } from './routes/api.cron.rescan-catalog'
-import { Route as ApiCronRefreshReputationRouteImport } from './routes/api.cron.refresh-reputation'
-import { Route as ApiCronRaidsFinishRouteImport } from './routes/api.cron.raids-finish'
-import { Route as ApiCronRaidWeeklyRouteImport } from './routes/api.cron.raid-weekly'
-import { Route as ApiCronNftPayoutResolverRouteImport } from './routes/api.cron.nft-payout-resolver'
-import { Route as ApiCronLostPaymentsRouteImport } from './routes/api.cron.lost-payments'
-import { Route as ApiCronLedgerAuditRouteImport } from './routes/api.cron.ledger-audit'
-import { Route as ApiCronDailyLikesRouteImport } from './routes/api.cron.daily-likes'
-import { Route as ApiCronChipsStockAlertRouteImport } from './routes/api.cron.chips-stock-alert'
-import { Route as ApiCronBossWeeklyRouteImport } from './routes/api.cron.boss-weekly'
-import { Route as ApiCronAuctionsSettleRouteImport } from './routes/api.cron.auctions-settle'
-import { Route as ApiCronAuctionAnnounceTestRouteImport } from './routes/api.cron.auction-announce-test'
-import { Route as ApiBetaRaidMapDeltaRouteImport } from './routes/api.beta-raid.map-delta'
-import { Route as ApiBetaRaidMapBlobRouteImport } from './routes/api.beta-raid.map-blob'
-import { Route as ApiBetaRaidEventsRouteImport } from './routes/api.beta-raid.events'
 import { Route as AdminRaidsRaidsDashboardRouteImport } from './routes/admin/raids/RaidsDashboard'
+import { Route as AdminWalletIndexRouteImport } from './routes/admin.wallet/index'
+import { Route as ApiBetaRaidEventsRouteImport } from './routes/api.beta-raid.events'
+import { Route as ApiBetaRaidMapBlobRouteImport } from './routes/api.beta-raid.map-blob'
+import { Route as ApiBetaRaidMapDeltaRouteImport } from './routes/api.beta-raid.map-delta'
+import { Route as ApiCronAuctionAnnounceTestRouteImport } from './routes/api.cron.auction-announce-test'
+import { Route as ApiCronAuctionsSettleRouteImport } from './routes/api.cron.auctions-settle'
+import { Route as ApiCronBossWeeklyRouteImport } from './routes/api.cron.boss-weekly'
+import { Route as ApiCronBuilderWorldSetupRouteImport } from './routes/api.cron.builder-world-setup'
+import { Route as ApiCronChipsStockAlertRouteImport } from './routes/api.cron.chips-stock-alert'
+import { Route as ApiCronCreatorRebuildRouteImport } from './routes/api.cron.creator-rebuild'
+import { Route as ApiCronDailyLikesRouteImport } from './routes/api.cron.daily-likes'
+import { Route as ApiCronDemoIslandSetupRouteImport } from './routes/api.cron.demo-island-setup'
+import { Route as ApiCronIslandTutorialRestartRouteImport } from './routes/api.cron.island-tutorial-restart'
+import { Route as ApiCronHeroEnergyResyncRouteImport } from './routes/api.cron.hero-energy-resync'
+import { Route as ApiCronLedgerAuditRouteImport } from './routes/api.cron.ledger-audit'
+import { Route as ApiCronLostPaymentsRouteImport } from './routes/api.cron.lost-payments'
+import { Route as ApiCronNftPayoutResolverRouteImport } from './routes/api.cron.nft-payout-resolver'
+import { Route as ApiCronRaidWeeklyRouteImport } from './routes/api.cron.raid-weekly'
+import { Route as ApiCronRaidsFinishRouteImport } from './routes/api.cron.raids-finish'
+import { Route as ApiCronRefreshReputationRouteImport } from './routes/api.cron.refresh-reputation'
+import { Route as ApiCronRescanCatalogRouteImport } from './routes/api.cron.rescan-catalog'
+import { Route as ApiCronTownsRouteImport } from './routes/api.cron.towns'
 
-const WalletRoute = WalletRouteImport.update({
-  id: '/wallet',
-  path: '/wallet',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StorageRoute = StorageRouteImport.update({
-  id: '/storage',
-  path: '/storage',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SlotRoute = SlotRouteImport.update({
-  id: '/slot',
-  path: '/slot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScreensRoute = ScreensRouteImport.update({
-  id: '/screens',
-  path: '/screens',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RoadmapRoute = RoadmapRouteImport.update({
-  id: '/roadmap',
-  path: '/roadmap',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReferralsRoute = ReferralsRouteImport.update({
-  id: '/referrals',
-  path: '/referrals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RaidHexmapRoute = RaidHexmapRouteImport.update({
-  id: '/raid-hexmap',
-  path: '/raid-hexmap',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyNftsRoute = MyNftsRouteImport.update({
-  id: '/my-nfts',
-  path: '/my-nfts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LookupRoute = LookupRouteImport.update({
-  id: '/lookup',
-  path: '/lookup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JoinRoute = JoinRouteImport.update({
-  id: '/join',
-  path: '/join',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HomeRoute = HomeRouteImport.update({
-  id: '/home',
-  path: '/home',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HallwayRoute = HallwayRouteImport.update({
-  id: '/hallway',
-  path: '/hallway',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EquipRoute = EquipRouteImport.update({
-  id: '/equip',
-  path: '/equip',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChipsRoute = ChipsRouteImport.update({
-  id: '/chips',
-  path: '/chips',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CastleEditorRoute = CastleEditorRouteImport.update({
-  id: '/castle-editor',
-  path: '/castle-editor',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BurnRoute = BurnRouteImport.update({
-  id: '/burn',
-  path: '/burn',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BetaRaidRoute = BetaRaidRouteImport.update({
-  id: '/beta-raid',
-  path: '/beta-raid',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -185,9 +125,114 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BetaRaidRoute = BetaRaidRouteImport.update({
+  id: '/beta-raid',
+  path: '/beta-raid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BurnRoute = BurnRouteImport.update({
+  id: '/burn',
+  path: '/burn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CastleEditorRoute = CastleEditorRouteImport.update({
+  id: '/castle-editor',
+  path: '/castle-editor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChipsRoute = ChipsRouteImport.update({
+  id: '/chips',
+  path: '/chips',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrownRoute = CrownRouteImport.update({
+  id: '/crown',
+  path: '/crown',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipRoute = EquipRouteImport.update({
+  id: '/equip',
+  path: '/equip',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HallwayRoute = HallwayRouteImport.update({
+  id: '/hallway',
+  path: '/hallway',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LookupRoute = LookupRouteImport.update({
+  id: '/lookup',
+  path: '/lookup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyNftsRoute = MyNftsRouteImport.update({
+  id: '/my-nfts',
+  path: '/my-nfts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewspaperEditorRoute = NewspaperEditorRouteImport.update({
+  id: '/newspaper-editor',
+  path: '/newspaper-editor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalCheckRoute = PortalCheckRouteImport.update({
+  id: '/portal-check',
+  path: '/portal-check',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RaidHexmapRoute = RaidHexmapRouteImport.update({
+  id: '/raid-hexmap',
+  path: '/raid-hexmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReferralsRoute = ReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScreensRoute = ScreensRouteImport.update({
+  id: '/screens',
+  path: '/screens',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlotRoute = SlotRouteImport.update({
+  id: '/slot',
+  path: '/slot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StorageRoute = StorageRouteImport.update({
+  id: '/storage',
+  path: '/storage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VestnikRoute = VestnikRouteImport.update({
+  id: '/vestnik',
+  path: '/vestnik',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -195,226 +240,9 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
-const WalletSignMessageRoute = WalletSignMessageRouteImport.update({
-  id: '/sign-message',
-  path: '/sign-message',
-  getParentRoute: () => WalletRoute,
-} as any)
-const WalletSignRoute = WalletSignRouteImport.update({
-  id: '/sign',
-  path: '/sign',
-  getParentRoute: () => WalletRoute,
-} as any)
-const WalletDocsRoute = WalletDocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => WalletRoute,
-} as any)
-const WalletConnectRoute = WalletConnectRouteImport.update({
-  id: '/connect',
-  path: '/connect',
-  getParentRoute: () => WalletRoute,
-} as any)
-const ChipsPvpRoute = ChipsPvpRouteImport.update({
-  id: '/pvp',
-  path: '/pvp',
-  getParentRoute: () => ChipsRoute,
-} as any)
-const ArchiveYuplinkGameParamsGuideRoute =
-  ArchiveYuplinkGameParamsGuideRouteImport.update({
-    id: '/archive/yuplink-game-params-guide',
-    path: '/archive/yuplink-game-params-guide',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ArchiveYuplinkGameArtAllImagesRoute =
-  ArchiveYuplinkGameArtAllImagesRouteImport.update({
-    id: '/archive/yuplink-game-art-all-images',
-    path: '/archive/yuplink-game-art-all-images',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiWhoamiRoute = ApiWhoamiRouteImport.update({
-  id: '/api/whoami',
-  path: '/api/whoami',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWalletRelayRoute = ApiWalletRelayRouteImport.update({
-  id: '/api/wallet-relay',
-  path: '/api/wallet-relay',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiVersionRoute = ApiVersionRouteImport.update({
-  id: '/api/version',
-  path: '/api/version',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiUploadRoute = ApiUploadRouteImport.update({
-  id: '/api/upload',
-  path: '/api/upload',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTgWebhookRoute = ApiTgWebhookRouteImport.update({
-  id: '/api/tg-webhook',
-  path: '/api/tg-webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPerfClientRoute = ApiPerfClientRouteImport.update({
-  id: '/api/perf-client',
-  path: '/api/perf-client',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPerfRoute = ApiPerfRouteImport.update({
-  id: '/api/perf',
-  path: '/api/perf',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiImgRoute = ApiImgRouteImport.update({
-  id: '/api/img',
-  path: '/api/img',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminWorldgenRoute = AdminWorldgenRouteImport.update({
-  id: '/worldgen',
-  path: '/worldgen',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminWalletInspectRoute = AdminWalletInspectRouteImport.update({
-  id: '/wallet-inspect',
-  path: '/wallet-inspect',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminTreasuryRoute = AdminTreasuryRouteImport.update({
-  id: '/treasury',
-  path: '/treasury',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminTournamentsRoute = AdminTournamentsRouteImport.update({
-  id: '/tournaments',
-  path: '/tournaments',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminTicketsRoute = AdminTicketsRouteImport.update({
-  id: '/tickets',
-  path: '/tickets',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminTestersRoute = AdminTestersRouteImport.update({
-  id: '/testers',
-  path: '/testers',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminTasksRoute = AdminTasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
-  id: '/subscriptions',
-  path: '/subscriptions',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminStarterHeroRoute = AdminStarterHeroRouteImport.update({
-  id: '/starter-hero',
-  path: '/starter-hero',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminSpellsRoute = AdminSpellsRouteImport.update({
-  id: '/spells',
-  path: '/spells',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminSolanaRoute = AdminSolanaRouteImport.update({
-  id: '/solana',
-  path: '/solana',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminShopRoute = AdminShopRouteImport.update({
-  id: '/shop',
-  path: '/shop',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRoadmapRoute = AdminRoadmapRouteImport.update({
-  id: '/roadmap',
-  path: '/roadmap',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRedemptionsRoute = AdminRedemptionsRouteImport.update({
-  id: '/redemptions',
-  path: '/redemptions',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminRaidsRoute = AdminRaidsRouteImport.update({
-  id: '/raids',
-  path: '/raids',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminPerfRoute = AdminPerfRouteImport.update({
-  id: '/perf',
-  path: '/perf',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminPayoutsRoute = AdminPayoutsRouteImport.update({
-  id: '/payouts',
-  path: '/payouts',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminOptimizeRoute = AdminOptimizeRouteImport.update({
-  id: '/optimize',
-  path: '/optimize',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminNftInputsRoute = AdminNftInputsRouteImport.update({
-  id: '/nft-inputs',
-  path: '/nft-inputs',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminNftBatchRoute = AdminNftBatchRouteImport.update({
-  id: '/nft-batch',
-  path: '/nft-batch',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminMintRoute = AdminMintRouteImport.update({
-  id: '/mint',
-  path: '/mint',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminMinesRoute = AdminMinesRouteImport.update({
-  id: '/mines',
-  path: '/mines',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminLikesRoute = AdminLikesRouteImport.update({
-  id: '/likes',
-  path: '/likes',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminLettersRoute = AdminLettersRouteImport.update({
-  id: '/letters',
-  path: '/letters',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminKitsRoute = AdminKitsRouteImport.update({
-  id: '/kits',
-  path: '/kits',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminHovRoute = AdminHovRouteImport.update({
-  id: '/hov',
-  path: '/hov',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminHexEditorRoute = AdminHexEditorRouteImport.update({
-  id: '/hex-editor',
-  path: '/hex-editor',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminHallwayRoute = AdminHallwayRouteImport.update({
-  id: '/hallway',
-  path: '/hallway',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminChipsRoute = AdminChipsRouteImport.update({
-  id: '/chips',
-  path: '/chips',
+const AdminAssetsRoute = AdminAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAuctionRoute = AdminAuctionRouteImport.update({
@@ -422,81 +250,307 @@ const AdminAuctionRoute = AdminAuctionRouteImport.update({
   path: '/auction',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAssetsRoute = AdminAssetsRouteImport.update({
-  id: '/assets',
-  path: '/assets',
+const AdminChipsRoute = AdminChipsRouteImport.update({
+  id: '/chips',
+  path: '/chips',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminWalletIndexRoute = AdminWalletIndexRouteImport.update({
-  id: '/wallet/',
-  path: '/wallet/',
+const AdminDuelRoute = AdminDuelRouteImport.update({
+  id: '/duel',
+  path: '/duel',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminGoogleRoute = AdminGoogleRouteImport.update({
+  id: '/google',
+  path: '/google',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHallwayRoute = AdminHallwayRouteImport.update({
+  id: '/hallway',
+  path: '/hallway',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHexEditorRoute = AdminHexEditorRouteImport.update({
+  id: '/hex-editor',
+  path: '/hex-editor',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHovRoute = AdminHovRouteImport.update({
+  id: '/hov',
+  path: '/hov',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminKitsRoute = AdminKitsRouteImport.update({
+  id: '/kits',
+  path: '/kits',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLabRoute = AdminLabRouteImport.update({
+  id: '/lab',
+  path: '/lab',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLettersRoute = AdminLettersRouteImport.update({
+  id: '/letters',
+  path: '/letters',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLikesRoute = AdminLikesRouteImport.update({
+  id: '/likes',
+  path: '/likes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMinesRoute = AdminMinesRouteImport.update({
+  id: '/mines',
+  path: '/mines',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMintRoute = AdminMintRouteImport.update({
+  id: '/mint',
+  path: '/mint',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNftBatchRoute = AdminNftBatchRouteImport.update({
+  id: '/nft-batch',
+  path: '/nft-batch',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNftInputsRoute = AdminNftInputsRouteImport.update({
+  id: '/nft-inputs',
+  path: '/nft-inputs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOptimizeRoute = AdminOptimizeRouteImport.update({
+  id: '/optimize',
+  path: '/optimize',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPassportRoute = AdminPassportRouteImport.update({
+  id: '/passport',
+  path: '/passport',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPayoutsRoute = AdminPayoutsRouteImport.update({
+  id: '/payouts',
+  path: '/payouts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPerfRoute = AdminPerfRouteImport.update({
+  id: '/perf',
+  path: '/perf',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRaidsRoute = AdminRaidsRouteImport.update({
+  id: '/raids',
+  path: '/raids',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRedemptionsRoute = AdminRedemptionsRouteImport.update({
+  id: '/redemptions',
+  path: '/redemptions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRoadmapRoute = AdminRoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminShopRoute = AdminShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSolanaRoute = AdminSolanaRouteImport.update({
+  id: '/solana',
+  path: '/solana',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSpellsRoute = AdminSpellsRouteImport.update({
+  id: '/spells',
+  path: '/spells',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStarterHeroRoute = AdminStarterHeroRouteImport.update({
+  id: '/starter-hero',
+  path: '/starter-hero',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTasksRoute = AdminTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTestersRoute = AdminTestersRouteImport.update({
+  id: '/testers',
+  path: '/testers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTicketsRoute = AdminTicketsRouteImport.update({
+  id: '/tickets',
+  path: '/tickets',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTournamentsRoute = AdminTournamentsRouteImport.update({
+  id: '/tournaments',
+  path: '/tournaments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTreasuryRoute = AdminTreasuryRouteImport.update({
+  id: '/treasury',
+  path: '/treasury',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminWalletInspectRoute = AdminWalletInspectRouteImport.update({
+  id: '/wallet-inspect',
+  path: '/wallet-inspect',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminWalletLoginRoute = AdminWalletLoginRouteImport.update({
+  id: '/wallet-login',
+  path: '/wallet-login',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminWorldgenRoute = AdminWorldgenRouteImport.update({
+  id: '/worldgen',
+  path: '/worldgen',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ApiCspReportRoute = ApiCspReportRouteImport.update({
+  id: '/api/csp-report',
+  path: '/api/csp-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiImgRoute = ApiImgRouteImport.update({
+  id: '/api/img',
+  path: '/api/img',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNewsRoute = ApiNewsRouteImport.update({
+  id: '/api/news',
+  path: '/api/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPerfRoute = ApiPerfRouteImport.update({
+  id: '/api/perf',
+  path: '/api/perf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPerfClientRoute = ApiPerfClientRouteImport.update({
+  id: '/api/perf-client',
+  path: '/api/perf-client',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTgGameWebhookRoute = ApiTgGameWebhookRouteImport.update({
+  id: '/api/tg-game-webhook',
+  path: '/api/tg-game-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTgWebhookRoute = ApiTgWebhookRouteImport.update({
+  id: '/api/tg-webhook',
+  path: '/api/tg-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUploadRoute = ApiUploadRouteImport.update({
+  id: '/api/upload',
+  path: '/api/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVersionRoute = ApiVersionRouteImport.update({
+  id: '/api/version',
+  path: '/api/version',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWalletRelayRoute = ApiWalletRelayRouteImport.update({
+  id: '/api/wallet-relay',
+  path: '/api/wallet-relay',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWhoamiRoute = ApiWhoamiRouteImport.update({
+  id: '/api/whoami',
+  path: '/api/whoami',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiXsollaWebhookRoute = ApiXsollaWebhookRouteImport.update({
+  id: '/api/xsolla-webhook',
+  path: '/api/xsolla-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArchiveYuplinkGameArtAllImagesRoute =
+  ArchiveYuplinkGameArtAllImagesRouteImport.update({
+    id: '/archive/yuplink-game-art-all-images',
+    path: '/archive/yuplink-game-art-all-images',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ArchiveYuplinkGameParamsGuideRoute =
+  ArchiveYuplinkGameParamsGuideRouteImport.update({
+    id: '/archive/yuplink-game-params-guide',
+    path: '/archive/yuplink-game-params-guide',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AssetsSplatRoute = AssetsSplatRouteImport.update({
+  id: '/assets/$',
+  path: '/assets/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChipsPvpRoute = ChipsPvpRouteImport.update({
+  id: '/pvp',
+  path: '/pvp',
+  getParentRoute: () => ChipsRoute,
+} as any)
+const WalletConnectRoute = WalletConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
+  getParentRoute: () => WalletRoute,
+} as any)
+const WalletDocsRoute = WalletDocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => WalletRoute,
+} as any)
+const WalletSignRoute = WalletSignRouteImport.update({
+  id: '/sign',
+  path: '/sign',
+  getParentRoute: () => WalletRoute,
+} as any)
+const WalletSignMessageRoute = WalletSignMessageRouteImport.update({
+  id: '/sign-message',
+  path: '/sign-message',
+  getParentRoute: () => WalletRoute,
 } as any)
 const AdminDropsIndexRoute = AdminDropsIndexRouteImport.update({
   id: '/drops/',
   path: '/drops/',
   getParentRoute: () => AdminRoute,
 } as any)
-const ApiCronTownsRoute = ApiCronTownsRouteImport.update({
-  id: '/api/cron/towns',
-  path: '/api/cron/towns',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronRescanCatalogRoute = ApiCronRescanCatalogRouteImport.update({
-  id: '/api/cron/rescan-catalog',
-  path: '/api/cron/rescan-catalog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronRefreshReputationRoute =
-  ApiCronRefreshReputationRouteImport.update({
-    id: '/api/cron/refresh-reputation',
-    path: '/api/cron/refresh-reputation',
-    getParentRoute: () => rootRouteImport,
+const AdminRaidsRaidsDashboardRoute =
+  AdminRaidsRaidsDashboardRouteImport.update({
+    id: '/RaidsDashboard',
+    path: '/RaidsDashboard',
+    getParentRoute: () => AdminRaidsRoute,
   } as any)
-const ApiCronRaidsFinishRoute = ApiCronRaidsFinishRouteImport.update({
-  id: '/api/cron/raids-finish',
-  path: '/api/cron/raids-finish',
+const AdminWalletIndexRoute = AdminWalletIndexRouteImport.update({
+  id: '/wallet/',
+  path: '/wallet/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ApiBetaRaidEventsRoute = ApiBetaRaidEventsRouteImport.update({
+  id: '/api/beta-raid/events',
+  path: '/api/beta-raid/events',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronRaidWeeklyRoute = ApiCronRaidWeeklyRouteImport.update({
-  id: '/api/cron/raid-weekly',
-  path: '/api/cron/raid-weekly',
+const ApiBetaRaidMapBlobRoute = ApiBetaRaidMapBlobRouteImport.update({
+  id: '/api/beta-raid/map-blob',
+  path: '/api/beta-raid/map-blob',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiCronNftPayoutResolverRoute =
-  ApiCronNftPayoutResolverRouteImport.update({
-    id: '/api/cron/nft-payout-resolver',
-    path: '/api/cron/nft-payout-resolver',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCronLostPaymentsRoute = ApiCronLostPaymentsRouteImport.update({
-  id: '/api/cron/lost-payments',
-  path: '/api/cron/lost-payments',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronLedgerAuditRoute = ApiCronLedgerAuditRouteImport.update({
-  id: '/api/cron/ledger-audit',
-  path: '/api/cron/ledger-audit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronDailyLikesRoute = ApiCronDailyLikesRouteImport.update({
-  id: '/api/cron/daily-likes',
-  path: '/api/cron/daily-likes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronChipsStockAlertRoute = ApiCronChipsStockAlertRouteImport.update({
-  id: '/api/cron/chips-stock-alert',
-  path: '/api/cron/chips-stock-alert',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronBossWeeklyRoute = ApiCronBossWeeklyRouteImport.update({
-  id: '/api/cron/boss-weekly',
-  path: '/api/cron/boss-weekly',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCronAuctionsSettleRoute = ApiCronAuctionsSettleRouteImport.update({
-  id: '/api/cron/auctions-settle',
-  path: '/api/cron/auctions-settle',
+const ApiBetaRaidMapDeltaRoute = ApiBetaRaidMapDeltaRouteImport.update({
+  id: '/api/beta-raid/map-delta',
+  path: '/api/beta-raid/map-delta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCronAuctionAnnounceTestRoute =
@@ -505,27 +559,94 @@ const ApiCronAuctionAnnounceTestRoute =
     path: '/api/cron/auction-announce-test',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiBetaRaidMapDeltaRoute = ApiBetaRaidMapDeltaRouteImport.update({
-  id: '/api/beta-raid/map-delta',
-  path: '/api/beta-raid/map-delta',
+const ApiCronAuctionsSettleRoute = ApiCronAuctionsSettleRouteImport.update({
+  id: '/api/cron/auctions-settle',
+  path: '/api/cron/auctions-settle',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBetaRaidMapBlobRoute = ApiBetaRaidMapBlobRouteImport.update({
-  id: '/api/beta-raid/map-blob',
-  path: '/api/beta-raid/map-blob',
+const ApiCronBossWeeklyRoute = ApiCronBossWeeklyRouteImport.update({
+  id: '/api/cron/boss-weekly',
+  path: '/api/cron/boss-weekly',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBetaRaidEventsRoute = ApiBetaRaidEventsRouteImport.update({
-  id: '/api/beta-raid/events',
-  path: '/api/beta-raid/events',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRaidsRaidsDashboardRoute =
-  AdminRaidsRaidsDashboardRouteImport.update({
-    id: '/RaidsDashboard',
-    path: '/RaidsDashboard',
-    getParentRoute: () => AdminRaidsRoute,
+const ApiCronBuilderWorldSetupRoute =
+  ApiCronBuilderWorldSetupRouteImport.update({
+    id: '/api/cron/builder-world-setup',
+    path: '/api/cron/builder-world-setup',
+    getParentRoute: () => rootRouteImport,
   } as any)
+const ApiCronChipsStockAlertRoute = ApiCronChipsStockAlertRouteImport.update({
+  id: '/api/cron/chips-stock-alert',
+  path: '/api/cron/chips-stock-alert',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronCreatorRebuildRoute = ApiCronCreatorRebuildRouteImport.update({
+  id: '/api/cron/creator-rebuild',
+  path: '/api/cron/creator-rebuild',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronDailyLikesRoute = ApiCronDailyLikesRouteImport.update({
+  id: '/api/cron/daily-likes',
+  path: '/api/cron/daily-likes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronDemoIslandSetupRoute = ApiCronDemoIslandSetupRouteImport.update({
+  id: '/api/cron/demo-island-setup',
+  path: '/api/cron/demo-island-setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronIslandTutorialRestartRoute = ApiCronIslandTutorialRestartRouteImport.update({
+  id: '/api/cron/island-tutorial-restart',
+  path: '/api/cron/island-tutorial-restart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronHeroEnergyResyncRoute = ApiCronHeroEnergyResyncRouteImport.update({
+  id: '/api/cron/hero-energy-resync',
+  path: '/api/cron/hero-energy-resync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronLedgerAuditRoute = ApiCronLedgerAuditRouteImport.update({
+  id: '/api/cron/ledger-audit',
+  path: '/api/cron/ledger-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronLostPaymentsRoute = ApiCronLostPaymentsRouteImport.update({
+  id: '/api/cron/lost-payments',
+  path: '/api/cron/lost-payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronNftPayoutResolverRoute =
+  ApiCronNftPayoutResolverRouteImport.update({
+    id: '/api/cron/nft-payout-resolver',
+    path: '/api/cron/nft-payout-resolver',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCronRaidWeeklyRoute = ApiCronRaidWeeklyRouteImport.update({
+  id: '/api/cron/raid-weekly',
+  path: '/api/cron/raid-weekly',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronRaidsFinishRoute = ApiCronRaidsFinishRouteImport.update({
+  id: '/api/cron/raids-finish',
+  path: '/api/cron/raids-finish',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronRefreshReputationRoute =
+  ApiCronRefreshReputationRouteImport.update({
+    id: '/api/cron/refresh-reputation',
+    path: '/api/cron/refresh-reputation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiCronRescanCatalogRoute = ApiCronRescanCatalogRouteImport.update({
+  id: '/api/cron/rescan-catalog',
+  path: '/api/cron/rescan-catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronTownsRoute = ApiCronTownsRouteImport.update({
+  id: '/api/cron/towns',
+  path: '/api/cron/towns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -534,26 +655,34 @@ export interface FileRoutesByFullPath {
   '/burn': typeof BurnRoute
   '/castle-editor': typeof CastleEditorRoute
   '/chips': typeof ChipsRouteWithChildren
+  '/crown': typeof CrownRoute
   '/equip': typeof EquipRoute
   '/hallway': typeof HallwayRoute
   '/home': typeof HomeRoute
   '/join': typeof JoinRoute
   '/lookup': typeof LookupRoute
   '/my-nfts': typeof MyNftsRoute
+  '/newspaper-editor': typeof NewspaperEditorRoute
+  '/portal-check': typeof PortalCheckRoute
+  '/privacy': typeof PrivacyRoute
   '/raid-hexmap': typeof RaidHexmapRoute
   '/referrals': typeof ReferralsRoute
   '/roadmap': typeof RoadmapRoute
   '/screens': typeof ScreensRoute
   '/slot': typeof SlotRoute
   '/storage': typeof StorageRoute
+  '/vestnik': typeof VestnikRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/assets': typeof AdminAssetsRoute
   '/admin/auction': typeof AdminAuctionRoute
   '/admin/chips': typeof AdminChipsRoute
+  '/admin/duel': typeof AdminDuelRoute
+  '/admin/google': typeof AdminGoogleRoute
   '/admin/hallway': typeof AdminHallwayRoute
   '/admin/hex-editor': typeof AdminHexEditorRoute
   '/admin/hov': typeof AdminHovRoute
   '/admin/kits': typeof AdminKitsRoute
+  '/admin/lab': typeof AdminLabRoute
   '/admin/letters': typeof AdminLettersRoute
   '/admin/likes': typeof AdminLikesRoute
   '/admin/mines': typeof AdminMinesRoute
@@ -561,6 +690,7 @@ export interface FileRoutesByFullPath {
   '/admin/nft-batch': typeof AdminNftBatchRoute
   '/admin/nft-inputs': typeof AdminNftInputsRoute
   '/admin/optimize': typeof AdminOptimizeRoute
+  '/admin/passport': typeof AdminPassportRoute
   '/admin/payouts': typeof AdminPayoutsRoute
   '/admin/perf': typeof AdminPerfRoute
   '/admin/raids': typeof AdminRaidsRouteWithChildren
@@ -577,17 +707,23 @@ export interface FileRoutesByFullPath {
   '/admin/tournaments': typeof AdminTournamentsRoute
   '/admin/treasury': typeof AdminTreasuryRoute
   '/admin/wallet-inspect': typeof AdminWalletInspectRoute
+  '/admin/wallet-login': typeof AdminWalletLoginRoute
   '/admin/worldgen': typeof AdminWorldgenRoute
+  '/api/csp-report': typeof ApiCspReportRoute
   '/api/img': typeof ApiImgRoute
+  '/api/news': typeof ApiNewsRoute
   '/api/perf': typeof ApiPerfRoute
   '/api/perf-client': typeof ApiPerfClientRoute
+  '/api/tg-game-webhook': typeof ApiTgGameWebhookRoute
   '/api/tg-webhook': typeof ApiTgWebhookRoute
   '/api/upload': typeof ApiUploadRoute
   '/api/version': typeof ApiVersionRoute
   '/api/wallet-relay': typeof ApiWalletRelayRoute
   '/api/whoami': typeof ApiWhoamiRoute
+  '/api/xsolla-webhook': typeof ApiXsollaWebhookRoute
   '/archive/yuplink-game-art-all-images': typeof ArchiveYuplinkGameArtAllImagesRoute
   '/archive/yuplink-game-params-guide': typeof ArchiveYuplinkGameParamsGuideRoute
+  '/assets/$': typeof AssetsSplatRoute
   '/chips/pvp': typeof ChipsPvpRoute
   '/wallet/connect': typeof WalletConnectRoute
   '/wallet/docs': typeof WalletDocsRoute
@@ -601,8 +737,13 @@ export interface FileRoutesByFullPath {
   '/api/cron/auction-announce-test': typeof ApiCronAuctionAnnounceTestRoute
   '/api/cron/auctions-settle': typeof ApiCronAuctionsSettleRoute
   '/api/cron/boss-weekly': typeof ApiCronBossWeeklyRoute
+  '/api/cron/builder-world-setup': typeof ApiCronBuilderWorldSetupRoute
   '/api/cron/chips-stock-alert': typeof ApiCronChipsStockAlertRoute
+  '/api/cron/creator-rebuild': typeof ApiCronCreatorRebuildRoute
   '/api/cron/daily-likes': typeof ApiCronDailyLikesRoute
+  '/api/cron/demo-island-setup': typeof ApiCronDemoIslandSetupRoute
+  '/api/cron/island-tutorial-restart': typeof ApiCronIslandTutorialRestartRoute
+  '/api/cron/hero-energy-resync': typeof ApiCronHeroEnergyResyncRoute
   '/api/cron/ledger-audit': typeof ApiCronLedgerAuditRoute
   '/api/cron/lost-payments': typeof ApiCronLostPaymentsRoute
   '/api/cron/nft-payout-resolver': typeof ApiCronNftPayoutResolverRoute
@@ -620,26 +761,34 @@ export interface FileRoutesByTo {
   '/burn': typeof BurnRoute
   '/castle-editor': typeof CastleEditorRoute
   '/chips': typeof ChipsRouteWithChildren
+  '/crown': typeof CrownRoute
   '/equip': typeof EquipRoute
   '/hallway': typeof HallwayRoute
   '/home': typeof HomeRoute
   '/join': typeof JoinRoute
   '/lookup': typeof LookupRoute
   '/my-nfts': typeof MyNftsRoute
+  '/newspaper-editor': typeof NewspaperEditorRoute
+  '/portal-check': typeof PortalCheckRoute
+  '/privacy': typeof PrivacyRoute
   '/raid-hexmap': typeof RaidHexmapRoute
   '/referrals': typeof ReferralsRoute
   '/roadmap': typeof RoadmapRoute
   '/screens': typeof ScreensRoute
   '/slot': typeof SlotRoute
   '/storage': typeof StorageRoute
+  '/vestnik': typeof VestnikRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/assets': typeof AdminAssetsRoute
   '/admin/auction': typeof AdminAuctionRoute
   '/admin/chips': typeof AdminChipsRoute
+  '/admin/duel': typeof AdminDuelRoute
+  '/admin/google': typeof AdminGoogleRoute
   '/admin/hallway': typeof AdminHallwayRoute
   '/admin/hex-editor': typeof AdminHexEditorRoute
   '/admin/hov': typeof AdminHovRoute
   '/admin/kits': typeof AdminKitsRoute
+  '/admin/lab': typeof AdminLabRoute
   '/admin/letters': typeof AdminLettersRoute
   '/admin/likes': typeof AdminLikesRoute
   '/admin/mines': typeof AdminMinesRoute
@@ -647,6 +796,7 @@ export interface FileRoutesByTo {
   '/admin/nft-batch': typeof AdminNftBatchRoute
   '/admin/nft-inputs': typeof AdminNftInputsRoute
   '/admin/optimize': typeof AdminOptimizeRoute
+  '/admin/passport': typeof AdminPassportRoute
   '/admin/payouts': typeof AdminPayoutsRoute
   '/admin/perf': typeof AdminPerfRoute
   '/admin/raids': typeof AdminRaidsRouteWithChildren
@@ -663,17 +813,23 @@ export interface FileRoutesByTo {
   '/admin/tournaments': typeof AdminTournamentsRoute
   '/admin/treasury': typeof AdminTreasuryRoute
   '/admin/wallet-inspect': typeof AdminWalletInspectRoute
+  '/admin/wallet-login': typeof AdminWalletLoginRoute
   '/admin/worldgen': typeof AdminWorldgenRoute
+  '/api/csp-report': typeof ApiCspReportRoute
   '/api/img': typeof ApiImgRoute
+  '/api/news': typeof ApiNewsRoute
   '/api/perf': typeof ApiPerfRoute
   '/api/perf-client': typeof ApiPerfClientRoute
+  '/api/tg-game-webhook': typeof ApiTgGameWebhookRoute
   '/api/tg-webhook': typeof ApiTgWebhookRoute
   '/api/upload': typeof ApiUploadRoute
   '/api/version': typeof ApiVersionRoute
   '/api/wallet-relay': typeof ApiWalletRelayRoute
   '/api/whoami': typeof ApiWhoamiRoute
+  '/api/xsolla-webhook': typeof ApiXsollaWebhookRoute
   '/archive/yuplink-game-art-all-images': typeof ArchiveYuplinkGameArtAllImagesRoute
   '/archive/yuplink-game-params-guide': typeof ArchiveYuplinkGameParamsGuideRoute
+  '/assets/$': typeof AssetsSplatRoute
   '/chips/pvp': typeof ChipsPvpRoute
   '/wallet/connect': typeof WalletConnectRoute
   '/wallet/docs': typeof WalletDocsRoute
@@ -687,8 +843,13 @@ export interface FileRoutesByTo {
   '/api/cron/auction-announce-test': typeof ApiCronAuctionAnnounceTestRoute
   '/api/cron/auctions-settle': typeof ApiCronAuctionsSettleRoute
   '/api/cron/boss-weekly': typeof ApiCronBossWeeklyRoute
+  '/api/cron/builder-world-setup': typeof ApiCronBuilderWorldSetupRoute
   '/api/cron/chips-stock-alert': typeof ApiCronChipsStockAlertRoute
+  '/api/cron/creator-rebuild': typeof ApiCronCreatorRebuildRoute
   '/api/cron/daily-likes': typeof ApiCronDailyLikesRoute
+  '/api/cron/demo-island-setup': typeof ApiCronDemoIslandSetupRoute
+  '/api/cron/island-tutorial-restart': typeof ApiCronIslandTutorialRestartRoute
+  '/api/cron/hero-energy-resync': typeof ApiCronHeroEnergyResyncRoute
   '/api/cron/ledger-audit': typeof ApiCronLedgerAuditRoute
   '/api/cron/lost-payments': typeof ApiCronLostPaymentsRoute
   '/api/cron/nft-payout-resolver': typeof ApiCronNftPayoutResolverRoute
@@ -708,26 +869,34 @@ export interface FileRoutesById {
   '/burn': typeof BurnRoute
   '/castle-editor': typeof CastleEditorRoute
   '/chips': typeof ChipsRouteWithChildren
+  '/crown': typeof CrownRoute
   '/equip': typeof EquipRoute
   '/hallway': typeof HallwayRoute
   '/home': typeof HomeRoute
   '/join': typeof JoinRoute
   '/lookup': typeof LookupRoute
   '/my-nfts': typeof MyNftsRoute
+  '/newspaper-editor': typeof NewspaperEditorRoute
+  '/portal-check': typeof PortalCheckRoute
+  '/privacy': typeof PrivacyRoute
   '/raid-hexmap': typeof RaidHexmapRoute
   '/referrals': typeof ReferralsRoute
   '/roadmap': typeof RoadmapRoute
   '/screens': typeof ScreensRoute
   '/slot': typeof SlotRoute
   '/storage': typeof StorageRoute
+  '/vestnik': typeof VestnikRoute
   '/wallet': typeof WalletRouteWithChildren
   '/admin/assets': typeof AdminAssetsRoute
   '/admin/auction': typeof AdminAuctionRoute
   '/admin/chips': typeof AdminChipsRoute
+  '/admin/duel': typeof AdminDuelRoute
+  '/admin/google': typeof AdminGoogleRoute
   '/admin/hallway': typeof AdminHallwayRoute
   '/admin/hex-editor': typeof AdminHexEditorRoute
   '/admin/hov': typeof AdminHovRoute
   '/admin/kits': typeof AdminKitsRoute
+  '/admin/lab': typeof AdminLabRoute
   '/admin/letters': typeof AdminLettersRoute
   '/admin/likes': typeof AdminLikesRoute
   '/admin/mines': typeof AdminMinesRoute
@@ -735,6 +904,7 @@ export interface FileRoutesById {
   '/admin/nft-batch': typeof AdminNftBatchRoute
   '/admin/nft-inputs': typeof AdminNftInputsRoute
   '/admin/optimize': typeof AdminOptimizeRoute
+  '/admin/passport': typeof AdminPassportRoute
   '/admin/payouts': typeof AdminPayoutsRoute
   '/admin/perf': typeof AdminPerfRoute
   '/admin/raids': typeof AdminRaidsRouteWithChildren
@@ -751,17 +921,23 @@ export interface FileRoutesById {
   '/admin/tournaments': typeof AdminTournamentsRoute
   '/admin/treasury': typeof AdminTreasuryRoute
   '/admin/wallet-inspect': typeof AdminWalletInspectRoute
+  '/admin/wallet-login': typeof AdminWalletLoginRoute
   '/admin/worldgen': typeof AdminWorldgenRoute
+  '/api/csp-report': typeof ApiCspReportRoute
   '/api/img': typeof ApiImgRoute
+  '/api/news': typeof ApiNewsRoute
   '/api/perf': typeof ApiPerfRoute
   '/api/perf-client': typeof ApiPerfClientRoute
+  '/api/tg-game-webhook': typeof ApiTgGameWebhookRoute
   '/api/tg-webhook': typeof ApiTgWebhookRoute
   '/api/upload': typeof ApiUploadRoute
   '/api/version': typeof ApiVersionRoute
   '/api/wallet-relay': typeof ApiWalletRelayRoute
   '/api/whoami': typeof ApiWhoamiRoute
+  '/api/xsolla-webhook': typeof ApiXsollaWebhookRoute
   '/archive/yuplink-game-art-all-images': typeof ArchiveYuplinkGameArtAllImagesRoute
   '/archive/yuplink-game-params-guide': typeof ArchiveYuplinkGameParamsGuideRoute
+  '/assets/$': typeof AssetsSplatRoute
   '/chips/pvp': typeof ChipsPvpRoute
   '/wallet/connect': typeof WalletConnectRoute
   '/wallet/docs': typeof WalletDocsRoute
@@ -775,8 +951,13 @@ export interface FileRoutesById {
   '/api/cron/auction-announce-test': typeof ApiCronAuctionAnnounceTestRoute
   '/api/cron/auctions-settle': typeof ApiCronAuctionsSettleRoute
   '/api/cron/boss-weekly': typeof ApiCronBossWeeklyRoute
+  '/api/cron/builder-world-setup': typeof ApiCronBuilderWorldSetupRoute
   '/api/cron/chips-stock-alert': typeof ApiCronChipsStockAlertRoute
+  '/api/cron/creator-rebuild': typeof ApiCronCreatorRebuildRoute
   '/api/cron/daily-likes': typeof ApiCronDailyLikesRoute
+  '/api/cron/demo-island-setup': typeof ApiCronDemoIslandSetupRoute
+  '/api/cron/island-tutorial-restart': typeof ApiCronIslandTutorialRestartRoute
+  '/api/cron/hero-energy-resync': typeof ApiCronHeroEnergyResyncRoute
   '/api/cron/ledger-audit': typeof ApiCronLedgerAuditRoute
   '/api/cron/lost-payments': typeof ApiCronLostPaymentsRoute
   '/api/cron/nft-payout-resolver': typeof ApiCronNftPayoutResolverRoute
@@ -797,26 +978,34 @@ export interface FileRouteTypes {
     | '/burn'
     | '/castle-editor'
     | '/chips'
+    | '/crown'
     | '/equip'
     | '/hallway'
     | '/home'
     | '/join'
     | '/lookup'
     | '/my-nfts'
+    | '/newspaper-editor'
+    | '/portal-check'
+    | '/privacy'
     | '/raid-hexmap'
     | '/referrals'
     | '/roadmap'
     | '/screens'
     | '/slot'
     | '/storage'
+    | '/vestnik'
     | '/wallet'
     | '/admin/assets'
     | '/admin/auction'
     | '/admin/chips'
+    | '/admin/duel'
+    | '/admin/google'
     | '/admin/hallway'
     | '/admin/hex-editor'
     | '/admin/hov'
     | '/admin/kits'
+    | '/admin/lab'
     | '/admin/letters'
     | '/admin/likes'
     | '/admin/mines'
@@ -824,6 +1013,7 @@ export interface FileRouteTypes {
     | '/admin/nft-batch'
     | '/admin/nft-inputs'
     | '/admin/optimize'
+    | '/admin/passport'
     | '/admin/payouts'
     | '/admin/perf'
     | '/admin/raids'
@@ -840,17 +1030,23 @@ export interface FileRouteTypes {
     | '/admin/tournaments'
     | '/admin/treasury'
     | '/admin/wallet-inspect'
+    | '/admin/wallet-login'
     | '/admin/worldgen'
+    | '/api/csp-report'
     | '/api/img'
+    | '/api/news'
     | '/api/perf'
     | '/api/perf-client'
+    | '/api/tg-game-webhook'
     | '/api/tg-webhook'
     | '/api/upload'
     | '/api/version'
     | '/api/wallet-relay'
     | '/api/whoami'
+    | '/api/xsolla-webhook'
     | '/archive/yuplink-game-art-all-images'
     | '/archive/yuplink-game-params-guide'
+    | '/assets/$'
     | '/chips/pvp'
     | '/wallet/connect'
     | '/wallet/docs'
@@ -864,8 +1060,13 @@ export interface FileRouteTypes {
     | '/api/cron/auction-announce-test'
     | '/api/cron/auctions-settle'
     | '/api/cron/boss-weekly'
+    | '/api/cron/builder-world-setup'
     | '/api/cron/chips-stock-alert'
+    | '/api/cron/creator-rebuild'
     | '/api/cron/daily-likes'
+    | '/api/cron/demo-island-setup'
+    | '/api/cron/island-tutorial-restart'
+    | '/api/cron/hero-energy-resync'
     | '/api/cron/ledger-audit'
     | '/api/cron/lost-payments'
     | '/api/cron/nft-payout-resolver'
@@ -883,26 +1084,34 @@ export interface FileRouteTypes {
     | '/burn'
     | '/castle-editor'
     | '/chips'
+    | '/crown'
     | '/equip'
     | '/hallway'
     | '/home'
     | '/join'
     | '/lookup'
     | '/my-nfts'
+    | '/newspaper-editor'
+    | '/portal-check'
+    | '/privacy'
     | '/raid-hexmap'
     | '/referrals'
     | '/roadmap'
     | '/screens'
     | '/slot'
     | '/storage'
+    | '/vestnik'
     | '/wallet'
     | '/admin/assets'
     | '/admin/auction'
     | '/admin/chips'
+    | '/admin/duel'
+    | '/admin/google'
     | '/admin/hallway'
     | '/admin/hex-editor'
     | '/admin/hov'
     | '/admin/kits'
+    | '/admin/lab'
     | '/admin/letters'
     | '/admin/likes'
     | '/admin/mines'
@@ -910,6 +1119,7 @@ export interface FileRouteTypes {
     | '/admin/nft-batch'
     | '/admin/nft-inputs'
     | '/admin/optimize'
+    | '/admin/passport'
     | '/admin/payouts'
     | '/admin/perf'
     | '/admin/raids'
@@ -926,17 +1136,23 @@ export interface FileRouteTypes {
     | '/admin/tournaments'
     | '/admin/treasury'
     | '/admin/wallet-inspect'
+    | '/admin/wallet-login'
     | '/admin/worldgen'
+    | '/api/csp-report'
     | '/api/img'
+    | '/api/news'
     | '/api/perf'
     | '/api/perf-client'
+    | '/api/tg-game-webhook'
     | '/api/tg-webhook'
     | '/api/upload'
     | '/api/version'
     | '/api/wallet-relay'
     | '/api/whoami'
+    | '/api/xsolla-webhook'
     | '/archive/yuplink-game-art-all-images'
     | '/archive/yuplink-game-params-guide'
+    | '/assets/$'
     | '/chips/pvp'
     | '/wallet/connect'
     | '/wallet/docs'
@@ -950,8 +1166,13 @@ export interface FileRouteTypes {
     | '/api/cron/auction-announce-test'
     | '/api/cron/auctions-settle'
     | '/api/cron/boss-weekly'
+    | '/api/cron/builder-world-setup'
     | '/api/cron/chips-stock-alert'
+    | '/api/cron/creator-rebuild'
     | '/api/cron/daily-likes'
+    | '/api/cron/demo-island-setup'
+    | '/api/cron/island-tutorial-restart'
+    | '/api/cron/hero-energy-resync'
     | '/api/cron/ledger-audit'
     | '/api/cron/lost-payments'
     | '/api/cron/nft-payout-resolver'
@@ -970,26 +1191,34 @@ export interface FileRouteTypes {
     | '/burn'
     | '/castle-editor'
     | '/chips'
+    | '/crown'
     | '/equip'
     | '/hallway'
     | '/home'
     | '/join'
     | '/lookup'
     | '/my-nfts'
+    | '/newspaper-editor'
+    | '/portal-check'
+    | '/privacy'
     | '/raid-hexmap'
     | '/referrals'
     | '/roadmap'
     | '/screens'
     | '/slot'
     | '/storage'
+    | '/vestnik'
     | '/wallet'
     | '/admin/assets'
     | '/admin/auction'
     | '/admin/chips'
+    | '/admin/duel'
+    | '/admin/google'
     | '/admin/hallway'
     | '/admin/hex-editor'
     | '/admin/hov'
     | '/admin/kits'
+    | '/admin/lab'
     | '/admin/letters'
     | '/admin/likes'
     | '/admin/mines'
@@ -997,6 +1226,7 @@ export interface FileRouteTypes {
     | '/admin/nft-batch'
     | '/admin/nft-inputs'
     | '/admin/optimize'
+    | '/admin/passport'
     | '/admin/payouts'
     | '/admin/perf'
     | '/admin/raids'
@@ -1013,17 +1243,23 @@ export interface FileRouteTypes {
     | '/admin/tournaments'
     | '/admin/treasury'
     | '/admin/wallet-inspect'
+    | '/admin/wallet-login'
     | '/admin/worldgen'
+    | '/api/csp-report'
     | '/api/img'
+    | '/api/news'
     | '/api/perf'
     | '/api/perf-client'
+    | '/api/tg-game-webhook'
     | '/api/tg-webhook'
     | '/api/upload'
     | '/api/version'
     | '/api/wallet-relay'
     | '/api/whoami'
+    | '/api/xsolla-webhook'
     | '/archive/yuplink-game-art-all-images'
     | '/archive/yuplink-game-params-guide'
+    | '/assets/$'
     | '/chips/pvp'
     | '/wallet/connect'
     | '/wallet/docs'
@@ -1037,8 +1273,13 @@ export interface FileRouteTypes {
     | '/api/cron/auction-announce-test'
     | '/api/cron/auctions-settle'
     | '/api/cron/boss-weekly'
+    | '/api/cron/builder-world-setup'
     | '/api/cron/chips-stock-alert'
+    | '/api/cron/creator-rebuild'
     | '/api/cron/daily-likes'
+    | '/api/cron/demo-island-setup'
+    | '/api/cron/island-tutorial-restart'
+    | '/api/cron/hero-energy-resync'
     | '/api/cron/ledger-audit'
     | '/api/cron/lost-payments'
     | '/api/cron/nft-payout-resolver'
@@ -1058,37 +1299,52 @@ export interface RootRouteChildren {
   BurnRoute: typeof BurnRoute
   CastleEditorRoute: typeof CastleEditorRoute
   ChipsRoute: typeof ChipsRouteWithChildren
+  CrownRoute: typeof CrownRoute
   EquipRoute: typeof EquipRoute
   HallwayRoute: typeof HallwayRoute
   HomeRoute: typeof HomeRoute
   JoinRoute: typeof JoinRoute
   LookupRoute: typeof LookupRoute
   MyNftsRoute: typeof MyNftsRoute
+  NewspaperEditorRoute: typeof NewspaperEditorRoute
+  PortalCheckRoute: typeof PortalCheckRoute
+  PrivacyRoute: typeof PrivacyRoute
   RaidHexmapRoute: typeof RaidHexmapRoute
   ReferralsRoute: typeof ReferralsRoute
   RoadmapRoute: typeof RoadmapRoute
   ScreensRoute: typeof ScreensRoute
   SlotRoute: typeof SlotRoute
   StorageRoute: typeof StorageRoute
+  VestnikRoute: typeof VestnikRoute
   WalletRoute: typeof WalletRouteWithChildren
+  ApiCspReportRoute: typeof ApiCspReportRoute
   ApiImgRoute: typeof ApiImgRoute
+  ApiNewsRoute: typeof ApiNewsRoute
   ApiPerfRoute: typeof ApiPerfRoute
   ApiPerfClientRoute: typeof ApiPerfClientRoute
+  ApiTgGameWebhookRoute: typeof ApiTgGameWebhookRoute
   ApiTgWebhookRoute: typeof ApiTgWebhookRoute
   ApiUploadRoute: typeof ApiUploadRoute
   ApiVersionRoute: typeof ApiVersionRoute
   ApiWalletRelayRoute: typeof ApiWalletRelayRoute
   ApiWhoamiRoute: typeof ApiWhoamiRoute
+  ApiXsollaWebhookRoute: typeof ApiXsollaWebhookRoute
   ArchiveYuplinkGameArtAllImagesRoute: typeof ArchiveYuplinkGameArtAllImagesRoute
   ArchiveYuplinkGameParamsGuideRoute: typeof ArchiveYuplinkGameParamsGuideRoute
+  AssetsSplatRoute: typeof AssetsSplatRoute
   ApiBetaRaidEventsRoute: typeof ApiBetaRaidEventsRoute
   ApiBetaRaidMapBlobRoute: typeof ApiBetaRaidMapBlobRoute
   ApiBetaRaidMapDeltaRoute: typeof ApiBetaRaidMapDeltaRoute
   ApiCronAuctionAnnounceTestRoute: typeof ApiCronAuctionAnnounceTestRoute
   ApiCronAuctionsSettleRoute: typeof ApiCronAuctionsSettleRoute
   ApiCronBossWeeklyRoute: typeof ApiCronBossWeeklyRoute
+  ApiCronBuilderWorldSetupRoute: typeof ApiCronBuilderWorldSetupRoute
   ApiCronChipsStockAlertRoute: typeof ApiCronChipsStockAlertRoute
+  ApiCronCreatorRebuildRoute: typeof ApiCronCreatorRebuildRoute
   ApiCronDailyLikesRoute: typeof ApiCronDailyLikesRoute
+  ApiCronDemoIslandSetupRoute: typeof ApiCronDemoIslandSetupRoute
+  ApiCronIslandTutorialRestartRoute: typeof ApiCronIslandTutorialRestartRoute
+  ApiCronHeroEnergyResyncRoute: typeof ApiCronHeroEnergyResyncRoute
   ApiCronLedgerAuditRoute: typeof ApiCronLedgerAuditRoute
   ApiCronLostPaymentsRoute: typeof ApiCronLostPaymentsRoute
   ApiCronNftPayoutResolverRoute: typeof ApiCronNftPayoutResolverRoute
@@ -1101,123 +1357,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/wallet': {
-      id: '/wallet'
-      path: '/wallet'
-      fullPath: '/wallet'
-      preLoaderRoute: typeof WalletRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/storage': {
-      id: '/storage'
-      path: '/storage'
-      fullPath: '/storage'
-      preLoaderRoute: typeof StorageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/slot': {
-      id: '/slot'
-      path: '/slot'
-      fullPath: '/slot'
-      preLoaderRoute: typeof SlotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/screens': {
-      id: '/screens'
-      path: '/screens'
-      fullPath: '/screens'
-      preLoaderRoute: typeof ScreensRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/roadmap': {
-      id: '/roadmap'
-      path: '/roadmap'
-      fullPath: '/roadmap'
-      preLoaderRoute: typeof RoadmapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/referrals': {
-      id: '/referrals'
-      path: '/referrals'
-      fullPath: '/referrals'
-      preLoaderRoute: typeof ReferralsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/raid-hexmap': {
-      id: '/raid-hexmap'
-      path: '/raid-hexmap'
-      fullPath: '/raid-hexmap'
-      preLoaderRoute: typeof RaidHexmapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-nfts': {
-      id: '/my-nfts'
-      path: '/my-nfts'
-      fullPath: '/my-nfts'
-      preLoaderRoute: typeof MyNftsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lookup': {
-      id: '/lookup'
-      path: '/lookup'
-      fullPath: '/lookup'
-      preLoaderRoute: typeof LookupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/join': {
-      id: '/join'
-      path: '/join'
-      fullPath: '/join'
-      preLoaderRoute: typeof JoinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/home': {
-      id: '/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof HomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hallway': {
-      id: '/hallway'
-      path: '/hallway'
-      fullPath: '/hallway'
-      preLoaderRoute: typeof HallwayRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/equip': {
-      id: '/equip'
-      path: '/equip'
-      fullPath: '/equip'
-      preLoaderRoute: typeof EquipRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chips': {
-      id: '/chips'
-      path: '/chips'
-      fullPath: '/chips'
-      preLoaderRoute: typeof ChipsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/castle-editor': {
-      id: '/castle-editor'
-      path: '/castle-editor'
-      fullPath: '/castle-editor'
-      preLoaderRoute: typeof CastleEditorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/burn': {
-      id: '/burn'
-      path: '/burn'
-      fullPath: '/burn'
-      preLoaderRoute: typeof BurnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/beta-raid': {
-      id: '/beta-raid'
-      path: '/beta-raid'
-      fullPath: '/beta-raid'
-      preLoaderRoute: typeof BetaRaidRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -1227,11 +1371,158 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/beta-raid': {
+      id: '/beta-raid'
+      path: '/beta-raid'
+      fullPath: '/beta-raid'
+      preLoaderRoute: typeof BetaRaidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/burn': {
+      id: '/burn'
+      path: '/burn'
+      fullPath: '/burn'
+      preLoaderRoute: typeof BurnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/castle-editor': {
+      id: '/castle-editor'
+      path: '/castle-editor'
+      fullPath: '/castle-editor'
+      preLoaderRoute: typeof CastleEditorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chips': {
+      id: '/chips'
+      path: '/chips'
+      fullPath: '/chips'
+      preLoaderRoute: typeof ChipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crown': {
+      id: '/crown'
+      path: '/crown'
+      fullPath: '/crown'
+      preLoaderRoute: typeof CrownRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equip': {
+      id: '/equip'
+      path: '/equip'
+      fullPath: '/equip'
+      preLoaderRoute: typeof EquipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hallway': {
+      id: '/hallway'
+      path: '/hallway'
+      fullPath: '/hallway'
+      preLoaderRoute: typeof HallwayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lookup': {
+      id: '/lookup'
+      path: '/lookup'
+      fullPath: '/lookup'
+      preLoaderRoute: typeof LookupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-nfts': {
+      id: '/my-nfts'
+      path: '/my-nfts'
+      fullPath: '/my-nfts'
+      preLoaderRoute: typeof MyNftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/newspaper-editor': {
+      id: '/newspaper-editor'
+      path: '/newspaper-editor'
+      fullPath: '/newspaper-editor'
+      preLoaderRoute: typeof NewspaperEditorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal-check': {
+      id: '/portal-check'
+      path: '/portal-check'
+      fullPath: '/portal-check'
+      preLoaderRoute: typeof PortalCheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/raid-hexmap': {
+      id: '/raid-hexmap'
+      path: '/raid-hexmap'
+      fullPath: '/raid-hexmap'
+      preLoaderRoute: typeof RaidHexmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/referrals': {
+      id: '/referrals'
+      path: '/referrals'
+      fullPath: '/referrals'
+      preLoaderRoute: typeof ReferralsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/screens': {
+      id: '/screens'
+      path: '/screens'
+      fullPath: '/screens'
+      preLoaderRoute: typeof ScreensRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/slot': {
+      id: '/slot'
+      path: '/slot'
+      fullPath: '/slot'
+      preLoaderRoute: typeof SlotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/storage': {
+      id: '/storage'
+      path: '/storage'
+      fullPath: '/storage'
+      preLoaderRoute: typeof StorageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vestnik': {
+      id: '/vestnik'
+      path: '/vestnik'
+      fullPath: '/vestnik'
+      preLoaderRoute: typeof VestnikRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -1241,312 +1532,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/wallet/sign-message': {
-      id: '/wallet/sign-message'
-      path: '/sign-message'
-      fullPath: '/wallet/sign-message'
-      preLoaderRoute: typeof WalletSignMessageRouteImport
-      parentRoute: typeof WalletRoute
-    }
-    '/wallet/sign': {
-      id: '/wallet/sign'
-      path: '/sign'
-      fullPath: '/wallet/sign'
-      preLoaderRoute: typeof WalletSignRouteImport
-      parentRoute: typeof WalletRoute
-    }
-    '/wallet/docs': {
-      id: '/wallet/docs'
-      path: '/docs'
-      fullPath: '/wallet/docs'
-      preLoaderRoute: typeof WalletDocsRouteImport
-      parentRoute: typeof WalletRoute
-    }
-    '/wallet/connect': {
-      id: '/wallet/connect'
-      path: '/connect'
-      fullPath: '/wallet/connect'
-      preLoaderRoute: typeof WalletConnectRouteImport
-      parentRoute: typeof WalletRoute
-    }
-    '/chips/pvp': {
-      id: '/chips/pvp'
-      path: '/pvp'
-      fullPath: '/chips/pvp'
-      preLoaderRoute: typeof ChipsPvpRouteImport
-      parentRoute: typeof ChipsRoute
-    }
-    '/archive/yuplink-game-params-guide': {
-      id: '/archive/yuplink-game-params-guide'
-      path: '/archive/yuplink-game-params-guide'
-      fullPath: '/archive/yuplink-game-params-guide'
-      preLoaderRoute: typeof ArchiveYuplinkGameParamsGuideRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/archive/yuplink-game-art-all-images': {
-      id: '/archive/yuplink-game-art-all-images'
-      path: '/archive/yuplink-game-art-all-images'
-      fullPath: '/archive/yuplink-game-art-all-images'
-      preLoaderRoute: typeof ArchiveYuplinkGameArtAllImagesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/whoami': {
-      id: '/api/whoami'
-      path: '/api/whoami'
-      fullPath: '/api/whoami'
-      preLoaderRoute: typeof ApiWhoamiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/wallet-relay': {
-      id: '/api/wallet-relay'
-      path: '/api/wallet-relay'
-      fullPath: '/api/wallet-relay'
-      preLoaderRoute: typeof ApiWalletRelayRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/version': {
-      id: '/api/version'
-      path: '/api/version'
-      fullPath: '/api/version'
-      preLoaderRoute: typeof ApiVersionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/upload': {
-      id: '/api/upload'
-      path: '/api/upload'
-      fullPath: '/api/upload'
-      preLoaderRoute: typeof ApiUploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/tg-webhook': {
-      id: '/api/tg-webhook'
-      path: '/api/tg-webhook'
-      fullPath: '/api/tg-webhook'
-      preLoaderRoute: typeof ApiTgWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/perf-client': {
-      id: '/api/perf-client'
-      path: '/api/perf-client'
-      fullPath: '/api/perf-client'
-      preLoaderRoute: typeof ApiPerfClientRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/perf': {
-      id: '/api/perf'
-      path: '/api/perf'
-      fullPath: '/api/perf'
-      preLoaderRoute: typeof ApiPerfRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/img': {
-      id: '/api/img'
-      path: '/api/img'
-      fullPath: '/api/img'
-      preLoaderRoute: typeof ApiImgRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/worldgen': {
-      id: '/admin/worldgen'
-      path: '/worldgen'
-      fullPath: '/admin/worldgen'
-      preLoaderRoute: typeof AdminWorldgenRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/wallet-inspect': {
-      id: '/admin/wallet-inspect'
-      path: '/wallet-inspect'
-      fullPath: '/admin/wallet-inspect'
-      preLoaderRoute: typeof AdminWalletInspectRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/treasury': {
-      id: '/admin/treasury'
-      path: '/treasury'
-      fullPath: '/admin/treasury'
-      preLoaderRoute: typeof AdminTreasuryRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/tournaments': {
-      id: '/admin/tournaments'
-      path: '/tournaments'
-      fullPath: '/admin/tournaments'
-      preLoaderRoute: typeof AdminTournamentsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/tickets': {
-      id: '/admin/tickets'
-      path: '/tickets'
-      fullPath: '/admin/tickets'
-      preLoaderRoute: typeof AdminTicketsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/testers': {
-      id: '/admin/testers'
-      path: '/testers'
-      fullPath: '/admin/testers'
-      preLoaderRoute: typeof AdminTestersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/tasks': {
-      id: '/admin/tasks'
-      path: '/tasks'
-      fullPath: '/admin/tasks'
-      preLoaderRoute: typeof AdminTasksRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/subscriptions': {
-      id: '/admin/subscriptions'
-      path: '/subscriptions'
-      fullPath: '/admin/subscriptions'
-      preLoaderRoute: typeof AdminSubscriptionsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/starter-hero': {
-      id: '/admin/starter-hero'
-      path: '/starter-hero'
-      fullPath: '/admin/starter-hero'
-      preLoaderRoute: typeof AdminStarterHeroRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/spells': {
-      id: '/admin/spells'
-      path: '/spells'
-      fullPath: '/admin/spells'
-      preLoaderRoute: typeof AdminSpellsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/solana': {
-      id: '/admin/solana'
-      path: '/solana'
-      fullPath: '/admin/solana'
-      preLoaderRoute: typeof AdminSolanaRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/shop': {
-      id: '/admin/shop'
-      path: '/shop'
-      fullPath: '/admin/shop'
-      preLoaderRoute: typeof AdminShopRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/roadmap': {
-      id: '/admin/roadmap'
-      path: '/roadmap'
-      fullPath: '/admin/roadmap'
-      preLoaderRoute: typeof AdminRoadmapRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/redemptions': {
-      id: '/admin/redemptions'
-      path: '/redemptions'
-      fullPath: '/admin/redemptions'
-      preLoaderRoute: typeof AdminRedemptionsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/raids': {
-      id: '/admin/raids'
-      path: '/raids'
-      fullPath: '/admin/raids'
-      preLoaderRoute: typeof AdminRaidsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/perf': {
-      id: '/admin/perf'
-      path: '/perf'
-      fullPath: '/admin/perf'
-      preLoaderRoute: typeof AdminPerfRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/payouts': {
-      id: '/admin/payouts'
-      path: '/payouts'
-      fullPath: '/admin/payouts'
-      preLoaderRoute: typeof AdminPayoutsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/optimize': {
-      id: '/admin/optimize'
-      path: '/optimize'
-      fullPath: '/admin/optimize'
-      preLoaderRoute: typeof AdminOptimizeRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/nft-inputs': {
-      id: '/admin/nft-inputs'
-      path: '/nft-inputs'
-      fullPath: '/admin/nft-inputs'
-      preLoaderRoute: typeof AdminNftInputsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/nft-batch': {
-      id: '/admin/nft-batch'
-      path: '/nft-batch'
-      fullPath: '/admin/nft-batch'
-      preLoaderRoute: typeof AdminNftBatchRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/mint': {
-      id: '/admin/mint'
-      path: '/mint'
-      fullPath: '/admin/mint'
-      preLoaderRoute: typeof AdminMintRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/mines': {
-      id: '/admin/mines'
-      path: '/mines'
-      fullPath: '/admin/mines'
-      preLoaderRoute: typeof AdminMinesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/likes': {
-      id: '/admin/likes'
-      path: '/likes'
-      fullPath: '/admin/likes'
-      preLoaderRoute: typeof AdminLikesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/letters': {
-      id: '/admin/letters'
-      path: '/letters'
-      fullPath: '/admin/letters'
-      preLoaderRoute: typeof AdminLettersRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/kits': {
-      id: '/admin/kits'
-      path: '/kits'
-      fullPath: '/admin/kits'
-      preLoaderRoute: typeof AdminKitsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/hov': {
-      id: '/admin/hov'
-      path: '/hov'
-      fullPath: '/admin/hov'
-      preLoaderRoute: typeof AdminHovRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/hex-editor': {
-      id: '/admin/hex-editor'
-      path: '/hex-editor'
-      fullPath: '/admin/hex-editor'
-      preLoaderRoute: typeof AdminHexEditorRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/hallway': {
-      id: '/admin/hallway'
-      path: '/hallway'
-      fullPath: '/admin/hallway'
-      preLoaderRoute: typeof AdminHallwayRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/chips': {
-      id: '/admin/chips'
-      path: '/chips'
-      fullPath: '/admin/chips'
-      preLoaderRoute: typeof AdminChipsRouteImport
+    '/admin/assets': {
+      id: '/admin/assets'
+      path: '/assets'
+      fullPath: '/admin/assets'
+      preLoaderRoute: typeof AdminAssetsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/auction': {
@@ -1556,19 +1546,383 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuctionRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/assets': {
-      id: '/admin/assets'
-      path: '/assets'
-      fullPath: '/admin/assets'
-      preLoaderRoute: typeof AdminAssetsRouteImport
+    '/admin/chips': {
+      id: '/admin/chips'
+      path: '/chips'
+      fullPath: '/admin/chips'
+      preLoaderRoute: typeof AdminChipsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/wallet/': {
-      id: '/admin/wallet/'
-      path: '/wallet'
-      fullPath: '/admin/wallet/'
-      preLoaderRoute: typeof AdminWalletIndexRouteImport
+    '/admin/duel': {
+      id: '/admin/duel'
+      path: '/duel'
+      fullPath: '/admin/duel'
+      preLoaderRoute: typeof AdminDuelRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/admin/google': {
+      id: '/admin/google'
+      path: '/google'
+      fullPath: '/admin/google'
+      preLoaderRoute: typeof AdminGoogleRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hallway': {
+      id: '/admin/hallway'
+      path: '/hallway'
+      fullPath: '/admin/hallway'
+      preLoaderRoute: typeof AdminHallwayRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hex-editor': {
+      id: '/admin/hex-editor'
+      path: '/hex-editor'
+      fullPath: '/admin/hex-editor'
+      preLoaderRoute: typeof AdminHexEditorRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hov': {
+      id: '/admin/hov'
+      path: '/hov'
+      fullPath: '/admin/hov'
+      preLoaderRoute: typeof AdminHovRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/kits': {
+      id: '/admin/kits'
+      path: '/kits'
+      fullPath: '/admin/kits'
+      preLoaderRoute: typeof AdminKitsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/lab': {
+      id: '/admin/lab'
+      path: '/lab'
+      fullPath: '/admin/lab'
+      preLoaderRoute: typeof AdminLabRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/letters': {
+      id: '/admin/letters'
+      path: '/letters'
+      fullPath: '/admin/letters'
+      preLoaderRoute: typeof AdminLettersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/likes': {
+      id: '/admin/likes'
+      path: '/likes'
+      fullPath: '/admin/likes'
+      preLoaderRoute: typeof AdminLikesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/mines': {
+      id: '/admin/mines'
+      path: '/mines'
+      fullPath: '/admin/mines'
+      preLoaderRoute: typeof AdminMinesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/mint': {
+      id: '/admin/mint'
+      path: '/mint'
+      fullPath: '/admin/mint'
+      preLoaderRoute: typeof AdminMintRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/nft-batch': {
+      id: '/admin/nft-batch'
+      path: '/nft-batch'
+      fullPath: '/admin/nft-batch'
+      preLoaderRoute: typeof AdminNftBatchRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/nft-inputs': {
+      id: '/admin/nft-inputs'
+      path: '/nft-inputs'
+      fullPath: '/admin/nft-inputs'
+      preLoaderRoute: typeof AdminNftInputsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/optimize': {
+      id: '/admin/optimize'
+      path: '/optimize'
+      fullPath: '/admin/optimize'
+      preLoaderRoute: typeof AdminOptimizeRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/passport': {
+      id: '/admin/passport'
+      path: '/passport'
+      fullPath: '/admin/passport'
+      preLoaderRoute: typeof AdminPassportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/payouts': {
+      id: '/admin/payouts'
+      path: '/payouts'
+      fullPath: '/admin/payouts'
+      preLoaderRoute: typeof AdminPayoutsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/perf': {
+      id: '/admin/perf'
+      path: '/perf'
+      fullPath: '/admin/perf'
+      preLoaderRoute: typeof AdminPerfRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/raids': {
+      id: '/admin/raids'
+      path: '/raids'
+      fullPath: '/admin/raids'
+      preLoaderRoute: typeof AdminRaidsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/redemptions': {
+      id: '/admin/redemptions'
+      path: '/redemptions'
+      fullPath: '/admin/redemptions'
+      preLoaderRoute: typeof AdminRedemptionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/roadmap': {
+      id: '/admin/roadmap'
+      path: '/roadmap'
+      fullPath: '/admin/roadmap'
+      preLoaderRoute: typeof AdminRoadmapRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/shop': {
+      id: '/admin/shop'
+      path: '/shop'
+      fullPath: '/admin/shop'
+      preLoaderRoute: typeof AdminShopRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/solana': {
+      id: '/admin/solana'
+      path: '/solana'
+      fullPath: '/admin/solana'
+      preLoaderRoute: typeof AdminSolanaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/spells': {
+      id: '/admin/spells'
+      path: '/spells'
+      fullPath: '/admin/spells'
+      preLoaderRoute: typeof AdminSpellsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/starter-hero': {
+      id: '/admin/starter-hero'
+      path: '/starter-hero'
+      fullPath: '/admin/starter-hero'
+      preLoaderRoute: typeof AdminStarterHeroRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/subscriptions': {
+      id: '/admin/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/admin/subscriptions'
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tasks': {
+      id: '/admin/tasks'
+      path: '/tasks'
+      fullPath: '/admin/tasks'
+      preLoaderRoute: typeof AdminTasksRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/testers': {
+      id: '/admin/testers'
+      path: '/testers'
+      fullPath: '/admin/testers'
+      preLoaderRoute: typeof AdminTestersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tickets': {
+      id: '/admin/tickets'
+      path: '/tickets'
+      fullPath: '/admin/tickets'
+      preLoaderRoute: typeof AdminTicketsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/tournaments': {
+      id: '/admin/tournaments'
+      path: '/tournaments'
+      fullPath: '/admin/tournaments'
+      preLoaderRoute: typeof AdminTournamentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/treasury': {
+      id: '/admin/treasury'
+      path: '/treasury'
+      fullPath: '/admin/treasury'
+      preLoaderRoute: typeof AdminTreasuryRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/wallet-inspect': {
+      id: '/admin/wallet-inspect'
+      path: '/wallet-inspect'
+      fullPath: '/admin/wallet-inspect'
+      preLoaderRoute: typeof AdminWalletInspectRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/wallet-login': {
+      id: '/admin/wallet-login'
+      path: '/wallet-login'
+      fullPath: '/admin/wallet-login'
+      preLoaderRoute: typeof AdminWalletLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/worldgen': {
+      id: '/admin/worldgen'
+      path: '/worldgen'
+      fullPath: '/admin/worldgen'
+      preLoaderRoute: typeof AdminWorldgenRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/api/csp-report': {
+      id: '/api/csp-report'
+      path: '/api/csp-report'
+      fullPath: '/api/csp-report'
+      preLoaderRoute: typeof ApiCspReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/img': {
+      id: '/api/img'
+      path: '/api/img'
+      fullPath: '/api/img'
+      preLoaderRoute: typeof ApiImgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/news': {
+      id: '/api/news'
+      path: '/api/news'
+      fullPath: '/api/news'
+      preLoaderRoute: typeof ApiNewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/perf': {
+      id: '/api/perf'
+      path: '/api/perf'
+      fullPath: '/api/perf'
+      preLoaderRoute: typeof ApiPerfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/perf-client': {
+      id: '/api/perf-client'
+      path: '/api/perf-client'
+      fullPath: '/api/perf-client'
+      preLoaderRoute: typeof ApiPerfClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tg-game-webhook': {
+      id: '/api/tg-game-webhook'
+      path: '/api/tg-game-webhook'
+      fullPath: '/api/tg-game-webhook'
+      preLoaderRoute: typeof ApiTgGameWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tg-webhook': {
+      id: '/api/tg-webhook'
+      path: '/api/tg-webhook'
+      fullPath: '/api/tg-webhook'
+      preLoaderRoute: typeof ApiTgWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/upload': {
+      id: '/api/upload'
+      path: '/api/upload'
+      fullPath: '/api/upload'
+      preLoaderRoute: typeof ApiUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/version': {
+      id: '/api/version'
+      path: '/api/version'
+      fullPath: '/api/version'
+      preLoaderRoute: typeof ApiVersionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/wallet-relay': {
+      id: '/api/wallet-relay'
+      path: '/api/wallet-relay'
+      fullPath: '/api/wallet-relay'
+      preLoaderRoute: typeof ApiWalletRelayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/whoami': {
+      id: '/api/whoami'
+      path: '/api/whoami'
+      fullPath: '/api/whoami'
+      preLoaderRoute: typeof ApiWhoamiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/xsolla-webhook': {
+      id: '/api/xsolla-webhook'
+      path: '/api/xsolla-webhook'
+      fullPath: '/api/xsolla-webhook'
+      preLoaderRoute: typeof ApiXsollaWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/archive/yuplink-game-art-all-images': {
+      id: '/archive/yuplink-game-art-all-images'
+      path: '/archive/yuplink-game-art-all-images'
+      fullPath: '/archive/yuplink-game-art-all-images'
+      preLoaderRoute: typeof ArchiveYuplinkGameArtAllImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/archive/yuplink-game-params-guide': {
+      id: '/archive/yuplink-game-params-guide'
+      path: '/archive/yuplink-game-params-guide'
+      fullPath: '/archive/yuplink-game-params-guide'
+      preLoaderRoute: typeof ArchiveYuplinkGameParamsGuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assets/$': {
+      id: '/assets/$'
+      path: '/assets/$'
+      fullPath: '/assets/$'
+      preLoaderRoute: typeof AssetsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chips/pvp': {
+      id: '/chips/pvp'
+      path: '/pvp'
+      fullPath: '/chips/pvp'
+      preLoaderRoute: typeof ChipsPvpRouteImport
+      parentRoute: typeof ChipsRoute
+    }
+    '/wallet/connect': {
+      id: '/wallet/connect'
+      path: '/connect'
+      fullPath: '/wallet/connect'
+      preLoaderRoute: typeof WalletConnectRouteImport
+      parentRoute: typeof WalletRoute
+    }
+    '/wallet/docs': {
+      id: '/wallet/docs'
+      path: '/docs'
+      fullPath: '/wallet/docs'
+      preLoaderRoute: typeof WalletDocsRouteImport
+      parentRoute: typeof WalletRoute
+    }
+    '/wallet/sign': {
+      id: '/wallet/sign'
+      path: '/sign'
+      fullPath: '/wallet/sign'
+      preLoaderRoute: typeof WalletSignRouteImport
+      parentRoute: typeof WalletRoute
+    }
+    '/wallet/sign-message': {
+      id: '/wallet/sign-message'
+      path: '/sign-message'
+      fullPath: '/wallet/sign-message'
+      preLoaderRoute: typeof WalletSignMessageRouteImport
+      parentRoute: typeof WalletRoute
     }
     '/admin/drops/': {
       id: '/admin/drops/'
@@ -1577,102 +1931,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDropsIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/api/cron/towns': {
-      id: '/api/cron/towns'
-      path: '/api/cron/towns'
-      fullPath: '/api/cron/towns'
-      preLoaderRoute: typeof ApiCronTownsRouteImport
-      parentRoute: typeof rootRouteImport
+    '/admin/raids/RaidsDashboard': {
+      id: '/admin/raids/RaidsDashboard'
+      path: '/RaidsDashboard'
+      fullPath: '/admin/raids/RaidsDashboard'
+      preLoaderRoute: typeof AdminRaidsRaidsDashboardRouteImport
+      parentRoute: typeof AdminRaidsRoute
     }
-    '/api/cron/rescan-catalog': {
-      id: '/api/cron/rescan-catalog'
-      path: '/api/cron/rescan-catalog'
-      fullPath: '/api/cron/rescan-catalog'
-      preLoaderRoute: typeof ApiCronRescanCatalogRouteImport
-      parentRoute: typeof rootRouteImport
+    '/admin/wallet/': {
+      id: '/admin/wallet/'
+      path: '/wallet'
+      fullPath: '/admin/wallet/'
+      preLoaderRoute: typeof AdminWalletIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/api/cron/refresh-reputation': {
-      id: '/api/cron/refresh-reputation'
-      path: '/api/cron/refresh-reputation'
-      fullPath: '/api/cron/refresh-reputation'
-      preLoaderRoute: typeof ApiCronRefreshReputationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/raids-finish': {
-      id: '/api/cron/raids-finish'
-      path: '/api/cron/raids-finish'
-      fullPath: '/api/cron/raids-finish'
-      preLoaderRoute: typeof ApiCronRaidsFinishRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/raid-weekly': {
-      id: '/api/cron/raid-weekly'
-      path: '/api/cron/raid-weekly'
-      fullPath: '/api/cron/raid-weekly'
-      preLoaderRoute: typeof ApiCronRaidWeeklyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/nft-payout-resolver': {
-      id: '/api/cron/nft-payout-resolver'
-      path: '/api/cron/nft-payout-resolver'
-      fullPath: '/api/cron/nft-payout-resolver'
-      preLoaderRoute: typeof ApiCronNftPayoutResolverRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/lost-payments': {
-      id: '/api/cron/lost-payments'
-      path: '/api/cron/lost-payments'
-      fullPath: '/api/cron/lost-payments'
-      preLoaderRoute: typeof ApiCronLostPaymentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/ledger-audit': {
-      id: '/api/cron/ledger-audit'
-      path: '/api/cron/ledger-audit'
-      fullPath: '/api/cron/ledger-audit'
-      preLoaderRoute: typeof ApiCronLedgerAuditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/daily-likes': {
-      id: '/api/cron/daily-likes'
-      path: '/api/cron/daily-likes'
-      fullPath: '/api/cron/daily-likes'
-      preLoaderRoute: typeof ApiCronDailyLikesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/chips-stock-alert': {
-      id: '/api/cron/chips-stock-alert'
-      path: '/api/cron/chips-stock-alert'
-      fullPath: '/api/cron/chips-stock-alert'
-      preLoaderRoute: typeof ApiCronChipsStockAlertRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/boss-weekly': {
-      id: '/api/cron/boss-weekly'
-      path: '/api/cron/boss-weekly'
-      fullPath: '/api/cron/boss-weekly'
-      preLoaderRoute: typeof ApiCronBossWeeklyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/auctions-settle': {
-      id: '/api/cron/auctions-settle'
-      path: '/api/cron/auctions-settle'
-      fullPath: '/api/cron/auctions-settle'
-      preLoaderRoute: typeof ApiCronAuctionsSettleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/cron/auction-announce-test': {
-      id: '/api/cron/auction-announce-test'
-      path: '/api/cron/auction-announce-test'
-      fullPath: '/api/cron/auction-announce-test'
-      preLoaderRoute: typeof ApiCronAuctionAnnounceTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/beta-raid/map-delta': {
-      id: '/api/beta-raid/map-delta'
-      path: '/api/beta-raid/map-delta'
-      fullPath: '/api/beta-raid/map-delta'
-      preLoaderRoute: typeof ApiBetaRaidMapDeltaRouteImport
+    '/api/beta-raid/events': {
+      id: '/api/beta-raid/events'
+      path: '/api/beta-raid/events'
+      fullPath: '/api/beta-raid/events'
+      preLoaderRoute: typeof ApiBetaRaidEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/beta-raid/map-blob': {
@@ -1682,19 +1959,138 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBetaRaidMapBlobRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/beta-raid/events': {
-      id: '/api/beta-raid/events'
-      path: '/api/beta-raid/events'
-      fullPath: '/api/beta-raid/events'
-      preLoaderRoute: typeof ApiBetaRaidEventsRouteImport
+    '/api/beta-raid/map-delta': {
+      id: '/api/beta-raid/map-delta'
+      path: '/api/beta-raid/map-delta'
+      fullPath: '/api/beta-raid/map-delta'
+      preLoaderRoute: typeof ApiBetaRaidMapDeltaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/raids/RaidsDashboard': {
-      id: '/admin/raids/RaidsDashboard'
-      path: '/RaidsDashboard'
-      fullPath: '/admin/raids/RaidsDashboard'
-      preLoaderRoute: typeof AdminRaidsRaidsDashboardRouteImport
-      parentRoute: typeof AdminRaidsRoute
+    '/api/cron/auction-announce-test': {
+      id: '/api/cron/auction-announce-test'
+      path: '/api/cron/auction-announce-test'
+      fullPath: '/api/cron/auction-announce-test'
+      preLoaderRoute: typeof ApiCronAuctionAnnounceTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/auctions-settle': {
+      id: '/api/cron/auctions-settle'
+      path: '/api/cron/auctions-settle'
+      fullPath: '/api/cron/auctions-settle'
+      preLoaderRoute: typeof ApiCronAuctionsSettleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/boss-weekly': {
+      id: '/api/cron/boss-weekly'
+      path: '/api/cron/boss-weekly'
+      fullPath: '/api/cron/boss-weekly'
+      preLoaderRoute: typeof ApiCronBossWeeklyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/builder-world-setup': {
+      id: '/api/cron/builder-world-setup'
+      path: '/api/cron/builder-world-setup'
+      fullPath: '/api/cron/builder-world-setup'
+      preLoaderRoute: typeof ApiCronBuilderWorldSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/chips-stock-alert': {
+      id: '/api/cron/chips-stock-alert'
+      path: '/api/cron/chips-stock-alert'
+      fullPath: '/api/cron/chips-stock-alert'
+      preLoaderRoute: typeof ApiCronChipsStockAlertRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/creator-rebuild': {
+      id: '/api/cron/creator-rebuild'
+      path: '/api/cron/creator-rebuild'
+      fullPath: '/api/cron/creator-rebuild'
+      preLoaderRoute: typeof ApiCronCreatorRebuildRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/daily-likes': {
+      id: '/api/cron/daily-likes'
+      path: '/api/cron/daily-likes'
+      fullPath: '/api/cron/daily-likes'
+      preLoaderRoute: typeof ApiCronDailyLikesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/demo-island-setup': {
+      id: '/api/cron/demo-island-setup'
+      path: '/api/cron/demo-island-setup'
+      fullPath: '/api/cron/demo-island-setup'
+      preLoaderRoute: typeof ApiCronDemoIslandSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/island-tutorial-restart': {
+      id: '/api/cron/island-tutorial-restart'
+      path: '/api/cron/island-tutorial-restart'
+      fullPath: '/api/cron/island-tutorial-restart'
+      preLoaderRoute: typeof ApiCronIslandTutorialRestartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/hero-energy-resync': {
+      id: '/api/cron/hero-energy-resync'
+      path: '/api/cron/hero-energy-resync'
+      fullPath: '/api/cron/hero-energy-resync'
+      preLoaderRoute: typeof ApiCronHeroEnergyResyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/ledger-audit': {
+      id: '/api/cron/ledger-audit'
+      path: '/api/cron/ledger-audit'
+      fullPath: '/api/cron/ledger-audit'
+      preLoaderRoute: typeof ApiCronLedgerAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/lost-payments': {
+      id: '/api/cron/lost-payments'
+      path: '/api/cron/lost-payments'
+      fullPath: '/api/cron/lost-payments'
+      preLoaderRoute: typeof ApiCronLostPaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/nft-payout-resolver': {
+      id: '/api/cron/nft-payout-resolver'
+      path: '/api/cron/nft-payout-resolver'
+      fullPath: '/api/cron/nft-payout-resolver'
+      preLoaderRoute: typeof ApiCronNftPayoutResolverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/raid-weekly': {
+      id: '/api/cron/raid-weekly'
+      path: '/api/cron/raid-weekly'
+      fullPath: '/api/cron/raid-weekly'
+      preLoaderRoute: typeof ApiCronRaidWeeklyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/raids-finish': {
+      id: '/api/cron/raids-finish'
+      path: '/api/cron/raids-finish'
+      fullPath: '/api/cron/raids-finish'
+      preLoaderRoute: typeof ApiCronRaidsFinishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/refresh-reputation': {
+      id: '/api/cron/refresh-reputation'
+      path: '/api/cron/refresh-reputation'
+      fullPath: '/api/cron/refresh-reputation'
+      preLoaderRoute: typeof ApiCronRefreshReputationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/rescan-catalog': {
+      id: '/api/cron/rescan-catalog'
+      path: '/api/cron/rescan-catalog'
+      fullPath: '/api/cron/rescan-catalog'
+      preLoaderRoute: typeof ApiCronRescanCatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/towns': {
+      id: '/api/cron/towns'
+      path: '/api/cron/towns'
+      fullPath: '/api/cron/towns'
+      preLoaderRoute: typeof ApiCronTownsRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -1715,10 +2111,13 @@ interface AdminRouteChildren {
   AdminAssetsRoute: typeof AdminAssetsRoute
   AdminAuctionRoute: typeof AdminAuctionRoute
   AdminChipsRoute: typeof AdminChipsRoute
+  AdminDuelRoute: typeof AdminDuelRoute
+  AdminGoogleRoute: typeof AdminGoogleRoute
   AdminHallwayRoute: typeof AdminHallwayRoute
   AdminHexEditorRoute: typeof AdminHexEditorRoute
   AdminHovRoute: typeof AdminHovRoute
   AdminKitsRoute: typeof AdminKitsRoute
+  AdminLabRoute: typeof AdminLabRoute
   AdminLettersRoute: typeof AdminLettersRoute
   AdminLikesRoute: typeof AdminLikesRoute
   AdminMinesRoute: typeof AdminMinesRoute
@@ -1726,6 +2125,7 @@ interface AdminRouteChildren {
   AdminNftBatchRoute: typeof AdminNftBatchRoute
   AdminNftInputsRoute: typeof AdminNftInputsRoute
   AdminOptimizeRoute: typeof AdminOptimizeRoute
+  AdminPassportRoute: typeof AdminPassportRoute
   AdminPayoutsRoute: typeof AdminPayoutsRoute
   AdminPerfRoute: typeof AdminPerfRoute
   AdminRaidsRoute: typeof AdminRaidsRouteWithChildren
@@ -1742,6 +2142,7 @@ interface AdminRouteChildren {
   AdminTournamentsRoute: typeof AdminTournamentsRoute
   AdminTreasuryRoute: typeof AdminTreasuryRoute
   AdminWalletInspectRoute: typeof AdminWalletInspectRoute
+  AdminWalletLoginRoute: typeof AdminWalletLoginRoute
   AdminWorldgenRoute: typeof AdminWorldgenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminDropsIndexRoute: typeof AdminDropsIndexRoute
@@ -1752,10 +2153,13 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAssetsRoute: AdminAssetsRoute,
   AdminAuctionRoute: AdminAuctionRoute,
   AdminChipsRoute: AdminChipsRoute,
+  AdminDuelRoute: AdminDuelRoute,
+  AdminGoogleRoute: AdminGoogleRoute,
   AdminHallwayRoute: AdminHallwayRoute,
   AdminHexEditorRoute: AdminHexEditorRoute,
   AdminHovRoute: AdminHovRoute,
   AdminKitsRoute: AdminKitsRoute,
+  AdminLabRoute: AdminLabRoute,
   AdminLettersRoute: AdminLettersRoute,
   AdminLikesRoute: AdminLikesRoute,
   AdminMinesRoute: AdminMinesRoute,
@@ -1763,6 +2167,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminNftBatchRoute: AdminNftBatchRoute,
   AdminNftInputsRoute: AdminNftInputsRoute,
   AdminOptimizeRoute: AdminOptimizeRoute,
+  AdminPassportRoute: AdminPassportRoute,
   AdminPayoutsRoute: AdminPayoutsRoute,
   AdminPerfRoute: AdminPerfRoute,
   AdminRaidsRoute: AdminRaidsRouteWithChildren,
@@ -1779,6 +2184,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminTournamentsRoute: AdminTournamentsRoute,
   AdminTreasuryRoute: AdminTreasuryRoute,
   AdminWalletInspectRoute: AdminWalletInspectRoute,
+  AdminWalletLoginRoute: AdminWalletLoginRoute,
   AdminWorldgenRoute: AdminWorldgenRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminDropsIndexRoute: AdminDropsIndexRoute,
@@ -1821,37 +2227,52 @@ const rootRouteChildren: RootRouteChildren = {
   BurnRoute: BurnRoute,
   CastleEditorRoute: CastleEditorRoute,
   ChipsRoute: ChipsRouteWithChildren,
+  CrownRoute: CrownRoute,
   EquipRoute: EquipRoute,
   HallwayRoute: HallwayRoute,
   HomeRoute: HomeRoute,
   JoinRoute: JoinRoute,
   LookupRoute: LookupRoute,
   MyNftsRoute: MyNftsRoute,
+  NewspaperEditorRoute: NewspaperEditorRoute,
+  PortalCheckRoute: PortalCheckRoute,
+  PrivacyRoute: PrivacyRoute,
   RaidHexmapRoute: RaidHexmapRoute,
   ReferralsRoute: ReferralsRoute,
   RoadmapRoute: RoadmapRoute,
   ScreensRoute: ScreensRoute,
   SlotRoute: SlotRoute,
   StorageRoute: StorageRoute,
+  VestnikRoute: VestnikRoute,
   WalletRoute: WalletRouteWithChildren,
+  ApiCspReportRoute: ApiCspReportRoute,
   ApiImgRoute: ApiImgRoute,
+  ApiNewsRoute: ApiNewsRoute,
   ApiPerfRoute: ApiPerfRoute,
   ApiPerfClientRoute: ApiPerfClientRoute,
+  ApiTgGameWebhookRoute: ApiTgGameWebhookRoute,
   ApiTgWebhookRoute: ApiTgWebhookRoute,
   ApiUploadRoute: ApiUploadRoute,
   ApiVersionRoute: ApiVersionRoute,
   ApiWalletRelayRoute: ApiWalletRelayRoute,
   ApiWhoamiRoute: ApiWhoamiRoute,
+  ApiXsollaWebhookRoute: ApiXsollaWebhookRoute,
   ArchiveYuplinkGameArtAllImagesRoute: ArchiveYuplinkGameArtAllImagesRoute,
   ArchiveYuplinkGameParamsGuideRoute: ArchiveYuplinkGameParamsGuideRoute,
+  AssetsSplatRoute: AssetsSplatRoute,
   ApiBetaRaidEventsRoute: ApiBetaRaidEventsRoute,
   ApiBetaRaidMapBlobRoute: ApiBetaRaidMapBlobRoute,
   ApiBetaRaidMapDeltaRoute: ApiBetaRaidMapDeltaRoute,
   ApiCronAuctionAnnounceTestRoute: ApiCronAuctionAnnounceTestRoute,
   ApiCronAuctionsSettleRoute: ApiCronAuctionsSettleRoute,
   ApiCronBossWeeklyRoute: ApiCronBossWeeklyRoute,
+  ApiCronBuilderWorldSetupRoute: ApiCronBuilderWorldSetupRoute,
   ApiCronChipsStockAlertRoute: ApiCronChipsStockAlertRoute,
+  ApiCronCreatorRebuildRoute: ApiCronCreatorRebuildRoute,
   ApiCronDailyLikesRoute: ApiCronDailyLikesRoute,
+  ApiCronDemoIslandSetupRoute: ApiCronDemoIslandSetupRoute,
+  ApiCronIslandTutorialRestartRoute: ApiCronIslandTutorialRestartRoute,
+  ApiCronHeroEnergyResyncRoute: ApiCronHeroEnergyResyncRoute,
   ApiCronLedgerAuditRoute: ApiCronLedgerAuditRoute,
   ApiCronLostPaymentsRoute: ApiCronLostPaymentsRoute,
   ApiCronNftPayoutResolverRoute: ApiCronNftPayoutResolverRoute,

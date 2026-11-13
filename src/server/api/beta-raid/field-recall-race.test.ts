@@ -34,13 +34,13 @@ describe("recallHeroFromField: гонки", () => {
     expect(s.restWrites).toBe(1);
   });
 
-  it("два нажатия разом — снял один, отдых один, хвост один", async () => {
+  it("два нажатия разом — снял один, отдых один, хвоста нет", async () => {
     const res = await Promise.allSettled([go("op1abc"), go("op2abc")]);
     expect(res.map((x) => x.status).sort()).toEqual(["fulfilled", "rejected"]);
     const lost = res.find((x) => x.status === "rejected") as PromiseRejectedResult;
     expect(String(lost.reason)).toContain("braid.field_recall_free");
     expect(s.restWrites).toBe(1);
-    expect(s.dust).toBe(1);
+    expect(s.dust).toBe(0);
   });
 
   it("сняли рядом, пока шли проверки — «уже свободен», без отдыха, ключ отпущен", async () => {
@@ -60,14 +60,14 @@ describe("recallHeroFromField: гонки", () => {
 });
 
 describe("recallHeroFromField: без отдыха", () => {
-  it("стоя у самой грядки — как в её окне: снят, не отдыхает, хвост выдан", async () => {
+  it("стоя у самой грядки — как в её окне: снят, не отдыхает, хвоста нет", async () => {
     s.pos = { q: 31, r: 90 };
     await expect(go()).resolves.toMatchObject({ repeat: false, rested: false });
     expect(s.worker.heroId).toBeNull();
     expect(s.rest).toBeNull();
     // Без отдыха основной остаётся основным.
     expect(s.deselected).toBe(false);
-    expect(s.dust).toBe(1);
+    expect(s.dust).toBe(0);
     expect(s.published).toBe(1);
   });
 

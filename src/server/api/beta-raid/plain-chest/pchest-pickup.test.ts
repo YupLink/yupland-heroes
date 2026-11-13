@@ -4,6 +4,7 @@
 // — тот же итог без второй записи; гонка с «положить»/«забрать» и второй
 // «Забрать сундук» — одно из двух, без дюпа и потерь.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { NO, f, packOf, resetFake, slotsOf } from "./pchest.fake";
 
 const M = vi.hoisted(() => "./pchest.fake-mocks");
@@ -70,22 +71,27 @@ describe("забрать сундук", () => {
   });
 
   it("не влезло — остаток мешочком на этой клетке, ничего не пропало", async () => {
-    slots().set(APPLE, { count: 90, kind: "custom", refId: "cst_apple", name: "Яблоко" });
+    slots().set(APPLE, {
+      count: 3 * CELL_SIZE + 30,
+      kind: "custom",
+      refId: "cst_apple",
+      name: "Яблоко",
+    });
     const res = await pickSeen("w2", "pick-2-op");
-    // Ёмкость 4: сундук — одна ячейка, яблок — три ячейки (60), 30 — в мешочек.
-    expect(res.taken).toEqual([{ stackKey: APPLE, qty: 60 }]);
+    // Ёмкость 4: сундук — одна ячейка, яблок — три полные ячейки, 30 — в мешочек.
+    expect(res.taken).toEqual([{ stackKey: APPLE, qty: 3 * CELL_SIZE }]);
     expect(res.bagged).toEqual([{ stackKey: APPLE, qty: 30 }]);
     expect(res.bagId).toMatch(/^lb_[0-9a-f]{32}$/);
     const bag = f.bags.get(res.bagId ?? "");
     expect(bag).toMatchObject({ q: 5, r: 6, droppedBy: "acc2" });
     expect(bag?.items.get(APPLE)).toBe(30);
-    expect(packOf("h2").get(APPLE)?.count).toBe(60);
+    expect(packOf("h2").get(APPLE)?.count).toBe(3 * CELL_SIZE);
     // Мешочку нужен сборщик в этом процессе (запускается отложенным импортом).
     await vi.waitFor(() => expect(f.sweepers).toBe(1));
   });
 
   it("нет места под сам сундук — отказ с числами, всё на месте", async () => {
-    for (let i = 0; i < 4; i++) packOf("h2").set(`custom:y${i}`, { count: 20, wear: 0, marks: NO, kind: "custom", name: "y" });
+    for (let i = 0; i < 4; i++) packOf("h2").set(`custom:y${i}`, { count: CELL_SIZE, wear: 0, marks: NO, kind: "custom", name: "y" });
     await expect(pick("w2", "pick-3-op")).rejects.toThrow("market.backpack_need:1:0");
     expect(f.chests.size).toBe(1);
     expect(slots().get(APPLE)?.count).toBe(30);
@@ -115,14 +121,19 @@ describe("забрать сундук", () => {
 
 describe("повторы и гонки", () => {
   it("повтор того же нажатия (ответ потерялся) — тот же итог, второй записи нет", async () => {
-    slots().set(APPLE, { count: 90, kind: "custom", refId: "cst_apple", name: "Яблоко" });
+    slots().set(APPLE, {
+      count: 3 * CELL_SIZE + 30,
+      kind: "custom",
+      refId: "cst_apple",
+      name: "Яблоко",
+    });
     const sig = (await view()).sig;
     f.lose = "pickup";
     const first = await pick("w2", "pick-7-op", sig);
     const again = await pick("w2", "pick-7-op", sig);
     expect(again).toEqual(first);
     expect(packOf("h2").get("custom:cst_box")?.count).toBe(1);
-    expect(packOf("h2").get(APPLE)?.count).toBe(60);
+    expect(packOf("h2").get(APPLE)?.count).toBe(3 * CELL_SIZE);
     expect(f.bags.size).toBe(1);
   });
 

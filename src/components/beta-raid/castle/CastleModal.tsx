@@ -15,6 +15,7 @@ import { HeroEffectSummary } from "../HeroEffectSummary";
 import { requestCenter } from "../centerMapBus";
 import { useCastle } from "./useCastle";
 import { metaLabel } from "@/components/heroMeta";
+import { artifactSlotCount } from "@/lib/hero/heroSlots";
 import { thumb } from "@/lib/image";
 
 const TavernSpellbook = lazy(() => import("@/components/castle-live/TavernSpellbook").then((m) => ({ default: m.TavernSpellbook })));
@@ -94,7 +95,7 @@ export function CastleModal({
         onClick={(e) => e.stopPropagation()}
       >
         {!isItemScreen && <div data-hero-header className={embedded && heroNavigator && (tab === "hero" || tab === "gear") ? "flex flex-col items-stretch gap-3 p-4 pb-2" : "flex shrink-0 items-center justify-between p-4 pb-2"}>
-          {embedded && heroNavigator && (tab === "hero" || tab === "gear") ? <>{typeof heroNavigator === "function" ? heroNavigator(tab === "gear" && gear && Array.isArray(gear.slots) ? gear.slots.length : undefined) : heroNavigator}</> : headerHero ? <div data-hero-identity className="min-w-0 flex-1">
+          {embedded && heroNavigator && (tab === "hero" || tab === "gear") ? <>{typeof heroNavigator === "function" ? heroNavigator(tab === "gear" && gear && Array.isArray(gear.slots) ? artifactSlotCount(gear.slots) : undefined) : heroNavigator}</> : headerHero ? <div data-hero-identity className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
               {headerHero.imageUrl && <img src={thumb(headerHero.imageUrl, 96, "black")} alt="" className="h-12 w-12 shrink-0 rounded object-contain" />}
               <div data-hero-heading className="relative min-w-0 flex-1">
@@ -105,7 +106,7 @@ export function CastleModal({
                 <div className="flex items-center justify-between gap-2">
                   <p className="min-w-0 text-xs leading-relaxed text-muted-foreground">
                     {[headerHero.race, headerHero.specialization, gear?.rarity ?? headerHero.rarity].filter(Boolean).map(v => metaLabel(v!, ru ? "ru" : "en")).join(" · ")}
-                    {tab === "gear" && gear && Array.isArray(gear.slots) && <> · <span className="text-gold">{gear.slots.length} {ru ? (gear.slots.length === 4 ? "слота" : "слотов") : "slots"}</span></>}
+                    {tab === "gear" && gear && Array.isArray(gear.slots) && <> · <span className="text-gold">{artifactSlotCount(gear.slots)} {ru ? (artifactSlotCount(gear.slots) === 4 ? "слота" : "слотов") : "slots"}</span></>}
                   </p>
                 </div>
               </div>

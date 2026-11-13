@@ -1,35 +1,30 @@
-// Новый пул банка (только админ): пара ресурсов и стартовый курс «N единиц A = M
-// единиц B», комиссия из списка. Запаса нет — наполнение позже. DARAI — только
-// с золотом: в списке второй стороны лишнего просто нет.
+// Новый пул банка (только админ): пара и стартовый курс «N единиц A = M единиц B»,
+// комиссия из списка. Запаса нет — наполнение позже. С 25.10.2026 стороны — любые:
+// ресурсы игры и все монеты счёта (DARAI, USDT, звёзды, HOPE, GP, GDarai, RF…).
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import { createBankPool } from "@/server/api/bank/bank-pools";
+import { listBankTokens } from "@/server/api/bank/bank-tokens";
 import {
   BANK_DEFAULT_FEE,
   BANK_FEES,
-  BANK_TOKENS,
+  BANK_RESOURCES,
   pairProblem,
   tokenLabel,
   type BankPool,
   type BankToken,
 } from "@/lib/castleBank";
 import { BANK_POOLS_KEY, fmtNum } from "./bankUi";
-
-const field =
-  "min-h-11 rounded-lg border border-[#94703c] bg-[#0b1726] px-2 text-[#f5ecda] outline-none focus:border-[#edc36b]";
-
-const parse = (s: string): number => {
-  const n = Number(s.replace(",", ".").trim());
-  return Number.isFinite(n) && n > 0 ? n : NaN;
-};
-
-/** Что можно поставить второй стороной к выбранной первой. */
-const partners = (a: BankToken): BankToken[] => BANK_TOKENS.filter((t) => pairProblem(a, t) === null);
+import { POOL_FIELD as field, parseWeight as parse } from "./bankPoolInput";
 
 export function BankPoolForm({ ru, pools }: { ru: boolean; pools: BankPool[] }) {
   const qc = useQueryClient();
+  const tokensQ = useQuery({ queryKey: ["bank-tokens"], queryFn: () => listBankTokens(), staleTime: 60_000 });
+  const all: BankToken[] = tokensQ.data?.map((t) => t.symbol) ?? [...BANK_RESOURCES, "Darai"];
+  /** Что можно поставить второй стороной к выбранной первой. */
+  const partners = (x: BankToken): BankToken[] => all.filter((t) => pairProblem(x, t) === null);
   const [a, setA] = useState<BankToken>("gold");
   const [b, setB] = useState<BankToken>("Darai");
   const [wa, setWa] = useState("1");
@@ -72,12 +67,12 @@ export function BankPoolForm({ ru, pools }: { ru: boolean; pools: BankPool[] }) 
       </h2>
       <div className="flex items-center gap-2">
         <input aria-label={ru ? "Сколько первого" : "Amount of first"} inputMode="decimal" className={`${field} w-24`} value={wa} onChange={(e) => setWa(e.target.value)} />
-        {select(a, [...BANK_TOKENS], pickA, ru ? "Первый ресурс" : "First resource")}
+        {select(a, all, pickA, ru ? "Первая монета" : "First token")}
       </div>
       <div className="text-center text-[#bd9865]">=</div>
       <div className="flex items-center gap-2">
         <input aria-label={ru ? "Сколько второго" : "Amount of second"} inputMode="decimal" placeholder="0" className={`${field} w-24`} value={wb} onChange={(e) => setWb(e.target.value)} />
-        {select(b, partners(a), setB, ru ? "Второй ресурс" : "Second resource")}
+        {select(b, partners(a), setB, ru ? "Вторая монета" : "Second token")}
       </div>
       <label className="flex items-center gap-2 text-sm">
         <span className="flex-1">{ru ? "Комиссия" : "Fee"}</span>

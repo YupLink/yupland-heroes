@@ -14,6 +14,8 @@ export type CenterRequest = {
   r: number;
   /** Сколько миллисекунд подсвечивать клетку; необязательно. */
   ttlMs?: number;
+  /** Keep the expanded camera bounds while the player pans after a tutorial Show. */
+  preservePan?: boolean;
 };
 
 type Handler = (req: CenterRequest) => void;

@@ -7,9 +7,12 @@ import { toast } from "sonner";
 
 export function MarketImageInput({
   image,
+  fallback = null,
   onImage,
 }: {
   image: string | null;
+  /** Своей нет — что увидит игрок (рецепт: картинка самого вероятного приза). */
+  fallback?: string | null;
   onImage: (url: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -32,11 +35,13 @@ export function MarketImageInput({
 
   return (
     <label className="flex items-center gap-2">
-      {image ? (
+      {image || fallback ? (
         <img
-          src={image}
+          src={(image ?? fallback)!}
           alt=""
-          className="h-10 w-10 rounded-lg border border-border object-contain"
+          className={
+            "h-10 w-10 rounded-lg border border-border object-contain" + (image ? "" : " opacity-70")
+          }
         />
       ) : null}
       <span className="flex cursor-pointer items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold">

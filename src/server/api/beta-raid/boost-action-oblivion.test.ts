@@ -48,6 +48,8 @@ vi.mock("./hero-buff", () => ({
     void s.applied.push({ stat: r.stat, amount: r.amount, minutes: r.minutes }),
 }));
 vi.mock("./hero-immune", () => ({ loadImmuneTargetsFor: async () => new Set() }));
+// Предел «одна покупка за 3 с» — свой тест у rateGate; здесь не мешает сценариям.
+vi.mock("../../rateGate", () => ({ rateGate: async () => {} }));
 vi.mock("./resource-pay", () => ({
   payResources: async (_w: string, _p: unknown, ref: string) => void s.paid.push(ref),
   refundResources: async () => {},

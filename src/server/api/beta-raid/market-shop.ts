@@ -8,9 +8,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { getCurrentWallet, isAdminWallet } from "../../auth";
+import { getCurrentWallet } from "../../auth";
+import { requireGodAdmin } from "./island/island-editor-auth";
 import { activeBetaMapId, myMapId } from "./encounter-where";
-import { godMapId } from "./god-map";
 import { selectedHero } from "./hero-current";
 
 export type MarketShop = { races: string[]; specs: string[] };
@@ -30,8 +30,26 @@ export async function marketShopFor(mapId: string, q: number, r: number): Promis
 }
 
 /**
- * Пустить ли игрока к сделке: фильтр ОБЩИЙ на магазин, смотрим ВЫБРАННОГО
- * героя. Фильтра нет — пускаем молча.
+ * Лавка стоит: на клетке есть постройка или клетка — часть блока с постройкой
+ * (режим бога). Админ переставил лавку — её старые позиции остаются на пустой
+ * клетке: в игре их не видно, но прямым запросом их покупали бы и сдавали
+ * (владелец 25.10.2026, поиск дыр: «Bee book» за 5 золота на клетке, где теперь
+ * дерево, при ломбарде по 25).
+ */
+export function shopCellSql(mapId: string, q: number, r: number): string {
+  return `SELECT EXISTS (
+      SELECT 1 FROM yuplink.raid_map_cells c
+       WHERE c.map_id = ${sqlStr(mapId)} AND c.q = ${Math.floor(q)} AND c.r = ${Math.floor(r)}
+         AND (c.building_id IS NOT NULL
+              OR (c.group_id IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM yuplink.raid_map_cells g
+                     WHERE g.map_id = c.map_id AND g.group_id = c.group_id
+                       AND g.building_id IS NOT NULL)))) AS ok;`;
+}
+
+/**
+ * Пустить ли игрока к сделке: лавка на клетке стоит (shopCellSql), фильтр ОБЩИЙ
+ * на магазин, смотрим ВЫБРАННОГО героя. Фильтра нет — пускаем молча.
  */
 export async function assertShopAllowed(
   wallet: string,
@@ -39,6 +57,10 @@ export async function assertShopAllowed(
   q: number,
   r: number,
 ): Promise<void> {
+  const cell = (await mcpExec(shopCellSql(mapId, q, r), { wrapJson: true })) as Array<{
+    ok?: boolean;
+  }> | null;
+  if (cell?.[0]?.ok !== true) throw new Error("market.not_found");
   const shop = await marketShopFor(mapId, q, r).catch(() => ({
     races: [] as string[],
     specs: [] as string[],
@@ -79,9 +101,7 @@ export const setMarketShop = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const w = getCurrentWallet();
-    if (!w || !isAdminWallet(w)) throw new Error("Маркет настраивает только админ");
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     const races = JSON.stringify(data.races ?? []);
     const specs = JSON.stringify(data.specs ?? []);
     await mcpExec(

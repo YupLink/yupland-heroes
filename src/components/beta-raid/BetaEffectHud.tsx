@@ -5,12 +5,20 @@
 // Замедление — на игроке, у него вместо счётчика надбавка к шагу.
 //
 // Сборка групп — в effectGroups.ts (чистая функция, под тест).
+//
+// Над эффектами — плашки «Сломан: <имя>» (ArtBreakNotice, §8.63 п.3): «там, где
+// дебафы». Они живут и без единого эффекта — колонка рисуется всегда.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useOblivion } from "@/lib/hooks/useOblivion";
 import { effectMeta, untilLabel } from "./effectMeta";
 import { buildEffectGroups, type EffectGroup, type HudSlow } from "./effectGroups";
+import { ArtBreakNotices } from "./ArtBreakNotice";
+import { ShipBlastNotice } from "./dynamite/ShipBlastNotice";
+
+/** Колонка над героем: снизу вверх — значок эффектов, список, плашки поломки. */
+const COLUMN = "absolute bottom-24 left-2 flex flex-col items-start gap-1";
 
 export type { HudBuff, HudChipEffect, HudSlow, HudSlowRow, HudWeaken } from "./effectGroups";
 
@@ -69,7 +77,14 @@ export function BetaEffectHud({
     if (keys.split("|").some((k) => k && !had.has(k))) setExpanded(true);
   }, [keys, ready]);
 
-  if (now === 0 || groups.length === 0) return null;
+  if (now === 0 || groups.length === 0) {
+    return (
+      <div className={COLUMN}>
+        <ArtBreakNotices />
+        <ShipBlastNotice />
+      </div>
+    );
+  }
   const detail = groups.find((g) => g.key === open) ?? null;
   // Панель сложена: значок «эффекты · N». Тап раскрывает вертикальный
   // список. При одном эффекте раскрывать нечего — показываем плоскую
@@ -77,7 +92,9 @@ export function BetaEffectHud({
   const collapsed = groups.length > 1;
 
   return (
-    <div className="absolute bottom-24 left-2 flex flex-col items-start gap-1">
+    <div className={COLUMN}>
+      <ArtBreakNotices />
+      <ShipBlastNotice />
       {detail && (
         <div className="max-w-[62vw] rounded-xl border border-border bg-black/85 px-2.5 py-1.5 text-[11px] backdrop-blur-sm">
           {detail.items.length === 0 && (

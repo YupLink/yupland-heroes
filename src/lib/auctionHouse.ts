@@ -62,9 +62,11 @@ export const CURRENCY_LEVEL: Record<string, number> = {
 /** Звёзды — игроку без кошелька, с этого уровня. */
 export const STARS_LEVEL = 5;
 
-/** Валюты, за которые игрок с домом этого уровня может продавать. */
-export function houseCurrencies(level: number, walletLinked: boolean): string[] {
+/** Валюты, за которые игрок с домом этого уровня может продавать.
+ *  «Только Google» — одно золото (владелец, 11.11.2026, §8.127). */
+export function houseCurrencies(level: number, walletLinked: boolean, googleOnly = false): string[] {
   const l = lvl(level);
+  if (googleOnly) return l >= CURRENCY_LEVEL["res:gold"] ? ["res:gold"] : [];
   const list = Object.entries(CURRENCY_LEVEL)
     .filter(([, need]) => l >= need)
     .map(([c]) => c);

@@ -1,4 +1,5 @@
-// Покупка энергопака: билеты, $DARAI и токены экосистемы.
+// Покупка энергопака: золото (вместо билетов, ×500), $DARAI и звёзды со счёта.
+// Токенами энергию не продаём (владелец, 20.10.2026, §8.61).
 //
 // Вынесено из EnergyPackCard, чтобы карточка осталась разметкой (≤250 строк).
 // Здесь же живёт защита от повторной оплаты: подписанный перевод запоминается
@@ -7,19 +8,13 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getSignerWallet } from "@/lib/near-connector";
-import {
-  buyEnergyPackViaTickets,
-  buyEnergyPackViaDarai,
-  buyEnergyPackViaToken,
-} from "@/server/api/energyPacks";
+import { buyEnergyPackViaTickets, buyEnergyPackViaDarai } from "@/server/api/energyPacks";
 import { buyEnergyPackFromAccount } from "@/server/api/energy-packs-account-pay";
 import { buyEnergyPackForUsd } from "@/server/api/energy-packs-usd-pay";
 import type { UsdToken } from "@/lib/usdTariff";
 import { ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
 import { PENDING_KEY, readPendingPay, startPendingPay, clearPendingPay } from "./energyPending";
 import { humanError } from "@/lib/humanError";
-
-type TokenPick = { symbol: string; ftContract: string; amount: number; decimals: number };
 
 /**
  * Ключ нажатия. Целевой телефон владельца — Xiaomi 13T в вебвью Telegram, где
@@ -31,16 +26,13 @@ function newOpId(): string {
   return `op${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function useEnergyPurchase(pack: {
-  id: string;
-  priceDarai: number | null;
-  token: TokenPick | null;
-}) {
+export function useEnergyPurchase(pack: { id: string; priceDarai: number | null }) {
   const qc = useQueryClient();
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["my-energy"] });
-    qc.invalidateQueries({ queryKey: ["my-tickets"] });
+    // Золото — вместо билетов (§8.61): шапка и док ресурсов видят трату сразу.
+    qc.invalidateQueries({ queryKey: ["my-resources"] });
     qc.invalidateQueries({ queryKey: ["my-darai-balance"] });
     qc.invalidateQueries({ queryKey: ["my-darai-deposits"] });
     qc.invalidateQueries({ queryKey: ["energy-packs-public"] });
@@ -64,7 +56,7 @@ export function useEnergyPurchase(pack: {
   const paying = !!pendingPay.data;
 
   const buyTk = useMutation({
-    mutationFn: () => buyEnergyPackViaTickets({ data: { packId: pack.id } }),
+    mutationFn: () => buyEnergyPackViaTickets({ data: { packId: pack.id, gold: true } }),
     onSuccess: (r) => {
       toast.success(`+${r.energyAdded} энергии`);
       setOpen(false);
@@ -158,35 +150,6 @@ export function useEnergyPurchase(pack: {
     onError: (e: Error) => toast.error(humanError(e)),
   });
 
-  const buyTok = useMutation({
-    // Платим ИМЕННО выбранным токеном: раньше всегда брался единственный
-    // старый токен пака, и за любой вариант списывался он.
-    mutationFn: (pick?: {
-      symbol: string;
-      ftContract: string;
-      amount: number;
-      decimals: number;
-    }) => {
-      const t = pick ?? pack.token;
-      if (!t) throw new Error("Цена в токене не задана");
-      const symbol = "symbol" in t ? t.symbol : undefined;
-      return buyOnChain(
-        t.ftContract,
-        t.amount,
-        t.decimals,
-        (txHash) =>
-          buyEnergyPackViaToken({ data: { packId: pack.id, txHash, tokenSymbol: symbol } }),
-        `${t.amount} ${symbol ?? "токенов"}`,
-      );
-    },
-    onSuccess: (r) => {
-      toast.success(`+${r.energyAdded} энергии`);
-      setOpen(false);
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(humanError(e)),
-  });
-
   // Оплата с ресурсного счёта: блокчейн не участвует, поэтому ни подписи, ни
   // «оплаты в пути» здесь нет. Ключ нажатия генерим ОДИН раз на клик — иначе
   // повтор запроса по таймауту списал бы второй раз.
@@ -226,7 +189,6 @@ export function useEnergyPurchase(pack: {
     },
   });
 
-  const busy =
-    buyTk.isPending || buyDr.isPending || buyTok.isPending || buyAcc.isPending || buyUsd.isPending;
-  return { buyTk, buyDr, buyTok, buyAcc, buyUsd, busy, paying, open, setOpen };
+  const busy = buyTk.isPending || buyDr.isPending || buyAcc.isPending || buyUsd.isPending;
+  return { buyTk, buyDr, buyAcc, buyUsd, busy, paying, open, setOpen };
 }

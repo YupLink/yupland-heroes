@@ -5,6 +5,7 @@
 import { pg } from "../db/pg";
 import { mcpExec } from "../db/mcpClient";
 import { sqlStr } from "./raid-shared";
+import { heroItemLockSql } from "./hero-item-lock";
 import { requireFeature } from "./testers";
 import type { HeroRarity } from "@/lib/heroLevels";
 
@@ -137,11 +138,13 @@ export async function levelUpHeroAtomic(
   const w = sqlStr(acc);
   const rows = await mcpExec(
     `WITH cur AS (
-       SELECT available FROM yuplink.user_like_balance WHERE account_id = ${w}
+       -- FOR UPDATE: две прокачки разом ждут друг друга и видят уже списанное
+       -- (аудит 11.11.2026: без замка баланс лайков уходил в минус).
+       SELECT available FROM yuplink.user_like_balance WHERE account_id = ${w} FOR UPDATE
      ), lvl AS (
        UPDATE yuplink.hero_instance
           SET level = level + 1, likes_spent = likes_spent + ${cost}, updated_at = now()
-        WHERE id = ${sqlStr(heroId)}
+        WHERE id = ${sqlStr(heroId)} AND account_id = ${w}
           AND level = ${Math.floor(Number(at.fromLevel) || 0)}
           AND level < ${Math.floor(Number(at.maxLevel) || 0)}
           AND coalesce((SELECT available FROM cur), 0) >= ${cost}
@@ -169,7 +172,9 @@ export async function levelUpHeroAtomic(
 /**
  * Создание героя ПЕРВОГО уровня из шаблона за лайки — атомарно (та же причина,
  * что и у levelUpHeroAtomic). Герой вставляется ТОЛЬКО если баланс ≥ цены, и
- * лайки списываются ТОЛЬКО если вставка прошла.
+ * лайки списываются ТОЛЬКО если вставка прошла. С копией — под замком копии
+ * (hero-item-lock, его же держит ломбард) и только пока копия на месте: сданного
+ * в ломбард за миг до нас не создать.
  */
 export async function createHeroAtomic(args: {
   wallet: string;
@@ -184,16 +189,25 @@ export async function createHeroAtomic(args: {
   const accId = await likeAccountId(args.wallet);
   const account = sqlStr(accId);
   const w = sqlStr(args.wallet);
+  const lock = args.itemId ? `${heroItemLockSql(args.itemId)}\n` : "";
+  // Копия — своя: выставленная на рынок героев за миг до нас лежит в залоге
+  // (account_id '_hero_market') — экземпляр на ней не заводим.
+  const itemHere = args.itemId
+    ? `AND EXISTS (SELECT 1 FROM yuplink.user_game_item u
+                    WHERE u.id = ${sqlStr(args.itemId)} AND u.kind = 'hero'
+                      AND u.account_id = ${account}
+                      AND u.template_id = ${sqlStr(args.templateId)})`
+    : "";
   const rows = await mcpExec(
-    `WITH cur AS (
-       SELECT available FROM yuplink.user_like_balance WHERE account_id = ${account}
+    `${lock}WITH cur AS (
+       SELECT available FROM yuplink.user_like_balance WHERE account_id = ${account} FOR UPDATE
      ), ins AS (
        INSERT INTO yuplink.hero_instance
          (id, wallet, template_id, item_id, rarity, level, likes_spent, equipped, source, source_chip_id)
        SELECT ${sqlStr(args.heroId)}, ${w}, ${sqlStr(args.templateId)},
               ${args.itemId ? sqlStr(args.itemId) : "NULL"}, ${sqlStr(args.rarity)},
               1, ${args.cost}, '{}'::jsonb, 'inventory_item', NULL
-        WHERE coalesce((SELECT available FROM cur), 0) >= ${args.cost}
+        WHERE coalesce((SELECT available FROM cur), 0) >= ${args.cost} ${itemHere}
         RETURNING level
      ), deb AS (
        UPDATE yuplink.user_like_balance
@@ -210,5 +224,7 @@ export async function createHeroAtomic(args: {
     await logLikeSpend(accId, args.wallet, args.cost, "hero_create", args.heroId);
     return res;
   }
+  // Лайков хватало, а героя не создали — копии уже нет (сдана, продана).
+  if (args.itemId && res.avail >= args.cost) throw new Error("Этого героя у тебя нет");
   throw new Error(`Нужно ${args.cost} лайков, у тебя ${res.avail.toFixed(2)}`);
 }

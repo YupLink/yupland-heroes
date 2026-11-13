@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { Warehouse } from "lucide-react";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 vi.mock("react-dom", () => ({ createPortal: (node: ReactNode) => node }));
 // Окно открывается Radix-диалогом (#25): его портал без браузера ничего не
@@ -53,11 +54,11 @@ describe("окно выброса", () => {
     expect(html).toContain("Выбросим 0,000178 шт. в мешочек на клетке — освободится ячеек: 1.");
   });
 
-  it("25 шт.: начинаем с неполной ячейки, «Всё» — весь вид", () => {
-    const html = discard(25);
+  it("ячейка и ещё 5 шт.: начинаем с неполной ячейки, «Всё» — весь вид", () => {
+    const html = discard(CELL_SIZE + 5);
     expect(html).toContain('value="5"');
     expect(html).toContain("Ячейку (5)");
-    expect(html).toContain("Всё (25)");
+    expect(html).toContain(`Всё (${CELL_SIZE + 5})`);
     expect(html).toContain("Выбросим 5 шт. в мешочек на клетке — освободится ячеек: 1.");
   });
 
@@ -66,8 +67,8 @@ describe("окно выброса", () => {
     expect(discard(1, 40)).toContain("Изношенная штука (40%) будет уничтожена");
     // Три штуки — начинаем с «Ячейки» (3 = всё): тоже строка.
     expect(discard(3, 40)).toContain("Изношенная штука (40%) будет уничтожена");
-    // 25 штук — начинаем с 5: изношенная остаётся, строки нет.
-    expect(discard(25, 40)).not.toContain("Изношенная штука");
+    // Ячейка и ещё 5 — начинаем с 5: изношенная остаётся, строки нет.
+    expect(discard(CELL_SIZE + 5, 40)).not.toContain("Изношенная штука");
     // Целый инструмент и не инструмент — строки нет.
     expect(discard(3, 100)).not.toContain("Изношенная штука");
     expect(discard(3, null)).not.toContain("Изношенная штука");
@@ -85,8 +86,8 @@ describe("окно склада", () => {
         name="Яблоко"
         image={null}
         haveKey={haveKey}
-        total={25}
-        cell={20}
+        total={CELL_SIZE + 5}
+        cell={CELL_SIZE}
         icon={Warehouse}
         label={label}
         tone="gold"
@@ -98,16 +99,16 @@ describe("окно склада", () => {
 
   it("«Положить»: плитка, вид целиком и выбор до нажатия", () => {
     const out = html("braid.backpack_have", "Положить");
-    expect(out).toContain('value="20"');
-    expect(out).toContain("В рюкзаке: 25");
-    expect(out).toContain("Ячейку (20)");
-    expect(out).toContain("Всё (25)");
+    expect(out).toContain(`value="${CELL_SIZE}"`);
+    expect(out).toContain(`В рюкзаке: ${CELL_SIZE + 5}`);
+    expect(out).toContain(`Ячейку (${CELL_SIZE})`);
+    expect(out).toContain(`Всё (${CELL_SIZE + 5})`);
     expect(out).toMatch(/<button[^>]*>[^]*Положить<\/button>/);
     expect(out).not.toContain("Выбросим");
   });
 
   it("«Забрать»: сколько на складе", () => {
-    expect(html("braid.wh_have", "Забрать")).toContain("На складе: 25");
+    expect(html("braid.wh_have", "Забрать")).toContain(`На складе: ${CELL_SIZE + 5}`);
   });
 
   it("ru и en заведены для всех ключей окна", () => {

@@ -1,23 +1,21 @@
 // Использовать НАБОР зелий одной кнопкой (Ангелина, «Вещи героя → Алхимические
 // карманы», 16.10.2026): разные виды и количество каждого за один вызов.
 //
-// Порядок тот же, что у одного зелья (boost-item.ts), но для всего набора:
-//  1) весь набор проверяется до списания: у каждого товара есть эффект, виды
+//  1) весь набор проверяется до записи: у каждого товара есть эффект, виды
 //     в списке склеиваются (один ключ дважды = сумма);
-//  2) ключ нажатия один на набор — повтор запроса ничего не спишет второй раз;
-//  3) списание — всё или ничего: не хватило одного вида — уже списанное
-//     возвращается в сумку, эффекты не накладываются;
-//  4) эффекты накладываются; сорвалось начисление — все зелья возвращаются в
-//     сумку (наложенные до сбоя эффекты остаются — как и у одного зелья).
+//  2) ключ нажатия, списание всех видов и все эффекты — ОДНОЙ транзакцией
+//     (potion-drink.ts, с 22.10): не хватило одного вида или сорвалась запись
+//     любого эффекта — не списано и не наложено ничего. До 22.10 сбой на k-м
+//     эффекте возвращал зелья, а эффекты 1…k−1 оставались даром;
+//  3) повтор того же нажатия ничего не списывает и не накладывает второй раз.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireWallet } from "../../auth";
-import { resolveBackpack, returnToBackpackStack, takeFromBackpackStack } from "./market-backpack";
+import { resolveBackpack } from "./market-backpack";
 import { canonRef } from "./item-alias";
-import { boostOpAmount, claimBoostOp, releaseBoostOp } from "./hero-boost";
-import { applyBoostRoll } from "./hero-buff";
 import { itemBoost } from "./boost-item";
 import { noteDrink } from "@/server/api/beta-raid/econ/drink-note";
+import { drinkPotions } from "@/server/api/beta-raid/potion-drink";
 import { rollBoostQty, type BoostRoll } from "@/lib/hero/boost";
 
 export type BoostItemsLine = { stackKey: string; qty: number; rolls: BoostRoll[]; total: number };
@@ -25,7 +23,9 @@ export type BoostItemsLine = { stackKey: string; qty: number; rolls: BoostRoll[]
 const input = z.object({
   /** Набор: какой товар и сколько штук. До 20 видов, ключи могут повторяться. */
   items: z
-    .array(z.object({ stackKey: z.string().min(1).max(200), qty: z.number().int().min(1).max(1000) }))
+    .array(
+      z.object({ stackKey: z.string().min(1).max(200), qty: z.number().int().min(1).max(1000) }),
+    )
     .min(1)
     .max(20),
   /** Ключ нажатия на весь набор: слепой повтор не съест зелья второй раз. */
@@ -45,7 +45,8 @@ export const applyItemBoosts = createServerFn({ method: "POST" })
       const [kind, ...rest] = it.stackKey.split(":");
       const canon = await canonRef(kind, rest.join(":"));
       const effects = canon ? await itemBoost(canon) : [];
-      if (!canon || effects.length === 0) throw new Error(`Этот товар ничего не даёт герою: ${it.stackKey}`);
+      if (!canon || effects.length === 0)
+        throw new Error(`Этот товар ничего не даёт герою: ${it.stackKey}`);
       const key = `${kind}:${canon}`;
       const cur = merged.get(key);
       merged.set(key, { stackKey: key, canon, qty: (cur?.qty ?? 0) + it.qty });
@@ -53,58 +54,53 @@ export const applyItemBoosts = createServerFn({ method: "POST" })
     const lines: Array<BoostItemsLine & { canon: string }> = [];
     for (const m of merged.values()) {
       const rolls = rollBoostQty(await itemBoost(m.canon), m.qty);
-      lines.push({ stackKey: m.stackKey, canon: m.canon, qty: m.qty, rolls, total: rolls.reduce((n, r) => n + r.amount, 0) });
+      lines.push({
+        stackKey: m.stackKey,
+        canon: m.canon,
+        qty: m.qty,
+        rolls,
+        total: rolls.reduce((n, r) => n + r.amount, 0),
+      });
     }
     const total = lines.reduce((n, l) => n + l.total, 0);
 
-    // 2) Один ключ на набор.
-    const fresh = await claimBoostOp({
-      op: data.op,
+    // 2) Ключ, списание и эффекты — одна транзакция.
+    const out = await drinkPotions({
+      wallet,
       heroId: bp.heroId,
-      stat: lines[0]?.rolls[0]?.stat ?? "spd",
-      amount: total,
+      op: data.op,
       source: `items:${lines.length}`,
+      lines: lines.map(({ stackKey, qty, rolls }) => ({ stackKey, qty, rolls })),
     });
-    if (!fresh) {
-      return { ok: true as const, repeat: true as const, items: [] as BoostItemsLine[], total: await boostOpAmount(data.op), heroName: bp.heroName };
+    if (out.state === "repeat") {
+      return {
+        ok: true as const,
+        repeat: true as const,
+        items: [] as BoostItemsLine[],
+        total: out.amount,
+        heroName: bp.heroName,
+      };
     }
-
-    // 3) Списание всё или ничего.
-    const taken: Array<{ line: (typeof lines)[number]; snap: NonNullable<Awaited<ReturnType<typeof takeFromBackpackStack>>> }> = [];
-    const giveBack = async () => {
-      for (const t of taken) await returnToBackpackStack(bp.heroId, t.line.stackKey, t.line.qty, t.snap).catch(() => {});
-    };
-    for (const line of lines) {
-      const snap = await takeFromBackpackStack(bp.heroId, line.stackKey, line.qty).catch(async (e) => {
-        await giveBack();
-        await releaseBoostOp(data.op);
-        throw e;
-      });
-      if (!snap) {
-        await giveBack();
-        await releaseBoostOp(data.op);
-        throw new Error(`Столько штук в сумке нет: ${line.stackKey}`);
-      }
-      taken.push({ line, snap });
-    }
-
-    // 4) Эффекты; сбой начисления — зелья обратно в сумку.
-    try {
-      for (const line of lines) for (const r of line.rolls) await applyBoostRoll(wallet, r);
-    } catch (e) {
-      await giveBack();
-      await releaseBoostOp(data.op);
-      throw e;
+    if (out.state === "short") {
+      throw new Error(
+        out.stackKey ? `Столько штук в сумке нет: ${out.stackKey}` : "Столько штук в сумке нет",
+      );
     }
 
     const { invalidateHeroPower } = await import("./hero-power");
     invalidateHeroPower(wallet);
-    for (const [i, line] of lines.entries()) await noteDrink({ wallet, canon: line.canon, qty: line.qty, op: `${data.op}:${i}` });
+    for (const [i, line] of lines.entries())
+      await noteDrink({ wallet, canon: line.canon, qty: line.qty, op: `${data.op}:${i}` });
 
     return {
       ok: true as const,
       repeat: false as const,
-      items: lines.map(({ stackKey, qty, rolls, total: t }) => ({ stackKey, qty, rolls, total: t })),
+      items: lines.map(({ stackKey, qty, rolls, total: t }) => ({
+        stackKey,
+        qty,
+        rolls,
+        total: t,
+      })),
       total,
       heroName: bp.heroName,
     };

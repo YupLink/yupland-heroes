@@ -56,6 +56,14 @@ export function humanizeAccError(raw: string): string {
   const fractional = raw.match(/fractional_not_allowed:([^:]+):/);
   if (fractional) return `${fractional[1]} принимается только целыми числами`;
   if (/unknown_account:/.test(raw)) return "У кошелька нет аккаунта — сначала войди заново";
+  // Кошелёк со ссылки «Короны» (buckwheat-04): выводится введённое с кошелька и до +10 %.
+  const own = raw.match(/withdraw_own_limit:(\d+)/);
+  if (own) {
+    const left = Number(own[1]);
+    return left < 1
+      ? "Вывод исчерпан: выводятся DARAI, введённые с кошелька, и до +10 % сверху"
+      : `Можно вывести ещё ${left.toLocaleString("ru-RU")} DARAI — введённое с кошелька и до +10 % сверху`;
+  }
   // Лимит вывода DARAI в месяц (wd-01/03): withdraw_limit:<сколько ещё можно>:<лимит аккаунта>.
   const limit = raw.match(/withdraw_limit:(\d+)(?::(\d+))?/);
   if (limit) {

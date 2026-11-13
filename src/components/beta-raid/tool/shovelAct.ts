@@ -5,8 +5,10 @@
 // корабль, постройка, объект, вода, купол, нет местности — ничего; клетка
 // города — тоже: тап по ней открывает окно города. Под зданием (и всей
 // площадью большого) не копают и не закапывают — только выкопать старое
-// (владелец 03.10). Решает сервер (loot-bag/bag-dig, plain-chest/pchest-dig,
-// main-tool/ground-dig).
+// (владелец 03.10). На клетке шахты лопатой нельзя ничего — ни закопать, ни
+// выкопать (§8.59 п. 9). На ямке «Копать» нет — только «Закопать» её в кучку
+// (§8.24 п. 6б, 31.10: main-tool/hole-bury). Решает сервер (loot-bag/bag-dig, plain-chest/pchest-dig,
+// main-tool/ground-dig, mine-dig-gate).
 import type { LootBagCell } from "@/lib/lootBag";
 import type { ChestMark } from "@/lib/magicChest";
 import type { Cell } from "@/components/beta-raid/unpackMap";
@@ -20,13 +22,16 @@ export function shovelActAt(o: {
   water: boolean;
   /** Клетка — часть большого здания (блок с постройкой, mergeBlocks). */
   inBuilding?: boolean;
+  /** На клетке ямка: копать нельзя, только закопать её. */
+  hole?: boolean;
 }): ShovelAct | null {
   const { cell } = o;
-  if (o.ship || cell?.decorationId) return null;
+  if (o.ship || cell?.decorationId || cell?.mine) return null;
   if (cell?.objectId && !cell.objectDefeated) return null;
   const building = !!cell?.buildingId || o.inBuilding === true;
   if (o.bag) return o.bag.buried ? "unbury" : building ? null : "bury";
   if (o.chest) return !building && (o.chest.plain || o.chest.mine) ? "bury" : null;
   if (!cell?.terrainId || cell.voidFog || building || cell.objectId || o.water) return null;
-  return cell.townHall ? null : "dig";
+  if (cell.townHall) return null;
+  return o.hole ? "bury" : "dig";
 }

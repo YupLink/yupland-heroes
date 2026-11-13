@@ -1,0 +1,52 @@
+name: Repo hygiene
+# Секреты и данные игроков не должны попасть в репо: проверяем строки,
+# добавленные пушем или PR (scripts/check-repo-hygiene.mjs). Секреты не нужны.
+# Заодно после пуша в main — не сдвинулась ли ветка Кайлани с «Короной» (тогда
+# Buckwheat sync переносит её код к нам; проверка внутри той же минуты, отдельно не стоит).
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      buckwheat: ${{ steps.buckwheat.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Scan added lines for secrets and player data
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            node scripts/check-repo-hygiene.mjs --range "$PR_BASE...$PR_HEAD"
+          elif [ -z "$BEFORE" ] || echo "$BEFORE" | grep -qE '^0+$' || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            # новая ветка (before = 000…0) или before недоступен после force-push
+            node scripts/check-repo-hygiene.mjs --all
+          else
+            node scripts/check-repo-hygiene.mjs --range "$BEFORE..$AFTER"
+          fi
+      - name: Kaylani's crown game moved?
+        id: buckwheat
+        # Только в рабочем репо: открытая копия (yupland-heroes) обновляется снимком, не сама.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'YupLink/golden-drop'
+        run: node scripts/buckwheat-sync.mjs --check >> "$GITHUB_OUTPUT"
+  buckwheat:
+    needs: scan
+    if: needs.scan.outputs.buckwheat == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/buckwheat-sync.yml

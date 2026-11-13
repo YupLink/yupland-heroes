@@ -20,7 +20,8 @@
 // мешочком на клетке декора (владелец, 29.09.2026; ПРАВИЛА §8.21).
 //
 // Респавн (28.09): у шаблона задано «Респавн, мин» — рубка ставит декор в
-// очередь возврата на ту же клетку (decor-respawn.ts).
+// очередь возврата на ту же клетку (decor-respawn.ts). Дерево, посаженное
+// игроком, не отрастает никогда (владелец, 22.10; метка — tree/tree-chop-sql).
 //
 // Руками (17.10, §8.56): hand — декор, который берёт деревянный или каменный
 // топор, рубится без инструмента за 10 энергии (вместо цены декора) и 30
@@ -36,10 +37,12 @@ import { actionGate } from "../../rateGate";
 import { myMapId, playerCell, requireAdjacent } from "./encounter-where";
 import { requireNotVoid } from "./voidGate";
 import { amountRange, rollAmount } from "@/lib/raid/decorInteract";
-import { HAND_CHOP_ENERGY, HAND_CHOP_NOT_ALLOWED } from "@/lib/raid/handChop";
+import { handChopEnergy, HAND_CHOP_NOT_ALLOWED } from "@/lib/raid/handChop";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 import { isAxeTool, isPickTool } from "@/lib/tournament/metricSources";
 import { bumpAchievement } from "../achievements/bump";
 import type { DecorTool, ToolCharge } from "./decor-tool";
+import { chopRestoreSql, chopTakeSql, plantedRespawnDropSql } from "./tree/tree-chop-sql";
 import {
   dropInteractiveDecorCache,
   loadInteractiveDecor,
@@ -62,12 +65,17 @@ function coveredSql(mapId: string, q: number, r: number): string {
         OR EXISTS (SELECT 1 FROM yuplink.raid_magic_chest mc WHERE ${at("mc")} AND mc.buried_at IS NOT NULL))`;
 }
 
-/** Вернуть декор на клетку (откат): только если клетка всё ещё пуста. */
-async function restoreDecor(mapId: string, q: number, r: number, decorId: string): Promise<void> {
-  await mcpExec(
-    `UPDATE yuplink.raid_map_cells SET decoration_id = ${sqlStr(decorId)}
-      WHERE map_id = ${sqlStr(mapId)} AND q = ${q} AND r = ${r} AND decoration_id IS NULL;`,
-  ).catch((e) => console.error("[decor-interact] откат декора не прошёл:", e));
+/** Вернуть декор (и метку посадки) на клетку (откат): только если клетка всё ещё пуста. */
+async function restoreDecor(
+  mapId: string,
+  q: number,
+  r: number,
+  decorId: string,
+  planted: boolean,
+): Promise<void> {
+  await mcpExec(chopRestoreSql(mapId, q, r, decorId, planted)).catch((e) =>
+    console.error("[decor-interact] откат декора не прошёл:", e),
+  );
 }
 
 export const interactDecor = createServerFn({ method: "POST" })
@@ -93,22 +101,22 @@ export const interactDecor = createServerFn({ method: "POST" })
     const range = amountRange(conf.amount);
     if (!range) throw new Error("braid.decor_no_interact");
     if (hand && !conf.hand) throw new Error(HAND_CHOP_NOT_ALLOWED);
-    const cost = hand ? HAND_CHOP_ENERGY : conf.cost;
+    // Руками — вдвое дороже топора (§8.56, 25.10). И так и так: на острове
+    // энергии в 10 раз меньше (island/energy).
+    const cost = scaleEnergy(hand ? handChopEnergy(conf.cost) : conf.cost, energyMultOf(mapId));
     const pos = await playerCell(wallet);
     requireAdjacent(pos, q, r);
     await requireNotVoid(wallet, mapId, q, r);
 
     // 1) Забрать декор: только если на клетке именно он. Два игрока разом —
     //    строку получит один, второй увидит «уже уничтожен» и не заплатит.
-    //    covered — под декором лежал мешочек или бугорок (дополнение №5).
-    const gone = (await mcpExec(
-      `UPDATE yuplink.raid_map_cells SET decoration_id = NULL
-        WHERE map_id = ${sqlStr(mapId)} AND q = ${q} AND r = ${r}
-          AND decoration_id = ${sqlStr(decorId)}
-        RETURNING q, ${coveredSql(mapId, q, r)} AS covered;`,
-      { wrapJsonCte: true },
-    )) as Array<{ q: number; covered?: boolean }>;
+    //    covered — под декором лежал мешочек или бугорок (дополнение №5);
+    //    planted — дерево посадил игрок: метка уходит с декором, отрастания нет.
+    const gone = (await mcpExec(chopTakeSql(mapId, q, r, decorId, coveredSql(mapId, q, r)), {
+      wrapJsonCte: true,
+    })) as Array<{ q: number; covered?: boolean; planted?: boolean }>;
     if (!gone?.length) throw new Error("braid.decor_gone");
+    const planted = gone[0]?.planted === true;
 
     // 2) Инструмент: прочность с инструмента в рюкзаке героя (без износа —
     //    вся штука). Руками — вместо него сытость героя (§8.56): меньше 30 —
@@ -120,7 +128,7 @@ export const interactDecor = createServerFn({ method: "POST" })
       try {
         if (hand) {
           const { payHandSatiety } = await import("./decor-hand");
-          const fed = await payHandSatiety(wallet);
+          const fed = await payHandSatiety(wallet, mapId);
           [tool, satietyCost] = [fed, fed.satiety];
         } else {
           const { payDecorTool } = await import("./decor-tool");
@@ -129,7 +137,7 @@ export const interactDecor = createServerFn({ method: "POST" })
           [tool, usedTool] = [charge, charge.used];
         }
       } catch (e) {
-        await restoreDecor(mapId, q, r, decorId);
+        await restoreDecor(mapId, q, r, decorId, planted);
         throw e;
       }
     }
@@ -141,7 +149,7 @@ export const interactDecor = createServerFn({ method: "POST" })
       try {
         refund = (await payForHit(wallet, cost, "decor")).refund;
       } catch (e) {
-        await Promise.all([tool?.back(), restoreDecor(mapId, q, r, decorId)]);
+        await Promise.all([tool?.back(), restoreDecor(mapId, q, r, decorId, planted)]);
         throw e;
       }
     }
@@ -156,7 +164,7 @@ export const interactDecor = createServerFn({ method: "POST" })
       const item = { itemId: conf.itemId, name: conf.name, amount };
       got = await giveDecorItem({ wallet, mapId, q, r, decorId, ...item });
     } catch (e) {
-      await Promise.all([refund?.(), tool?.back(), restoreDecor(mapId, q, r, decorId)]);
+      await Promise.all([refund?.(), tool?.back(), restoreDecor(mapId, q, r, decorId, planted)]);
       throw e;
     }
 
@@ -174,7 +182,12 @@ export const interactDecor = createServerFn({ method: "POST" })
     // 6) Только ПОСЛЕ дельты рубки — очередь возврата («Респавн, мин»): иначе
     //    при медленном мосте «декор встал» ушёл бы раньше «декор срублен». Её
     //    сбой рубку не отменяет. Затем уборка у инструмента.
-    if (conf.respawnMin) {
+    //    Посаженное игроком не отрастает: очереди нет, строка его рассылки — долой.
+    if (planted) {
+      await mcpExec(plantedRespawnDropSql(mapId, q, r, decorId)).catch((e) =>
+        console.warn("[decor-interact] строка отрастания посаженного не снята:", e),
+      );
+    } else if (conf.respawnMin) {
       const { scheduleDecorRespawn } = await import("./decor-respawn");
       await scheduleDecorRespawn({ mapId, q, r, decorId, minutes: conf.respawnMin });
     }

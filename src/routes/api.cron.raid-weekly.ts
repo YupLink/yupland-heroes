@@ -6,18 +6,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { pg } from "@/server/db/pg";
 import { closeRaidCycle } from "@/server/api/raid-rewards";
 import type { PgRaidLocation } from "@/server/db/pg";
+import { cronDenied } from "@/server/cronAuth";
 
 export const Route = createFileRoute("/api/cron/raid-weekly")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         try {
           // Старые рейды закрыты навсегда — цикл больше не крутим.
           const { legacyRaidsEnabled } = await import("@/server/api/raid-mode");

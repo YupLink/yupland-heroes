@@ -1,0 +1,42 @@
+.slot-music-toggle {
+  position: absolute;
+  z-index: 150;
+  right: 1.5%;
+  top: 1.5%;
+  translate: 0 2cqw;
+  display: grid;
+  place-items: center;
+  width: clamp(44px, 7.2cqw, 50px);
+  height: clamp(44px, 7.2cqw, 50px);
+  padding: 9px;
+  border: 2px solid #c89144;
+  border-radius: 0.65cqw;
+  color: #ffe5aa;
+  background: #29170cf2;
+  box-shadow: 0 2px 8px #0008, inset 0 1px #ffe5aa40;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.slot-music-toggle svg { width: 24px; height: 24px; }
+.slot-music-toggle:hover { background: #4c2e13; }
+.slot-music-toggle:focus-visible { outline: 3px solid #ffe5aa; outline-offset: 3px; }
+.slot-music-toggle:active { transform: translateY(1px); }
+.casino-ui .map { min-height: 44px; }
+.slot-music-toggle[data-scene="true"] { top: clamp(76px, 15cqw, 140px); translate: none; }
+.scene.caves .slot-music-toggle, .scene.risk .slot-music-toggle { right: 6%; }
+.casino-ui .scene.dig .slot-music-toggle {
+  top: 1.7%;
+  left: 1.5%;
+  right: auto;
+  width: 8%;
+  height: 5.2%;
+  min-width: 44px;
+  min-height: 44px;
+  translate: none;
+}
+.casino-ui dialog .slot-music-toggle {
+  position: fixed;
+  top: max(12px, var(--app-top,env(safe-area-inset-top,0px)));
+  right: 12px;
+  translate: none;
+}

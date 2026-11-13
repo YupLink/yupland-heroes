@@ -1,0 +1,154 @@
+[
+  {
+    "source": "src/components/beta-raid/weather/weather-atlas.png",
+    "target": "src/components/beta-raid/weather/weather-atlas-hud.webp",
+    "before": 1320268,
+    "after": 44474,
+    "source_dimensions": [
+      1254,
+      1254
+    ],
+    "dimensions": [
+      216,
+      216
+    ],
+    "source_rgba_bytes": 6290064,
+    "rgba_bytes": 186624,
+    "sha256": "2a3c7c26a0f7cda6df9b411e9ffae43fd8d52b1aa32613d53d6c3ed803fa89df",
+    "exact_encoded_rgba": false,
+    "exact_original_rgba": false
+  },
+  {
+    "source": "src/components/beta-raid/weather/fish.webp",
+    "target": "src/components/beta-raid/weather/fish-hud.webp",
+    "before": 192820,
+    "after": 9428,
+    "source_dimensions": [
+      1254,
+      1254
+    ],
+    "dimensions": [
+      96,
+      96
+    ],
+    "source_rgba_bytes": 6290064,
+    "rgba_bytes": 36864,
+    "sha256": "3bdf92306935a39465486c03577f6f733ebdcde5d33570f1ad09de80cd764738",
+    "exact_encoded_rgba": true,
+    "exact_original_rgba": false
+  },
+  {
+    "source": "src/components/beta-raid/weather/pickaxe.webp",
+    "target": "src/components/beta-raid/weather/pickaxe-hud.webp",
+    "before": 124140,
+    "after": 6622,
+    "source_dimensions": [
+      1254,
+      1254
+    ],
+    "dimensions": [
+      96,
+      96
+    ],
+    "source_rgba_bytes": 6290064,
+    "rgba_bytes": 36864,
+    "sha256": "f2cc78e7653fe1a494804fde64ea441807618f92b01fe34baa521a86dd3aca5d",
+    "exact_encoded_rgba": true,
+    "exact_original_rgba": false
+  },
+  {
+    "source": "src/components/beta-raid/weather/wheat.webp",
+    "target": "src/components/beta-raid/weather/wheat-hud.webp",
+    "before": 46168,
+    "after": 10590,
+    "source_dimensions": [
+      256,
+      242
+    ],
+    "dimensions": [
+      96,
+      91
+    ],
+    "source_rgba_bytes": 247808,
+    "rgba_bytes": 34944,
+    "sha256": "bfb8d44c42d7d92c3e61e815c022633273cb98fbc7736f24086a23abe7ca3471",
+    "exact_encoded_rgba": true,
+    "exact_original_rgba": false
+  },
+  {
+    "source": "src/components/beta-raid/weather/hero.webp",
+    "target": "src/components/beta-raid/weather/hero-hud.webp",
+    "before": 15846,
+    "after": 10090,
+    "source_dimensions": [
+      256,
+      256
+    ],
+    "dimensions": [
+      96,
+      96
+    ],
+    "source_rgba_bytes": 262144,
+    "rgba_bytes": 36864,
+    "sha256": "0d04c57a3b5d32e7e28bf5a5482341c3234dcf0ba9648408f9a20977f1c2b349",
+    "exact_encoded_rgba": true,
+    "exact_original_rgba": false
+  },
+  {
+    "source": "public/ships/mine.webp",
+    "target": "src/components/beta-raid/weather/ship-hud.webp",
+    "before": 18494,
+    "after": 12720,
+    "source_dimensions": [
+      256,
+      256
+    ],
+    "dimensions": [
+      96,
+      96
+    ],
+    "source_rgba_bytes": 262144,
+    "rgba_bytes": 36864,
+    "sha256": "54dc445629a737462c495aab81caacad2cb409fe0c7ec3dfb87a788697ebb22e",
+    "exact_encoded_rgba": true,
+    "exact_original_rgba": false
+  },
+  {
+    "source": "public/resources/trade-market.png",
+    "target": "public/resources/trade-market.webp",
+    "before": 34860,
+    "after": 27034,
+    "source_dimensions": [
+      160,
+      160
+    ],
+    "dimensions": [
+      160,
+      160
+    ],
+    "source_rgba_bytes": 102400,
+    "rgba_bytes": 102400,
+    "sha256": "33bf3ee06461b7e2668d0835c5fd350d383fb86c834fa9bc4da2e8ea8b850375",
+    "exact_encoded_rgba": true,
+    "exact_original_rgba": true
+  },
+  {
+    "source": "public/resources/raid-hud-art-presets.png",
+    "target": "public/resources/raid-hud-art-presets.webp",
+    "before": 27256,
+    "after": 18894,
+    "source_dimensions": [
+      128,
+      128
+    ],
+    "dimensions": [
+      128,
+      128
+    ],
+    "source_rgba_bytes": 65536,
+    "rgba_bytes": 65536,
+    "sha256": "97589c14d07e970e3117d855061f996d24534b0210cfefa37a77ef937935e27a",
+    "exact_encoded_rgba": true,
+    "exact_original_rgba": true
+  }
+]

@@ -8,12 +8,17 @@
 // Тап по клетке с мешочком открывает окно, поэтому «Идти сюда» (встать на
 // клетку — мешочек её не перекрывает) и постройка под мешочком — кнопками.
 //
+// «Забрать всё» — над плитками, а не под ними (владелец, 23.10): под длинным
+// рюкзаком кнопку не было видно без прокрутки, и стопки носили по одной.
+//
 // Содержимое — только внутри оплаченного входа (§8.23): закрытый мешочек
 // показывает «Открыть · 1⚡», каждое открытие платит; окно закрыли — открытые
 // им входы мешочков закрыты (useOpenStorage), вход в сундук под ними — нет.
+//
+// Рыба от красного динамита (30.10.2026) — тот же мешочек, окно зовёт её «Рыба».
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Backpack, Building2, Footprints, Loader2, Package } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Backpack, Building2, Footprints, Loader2, Package, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -69,6 +74,14 @@ export function LootBagWindow({
   const [pick, setPick] = useState<(BagPick & { bagId: string }) | null>(null);
   const act = useLootBagActions(() => setPick(null));
   const pass = useOpenStorage(at, "bags");
+  const qc = useQueryClient();
+  /** Находка лопатой (§8.24 п. 6б): открыли — «Выкопано: …» по свежему окну. */
+  const dugToast = (bagId: string) => {
+    const fresh = qc.getQueryData<typeof q.data>(bagsAtKey(at.q, at.r))?.bags;
+    const b = (Array.isArray(fresh) ? fresh : []).find((x) => x.id === bagId);
+    const names = (b?.items ?? []).map((i) => i.name).filter(Boolean);
+    if (names.length > 0) toast.success(t("dig.found", { name: names.join(", ") }));
+  };
   const now = useRewardClock();
   const [selId, setSelId] = useState<string | null>(null);
   const gotAt = q.dataUpdatedAt;
@@ -102,10 +115,10 @@ export function LootBagWindow({
     return () => clearTimeout(id);
   }, [list, gotAt, refetch]);
 
-  const title =
-    bags.length > 1
-      ? t("bag.title_many", { n: bags.length })
-      : t(bag?.buried ? "bag.mound" : "bag.title");
+  /** Имя мешочка: бугорок, рыба (красный динамит) или мешочек. */
+  const nameOf = (b: { buried: boolean; fish?: boolean } | undefined) =>
+    t(b?.buried ? "bag.mound" : b?.fish ? "bag.fish" : "bag.title");
+  const title = bags.length > 1 ? t("bag.title_many", { n: bags.length }) : nameOf(bag);
   const submit = (qty: number) => {
     if (!pick) return;
     const v = { bagId: pick.bagId, stackKey: pick.stackKey, qty };
@@ -132,7 +145,7 @@ export function LootBagWindow({
                       b.id === bag.id ? "border-gold/70 text-gold" : "border-border",
                     )}
                   >
-                    {t(b.buried ? "bag.mound" : "bag.title")} {i + 1}
+                    {nameOf(b)} {i + 1}
                   </button>
                 ))}
               </div>
@@ -142,40 +155,47 @@ export function LootBagWindow({
               <OpenButton
                 price={bag.price ?? 1}
                 busy={pass.isPending}
-                onOpen={(price) => pass.mutate({ bagId: bag.id, price })}
+                onOpen={(price) =>
+                  pass.mutate(
+                    { bagId: bag.id, price },
+                    { onSuccess: () => (bag.dig ? dugToast(bag.id) : undefined) },
+                  )
+                }
               />
             ) : (
-              <LootBagGrid
-                bag={bag}
-                backpack={bp.data}
-                gotAt={gotAt}
-                now={now}
-                busyKey={act.busy ? (pick?.busyKey ?? null) : null}
-                onPut={(c) => {
-                  const s = bp.data?.stacks.find((x) => x.stackKey === c.stack.stackKey);
-                  const movable = s ? movableOf(s) : 0;
-                  if (movable > 0) setPick({ ...putPick(c, movable), bagId: bag.id });
-                  else toast.error(t("braid.tool_worn_stays"));
-                }}
-                onTake={(c) => setPick({ ...takePick(c), bagId: bag.id })}
-              />
+              <>
+                {!bag.buried && (
+                  <button
+                    type="button"
+                    disabled={act.busy || bag.items.length === 0}
+                    onClick={() => act.take.mutate({ bagId: bag.id })}
+                    className={`${BTN} w-full gradient-gold text-gold-foreground`}
+                  >
+                    {act.take.isPending && !pick ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <PackageOpen className="h-4 w-4" />
+                    )}
+                    {t("bag.take_all")}
+                  </button>
+                )}
+                <LootBagGrid
+                  bag={bag}
+                  backpack={bp.data}
+                  gotAt={gotAt}
+                  now={now}
+                  busyKey={act.busy ? (pick?.busyKey ?? null) : null}
+                  onPut={(c) => {
+                    const s = bp.data?.stacks.find((x) => x.stackKey === c.stack.stackKey);
+                    const movable = s ? movableOf(s) : 0;
+                    if (movable > 0) setPick({ ...putPick(c, movable), bagId: bag.id });
+                    else toast.error(t("braid.tool_worn_stays"));
+                  }}
+                  onTake={(c) => setPick({ ...takePick(c), bagId: bag.id })}
+                />
+              </>
             )}
             <div className="flex gap-2">
-              {!bag.buried && bag.open !== false && (
-                <button
-                  type="button"
-                  disabled={act.busy}
-                  onClick={() => act.take.mutate({ bagId: bag.id })}
-                  className={`${BTN} gradient-gold text-gold-foreground`}
-                >
-                  {act.take.isPending && !pick ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Package className="h-4 w-4" />
-                  )}
-                  {t("bag.take_all")}
-                </button>
-              )}
               {/* Лопатой в руках (§8.24): нет в руках — «Взять», нет вовсе — «Нужна». */}
               <ShovelButton
                 label={bag.buried ? "bag.dig" : "bag.bury"}

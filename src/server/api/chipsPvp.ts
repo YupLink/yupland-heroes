@@ -28,6 +28,8 @@ import { getSisterWallets } from "./user";
 import { CHIP_REST_MS, isChipResting } from "../chipRest";
 import { accountOf } from "./user-shared";
 import { requirePvpEnabled } from "./chipsPvpSwitch";
+import { walletLabel } from "@/server/api/player-name/player-name-labels";
+import { secureRandomInt } from "@/lib/secureRandom";
 
 // PvP открыт всем подключённым кошелькам. Требуется только наличие
 // активной сессии (wallet). Раньше тут стоял admin-only gate.
@@ -57,7 +59,7 @@ function powerRange(level: number): [number, number] {
 }
 function rollPower(level: number): number {
   const [lo, hi] = powerRange(level);
-  return lo + Math.floor(Math.random() * (hi - lo + 1));
+  return secureRandomInt(lo, hi + 1);
 }
 
 // Утилита для UI: вернуть карту уровень → [min, max].
@@ -207,9 +209,9 @@ async function fetchChipsForDisplay(chipIds: string[]) {
   });
 }
 
+/** Подпись игрока: своё имя из профиля или «@ник» (player-name); нет — null. */
 async function fetchUsername(wallet: string): Promise<string | null> {
-  const u = await pg.users.findOne({ wallet });
-  return u?.telegram_username ?? null;
+  return walletLabel(wallet);
 }
 
 export const listOpenPvpBattles = createServerFn({ method: "GET" }).handler(
@@ -377,7 +379,7 @@ export const joinPvpBattle = createServerFn({ method: "POST" })
         const list = byLvl.get(lvl)!;
         // Fisher-Yates
         for (let i = list.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
+          const j = secureRandomInt(0, i + 1);
           [list[i], list[j]] = [list[j], list[i]];
         }
         out.push(...list);

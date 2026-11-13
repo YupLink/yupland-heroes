@@ -12,10 +12,13 @@ import { tFor } from "@/lib/i18n";
 import type { Lang } from "@/lib/store";
 import { labelFor } from "@/lib/raid/decorInteract";
 import { DIG_ENERGY } from "@/lib/lootBag";
+import { scaleEnergy } from "@/lib/raid/island/energy";
+import { useEnergyMult } from "@/components/beta-raid/useEnergyMult";
 import { localizeAssetName } from "@/lib/translations/assetNames";
 import type { PortalPrice } from "@/lib/portal";
 import type { CanvasProps } from "./betaCanvasProps";
 import { pathTolls, splitToll } from "./pathTolls";
+import { pathReach, walkEnergy } from "./pathReach";
 import { useInteractiveDecor } from "./useInteractiveDecor";
 import { SHOVEL_LABEL, useShovelOffer } from "./tool/shovelOffer";
 
@@ -35,6 +38,8 @@ export type PathBadgeTarget = {
   kind?: string | null;
   /** «Копать под собой»: маршрута нет, на плашке только кнопка лопаты. */
   here?: boolean;
+  /** Сколько первых шагов оплачено энергией (pathReach): дальше стрелки красные. */
+  reach: number;
 };
 
 export function usePathBadgeTarget(
@@ -43,20 +48,26 @@ export function usePathBadgeTarget(
     "pendingPath" | "pendingAction" | "cells" | "buildings" | "buildingTiers" | "doorTolls"
   >,
   lang: Lang,
+  /** Сколько энергии есть — докуда дойдёт герой (reach). */
+  energy: number,
 ): PathBadgeTarget | null {
   const { pendingPath, pendingAction, cells, buildings, buildingTiers, doorTolls } = p;
   // Тот же список, что у тапа по декору (он уже в кэше): без маршрута к декору
   // не запрашиваем. Админ сменил надпись — плашка перепишется сама.
   const decorList = useInteractiveDecor(pendingAction?.kind === "decor").data;
   const shovel = useShovelOffer();
-  return useMemo(() => {
+  // Цена дела в конце пути — по шаблону (мировая); на острове режем её ЗДЕСЬ,
+  // один раз: источники (тап, декор, лопата) шлют её как есть. Шаги маршрута
+  // уже посчитаны с множителем (routeSearch).
+  const mult = useEnergyMult();
+  const base = useMemo((): Omit<PathBadgeTarget, "reach"> | null => {
     // Последний тап — по своей клетке с лопатой: плашка «копать под собой»
     // важнее прежнего маршрута (тот доживёт свои 5 с невидимым).
     if (shovel?.here) {
       const at = { q: shovel.q, r: shovel.r };
       return {
         ...at,
-        cost: DIG_ENERGY,
+        cost: scaleEnergy(DIG_ENERGY, mult),
         walkCost: 0,
         steps: 0,
         actionLabel: null,
@@ -76,7 +87,9 @@ export function usePathBadgeTarget(
             ? "braid.act_decor"
             : pendingAction?.kind === "ship"
               ? "braid.ship_repair"
-              : null;
+              : pendingAction?.kind === "mineplan"
+                ? "mineplace.act_place"
+                : null;
     // Постройка не пишет «Взаимодействовать»: у неё есть имя и уровень
     // (тир 0 = 0 lvl, тир 1 = 1 lvl, …). Их и показываем. Пустое, если у
     // постройки нет тиров вовсе (табличка) — тогда только имя.
@@ -110,13 +123,13 @@ export function usePathBadgeTarget(
     }
     // Ворота на пути: энергия из их цены входит в дорогу (дверь берёт её тем
     // же счётчиком, что и шаг), остальное — отдельной строкой плашки.
-    const { energy: tollEnergy, rest: toll } = splitToll(pathTolls(pendingPath, doorTolls));
+    const toll = splitToll(pathTolls(pendingPath, doorTolls)).rest;
     // Дорога и действие — два счёта: к боссу можно идти без энергии на бой.
-    const walkCost = pendingPath.reduce((sum, step) => sum + step.cost, 0) + tollEnergy;
+    const walkCost = walkEnergy(pendingPath, doorTolls);
     return {
       q: last.q,
       r: last.r,
-      cost: walkCost + (pendingAction?.extraCost ?? 0),
+      cost: walkCost + scaleEnergy(pendingAction?.extraCost ?? 0, mult),
       walkCost,
       actionLabel: decorLabel ?? digLabel ?? (actionKey ? tFor(lang, actionKey) : buildingLabel),
       steps: pendingPath.length,
@@ -134,5 +147,13 @@ export function usePathBadgeTarget(
     doorTolls,
     decorList,
     shovel,
+    mult,
   ]);
+  // Отдельно от base: энергия тикает часто, а цель меняется, лишь когда
+  // сменилось число оплаченных шагов, — кадр карты не будится зря.
+  const reach = useMemo(
+    () => (base ? pathReach(pendingPath, energy, doorTolls) : 0),
+    [base, pendingPath, energy, doorTolls],
+  );
+  return useMemo(() => (base ? { ...base, reach } : null), [base, reach]);
 }

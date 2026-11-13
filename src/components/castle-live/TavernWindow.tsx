@@ -1,3 +1,4 @@
+import { onTreeMapStart } from "@/components/beta-raid/tree-map/treeMapEvents";
 import { heroAbilityLabel } from "@/lib/hero/heroAbilities";
 import "./tavern.css";
 import "./tavern-immersive.css";
@@ -5,7 +6,7 @@ import "./tavern-hero-cards.css";
 import { TavernArtifacts } from "./TavernArtifacts";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { listMyHeroes } from "@/server/api/heroes-read";
 import { getMySelectedHero } from "@/server/api/heroes-select";
 import { useAppStore } from "@/lib/store";
@@ -17,7 +18,7 @@ import { HeroSummaryCard } from "@/components/heroes/HeroSummaryCard";
 import { HeroEffectSummary } from "@/components/beta-raid/HeroEffectSummary";
 import { HeroLevelUp } from "@/components/beta-raid/HeroLevelUp";
 import { heroCombat, heroField } from "@/lib/hero/heroPowerCurve";
-import { heroSlots } from "@/lib/hero/heroSlots";
+import { artifactSlotCount, heroSlots } from "@/lib/hero/heroSlots";
 import { CastleModal } from "@/components/beta-raid/castle/CastleModal";
 import type { CastleTab } from "@/components/beta-raid/castle/CastleTabs";
 import { TavernSelectHero } from "./TavernSelectHero";
@@ -32,7 +33,8 @@ function scrollHostFor(element: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
-export function TavernWindow({ onClose, allowHeroSelection = false, initialSection = "heroes", rewardItemId }: { onClose: () => void; allowHeroSelection?: boolean; initialSection?: "heroes" | "artifacts"; rewardItemId?: string }) {
+export function TavernWindow({ onClose, onOpenArmory, onShowBusyField, allowHeroSelection = false, initialSection = "heroes", rewardItemId }: { onClose: () => void; onOpenArmory?: () => void; onShowBusyField?: (q: number, r: number) => void; allowHeroSelection?: boolean; initialSection?: "heroes" | "artifacts"; rewardItemId?: string }) {
+  useEffect(() => onTreeMapStart(onClose), [onClose]);
   const ru = useLang() === "ru";
   const wallet = useAppStore((s) => s.walletAddress);
   // Тот же ключ, что у окна героя в режиме просмотра (useCastle): один список
@@ -64,6 +66,7 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
   const heroOrder = useTavernHeroOrder(rows, activeHeroId, wallet);
   const otherHeroes = heroOrder.otherHeroes;
   const chosen = chosenKey === null ? null : rows.find((h) => keyOf(h) === chosenKey || (h.id != null && h.id === chosenKey));
+  const tutorialHeroView = chosen && (activeHero ? chosen.id === activeHero.id : rows.length === 1) ? "" : undefined;
   const browsable = heroOrder.browsable;
   const chosenIndex = chosenKey === null ? -1 : browsable.findIndex(h => keyOf(h) === chosenKey || (h.id != null && h.id === chosenKey));
   const openHero = (h: (typeof rows)[number]) => {
@@ -112,7 +115,9 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
     : null;
   useEffect(() => {
     if (!chosen) { lastDetailKey.current = null; return; }
-    detailHost.current?.scrollIntoView({ block: "start" });
+    // Scroll the tavern body only; scrollIntoView can also move the page
+    // and leave its navigation outside the visible browser viewport.
+    scrollHostFor(detailHost.current)?.scrollTo({ top: 0 });
     if (!lastDetailKey.current) detailHost.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
     lastDetailKey.current = keyOf(chosen);
   }, [chosenKey]);
@@ -127,12 +132,26 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
       <div data-hero-pager-details>
         <strong>{chosen.name}</strong>
         <span data-hero-pager-meta>{[chosen.race, chosen.specialization].filter(Boolean).map(value => metaLabel(value as string, ru ? "ru" : "en")).concat(heroAbilityLabel(chosen.ability, ru ? "ru" : "en") || []).join(" · ")}</span>
-        <span data-hero-pager-facts><span data-hero-pager-rarity>{metaLabel(chosen.rarity, ru ? "ru" : "en")}</span><span data-hero-pager-slots>{heroSlots(chosen.rarity).length} {ru ? "слотов" : "slots"}</span></span>
+        <span data-hero-pager-facts><span data-hero-pager-rarity>{metaLabel(chosen.rarity, ru ? "ru" : "en")}</span><span data-hero-pager-slots>{artifactSlotCount(heroSlots(chosen.rarity))} {ru ? "слотов" : "slots"}</span></span>
         {chosen.id === activeHeroId && <button data-hero-pager-action type="button" onClick={() => setDetailTab(detailTab === "gear" ? "hero" : "gear")}>{detailTab === "gear" ? (ru ? "Характеристики" : "Characteristics") : (ru ? "Экипировка" : "Equipment")}</button>}
       </div>
     </div>
     <button type="button" aria-label={ru ? "Следующий герой" : "Next hero"} disabled={chosenIndex >= browsable.length - 1} onClick={() => browse(1)}><ChevronRight aria-hidden="true" /></button>
   </div></> : undefined;
+  const detailActions = <div data-hero-detail-actions>
+    <button data-game-button="secondary" data-hero-back type="button"
+      className="flex min-h-11 items-center gap-2 px-3 text-sm"
+      onClick={() => { setChosenKey(null); setCompareMode(false); }}>
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />{ru ? "Мои герои" : "My heroes"}
+    </button>
+    {chosen?.id != null && chosen.id === activeHeroId && otherHeroes.length > 0 && <button data-change-hero type="button" onClick={() => { switchingHero.current = true; setChosenKey(null); setCompareMode(false); }}>
+      {ru ? "Сменить героя" : "Change hero"}
+    </button>}
+    <button data-tavern-detail-close data-game-button="secondary" type="button"
+      aria-label={ru ? "Закрыть таверну" : "Close tavern"} onClick={onClose}>
+      <X size={20} aria-hidden="true" />
+    </button>
+  </div>;
   if (showArtifacts) return <div data-tavern-artifacts-page className="mx-auto w-full max-w-md px-4 pb-8">
     <button data-artifacts-back data-game-button="text" type="button" className="mb-5 flex min-h-11 items-center gap-2" onClick={() => setShowArtifacts(false)}><ArrowLeft size={18} aria-hidden="true" />{chosen ? `${chosen.name} · ${ru ? "Снаряжение" : "Equipment"}` : (ru ? "Герои" : "Heroes")}</button>
     {heroes.isError ? <p role="alert">{ru ? "Не удалось проверить героев и артефакты." : "Could not verify heroes and artifacts."} <button data-game-button="secondary" type="button" onClick={() => void heroes.refetch()}>{ru ? "Повторить" : "Retry"}</button></p>
@@ -141,21 +160,8 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
   </div>;
   if (chosen?.id)
     return (
-      <div data-tavern-detail ref={detailHost} className="mx-auto w-full max-w-md space-y-2">
-        <div data-hero-detail-actions>
-          <button data-game-button="secondary"
-            data-hero-back
-            type="button"
-            className="flex min-h-11 items-center gap-2 px-3 text-sm"
-            onClick={() => { setChosenKey(null); setCompareMode(false); }}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            {ru ? "Мои герои" : "My heroes"}
-          </button>
-          {chosen.id === activeHeroId && otherHeroes.length > 0 && <button data-change-hero type="button" onClick={() => { switchingHero.current = true; setChosenKey(null); setCompareMode(false); }}>
-            {ru ? "Сменить героя" : "Change hero"}
-          </button>}
-        </div>
+      <div data-tavern-detail data-island-hero-view={tutorialHeroView} ref={detailHost} className="mx-auto w-full max-w-md space-y-2">
+        {detailActions}
         {detailTab === "gear" ? selectionFor("gear") : null}
         <CastleModal
           key={chosen.id}
@@ -165,7 +171,7 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
           onEmbeddedTabChange={setDetailTab}
           heroNavigator={heroNavigator}
           heroAction={detailTab === "hero" ? selectionFor("hero") : undefined}
-          onShowArtifacts={() => setShowArtifacts(true)}
+          onShowArtifacts={() => onOpenArmory ? onOpenArmory() : setShowArtifacts(true)}
           showGearTab={chosen.id === activeHeroId}
           allowLevelUp
           readOnly
@@ -174,10 +180,8 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
       </div>
     );
   if (chosen) return (
-    <div data-tavern-detail data-tavern-hero="true" data-hero-screen="hero" ref={detailHost} className="mx-auto w-full max-w-md space-y-2">
-      <button data-game-button="secondary" data-hero-back type="button" className="flex min-h-11 items-center gap-2 px-3 text-sm" onClick={() => { setChosenKey(null); setCompareMode(false); }}>
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />{ru ? "Мои герои" : "My heroes"}
-      </button>
+    <div data-tavern-detail data-tavern-hero="true" data-hero-screen="hero" data-island-hero-view={tutorialHeroView} ref={detailHost} className="mx-auto w-full max-w-md space-y-2">
+      {detailActions}
       <div className="px-4 pb-4">
         {heroNavigator?.()}
         <h2 data-hero-stats-title className="mt-4">{ru ? "Характеристики" : "Stats"}</h2>
@@ -222,7 +226,7 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
             <>
             {activeHero && <div data-active-hero-feature><TavernHeroCard key={keyOf(activeHero)} hero={activeHero} active lang={ru ? "ru" : "en"} onOpen={() => openHero(activeHero)} /></div>}
             {!activeHero && selectedHero.isSuccess && <p className="text-sm text-muted-foreground">{ru ? "Активный герой не выбран" : "No active hero selected"}</p>}
-            <TavernOtherHeroes order={heroOrder} ru={ru} onOpen={openHero} />
+            <TavernOtherHeroes order={heroOrder} ru={ru} onOpen={openHero} onShowBusyField={onShowBusyField} />
             </>
           )}
         </div>
@@ -230,3 +234,6 @@ export function TavernWindow({ onClose, allowHeroSelection = false, initialSecti
     </div>
   );
 }
+
+
+

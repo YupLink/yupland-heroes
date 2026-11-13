@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { pg, sb, type PgCampaign } from "../db/pg";
 import { mcpExec } from "../db/mcpClient";
 import { resolveAccountId } from "./user-claims-core";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 
 export async function storeAccountTickets(
   wallet: string,
@@ -50,22 +51,14 @@ export async function creditDropEnergy(opts: {
   } catch {
     throw new Error("NFT уже погашен (гонка запросов)");
   }
-  // Платный энерго-дроп: цена в билетах писалась в запись, но из баланса не
-  // уходила — клейм был бесплатным.
-  if (opts.ticketCost > 0) {
-    const { moveTickets } = await import("./tickets-ledger");
-    // Билетов не хватило — энергию не выдаём и снимаем запись о погашении,
-    // иначе NFT числится потраченной, а награды нет.
-    const paid = await moveTickets({
-      wallet: opts.wallet,
-      delta: -opts.ticketCost,
-      kind: "redemption",
-      ref: `energydrop:${redId}`,
-    }).catch(() => ({ applied: false }) as { applied: boolean });
-    if (!paid.applied) {
-      await pg.redemptions.delete({ id: redId }).catch(() => undefined);
-      throw new Error("Не хватило билетов");
-    }
+  // Платный энерго-дроп: цена дропа в билетах, платится золотом ×500 (§8.61).
+  // Золота не хватило — энергию не выдаём и снимаем запись о погашении,
+  // иначе NFT числится потраченной, а награды нет.
+  const { debitClaim, refundClaim } = await import("./claim-ticket-debit");
+  const payRef = `energydrop:${redId}`;
+  if (!(await debitClaim({ wallet: opts.wallet, cost: opts.ticketCost, ref: payRef }))) {
+    await pg.redemptions.delete({ id: redId }).catch(() => undefined);
+    throw new Error(`Не хватает золота: нужно ${goldForTicketPrice(opts.ticketCost)}`);
   }
   if (amt > 0) {
     const { error } = await sb.rpc("add_energy", {
@@ -82,18 +75,8 @@ export async function creditDropEnergy(opts: {
           token_id: opts.tokenId,
         })
         .catch(() => {});
-      // Энергию не выдали — значит и билеты брать не за что.
-      if (opts.ticketCost > 0) {
-        const { moveTickets } = await import("./tickets-ledger");
-        await moveTickets({
-          wallet: opts.wallet,
-          delta: opts.ticketCost,
-          kind: "refund",
-          ref: `energydrop-undo:${redId}`,
-        }).catch((e: unknown) => {
-          console.error(`[energy-drop] возврат билетов не прошёл ${opts.wallet}:`, e);
-        });
-      }
+      // Энергию не выдали — значит и золото брать не за что.
+      await refundClaim({ wallet: opts.wallet, cost: opts.ticketCost, ref: payRef });
       throw new Error("Не удалось начислить энергию: " + error.message);
     }
   }

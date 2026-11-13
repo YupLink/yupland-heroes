@@ -3,6 +3,7 @@ import { ChipImage } from "@/components/ChipImage";
 import { useAppStore } from "@/lib/store";
 import "./pack-reveal.css";
 
+import { thumb } from "@/lib/image";
 type RevealItem = { templateName: string; level: number; imageUrl: string | null };
 
 function chipWord(count: number) {
@@ -63,7 +64,7 @@ export function PackReveal({
             <div className="pack-reveal-item" key={`${item.templateName}-${index}`}>
               {item.imageUrl ? (
                 <ChipImage
-                  src={item.imageUrl}
+                  src={thumb(item.imageUrl, 400)}
                   level={item.level}
                   alt=""
                   className="pack-reveal-image"

@@ -9,6 +9,7 @@
 // Клиентский модуль: серверных импортов здесь быть не должно (см. правило про
 // утечку server-модулей в бандл).
 import { RESOURCE_ICONS, type ResourceCode } from "./resourceIcons";
+import { goldForEarnedTickets } from "./ticketGold";
 
 /** Ресурсы, которые можно положить в фонд награды. */
 export const REWARD_RESOURCES = ["gold", "stone", "wood", "diamonds"] as const;
@@ -49,7 +50,14 @@ export function resourceOfKind(
 ): RewardResource | null {
   if (isRewardResource(kind)) return kind;
   if (kind === "resource" && isRewardResource(ref)) return ref;
+  // Билетов нет (ПРАВИЛА §8.61): награда «tickets» выдаётся золотом — и видна им же.
+  if (kind === "tickets") return "gold";
   return null;
+}
+
+/** Сумма награды для показа игроку: билеты — золотом ×100, остальное как есть. */
+export function rewardShownAmount(kind: string | null | undefined, amount: number): number {
+  return kind === "tickets" ? goldForEarnedTickets(amount) : amount;
 }
 
 /** Спрайт ресурса для вида награды; не ресурс — null (рисуем lucide-иконку). */

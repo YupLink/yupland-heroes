@@ -9,7 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { requireAdmin } from "../../auth";
+import { requireAdmin, requirePayoutsAdmin } from "../../auth";
 import { loadTier } from "./tiers";
 import { firstRow } from "./grant";
 
@@ -98,6 +98,9 @@ export const adminGrantSubscription = createServerFn({ method: "POST" })
     const by = requireAdmin();
     const tier = await loadTier(data.tierId);
     if (!tier) throw new Error("Такого тарифа нет");
+    // Боксы тарифа с DARAI/Stars — деньги: дарит только админ выплат (mystic-money.ts).
+    const { packPaysMoney } = await import("../mystic-money");
+    if (tier.boxPackId && (await packPaysMoney(tier.boxPackId))) requirePayoutsAdmin();
     const acc = (await mcpExec(
       `SELECT a.id, COALESCE(a.active_wallet, (SELECT min(x.wallet) FROM yuplink.users x WHERE x.account_id = a.id)) AS wallet
          FROM yuplink.accounts a WHERE a.id = ${sqlStr(data.accountId)};`,
@@ -110,15 +113,24 @@ export const adminGrantSubscription = createServerFn({ method: "POST" })
     const payRef = `grant:${data.opId}`;
     const subId = subIdOf(payRef);
     const rows = await mcpExec(
-      grantSubSql({ subId, accountId: data.accountId, wallet: acc[0].wallet ?? "", tier, days: data.days, payRef, by }),
+      grantSubSql({
+        subId,
+        accountId: data.accountId,
+        wallet: acc[0].wallet ?? "",
+        tier,
+        days: data.days,
+        payRef,
+        by,
+      }),
     );
-    const created = !!(firstRow<{ id: string }>(rows)?.id);
+    const created = !!firstRow<{ id: string }>(rows)?.id;
 
     const { grantDueForAccount } = await import("./grant");
     const day1 = await grantDueForAccount(data.accountId, { force: true });
     if (created) {
       const { notifyGifts } = await import("../gifts-notify");
-      void notifyGifts([{ accountId: data.accountId }]).catch(() => {});
+      const esubTier = { ru: tier.name, en: tier.nameEn || tier.name };
+      void notifyGifts([{ accountId: data.accountId, esubTier }]).catch(() => {});
     }
     return { ok: true as const, subId, created, gifts: day1.gifts };
   });

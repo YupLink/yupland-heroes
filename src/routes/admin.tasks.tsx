@@ -19,7 +19,7 @@ import {
   Pencil,
   Check,
   Link as LinkIcon,
-  Ticket,
+  Coins,
   Users,
 } from "lucide-react";
 import { NftImage } from "@/components/NftImage";
@@ -128,7 +128,7 @@ function AdminTasks() {
               Задания
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Каждое выполненное = +1 билет
+              Каждое выполненное = +100 золота
             </p>
           </div>
         </div>
@@ -394,8 +394,8 @@ function AdminTasks() {
                             </span>
                           )}
                           <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-gold">
-                            <Ticket className="h-3 w-3" />
-                            +1 билет
+                            <Coins className="h-3 w-3" />
+                            +100 золота
                           </span>
                           <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 text-muted-foreground">
                             <Users className="h-3 w-3" />

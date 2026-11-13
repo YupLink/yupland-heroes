@@ -4,6 +4,7 @@
 // нажатия без второго эффекта. Базы нет — фейк (pchest.fake*) исполняет
 // операторы по смыслу SQL.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { NO, f, packOf, resetFake, slotsOf } from "./pchest.fake";
 import { marksOf } from "./pchest.fake-cmd";
 
@@ -134,30 +135,32 @@ describe("положить и забрать", () => {
   });
 
   it("10 ячеек: полный сундук доливает свою ячейку, новую — отказ", async () => {
-    for (let i = 0; i < 9; i++) slots().set(`custom:x${i}`, { count: 20, kind: "custom", refId: null, name: "x" });
-    slots().set(APPLE, { count: 15, kind: "custom", refId: null, name: "Яблоко" });
+    for (let i = 0; i < 9; i++) slots().set(`custom:x${i}`, { count: CELL_SIZE, kind: "custom", refId: null, name: "x" });
+    slots().set(APPLE, { count: CELL_SIZE - 5, kind: "custom", refId: null, name: "Яблоко" });
     packOf("h1").set(APPLE, { count: 5, wear: 0, marks: NO, kind: "custom", name: "Яблоко" });
     packOf("h1").set("custom:pear", { count: 3, wear: 0, marks: NO, kind: "custom", name: "Груша" });
     await expect(put("w1", APPLE, 5)).resolves.toMatchObject({ qty: 5 });
-    expect(slots().get(APPLE)?.count).toBe(20);
+    expect(slots().get(APPLE)?.count).toBe(CELL_SIZE);
     await expect(put("w1", "custom:pear", 3)).rejects.toThrow("pchest.full");
     expect(packOf("h1").get("custom:pear")?.count).toBe(3);
   });
 
   it("забрать — сколько влезет: остальное остаётся в сундуке", async () => {
-    slots().set(APPLE, { count: 50, kind: "custom", refId: null, name: "Яблоко" });
-    for (let i = 0; i < 2; i++) packOf("h2").set(`custom:y${i}`, { count: 20, wear: 0, marks: NO, kind: "custom", name: "y" });
-    await expect(take("w2", APPLE, 50)).resolves.toMatchObject({ qty: 40 });
+    slots().set(APPLE, { count: 2 * CELL_SIZE + 10, kind: "custom", refId: null, name: "Яблоко" });
+    for (let i = 0; i < 2; i++) packOf("h2").set(`custom:y${i}`, { count: CELL_SIZE, wear: 0, marks: NO, kind: "custom", name: "y" });
+    await expect(take("w2", APPLE, 2 * CELL_SIZE + 10)).resolves.toMatchObject({
+      qty: 2 * CELL_SIZE,
+    });
     expect(slots().get(APPLE)?.count).toBe(10);
     await expect(take("w2", APPLE, 10)).rejects.toThrow("market.backpack_full");
   });
 
   it("зелье — только в сумку зелий: полная сумка не берёт", async () => {
     f.potions.add(POTION);
-    slots().set(POTION, { count: 30, kind: "custom", refId: null, name: "Зелье" });
-    await expect(take("w2", POTION, 30)).resolves.toMatchObject({ qty: 20 });
+    slots().set(POTION, { count: CELL_SIZE + 10, kind: "custom", refId: null, name: "Зелье" });
+    await expect(take("w2", POTION, CELL_SIZE + 10)).resolves.toMatchObject({ qty: CELL_SIZE });
     await expect(take("w2", POTION, 10)).rejects.toThrow("market.potion_bag_full");
-    expect(packOf("h2").get(POTION)?.count).toBe(20);
+    expect(packOf("h2").get(POTION)?.count).toBe(CELL_SIZE);
   });
 
   it("повтор нажатия (ответ потерялся) — без второго эффекта", async () => {

@@ -3,7 +3,33 @@
 
 /** Что за товар. resource → на счёт; остальное → в инвентарь купленного. */
 // Фишки поштучно НЕ продаём — только паками, поэтому отдельного "chip" нет.
-export type MarketKind = "resource" | "pack" | "hero" | "art" | "boss" | "custom";
+// tree — срубаемое дерево для посадки (lib/treePlant): в рюкзак, только покупкой.
+// rock — камень или гора для установки (то, что бьют киркой; lib/treePlant) — так же.
+// land — земля для мира строителей (lib/landPlace): пачка клеток местности, только покупкой.
+// vein — жила золота или алмазов (lib/veinPlace): пачка клеток-накладок, только покупкой.
+// recipe — рецепт (lib/marketRecipe): платят ценой, получают ОДИН исход по шансам.
+// building — постройка под установку (lib/buildingSale): в рюкзак чертежом, только покупкой.
+import type { RecipeOutcome } from "./marketRecipe";
+import type { BuildingGood } from "./buildingSale";
+import type { PriceLine } from "./marketPrices";
+
+export type MarketKind =
+  | "resource"
+  | "pack"
+  | "hero"
+  | "art"
+  | "boss"
+  | "custom"
+  | "tree"
+  | "rock"
+  | "land"
+  | "vein"
+  | "recipe"
+  | "building";
+
+/** Ставится из рюкзака на клетку декором (lib/treePlant): дерево или камень. */
+export const isPlantKind = (k: string | null | undefined): k is "tree" | "rock" =>
+  k === "tree" || k === "rock";
 
 /**
  * Сторона витрины. У клетки-маркета ДВА независимых списка товаров:
@@ -36,7 +62,20 @@ export type MarketPriceResource =
   | "boss"
   | "custom";
 
-export const MARKET_KINDS: MarketKind[] = ["resource", "pack", "hero", "art", "boss", "custom"];
+export const MARKET_KINDS: MarketKind[] = [
+  "resource",
+  "pack",
+  "hero",
+  "art",
+  "boss",
+  "custom",
+  "tree",
+  "rock",
+  "land",
+  "vein",
+  "recipe",
+  "building",
+];
 
 /** Русские подписи ресурсов для админа (в выборе валюты и ресурс-товара). */
 export const RESOURCE_LABELS_RU: Record<MarketPriceResource, string> = {
@@ -130,6 +169,12 @@ export interface MarketItem {
   buyerMode: "all" | "filter";
   buyerRaces: string[];
   buyerSpecs: string[];
+  /** Ещё ингредиенты цены сверх первой и второй (до трёх; lib/marketPrices). */
+  priceMore?: PriceLine[] | null;
+  /** Рецепт: исходы с шансами (kind='recipe'). У прочих товаров нет. */
+  outcomes?: RecipeOutcome[] | null;
+  /** Постройка (kind='building'): облик и настройка, как у постройки на карте. */
+  building?: BuildingGood | null;
 }
 
 /** Черновик позиции для админ-формы: тот же товар, но id ещё может не быть. */
@@ -174,13 +219,15 @@ export function emptyMarketItem(
  * Количество в сделке, приведённое к типу товара.
  *
  * Поле «Сколько» в форме есть ТОЛЬКО у ресурса: пак/герой/арт/босс/кастом
- * торгуются целыми штуками. Поэтому дробное количество, набранное для ресурса
- * (0,5 энергии), при переключении типа уезжало в артефакт невидимо — поля,
- * которым его поправить, в форме уже нет, а сервер такую позицию не продаёт
- * («Неверное количество»). Чиним молча в двух точках: при смене типа и при
- * открытии старой позиции, которую успели сломать.
+ * торгуются по одной штуке. Количество, набранное для ресурса, при
+ * переключении типа уезжало в товар невидимо — поля, которым его поправить, в
+ * форме уже нет: дробь (0,5) делала позицию непродаваемой, а целое (250)
+ * выдавало 250 штук за цену, которую админ считал ценой одной (владелец,
+ * 25.10.2026: «за 1250 покупали не 1 а 250»). Поэтому не-ресурс — всегда 1:
+ * при смене типа, при открытии старой позиции и на сервере при сохранении.
  */
 export function normalizeGiveAmount(kind: MarketKind, amount: number): number {
-  if (kind === "resource") return amount;
-  return Number.isInteger(amount) && amount > 0 ? amount : 1;
+  // Земля и жила — пачка клеток: «Сколько» задаёт админ (целым, от 1).
+  if (kind === "land" || kind === "vein") return Math.max(1, Math.floor(Number(amount) || 1));
+  return kind === "resource" ? amount : 1;
 }

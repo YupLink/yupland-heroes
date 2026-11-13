@@ -8,7 +8,7 @@
 // подтягивают один турнир одновременно.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { TOUR_SOURCE, farmSnapshotsDue } from "@/lib/tournament/metricSources";
+import { TOUR_SOURCE, farmPlanEndMs, farmSnapshotsDue } from "@/lib/tournament/metricSources";
 import { isTourMetric, type TourMetric, type TourStatus } from "@/lib/tournament/types";
 import { farmSql, syncSql } from "./tour-sql";
 import { syncGoldProfit } from "./tour-profit";
@@ -23,6 +23,8 @@ export type TourWork = {
   snapshots: number;
   startedMs: number | null;
   endsMs: number | null;
+  /** Назначенный конец end_at (время снимков фарма); нет — от дней. */
+  endAtMs?: number | null;
   /** Конец наступил (ends_at ≤ now) — пора финиш. */
   due: boolean;
   /** Выплата висит дольше 10 минут — воркер упал на середине, доделать. */
@@ -37,6 +39,7 @@ type Row = {
   snapshots: number | string;
   started_ms: number | string | null;
   ends_ms: number | string | null;
+  end_ms?: number | string | null;
   due: boolean;
   stale: boolean;
 };
@@ -47,6 +50,7 @@ const ms = (v: number | string | null): number | null =>
 const WORK_COLS = `id, metric, status, days, snapshots,
   extract(epoch from started_at) * 1000 AS started_ms,
   extract(epoch from ends_at) * 1000 AS ends_ms,
+  extract(epoch from end_at) * 1000 AS end_ms,
   (ends_at IS NOT NULL AND ends_at <= now()) AS due,
   (status = 'paying' AND finished_at < now() - interval '10 minutes') AS stale`;
 
@@ -60,6 +64,7 @@ function toWork(r: Row): TourWork | null {
     snapshots: Number(r.snapshots) || 0,
     startedMs: ms(r.started_ms),
     endsMs: ms(r.ends_ms),
+    endAtMs: ms(r.end_ms ?? null),
     due: r.due === true,
     stale: r.stale === true,
   };
@@ -91,7 +96,7 @@ async function farmSnapshots(t: TourWork): Promise<void> {
     startedMs: t.startedMs,
     endsMs: t.endsMs,
     nowMs: Date.now(),
-    days: t.days,
+    planEndMs: farmPlanEndMs({ startedMs: t.startedMs, endAtMs: t.endAtMs ?? null, days: t.days }),
   });
   for (let k = t.snapshots + 1; k <= due; k++) await mcpExec(farmSql(t.id, k));
 }

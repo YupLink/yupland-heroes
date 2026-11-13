@@ -25,7 +25,7 @@ describe("upgradeReadiness", () => {
       chip(1, "t1", { rest_until: "2026-10-09T13:00:00Z" }),
       chip(5),
     ];
-    const r = upgradeReadiness(rows, 100, NOW).chips;
+    const r = upgradeReadiness(rows, 10_000, 1, NOW).chips;
     expect(r[rows[0].id]).toEqual({ can: false, reason: { kind: "listed" } });
     expect(r[rows[1].id]).toEqual({ can: false, reason: { kind: "studying" } });
     expect(r[rows[2].id]).toEqual({
@@ -35,54 +35,68 @@ describe("upgradeReadiness", () => {
     expect(r[rows[3].id]).toEqual({ can: false, reason: { kind: "max" } });
   });
 
-  it("1★ + такая же 1★ → можно за 0,03; чужого вида — нельзя, нужен тот же вид", () => {
+  it("1★ + такая же 1★ → можно за 9 золота; чужого вида — нельзя, нужен тот же вид", () => {
     const pair = [chip(1, "a"), chip(1, "a")];
-    const ok = upgradeReadiness(pair, 1, NOW).chips[pair[0].id];
-    expect(ok).toEqual({ can: true, tickets: 0.03, burn: 1 });
+    const ok = upgradeReadiness(pair, 100, 1, NOW).chips[pair[0].id];
+    expect(ok).toEqual({ can: true, gold: 9, burn: 1 });
     const mixed = [chip(1, "a"), chip(1, "b")];
-    expect(upgradeReadiness(mixed, 1, NOW).chips[mixed[0].id]).toEqual({
+    expect(upgradeReadiness(mixed, 100, 1, NOW).chips[mixed[0].id]).toEqual({
       can: false,
       reason: { kind: "same_type", level: 1 },
     });
   });
 
-  it("не хватает билетов — причина с ценой и балансом", () => {
+  it("не хватает золота — причина с ценой и балансом", () => {
     const pair = [chip(1, "a"), chip(1, "a")];
-    expect(upgradeReadiness(pair, 0.01, NOW).chips[pair[0].id]).toEqual({
+    expect(upgradeReadiness(pair, 5, 1, NOW).chips[pair[0].id]).toEqual({
       can: false,
-      reason: { kind: "tickets", need: 0.03, have: 0.01 },
+      reason: { kind: "gold", need: 9, have: 5 },
+    });
+  });
+
+  it("цена по курсу: множитель 0,5 (курс 400) — вдвое дешевле, вверх до целого", () => {
+    const pair = [chip(1, "a"), chip(1, "a")];
+    expect(upgradeReadiness(pair, 5, 0.5, NOW).chips[pair[0].id]).toEqual({
+      can: true,
+      gold: 5,
+      burn: 1,
+    });
+    expect(upgradeReadiness(pair, 4, 0.5, NOW).chips[pair[0].id]).toEqual({
+      can: false,
+      reason: { kind: "gold", need: 5, have: 4 },
     });
   });
 
   it("отдыхающая фишка в жертвы не идёт", () => {
     const rows = [chip(1, "a"), chip(1, "a", { rest_until: "2026-10-09T13:00:00Z" })];
-    expect(upgradeReadiness(rows, 1, NOW).chips[rows[0].id]).toMatchObject({ can: false });
+    expect(upgradeReadiness(rows, 100, 1, NOW).chips[rows[0].id]).toMatchObject({ can: false });
   });
 
   it("автоподбор: 2★ собирается из 1★ — как у планировщика по одной фишке", () => {
     const rows = [chip(2, "a"), ...Array.from({ length: 6 }, () => chip(1, "a")), chip(1.5, "b")];
-    const all = upgradeReadiness(rows, 10, NOW).chips;
+    const all = upgradeReadiness(rows, 1000, 1, NOW).chips;
     for (const r of rows.filter((x) => Number(x.level) < 5)) {
       const pool = toPlanPool(rows, r.id, NOW);
       const p = planUpgrade(
         { id: r.id, level: Number(r.level), template: r.template_id },
         pool,
-        10,
+        1000,
+        1,
       );
       expect(all[r.id].can, r.id).toBe(p.feasible);
       if (all[r.id].can)
-        expect(all[r.id]).toMatchObject({ tickets: p.totalTickets, burn: p.burnChips.length });
+        expect(all[r.id]).toMatchObject({ gold: p.totalGold, burn: p.burnChips.length });
     }
     expect(all[rows[0].id]).toMatchObject({ can: true });
   });
 
   it("мало фишек — сколько каких не хватает", () => {
     const rows = [chip(3, "a")];
-    const s = upgradeReadiness(rows, 100, NOW).chips[rows[0].id];
+    const s = upgradeReadiness(rows, 10_000, 1, NOW).chips[rows[0].id];
     expect(s.can).toBe(false);
     if (!s.can) expect(s.reason.kind).toBe("same_type");
     const lone = [chip(1.5, "a")];
-    const l = upgradeReadiness(lone, 100, NOW).chips[lone[0].id];
+    const l = upgradeReadiness(lone, 10_000, 1, NOW).chips[lone[0].id];
     expect(l).toEqual({
       can: false,
       reason: { kind: "chips", shortfall: [{ level: 1, count: 4 }] },

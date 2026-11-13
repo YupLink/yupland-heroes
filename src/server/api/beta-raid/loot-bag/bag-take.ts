@@ -15,10 +15,15 @@
 // Ключ нажатия op от клиента: `bagtake:<аккаунт>:<op>:<стопка>` — повтор того
 // же нажатия не снимет второй раз (prior в raid_loot_bag_op) и не положит
 // второй раз (ключ выдачи в raid_backpack_op).
+// Ресурс счёта (разборка шахты, §8.70, стопка resource:<вид>) — не в рюкзак, а
+// на счёт (bag-take-res): героя и места ему не нужно.
+//
+// «Забрать всё» (без стопки) — те же шаги по каждой стопке, каждая со своим
+// ключом нажатия: не влезшее остаётся в мешочке, и ответ, кроме taken, несёт
+// left — что в мешочке осталось (свежим чтением, bag-take-read.leftIn).
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "@/server/db/mcpClient";
-import { sqlStr } from "@/server/api/raid-shared";
 import { publishRaid } from "@/server/raidLive";
 import type { LootBagTaken } from "@/lib/lootBag";
 import type { MarketKind } from "@/lib/marketItem";
@@ -35,11 +40,14 @@ import { bagRoom, floor3 } from "@/server/api/beta-raid/chest/chest-loot-plan";
 import { sqlRow } from "@/server/api/beta-raid/chest/chest-row";
 import { bagActor, bagNear, type BagActor } from "@/server/api/beta-raid/loot-bag/bag-actor";
 import { takeSql, type TakeRow } from "@/server/api/beta-raid/loot-bag/bag-take-sql";
-import { livePortion } from "@/server/api/beta-raid/loot-bag/bag-sql";
 import { backSql, takeDoneSql } from "@/server/api/beta-raid/loot-bag/bag-back-sql";
 import { noteBagTake, type BagStackRow } from "@/server/api/beta-raid/loot-bag/bag-note";
 import { requirePass } from "@/server/api/beta-raid/open-pass/pass";
 import { bagTarget } from "@/server/api/beta-raid/open-pass/pass-sql";
+import { isDaraiMineKey } from "@/lib/daraiMine";
+import { isResStack, takeResStacks } from "@/server/api/beta-raid/loot-bag/bag-take-res";
+import { isArtStack, takeArtStacks } from "@/server/api/beta-raid/loot-bag/bag-take-art";
+import { doneBefore, leftIn, loadStacks } from "@/server/api/beta-raid/loot-bag/bag-take-read";
 
 const input = z.object({
   bagId: z.string().regex(/^lb_[0-9a-f]{32}$/),
@@ -51,30 +59,6 @@ const input = z.object({
 });
 
 const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
-
-/** Позиции мешочка — живые порции по видам (и чей он — для журнала сделок). */
-async function loadStacks(bagId: string): Promise<BagStackRow[]> {
-  return ((await mcpExec(
-    `SELECT i.stack_key AS "stackKey", min(i.kind) AS kind, min(i.ref_id) AS "refId",
-            min(i.name) AS name, min(i.image) AS image, sum(i.count) AS count,
-            min(b.dropped_by) AS "droppedBy"
-       FROM yuplink.raid_loot_bag_item i
-       JOIN yuplink.raid_loot_bag b ON b.id = i.bag_id
-      WHERE i.bag_id = ${sqlStr(bagId)} AND ${livePortion("i")}
-      GROUP BY i.stack_key
-      ORDER BY min(i.name), i.stack_key;`,
-    { wrapJson: true },
-  )) ?? []) as BagStackRow[];
-}
-
-/** Это нажатие по стопке уже забрало (повтор после ответа, потерянного в пути) — сколько. */
-async function doneBefore(op: string): Promise<number> {
-  const rows = (await mcpExec(
-    `SELECT state, qty FROM yuplink.raid_loot_bag_op WHERE op = ${sqlStr(op)};`,
-    { wrapJson: true },
-  )) as Array<{ state: string; qty: number | string }>;
-  return rows?.[0]?.state === "done" ? num(rows[0].qty) : 0;
-}
 
 /** Вернуть снятое, если выдача не прошла. true — выдача всё же прошла (ответ потерялся). */
 async function settle(bagId: string, heroId: string, op: string): Promise<boolean> {
@@ -148,6 +132,64 @@ async function takeOne(
   return took;
 }
 
+type Took = { taken: LootBagTaken["taken"]; why: string | null };
+
+/** Товары — в рюкзак, сколько влезет; что не легло — причина в why. */
+async function takeGoods(
+  a: BagActor,
+  bag: { id: string; q: number; r: number },
+  bp: BagCaps,
+  want: readonly BagStackRow[],
+  data: { stackKey?: string; qty?: number; op: string },
+): Promise<Took> {
+  // Место: снимок рюкзака и какие из новых видов — зелья; дальше правим сами.
+  const room = await loadBag(bp.heroId);
+  const fresh = want.map((s) => s.stackKey).filter((k) => !room.some((r) => r.stackKey === k));
+  const potions = await potionKeysOf(fresh);
+  const taken: LootBagTaken["taken"] = [];
+  let why: string | null = null;
+  for (const s of want) {
+    const mine = room.find((r) => r.stackKey === s.stackKey);
+    const potion = mine?.potion ?? potions.has(s.stackKey);
+    const fits = bagRoom(room, s.stackKey, potion, bp);
+    const ask = moveQty(num(s.count), data.stackKey && data.qty ? data.qty : num(s.count));
+    // DARAI-шахта — только целиком: половинку не разместить (lib/daraiMine).
+    const dm = isDaraiMineKey(s.stackKey);
+    const want = dm ? Math.floor(num(s.count)) : ask;
+    const qty = want <= fits ? want : dm ? 0 : floor3(fits);
+    const op = `bagtake:${a.account}:${data.op}:${s.stackKey}`;
+    if (!(qty > 0)) {
+      // Места нет — но, может, это повтор уже прошедшего нажатия: отвечаем тем же.
+      const before = await doneBefore(op).catch(() => 0);
+      if (before > 0) taken.push({ stackKey: s.stackKey, qty: before });
+      else why ??= potion ? "market.potion_bag_full" : "market.backpack_full";
+      continue;
+    }
+    try {
+      const took = await takeOne(a, bag.id, bp, s, { qty, cap: fits }, op);
+      if (!(took > 0)) continue;
+      taken.push({ stackKey: s.stackKey, qty: took });
+      if (mine) mine.count = exactQty(mine.count + took);
+      else
+        room.push({
+          stackKey: s.stackKey,
+          kind: s.kind,
+          name: s.name,
+          image: s.image,
+          count: took,
+          movable: 0,
+          potion,
+        });
+      void noteBagTake({ actor: a, bag, stack: s, qty: took, ref: op });
+    } catch (e) {
+      // Одна стопка не легла — «Забрать всё» пробует остальные.
+      if (data.stackKey) throw e;
+      why ??= e instanceof Error ? e.message : String(e);
+    }
+  }
+  return { taken, why };
+}
+
 export const takeFromLootBag = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => input.parse(d))
   .handler(async ({ data }): Promise<LootBagTaken> => {
@@ -156,57 +198,39 @@ export const takeFromLootBag = createServerFn({ method: "POST" })
     if (bag.buried) throw new Error("bag.buried");
     // Забирать — только внутри оплаченного входа (§8.23).
     await requirePass(a.account, bagTarget(bag.id));
-    const bp = await resolveBackpack(a.wallet);
-    if (!bp) throw new Error("market.backpack_no_hero");
     const stacks = await loadStacks(bag.id);
     const want = data.stackKey ? stacks.filter((s) => s.stackKey === data.stackKey) : stacks;
     if (want.length === 0) throw new Error("bag.taken");
 
-    // Место: снимок рюкзака и какие из новых видов — зелья; дальше правим сами.
-    const room = await loadBag(bp.heroId);
-    const fresh = want.map((s) => s.stackKey).filter((k) => !room.some((r) => r.stackKey === k));
-    const potions = await potionKeysOf(fresh);
-    const taken: LootBagTaken["taken"] = [];
-    let why: string | null = null;
-    for (const s of want) {
-      const mine = room.find((r) => r.stackKey === s.stackKey);
-      const potion = mine?.potion ?? potions.has(s.stackKey);
-      const fits = bagRoom(room, s.stackKey, potion, bp);
-      const ask = moveQty(num(s.count), data.stackKey && data.qty ? data.qty : num(s.count));
-      const qty = ask <= fits ? ask : floor3(fits);
-      const op = `bagtake:${a.account}:${data.op}:${s.stackKey}`;
-      if (!(qty > 0)) {
-        // Места нет — но, может, это повтор уже прошедшего нажатия: отвечаем тем же.
-        const before = await doneBefore(op).catch(() => 0);
-        if (before > 0) taken.push({ stackKey: s.stackKey, qty: before });
-        else why ??= potion ? "market.potion_bag_full" : "market.backpack_full";
-        continue;
-      }
-      try {
-        const took = await takeOne(a, bag.id, bp, s, { qty, cap: fits }, op);
-        if (!(took > 0)) continue;
-        taken.push({ stackKey: s.stackKey, qty: took });
-        if (mine) mine.count = exactQty(mine.count + took);
-        else
-          room.push({
-            stackKey: s.stackKey,
-            kind: s.kind,
-            name: s.name,
-            image: s.image,
-            count: took,
-            movable: 0,
-            potion,
-          });
-        void noteBagTake({ actor: a, bag, stack: s, qty: took, ref: op });
-      } catch (e) {
-        // Одна стопка не легла — «Забрать всё» пробует остальные.
-        if (data.stackKey) throw e;
-        why ??= e instanceof Error ? e.message : String(e);
-      }
+    // Ресурсы счёта (разборка шахты, §8.70) — на счёт: ни героя, ни места.
+    const res = await takeResStacks(a, bag, want.filter(isResStack), {
+      press: data.op,
+      qty: data.stackKey ? data.qty : undefined,
+      single: !!data.stackKey,
+    });
+    // Артефакты (§8.73 п. 4) — в инвентарь: тоже ни героя, ни места.
+    const arts = await takeArtStacks(a, bag, want.filter(isArtStack), {
+      press: data.op,
+      single: !!data.stackKey,
+    });
+    res.taken.push(...arts.taken);
+    res.why ??= arts.why;
+    const goods = want.filter((s) => !isResStack(s) && !isArtStack(s));
+    const bp = goods.length > 0 ? await resolveBackpack(a.wallet) : null;
+    if (goods.length > 0 && !bp && res.taken.length === 0) {
+      throw new Error("market.backpack_no_hero");
     }
+    const got: Took = bp
+      ? await takeGoods(a, bag, bp, goods, data)
+      : { taken: [], why: goods.length > 0 ? "market.backpack_no_hero" : null };
+    const taken = [...res.taken, ...got.taken];
+    const why = res.why ?? got.why;
     // Мешочек поменялся (или опустел) — все рядом перечитывают свой «второй обзор».
     if (taken.length > 0)
       publishRaid({ mapId: a.mapId, type: "bags", cells: [`${bag.q},${bag.r}`] });
     if (taken.length === 0) throw new Error(why ?? "bag.taken");
-    return { taken };
+    if (data.stackKey) return { taken };
+    // «Забрать всё»: что не влезло — окну для тоста; не прочиталось — без него.
+    const left = await leftIn(bag.id).catch(() => []);
+    return left.length > 0 ? { taken, left } : { taken };
   });

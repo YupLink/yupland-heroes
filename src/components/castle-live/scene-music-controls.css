@@ -1,0 +1,16 @@
+.scene-music-controls { display:flex; align-items:center; gap:7px; width:100%; max-width:280px; min-width:0; height:44px; margin-top:5px; pointer-events:auto; color:#fff4d8; font-family:var(--font-sans),sans-serif; }
+.scene-music-controls[hidden] { display:none; }
+.scene-music-controls__toggle { position:relative; display:grid; place-items:center; flex:0 0 44px; width:44px; height:44px; padding:0; border:0; border-radius:50%; background:transparent; cursor:pointer; color:#ffdb70; }
+.scene-music-controls__toggle::before { content:""; position:absolute; inset:6px; border-radius:50%; background:#101213b8; box-shadow:inset 0 0 0 1px #f4d27a24; }
+.scene-music-controls__toggle svg { position:relative; width:21px; height:21px; stroke-width:2.5; pointer-events:none; filter:drop-shadow(0 1px 1px #000) drop-shadow(0 0 2px #000b); }
+.scene-music-controls__toggle:focus-visible { outline:2px solid #fff4d8; outline-offset:1px; }
+.scene-music-controls__level { display:flex; align-items:center; gap:8px; flex:1; min-width:0; height:32px; padding:0 10px; border-radius:10px; background:#101213b8; box-shadow:inset 0 1px #f4d27a24; }
+.scene-music-controls__level span { flex:0 0 31px; text-align:right; font-size:11px; font-variant-numeric:tabular-nums; color:#e8d9b7; }
+.scene-music-controls input { appearance:none; -webkit-appearance:none; min-width:0; flex:1; width:100%; height:44px; margin:0; padding:0; border:0; background:transparent; cursor:pointer; touch-action:pan-y; }
+.scene-music-controls input::-webkit-slider-runnable-track { height:4px; border-radius:4px; background:linear-gradient(to right,#efbf43 var(--music-level),#77705e var(--music-level)); }
+.scene-music-controls input::-moz-range-track { height:4px; border-radius:4px; background:#77705e; }
+.scene-music-controls input::-moz-range-progress { height:4px; border-radius:4px; background:#efbf43; }
+.scene-music-controls input::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:16px; height:16px; margin-top:-6px; border:2px solid #ffe890; border-radius:50%; background:linear-gradient(#ffe16b,#f0a500); box-shadow:0 1px 4px #000b; }
+.scene-music-controls input::-moz-range-thumb { width:12px; height:12px; border:2px solid #ffe890; border-radius:50%; background:#f5c243; box-shadow:0 1px 4px #000b; }
+.scene-music-controls input:focus-visible { outline:2px solid #fff4d8; outline-offset:2px; border-radius:5px; }
+.raid-hero-group > .scene-music-controls,.raid-live-balances > .scene-music-controls { position:absolute; top:100%; left:0; width:calc(100% - 35px); max-width:280px; }

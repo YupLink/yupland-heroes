@@ -13,6 +13,7 @@ import { mcpExec } from "../../db/mcpClient";
 import { addWearSql, shelfWhere } from "./tool-wear-move";
 import { noteShelf } from "./econ/trade-hooks";
 import { NO_ORIGIN, originParts, originPlus, takenOf } from "@/server/api/beta-raid/stack-origin";
+import { isDaraiMineKey } from "@/lib/daraiMine";
 
 /** Где полка и сколько на ней ячеек. */
 export type ShelfAt = {
@@ -47,6 +48,8 @@ export async function putToShelf(o: {
   scope: DepositScope;
 }): Promise<{ ok: true; own: number; shared: number; rejected: number }> {
   const { wallet, account, at, stackKey, asked, scope } = o;
+  // DARAI-шахта живёт в рюкзаке час и выпадает мешочком (lib/daraiMine).
+  if (isDaraiMineKey(stackKey)) throw new Error("dmine.stays");
   const bp = await resolveBackpack(wallet);
   if (!bp) throw new Error("market.backpack_no_hero");
 

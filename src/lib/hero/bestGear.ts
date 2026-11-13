@@ -5,8 +5,10 @@
 // профессиональная прибавки достаются НЕ каждому герою, и «Маг +7» на Воине
 // стоит ноль — считать по надписи значит обещать прирост, которого не будет.
 //
-// Метрика — сумма шести характеристик: грубо (броня весит как здоровье), зато
-// это цифра из таблицы «База / Артефакты / Итого», на которую игрок и смотрит.
+// Метрика — сумма характеристик с предметов: шесть боевых + Торговля и Алхимия.
+// Грубо (броня весит как здоровье), зато это те цифры, на которые игрок смотрит
+// в окне героя. Без Торговли (12.11.2026) кнопка меняла «Торговля +16» на
+// «Скорость +8» и обещала «+8»: небоевой стат она считала нулём.
 import { HERO_STAT_KEYS, type HeroStats } from "@/lib/heroStats";
 import type { HeroSlotDef } from "./heroSlots";
 import {
@@ -65,7 +67,7 @@ function score(it: BestGearItem, ctx: GearCtx, worn: boolean): Scored {
     const eff = IMMUNITY_TO_EFFECT[(raw ?? "").trim()];
     if (eff && !immune.includes(eff)) immune.push(eff);
   }
-  return { it, score: b.key ? b.total : 0, immune, worn };
+  return { it, score: b.key || b.extra ? b.total : 0, immune, worn };
 }
 
 /** Кто раньше в очереди за местом: больше статов → больше защит → уже надет. */
@@ -147,6 +149,16 @@ function place(keys: string[], chosen: BestGearItem[], equipped: Record<string, 
   return out;
 }
 
+/** Сумма всех прибавок набора — шесть боевых плюс Торговля и Алхимия. */
+function gearTotal(gear: GearPiece[], ctx: GearCtx): number {
+  let sum = 0;
+  for (const it of gear) {
+    const b = explainGear(it, ctx);
+    if ((b.key || b.extra) && Number.isFinite(b.total)) sum += b.total;
+  }
+  return sum;
+}
+
 /** Лучший набор для героя и насколько он лучше текущего. */
 export function bestGearFor(input: BestGearInput): BestGearResult {
   const { ctx, equipped } = input;
@@ -191,7 +203,7 @@ export function bestGearFor(input: BestGearInput): BestGearResult {
     input.slots.map((d) => byId.get(m[d.key] ?? "")).filter((p): p is BestGearItem => !!p);
   const current = sumGearStats(wear(equipped), ctx).stats;
   const stats = sumGearStats(wear(equip), ctx).stats;
-  const gain = statsTotal(stats) - statsTotal(current);
+  const gain = gearTotal(wear(equip), ctx) - gearTotal(wear(equipped), ctx);
 
   // Отрицательный прирост возможен только на кривых данных (предмет лежит в
   // месте чужого типа и всё-таки считается). Ухудшать героя кнопка не должна.

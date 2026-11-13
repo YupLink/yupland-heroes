@@ -14,6 +14,21 @@ const DIRS = [
   { q: 0, r: 1 },
 ];
 
+/**
+ * Маски на колонку дорог: событие карты (чужой бой, беглец) даёт новый store
+ * с той же колонкой — пересчёт всей карты на каждое событие был лишним.
+ * Колонки не правятся на месте (PackedEdit клонирует тронутую).
+ */
+const cached = new WeakMap<object, { geom: object; masks: Uint8Array }>();
+export function roadMasksOf(s: MapStore): Uint8Array {
+  const key = s.packed.road as unknown as object;
+  const hit = cached.get(key);
+  if (hit && hit.geom === s.geom) return hit.masks;
+  const masks = buildRoadMasks(s);
+  cached.set(key, { geom: s.geom, masks });
+  return masks;
+}
+
 export function buildRoadMasks(s: MapStore): Uint8Array {
   const raw = buildRawMasks(s);
   const out = new Uint8Array(s.n);

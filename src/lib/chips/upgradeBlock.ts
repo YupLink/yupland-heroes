@@ -14,14 +14,15 @@ export type UpgradeBlock =
   | { kind: "same_type"; level: number }
   /** Не хватает фишек: сколько каких уровней. */
   | { kind: "chips"; shortfall: Array<{ level: number; count: number }> }
-  | { kind: "tickets"; need: number; have: number };
+  /** Не хватает золота на улучшение (цена по текущему курсу). */
+  | { kind: "gold"; need: number; have: number };
 
 export type ChipUpgradeState =
-  /** tickets — цена улучшения с автоподбором, burn — сколько фишек сгорит. */
-  { can: true; tickets: number; burn: number } | { can: false; reason: UpgradeBlock };
+  /** gold — цена улучшения с автоподбором в золоте, burn — сколько фишек сгорит. */
+  { can: true; gold: number; burn: number } | { can: false; reason: UpgradeBlock };
 
 export type UpgradeReadiness = {
-  haveTickets: number;
+  haveGold: number;
   /** id фишки → состояние. Нет id в ответе (тренировочная) — улучшить нельзя. */
   chips: Record<string, ChipUpgradeState>;
 };
@@ -30,7 +31,7 @@ type TFn = (key: string, params?: Record<string, string | number>) => string;
 
 const num = (n: number) => String(Math.round(n * 100) / 100);
 
-/** Причина одной строкой: «Не хватает билетов: нужно 3.53, есть 1.2». */
+/** Причина одной строкой: «Не хватает золота: нужно 1059, у тебя 120». */
 export function upgradeBlockText(r: UpgradeBlock, t: TFn): string {
   switch (r.kind) {
     case "same_type":
@@ -39,8 +40,8 @@ export function upgradeBlockText(r: UpgradeBlock, t: TFn): string {
       return t("chips.upg_chips", {
         list: r.shortfall.map((s) => `${s.count} × ${num(s.level)}★`).join(", "),
       });
-    case "tickets":
-      return t("chips.upg_tickets", { need: num(r.need), have: num(r.have) });
+    case "gold":
+      return t("chips.upg_gold", { need: num(r.need), have: num(r.have) });
     default:
       return t(`chips.upg_${r.kind}`);
   }

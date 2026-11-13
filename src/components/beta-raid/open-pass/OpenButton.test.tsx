@@ -47,6 +47,15 @@ describe("кнопка входа", () => {
     expect(h).toContain("Нужно 3 энергии");
   });
 
+  it("остров: дробная цена как есть — 0.5⚡, а не 1 (сервер спишет 0.5)", () => {
+    v.energy = 0.5;
+    const h = html(0.5);
+    expect(h).toContain("Открыть · 0.5⚡");
+    expect(h).not.toContain('disabled=""');
+    v.energy = 0.4;
+    expect(html(0.5)).toContain("Нужно 0.5 энергии");
+  });
+
   it("энергия ещё не пришла — не гасим: решит сервер", () => {
     v.energy = undefined;
     expect(html(3)).not.toContain('disabled=""');

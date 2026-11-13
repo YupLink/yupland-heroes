@@ -11,14 +11,17 @@
 import { mapBaseAt } from "./map-base";
 import { loadDefeated } from "./map-objects";
 import { loadRunners } from "./runners";
-import { overlayRunners } from "./map-runners";
+import { dictObjectIds, overlayRunners } from "./map-runners";
 import { cellRoadId } from "./map-roads";
 import { buildAssetDicts } from "./map-assets";
 import { sanitizeVoidCells, keepById, dropHiddenKeys } from "./voidSanitize";
 import { dropDeadDecor } from "./dead-decor";
 import { loadTownHallIds } from "./town-resolve";
+import { loadMineCells } from "./mine-cells";
+import { loadVeinCells, veinLookup } from "./vein-cells";
 import { packCells, type PackedCells } from "./packCells";
 import { skinDisplayName } from "@/lib/skinName";
+import type { BuildingEffect } from "@/lib/buildingEffect";
 
 export type MapVariant = "player" | "admin";
 
@@ -29,7 +32,10 @@ export type AssembledMap = {
   decorations: Record<string, unknown>;
   roads: Record<string, unknown>;
   packed: PackedCells;
-  buildings: Record<string, { id: string; name: string; tiers: unknown[] }>;
+  buildings: Record<
+    string,
+    { id: string; name: string; tiers: unknown[]; effect?: BuildingEffect }
+  >;
   buildingTiers: Record<string, number>;
   doors: string[];
 };
@@ -70,13 +76,20 @@ export async function assembleMap(
     deadRunners: dead.runners,
   });
   const { cells, hiddenKeys } = sanitizeVoidCells(overlay.cells, seesVoid);
-  const hallKeys = await loadTownHallIds(map.id).catch(() => new Set<string>());
+  const [hallKeys, mineKeys, veinCells] = await Promise.all([
+    loadTownHallIds(map.id).catch(() => new Set<string>()),
+    loadMineCells(map.id),
+    loadVeinCells(map.id),
+  ]);
   const packed = packCells(
     cells,
     cellRoadId,
     (key) => overlay.defeatedKeys.has(key),
     (key) => overlay.runnerKeys.has(key),
     (key) => hallKeys.has(key),
+    (key) => mineKeys.has(key),
+    // Жила под куполом игроку не уезжает, как и всё содержимое клетки.
+    veinLookup(veinCells, hiddenKeys),
   );
 
   const { skinKey, skinIdOf, skinsByIds } = await import("./building-skins");
@@ -106,10 +119,13 @@ export async function assembleMap(
         ...(t as Record<string, unknown>),
         imageUrl: skin.image,
       }));
+      // Эффект — базовой постройки: облик меняет вид, а не механику (шахта
+      // в облике — та же шахта, клиент по нему правит отметку из дельты).
       buildings[skinKey(skin.id)] = {
         id: skinKey(skin.id),
         name: skinDisplayName(skin.name, base?.name),
         tiers,
+        effect: base?.effect ?? null,
       };
     }
   }
@@ -120,7 +136,8 @@ export async function assembleMap(
 
   const { terrains, objects, decorations, roads } = buildAssetDicts({
     terrainRows: keepById(baseSnap.terrains, packed.terrainIds),
-    objectRows: keepById(objectRows, packed.objectIds),
+    // + шаблоны беглецов под живым верхним: открывшись, они рисуются из словаря.
+    objectRows: keepById(objectRows, dictObjectIds(packed.objectIds, runners, hiddenKeys)),
     decorRows: keepById(baseSnap.decorations, packed.decorationIds),
     roadRows: keepById(baseSnap.roads, packed.roadIds),
   });

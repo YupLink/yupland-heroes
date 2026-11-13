@@ -33,12 +33,10 @@ export async function startLagReporter(): Promise<void> {
     h.reset();
     const cpuShare = (c.user + c.system) / 1000 / wall;
     note("цикл: задержка", p95);
-    if (typeof process.send === "function") {
-      try {
-        process.send({ type: "raid:lag", p95, mean, cpu: cpuShare });
-      } catch {
-        /* мастер ушёл */
-      }
+    // Канал закрыт (мастер гасит рабочего) — молчим; ошибку отправки ловит колбэк,
+    // иначе она уходит в uncaughtException (boot.ts — так же).
+    if (typeof process.send === "function" && process.connected) {
+      process.send({ type: "raid:lag", p95, mean, cpu: cpuShare }, undefined, undefined, () => {});
     }
   }, 1000);
   timer.unref();

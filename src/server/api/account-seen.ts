@@ -37,8 +37,10 @@ export function markSeen(account: string | null | undefined): void {
 
 /**
  * SQL-условие «игрок заходил за последние 7 дней» для строки позиции `p`.
- * Отметки ещё нет — считаем от последнего шага.
+ * Отметки ещё нет — считаем от последнего шага. Аккаунт в архиве (один аккаунт
+ * на ключ, 06.11.2026) не виден сразу.
  */
 export const RECENTLY_SEEN_SQL = (p: string): string =>
-  `COALESCE((SELECT a.last_seen_at FROM yuplink.accounts a WHERE a.id = ${p}.account_id), ${p}.updated_at)
+  `COALESCE((SELECT CASE WHEN a.archived_into IS NULL THEN a.last_seen_at ELSE '-infinity' END
+               FROM yuplink.accounts a WHERE a.id = ${p}.account_id), ${p}.updated_at)
      > now() - interval '${CAMP_VISIBLE_DAYS} days'`;

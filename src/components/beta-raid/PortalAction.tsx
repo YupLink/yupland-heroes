@@ -9,6 +9,7 @@
 //
 // Портал острова новичка — выход навсегда: остров после него сносится со всем
 // оставленным (владелец, 14.10.2026). Над кнопкой — одна строка об этом.
+import { announceWorldArrival } from "./world-arrival/worldArrival";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { DoorOpen, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import { ENERGY_KEY } from "@/lib/hooks/useEnergy";
 import { RESOURCES_KEY } from "@/lib/hooks/useResources";
 import { priceText } from "./portalPriceText";
 import type { PortalPrice } from "@/lib/portal";
+import { exitCutList } from "./island/exitCutList";
 
 export function PortalAction({
   q,
@@ -59,7 +61,11 @@ export function PortalAction({
     mutationFn: () =>
       door ? moveBetaRaid({ data: { q, r } }) : enterBetaPortal({ data: { q, r } }),
     onSuccess: (res) => {
+      announceWorldArrival(!door && res && "map" in res ? (res.map ?? null) : null);
       toast.success(door ? t("braid.portal_passed") : t("braid.portal_jumped"));
+      const cut = res && "islandCut" in res ? res.islandCut : null;
+      if (cut && Object.keys(cut).length > 0)
+        toast(t("island.exit_cut", { list: exitCutList(cut, t) }), { duration: 10_000 });
       // Другой этаж — другая карта: всё, что знало прежнюю (сама карта, соседи,
       // корабли, постройки), перечитываем. Карта увидит чужой id в журнале и
       // скачается целиком (useMapProgressive.catchUp).

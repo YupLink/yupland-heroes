@@ -1,3 +1,4 @@
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
 // Карточка набора: обложка и имя бокса, сколько штук, остаток тиража и мой
 // лимит, цены в USDT / DARAI / Stars — как у тарифа подписки. Тап по цене —
 // подтверждение строкой (сумма бывает крупной), «Купить» — списание со счёта;
@@ -16,6 +17,7 @@ export function KitCard({ kit }: { kit: KitOffer }) {
   const t = useT();
   const lang = useLang();
   const [pick, setPick] = useState<Pick | null>(null);
+  usePurchaseMusic(pick !== null);
   const buy = useKitBuy(() => setPick(null));
   const name = kitTitle(kit);
   const block = kitBlock(kit);
@@ -90,3 +92,4 @@ export function KitCard({ kit }: { kit: KitOffer }) {
     </div>
   );
 }
+

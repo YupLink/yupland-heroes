@@ -11,8 +11,8 @@ import { ESUB_ADMIN_KEY } from "./AdminSubTiers";
 import { btn, fmt } from "./AdminSubMoney";
 
 const RULES: Array<{ key: RuleKey; label: string; to: string; unit: string }> = [
-  { key: "sub_usd", label: "Подписки · корзина $", to: "разработчикам 50 % в USDT · дупло 20 % (обмен); карта 30 % — сразу при покупке", unit: "USDT" },
-  { key: "sub_darai", label: "Подписки · DARAI-оплаты", to: "дупло 15 % · разработчикам 25 %", unit: "DARAI" },
+  { key: "sub_usd", label: "Подписки · корзина $", to: "разработчикам 50 % в USDT · пул сжигания 20 % (обмен); карта 30 % — сразу при покупке", unit: "USDT" },
+  { key: "sub_darai", label: "Подписки · DARAI-оплаты", to: "пул сжигания 15 % (в дупло одной транзакцией от 250 млн) · разработчикам 25 %", unit: "DARAI" },
   {
     key: "darai_free",
     label: "Раздача DARAI · «К распределению»",

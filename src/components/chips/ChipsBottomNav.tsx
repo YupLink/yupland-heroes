@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { myChipInventory } from "@/server/api/chips-pack";
 
+// Маркет фишек снова открыт 21.10.2026 — за золото.
 type Tab = "home" | "chips" | "shop" | "market" | "pvp" | "boss" | "raid" | "beta-raid";
 
 export function ChipsBottomNav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {

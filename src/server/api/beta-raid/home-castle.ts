@@ -26,6 +26,9 @@ export type HomeCastleStatus = {
   cost: number;
   /** Герой на своём острове новичка: замок есть, основным его не сделать. */
   island?: boolean;
+  /** Герой у ратуши другого мира (не главного, не острова): войти можно, основной — только в
+   *  главном мире (владелец, 26.10.2026: «нет кнопки войти в северном замке»). */
+  away?: boolean;
 };
 
 async function status(
@@ -37,24 +40,26 @@ async function status(
     myMapId(wallet),
     ownCell(wallet).catch(() => null),
   ]);
-  // Замок и ратуши — в главном мире: на другом этаже те же координаты — чужая
-  // земля. Исключение — свой остров новичка: в замок входят через его ратушу.
+  // Основной замок — в главном мире. Войти — у любой ратуши (§8.61, 07.10): и на своём
+  // острове новичка, и в другом мире (26.10) — ратуша на карте, где стоит герой. Там
+  // координаты другой карты: «у основного» (atHome) и «сделать основным» — только в главном.
   const onMain = mine === main;
   const island = !onMain && isIslandMapId(mine);
+  const away = !onMain && !island;
   const [home, here, cost] = await Promise.all([
     homePlace(account, main),
-    island ? islandTownHere(mine, pos) : placeHere(main, onMain ? pos : null),
+    onMain ? placeHere(main, pos) : islandTownHere(mine, pos),
     homeMoveCost(account),
   ]);
-  const atHome = !island && samePlace(home, here);
-  return { account, mapId: main, home, here, atHome, cost, island };
+  const atHome = onMain && samePlace(home, here);
+  return { account, mapId: main, home, here, atHome, cost, island, away };
 }
 
 export const getHomeCastle = createServerFn({ method: "GET" }).handler(
   async (): Promise<HomeCastleStatus> => {
     const wallet = await requireBetaRaid();
-    const { home, here, atHome, cost, island } = await status(wallet);
-    return { home, here, atHome, cost, island };
+    const { home, here, atHome, cost, island, away } = await status(wallet);
+    return { home, here, atHome, cost, island, away };
   },
 );
 
@@ -65,6 +70,7 @@ export const setHomeCastle = createServerFn({ method: "POST" })
     const wallet = await requireBetaRaid();
     const s = await status(wallet);
     if (s.island) throw new Error("island.no_home");
+    if (s.away) throw new Error("Основным можно сделать только замок или ратушу главного мира");
     if (!s.here) throw new Error("Подойди вплотную к замку или ратуше");
     // Повтор того же нажатия после успеха: уже основной — не ошибка и не плата.
     if (samePlace(s.here, s.home)) return { ok: true as const, cost: 0, home: s.home };

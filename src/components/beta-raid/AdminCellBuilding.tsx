@@ -20,6 +20,7 @@ import { AdminPortalEditor } from "@/components/beta-raid/AdminPortalEditor";
 import { AdminServiceEditor } from "@/components/beta-raid/AdminServiceEditor";
 import { MarketEditor } from "@/components/beta-raid/market/MarketEditor";
 import { TownAdminPanel } from "@/components/beta-raid/town/TownAdminPanel";
+import { BuildingPresetSave } from "@/components/beta-raid/building-sale/BuildingPresetSave";
 import type { AdminCellComposed } from "@/components/beta-raid/useAdminCellView";
 import type { CellPatch } from "@/components/beta-raid/patchMapCache";
 
@@ -163,6 +164,8 @@ export function AdminBuildingSettings({ cell, onPut }: { cell: AdminCellComposed
       <AdminServiceEditor effect={b.effect} config={b.config} onSave={putConfig} />
 
       {b.effect === "market" && <MarketEditor q={cell.q} r={cell.r} />}
+      {/* Лавка построек — та же витрина, товар — постройка с настройкой (lib/buildingSale). */}
+      {b.effect === "building_shop" && <MarketEditor q={cell.q} r={cell.r} buildingShop />}
 
       {/* Ратуша: настройки жителей, товаров, цен — в том же окне «Правка на
           живой карте», рядом с полем эффекта. Раньше открывались отдельной
@@ -171,6 +174,9 @@ export function AdminBuildingSettings({ cell, onPut }: { cell: AdminCellComposed
       {b.effect === "town_hall" && (
         <TownAdminPanel q={cell.q} r={cell.r} onClose={() => undefined} embedded />
       )}
+
+      {/* Настроенную постройку — шаблоном в лавку построек (lib/buildingSale). */}
+      <BuildingPresetSave q={cell.q} r={cell.r} effect={b.effect} name={b.name} />
     </>
   );
 }

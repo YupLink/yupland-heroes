@@ -64,6 +64,7 @@ export async function marketExtra(opts: {
     goods.flatMap((g) => [
       { res: g.priceResource, token: g.priceToken },
       { res: g.price2Resource, token: g.price2Token },
+      ...(g.priceMore ?? []).map((l) => ({ res: l.resource, token: l.token })),
     ]),
   );
   // Фильтр покупателей — ОБЩИЙ на весь магазин: считаем один раз, применяем ко
@@ -94,7 +95,12 @@ export async function marketExtra(opts: {
   }
   // Бусты своих товаров — одним запросом на всю витрину: карточка обязана
   // сказать, что даёт зелье, ещё до покупки.
-  const { boosts, potions } = await customBoosts(goods.map((g) => g.refId));
+  // Редкость героев-товаров — тоже одним запросом (market-hero-rarity).
+  const { heroRarities } = await import("./market-hero-rarity");
+  const [{ boosts, potions }, heroRarity] = await Promise.all([
+    customBoosts(goods.map((g) => g.refId)),
+    heroRarities(goods),
+  ]);
   const items = goods.map((g) => {
     // Остаток читается по стороне витрины: у покупки это «сколько ещё
     // продадим», у скупки — «сколько ещё примем». Исчерпан — позиция гаснет.
@@ -136,6 +142,14 @@ export async function marketExtra(opts: {
       lockKey: soldOut ? (g.side === "sell" ? "market.buyout_full" : "market.sold_out") : null,
       boost: (g.refId && boosts.get(g.refId)) || null,
       potion: !!g.refId && potions.has(g.refId),
+      heroRarity: (g.refId && heroRarity.get(g.refId)) || null,
+      // Ещё ингредиенты цены — с подписью и картинкой шаблона, как p1/p2.
+      priceMore: (g.priceMore ?? []).map((l) => {
+        const m = priceMetaOf(metas, l.resource, l.token);
+        return { ...l, name: m?.name ?? null, image: m?.image ?? null };
+      }),
+      // Рецепт: что может выпасть и с каким шансом — игрок видит до покупки.
+      outcomes: g.kind === "recipe" ? (g.outcomes ?? []) : null,
     };
   });
   const { applyBuyerLimits } = await import("./market-limit-view");

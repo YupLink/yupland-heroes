@@ -45,6 +45,7 @@ export function TemplePrayer({
   prayAt,
   atCastle,
   extendStars,
+  stars = true,
 }: {
   ru: boolean;
   points: TemplePoints;
@@ -52,6 +53,8 @@ export function TemplePrayer({
   prayAt: number | null;
   atCastle: boolean;
   extendStars: number;
+  /** false — аккаунт без настоящего Telegram (§8.127): продления за звёзды нет. */
+  stars?: boolean;
 }) {
   const qc = useQueryClient();
   const [picked, setPicked] = useState<TempleStat[]>([]);
@@ -121,7 +124,7 @@ export function TemplePrayer({
           );
         })}
       </div>
-      {picked.length >= 2 && (
+      {stars && picked.length >= 2 && (
         <button
           type="button"
           aria-pressed={extend}

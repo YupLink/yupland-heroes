@@ -36,6 +36,8 @@ export const dict: Record<string, Entry> = {
   // Без {price}: сервер в точке отказа не знает цену, а t() вызывается без
   // подстановок — иначе игрок видел литеральное «{price}».
   "market.not_enough": { ru: "Не хватает средств", en: "Not enough" },
+  // Отказ оплаты покупки словами (market-buy-short): список уже на обоих языках.
+  "market.short": { ru: "Не хватает: {ru}", en: "Not enough: {en}" },
   // Товар без вида (ключ 'custom:' без шаблона) в рюкзак не кладём: такой стек
   // не продать и не сложить с нормальным — см. stackKeyFor.
   "market.bad_item": {
@@ -59,9 +61,10 @@ export const dict: Record<string, Entry> = {
   },
   // «Нет свободного» — не придирка: надетые артефакты не считаются, и игрок с
   // полным героем должен понимать, почему сдавать нечего.
+  // Изношенные тоже: маркет и ломбард берут только целые (износ, 22.10.2026).
   "market.art_rarity_none": {
-    ru: "Нет свободного артефакта такой редкости — надетые не считаются",
-    en: "No spare artifact of this rarity — equipped ones don't count",
+    ru: "Нет свободного целого артефакта такой редкости — надетые и изношенные не считаются",
+    en: "No spare intact artifact of this rarity — equipped and worn ones don't count",
   },
   "market.art_rarity_wrong": {
     ru: "У этого артефакта другая редкость",
@@ -70,8 +73,8 @@ export const dict: Record<string, Entry> = {
   // Именная позиция скупки: витрина просит КОНКРЕТНЫЙ шаблон, и редкость тут
   // ни при чём — прежний текст про редкость сбивал с толку.
   "market.art_named_none": {
-    ru: "Нет свободного такого артефакта — надетые не считаются",
-    en: "No spare artifact of this kind — equipped ones don't count",
+    ru: "Нет свободного целого такого артефакта — надетые и изношенные не считаются",
+    en: "No spare intact artifact of this kind — equipped and worn ones don't count",
   },
   "market.art_pick": { ru: "Какой артефакт отдать", en: "Which artifact to give" },
   "market.art_pick_none": {

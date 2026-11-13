@@ -27,7 +27,8 @@ export function AdminFullscreenPanels({
   editActive,
 }: {
   edit: ReactNode;
-  restore: ReactNode;
+  /** Нет — у дизайнера на острове: кнопки «Восстановление» нет. */
+  restore?: ReactNode;
   editActive: boolean;
 }) {
   const [open, setOpen] = useState<PanelId | null>(null);
@@ -57,7 +58,7 @@ export function AdminFullscreenPanels({
 
   return (
     <>
-      <div className="pointer-events-none absolute left-2 top-2 z-[60] flex gap-2 max-[360px]:flex-col">
+      <div className="raid-admin-tools pointer-events-none absolute left-2 top-2 z-[60] flex gap-2 max-[360px]:flex-col">
         <button
           type="button"
           title="Правка карты"
@@ -70,7 +71,7 @@ export function AdminFullscreenPanels({
         >
           <MapIcon className="h-6 w-6" aria-hidden="true" />
         </button>
-        <button
+        {restore !== undefined && <button
           type="button"
           title="Восстановление"
           aria-label="Восстановление"
@@ -80,7 +81,7 @@ export function AdminFullscreenPanels({
           className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/20 bg-black/90 text-white shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           <RotateCcw className="h-6 w-6" aria-hidden="true" />
-        </button>
+        </button>}
       </div>
 
       {open && (

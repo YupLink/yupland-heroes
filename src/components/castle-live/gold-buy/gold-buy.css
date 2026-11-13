@@ -1,0 +1,193 @@
+/* Окно «Купить золото» (§8.66) — дизайн Ангелины (handoff gold-purchase,
+   reference/ticket-approved.css, вид «gold-preview»). Оболочка, шапка,
+   подтверждение и кнопки — из energy-buy.css; здесь — витрина, карточки
+   пакетов с картинками золота и метки скидок. Картинки — WebP в
+   /design-assets/purchase/gold, пиксель-арт без сглаживания. */
+@font-face { font-family: "Preview Russo"; src: url("../../../assets/tavern/RussoOne.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Preview Golos"; src: url("../../../assets/tavern/GolosText.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+
+.energy-buy.gold-buy { width: min(480px, calc(100vw - 32px)); }
+.gold-buy .energy-buy__header > img.gold-buy__head-icon { display: block; width: 34px; height: 34px; flex: none; object-fit: contain; image-rendering: pixelated; }
+.gold-buy button:disabled { cursor: not-allowed; }
+
+/* Витрина: баннер Ангелины во всю ширину окна под шапкой. */
+.gold-buy__feature {
+  display: flex;
+  align-items: center;
+  height: 116px;
+  margin: 0 -28px 12px;
+  padding: 10px 26px;
+  border-bottom: 1px solid #42403c;
+  background: linear-gradient(90deg, #0a0e16cc, #0a0e1600 46%), url("/design-assets/purchase/gold/showcase.webp") 52% 55% / cover no-repeat, #14171d;
+}
+.gold-buy__feature-copy { width: 46%; text-shadow: 0 2px 4px #000a; }
+.gold-buy__feature-copy h3 { margin: 0 0 4px; color: #f7eee0; font-family: "Preview Russo", var(--font-display), sans-serif; font-size: 22px; font-weight: 400; line-height: 1.1; }
+.gold-buy__feature-copy p { margin: 0; color: #c1c2c9; font-size: 13px; line-height: 1.2; }
+
+/* Карточка пакета: картинка + «+N золота» + метка, Stars справа, токены ниже. */
+.gold-buy__offers { display: grid; gap: 8px; }
+.gold-buy__card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #405066;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #182331, #111922 68%, #18212a);
+}
+.gold-buy__card--no-stars .gold-buy__card-head { grid-column: 1 / -1; }
+.gold-buy__card-head {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 3px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gold-buy__bundle {
+  display: grid;
+  grid-row: 1 / 3;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border: 2px solid #8a6b35;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #493318, #15100c 72%);
+}
+.gold-buy__bundle img { width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 2px 1px #0008); }
+.gold-buy__card-head strong {
+  grid-column: 2;
+  align-self: end;
+  min-width: 0;
+  color: #f7eee0;
+  font-family: "Preview Russo", var(--font-display), sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+.gold-buy__card-head strong > span { white-space: nowrap; }
+.gold-buy__amount { display: inline-flex; align-items: center; gap: .22em; white-space: nowrap; vertical-align: middle; }
+.gold-buy__amount img { display: block; width: 1em; height: 1em; flex: none; object-fit: contain; }
+/* Без метки скидки число — по центру картинки (без :has — старый WebView его не знает). */
+.gold-buy__card-head--plain strong { grid-row: 1 / 3; align-self: center; }
+.gold-buy__discount, .gold-buy__confirm-discount {
+  justify-self: start;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: linear-gradient(#ffdf76, #edaa32);
+  box-shadow: inset 0 1px #fff1a9, 0 1px 2px #0008;
+  color: #241705;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.gold-buy__discount { grid-column: 2; align-self: start; }
+.gold-buy__stars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 136px;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 6px 12px;
+  border: 2px solid #ffe47e;
+  border-radius: 13px;
+  background: linear-gradient(#ffe579, #f0ad35);
+  box-shadow: inset 0 2px #fff3ab, 0 3px #81531e;
+  color: #241707;
+  cursor: pointer;
+}
+.gold-buy__stars b { font-family: "Preview Golos", var(--font-sans), sans-serif; font-size: 18px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gold-buy__stars:hover:not(:disabled) { filter: brightness(1.08); }
+.gold-buy__alts { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-left: 70px; }
+.gold-buy__alts--1 { grid-template-columns: minmax(0, 1fr); }
+.gold-buy__alt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 44px;
+  align-self: center;
+  padding: 5px 10px;
+  border: 1px solid #677485;
+  border-radius: 9px;
+  background: #101820;
+  color: #f3eee4;
+  text-align: left;
+  cursor: pointer;
+}
+.gold-buy__alt:hover:not(:disabled) { border-color: #aab5c2; background: #1d2936; }
+.gold-buy__alt > span { display: grid; min-width: 0; }
+.gold-buy__alt b { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gold-buy__alt small { color: #cbd0d6; font-size: 11px; line-height: 1.2; }
+.gold-buy__alt svg, .gold-buy__stars svg { flex: none; width: 15px; height: 15px; }
+.gold-buy__alt svg { color: #b9c2cc; }
+.gold-buy__card-head:hover:not(:disabled) strong { color: #ffe08a; }
+.gold-buy :is(.gold-buy__card-head, .gold-buy__stars, .gold-buy__alt):disabled { opacity: .6; }
+
+/* Подтверждение, способы, готово — поверх оболочки окна энергии. */
+.gold-buy .energy-buy__confirm-reward .gold-buy__confirm-discount { color: #241705; font-size: 12px; }
+.gold-buy .energy-buy__confirm-art > img { filter: drop-shadow(0 4px 3px #0009); }
+/* «Все способы оплаты» пакета: строка пакета с мешочком над списком. */
+.gold-buy--methods .energy-buy__description { grid-template-columns: 52px minmax(0, 1fr); align-items: center; column-gap: 12px; }
+.gold-buy--methods .energy-buy__description img { grid-row: 1 / 3; width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; }
+.gold-buy--methods .energy-buy__description strong, .gold-buy--methods .energy-buy__description > span { grid-column: 2; }
+.gold-buy--methods .energy-buy__method b { text-align: right; }
+.gold-buy .energy-buy__confirm-payment b { overflow-wrap: anywhere; }
+.gold-buy__hint { color: #c9c3b8; font-size: 13px; }
+.gold-buy__link { padding: 0; border: 0; background: none; color: #f3ca62; text-decoration: underline; cursor: pointer; }
+.gold-buy__done-note { color: #bfc0c6; font-size: 13px; }
+.gold-buy .energy-buy__success-glyph img { width: 52px; height: 52px; }
+
+@media (max-width: 620px) {
+  .gold-buy__feature { height: 72px; margin: 0 -14px 10px; padding: 7px 16px; }
+  .gold-buy__feature-copy { width: 52%; }
+  .gold-buy__feature-copy h3 { margin-bottom: 2px; font-size: 15px; }
+  .gold-buy__feature-copy p { font-size: 11px; }
+  .gold-buy--methods .energy-buy__description { grid-template-columns: 40px minmax(0, 1fr); column-gap: 10px; }
+  .gold-buy--methods .energy-buy__description img { width: 40px; height: 40px; }
+}
+@media (max-width: 480px) {
+  /* Способы оплаты на телефоне: цена — строкой под названием, баланс — во всю ширину. */
+  .gold-buy--methods .energy-buy__method { grid-template-columns: 36px minmax(0, 1fr) 15px; row-gap: 2px; }
+  .gold-buy--methods .energy-buy__method > :first-child { grid-row: 1 / 3; }
+  .gold-buy--methods .energy-buy__method b { grid-column: 2; grid-row: 2; text-align: left; }
+  .gold-buy--methods .energy-buy__method-arrow { grid-column: 3; grid-row: 1 / 3; }
+  .gold-buy__card { gap: 6px 8px; padding: 9px 10px; border-radius: 13px; }
+  .gold-buy__card-head { grid-template-columns: 46px minmax(0, 1fr); column-gap: 9px; }
+  .gold-buy__bundle { width: 46px; height: 46px; }
+  .gold-buy__bundle img { width: 42px; height: 42px; }
+  .gold-buy__card-head strong { font-size: 16px; }
+  .gold-buy__stars { gap: 5px; min-width: 98px; height: 42px; padding: 4px 8px; border-radius: 10px; }
+  .gold-buy__stars b { font-size: 14px; }
+  .gold-buy__stars svg { width: 13px; height: 13px; }
+  .gold-buy__alts { margin-left: 0; gap: 6px; }
+  .gold-buy__alt { padding: 4px 7px; }
+  .gold-buy__alt b { font-size: 13px; }
+  .gold-buy__alt small { font-size: 10px; }
+}
+@media (max-width: 350px) {
+  .gold-buy__card-head { grid-template-columns: 40px minmax(0, 1fr); column-gap: 8px; }
+  .gold-buy__bundle { width: 40px; height: 40px; }
+  .gold-buy__bundle img { width: 36px; height: 36px; }
+  .gold-buy__card-head strong { font-size: 15px; }
+  .gold-buy__stars { min-width: 88px; }
+  .gold-buy__stars b { font-size: 13px; }
+  .gold-buy__alt b { font-size: 12px; }
+}

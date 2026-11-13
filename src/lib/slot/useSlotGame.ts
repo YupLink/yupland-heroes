@@ -1,17 +1,20 @@
 // Хук слота на золото: ходы уходят на сервер (slotAct), экран рисует ответ.
 // Сам браузер ничего не разыгрывает — только анимация барабанов, выбор линий и
-// ставки, автокрутка и паузы показа (ловушка, клад, удвоение).
+// ставки, автокрутка и паузы показа (ловушка, клад, удвоение). Гость (не вошёл) —
+// холостая игра в браузере на игрушечные кредиты (demoSlot), на сервер ходы не идут.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
-import { slotAct, slotLoad, type SlotView } from "@/server/api/slot/slot-api";
+import { slotAct, type SlotView } from "@/server/api/slot/slot-api";
 import { BET_OPTIONS, MAX_BET, MAX_LINES, totalBet } from "./bets";
 import { reachedShore } from "./bonus";
 import { initialSlotState, type SlotState } from "./state";
 import { reelTiming } from "./timing";
 import type { ClientAction } from "./serverStep";
 import { SLOT_FRESH_MS, SLOT_KEY } from "./prefetchSlot";
+import { loadSlot } from "./loadSlot";
+import type { DemoSlot } from "./demoSlot";
 
 export { SLOT_KEY };
 
@@ -37,12 +40,14 @@ export function useSlotGame({
   // Золото меняется и вне автомата (продал алмазы, купил в лавке) — при каждом
   // открытии перечитываем. Предзагрузка из окна постройки (prefetchSlot) делает
   // это заранее, так что экран открывается сразу со свежим счётом.
+  const demo = useRef<DemoSlot | null>(null);
   const q = useQuery({
     queryKey: SLOT_KEY,
-    queryFn: () => slotLoad(),
+    queryFn: () => loadSlot(demo),
     staleTime: SLOT_FRESH_MS,
     refetchOnMount: true,
-    retry: 1,
+    // Закрытое казино (вход через Google) повтором не откроется.
+    retry: (n, e) => n < 1 && !String((e as Error)?.message ?? e).includes("slot.google"),
   });
   const view = q.data;
   const [lines, setLines] = useState(9);
@@ -83,7 +88,9 @@ export function useSlotGame({
       busy.current = true;
       setActing(true);
       try {
-        const res = await slotAct({ data: { action, version: cur.version } });
+        const res = demo.current
+          ? demo.current.act(action)
+          : await slotAct({ data: { action, version: cur.version } });
         qc.setQueryData(SLOT_KEY, res);
         viewRef.current = res;
         void qc.invalidateQueries({ queryKey: ["my-resources"] });

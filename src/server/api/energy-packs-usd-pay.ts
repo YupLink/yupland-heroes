@@ -15,6 +15,7 @@ import { accAccountId, accBalance } from "./currency/move";
 import { moneyGate } from "../rateGate";
 import { requireAccountUser } from "./account-rollout";
 import { USD_TOKENS, usdPriceOrThrow, assertShownPrice } from "@/lib/usdTariff";
+import { ENERGY_PAY_ONLY, isEnergyPayAllowed } from "@/lib/energyPayAllowed";
 
 export const buyEnergyPackForUsd = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -34,6 +35,9 @@ export const buyEnergyPackForUsd = createServerFn({ method: "POST" })
     const wallet = await requireAccountUser();
     await moneyGate("epack-usd", wallet);
 
+    // По цене в $ — только звёзды и DARAI (владелец, 20.10.2026, §8.61). USDT-
+    // лесенка остаётся якорем цены звёзд, но платить USDT больше нельзя.
+    if (!isEnergyPayAllowed(data.token)) throw new Error(ENERGY_PAY_ONLY);
     const pack = await pg.energyPacks.findOne({ id: data.packId });
     if (!pack || !pack.active) throw new Error("Пак не найден");
     const account = await accAccountId(wallet);

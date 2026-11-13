@@ -33,6 +33,8 @@ export function useShips() {
         freeBig: s.freeBig,
         mineBig: s.mineBig,
         broken: s.broken,
+        blasted: s.blasted,
+        blastedAt: s.blastedAt,
         hp: s.hp,
         hpMax: s.hpMax,
       });

@@ -1,5 +1,5 @@
-@font-face{font-family:Tavern Russo;src:url(../../assets/tavern/RussoOne.ttf);font-weight:400;font-display:swap}
-@font-face{font-family:Tavern Golos;src:url(../../assets/tavern/GolosText.ttf);font-weight:400 900;font-display:swap}
+@font-face{font-family:Tavern Russo;src:url(../../assets/tavern/RussoOne.woff2);font-weight:400;font-display:swap}
+@font-face{font-family:Tavern Golos;src:url(../../assets/tavern/GolosText.woff2);font-weight:400 900;font-display:swap}
 [data-tavern-style]{--font-sans:"Tavern Golos",sans-serif;--font-display:"Tavern Russo",sans-serif;font-family:var(--font-sans)}
 [data-tavern-style] :is(h1,h2,h3,h4,.font-display){font-family:var(--font-display);font-weight:400}
 :where([data-tavern-style]) :is([data-tavern-hero=true]), :where([data-tavern-style]):is([data-tavern-hero=true]){border-radius:4px;border:8px solid transparent;border-image:url(/design-assets/gear-slot-frame.webp) 90 stretch;background:#0c1014}
@@ -100,7 +100,7 @@
 :where([data-tavern-style]) :is([data-tavern-list] [aria-labelledby=tavern-artifacts] img), :where([data-tavern-style]):is([data-tavern-list] [aria-labelledby=tavern-artifacts] img){object-fit:contain;padding:16px}
 :where([data-tavern-style]) :is([data-tavern-bag] .rounded-full,[data-tavern-book] .rounded-full), :where([data-tavern-style]):is([data-tavern-bag] .rounded-full,[data-tavern-book] .rounded-full){border-radius:4px;border-color:#655a43;background:transparent}
 :where([data-tavern-style]) :is(section[aria-labelledby=castle-window-title]:has([data-tavern-detail])>header>button), :where([data-tavern-style]):is(section[aria-labelledby=castle-window-title]:has([data-tavern-detail])>header>button){visibility:hidden}
-:where([data-tavern-style]) :is([data-tavern-detail]>button:first-of-type), :where([data-tavern-style]):is([data-tavern-detail]>button:first-of-type){position:absolute;top:max(12px,env(safe-area-inset-top));left:12px;z-index:50;background:#0c1014}
+:where([data-tavern-style]) :is([data-tavern-detail]>button:first-of-type), :where([data-tavern-style]):is([data-tavern-detail]>button:first-of-type){position:absolute;top:max(12px,var(--app-top,env(safe-area-inset-top,0px)));left:12px;z-index:50;background:#0c1014}
 :where([data-tavern-style]) :is(section[aria-labelledby=castle-window-title]:has([data-tavern-detail])>header>h1), :where([data-tavern-style]):is(section[aria-labelledby=castle-window-title]:has([data-tavern-detail])>header>h1){margin-left:24px}
 :where([data-tavern-style]) :is([data-gear-field]), :where([data-tavern-style]):is([data-gear-field]){background:#0c1014}
 :where([data-tavern-style]) :is([data-tavern-hero=true]), :where([data-tavern-style]):is([data-tavern-hero=true]){border:0;border-image:none;border-radius:0;background:#0c1014}
@@ -467,4 +467,25 @@
 }
 @media (max-width:360px){
   [data-tavern-style] [data-hero-screen=backpack] [data-tavern-bag=backpack]> .grid{left:15%;width:70%;gap:4px}
+}
+
+
+/* The hero detail owns its navigation while the tavern shell header is hidden.
+   Keep both back and close inside the scroll host, including unactivated heroes. */
+[data-tavern-style] [data-tavern-detail] > [data-hero-detail-actions]{
+  position:sticky;
+  top:0;
+  z-index:50;
+  flex-wrap:wrap;
+  padding-block:6px;
+  background:#101213;
+}
+[data-tavern-style] [data-tavern-detail-close]{
+  display:grid;
+  place-items:center;
+  flex:none;
+  width:44px;
+  min-height:44px;
+  margin-left:auto;
+  padding:0;
 }

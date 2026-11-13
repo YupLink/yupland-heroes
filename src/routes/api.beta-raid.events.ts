@@ -12,15 +12,19 @@ import { subscribeRaid, type RaidWireEvent } from "@/server/raidLive";
 import { getCurrentWallet } from "@/server/auth";
 import { hexDistance } from "@/lib/raid/hex";
 import { sanitizeDeltaForPlayer } from "@/lib/raid/mapDelta";
-import { LOOT_BAG_SEE } from "@/lib/lootBag";
+import { SIGHT_MAX } from "@/lib/raid/sight";
 import { foreignFloor } from "@/lib/raid/liveFloor";
 
 /** Через сколько копящиеся события уезжают одним сообщением. */
 const BATCH_MS = 250;
 /** Дальше этого от героя чужие шаги и побеги подписчику не нужны. */
 const RADIUS = 40;
-/** Мешочки видно во «втором обзоре»: событие о них — только тем, кто его видит (+1 на шаг). */
-const BAG_RADIUS = LOOT_BAG_SEE + 1;
+/**
+ * Мешочки видно во «втором обзоре»: событие о них — только тем, кто его видит
+ * (+1 на шаг). Обзор у подписчика бывает и с биноклем (40, lib/raid/sight) —
+ * сигнал без клеток, лишний раз перечитать слой дешевле, чем не увидеть.
+ */
+const BAG_RADIUS = SIGHT_MAX + 1;
 
 type Cell = { q: number; r: number };
 
@@ -48,11 +52,18 @@ export const Route = createFileRoute("/api/beta-raid/events")({
         // 07.10.2026). Обновляется по его же переходам из потока.
         let floor: string | null = null;
         let admin = false;
+        // Аккаунт подписчика: личные события («шахту отняли») — только ему.
+        let account: string | null = null;
         try {
           const { ownCell, myMapId } = await import("@/server/api/beta-raid/encounter-where");
           const { canIgnoreVoid } = await import("@/server/api/beta-raid/voidGate");
+          const { accAccountId } = await import("@/server/api/currency/move");
           admin = canIgnoreVoid(me);
-          [center, floor] = await Promise.all([ownCell(me), myMapId(me).catch(() => null)]);
+          [center, floor, account] = await Promise.all([
+            ownCell(me),
+            myMapId(me).catch(() => null),
+            accAccountId(me).catch(() => null),
+          ]);
         } catch {
           center = null;
         }
@@ -84,7 +95,32 @@ export const Route = createFileRoute("/api/beta-raid/events")({
               send(`data: ${JSON.stringify(out)}\n\n`);
             };
             send(": connected\n\n");
+            // Центр области и этаж — заново из базы (перенос без координат).
+            const reread = () =>
+              void import("@/server/api/beta-raid/encounter-where")
+                .then((m) => Promise.all([m.ownCell(me), m.myMapId(me)]))
+                .then(([c, f]) => {
+                  if (c) center = c;
+                  if (f) floor = f;
+                })
+                .catch(() => {});
             unsubscribe = subscribeRaid((event) => {
+              // Личное «шахту отняли» — только своему аккаунту и без адресата.
+              if (event.type === "mineLost") {
+                if (!account || event.to !== account) return;
+                batch.push({ ...event, to: undefined });
+                if (!flushTimer) flushTimer = setTimeout(flush, BATCH_MS);
+                return;
+              }
+              // Личное «тебя отнесли в город» (синий динамит взорвал корабль): перенёс
+              // чужой бросок — этаж и центр области заново из базы, как после портала.
+              if (event.type === "sentHome") {
+                if (!account || event.to !== account) return;
+                reread();
+                batch.push({ ...event, to: undefined });
+                if (!flushTimer) flushTimer = setTimeout(flush, BATCH_MS);
+                return;
+              }
               // Свой шаг: двигаем центр области и не пересылаем — свою фигурку
               // клиент нарисовал сам; свой флот — тоже.
               if (event.type === "moved" && event.by === me) {
@@ -92,14 +128,7 @@ export const Route = createFileRoute("/api/beta-raid/events")({
                 // Перенос без координат (портал, «домой», корабль) — центр
                 // области и этаж перечитываем из базы, иначе они остались бы
                 // прежними и события фильтровались бы по ним.
-                else
-                  void import("@/server/api/beta-raid/encounter-where")
-                    .then((m) => Promise.all([m.ownCell(me), m.myMapId(me)]))
-                    .then(([c, f]) => {
-                      if (c) center = c;
-                      if (f) floor = f;
-                    })
-                    .catch(() => {});
+                else reread();
                 return;
               }
               // Событие другого этажа — не этому подписчику: наложенное на его

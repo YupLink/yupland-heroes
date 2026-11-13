@@ -54,8 +54,8 @@ export const STATS_SECTION: GuideSection = {
       icon: stat("speed"),
       name: ["Скорость", "Speed"],
       what: [
-        "Шаг дешевле по энергии: 50 → −25%, 100 → −50%, 200 → −75%, 300 → −85%, 500 и выше → −99%.",
-        "Steps cost less energy: 50 → −25%, 100 → −50%, 200 → −75%, 300 → −85%, 500+ → −99%.",
+        "Шаг дешевле по энергии: 50 → −25%, 100 → −50%, 200 → −75%, 300 → −82%, 400 → −86%, 500 и выше → −90%.",
+        "Steps cost less energy: 50 → −25%, 100 → −50%, 200 → −75%, 300 → −82%, 400 → −86%, 500+ → −90%.",
       ],
       where: [
         "Шаги по суше и сход на берег. На посадку и греблю не действует.",
@@ -121,8 +121,8 @@ export const STATS_SECTION: GuideSection = {
       icon: { src: "/resources/energy.webp" },
       name: ["Энергия", "Energy"],
       what: [
-        "Ресурс игрока, не героя: шаги, бои (10), заклинания, лопата. Восстанавливается сама: 1 за 10 минут, быстрее с Интеллектом.",
-        "The player's resource, not the hero's: steps, fights (10), spells, shovel. Refills itself: 1 per 10 minutes, faster with Intellect.",
+        "Ресурс игрока, не героя: шаги, бои (10), заклинания, лопата. Предел 200 (+ Интеллект героя). Восстанавливается сама: 5 за 5 минут, быстрее с Интеллектом.",
+        "The player's resource, not the hero's: steps, fights (10), spells, shovel. Limit 200 (+ hero Intellect). Refills itself: 5 per 5 minutes, faster with Intellect.",
       ],
     },
   ],

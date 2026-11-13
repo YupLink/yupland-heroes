@@ -44,6 +44,10 @@ export type PackedCells = {
    * отдельным запросом.
    */
   townHalls?: number[];
+  /** Клетки с шахтой — сквозь них не пройти (server packCells). Старый кэш — без поля. */
+  mines?: number[];
+  /** Жилы: тройки (клетка, вид 1/2, поворот 0..5) — veinStore. Старый кэш — без поля. */
+  veins?: number[];
   /** Словарь id объединённых блоков (режим бога). Старый кэш — без поля. */
   groupIds?: string[];
   /** Тройки (индекс клетки, индекс блока в groupIds, масштаб %) — packCells. */
@@ -75,6 +79,8 @@ export type Cell = {
   voidFog?: boolean;
   /** На клетке стоит ратуша: её же координаты (из списка townHalls). */
   townHall?: { q: number; r: number };
+  /** На клетке шахта (список mines): стена для героя, §8.59 п. 9 — см. hexPassable. */
+  mine?: boolean;
   /** Клетка входит в объединённый блок (режим бога): id блока. */
   groupId?: string;
   /** Масштаб картинки блока (1 … 2); только вместе с groupId. */
@@ -107,6 +113,7 @@ export function unpackCells(
   const hallByIdx = new Map<number, { q: number; r: number }>();
   for (const i of packed.townHalls ?? []) hallByIdx.set(i, { q: packed.q[i], r: packed.r[i] });
   const groupByIdx = buildGroupByIdx(packed);
+  const mines = new Set(packed.mines ?? []);
 
   // Мазок кистью меняет одну клетку из 16 384, а колонки после него общие с
   // прошлой картой (packedEdit) — значит и клетки можно взять прежние, переложив
@@ -122,7 +129,7 @@ export function unpackCells(
     const keys: string[] = [];
     for (const i of rows) {
       const key = `${packed.q[i]},${packed.r[i]}`;
-      cells[key] = cellAt(packed, i, dead, dome, runners, hallByIdx, groupByIdx);
+      cells[key] = cellAt(packed, i, dead, dome, runners, hallByIdx, groupByIdx, mines);
       keys.push(key);
     }
     remember(packed, bypassVoid, cells, { from: from.cells, keys });
@@ -139,6 +146,7 @@ export function unpackCells(
       runners,
       hallByIdx,
       groupByIdx,
+      mines,
     );
   }
   remember(packed, bypassVoid, cells, null);
@@ -154,6 +162,7 @@ function cellAt(
   runners: Set<number>,
   hallByIdx: Map<number, { q: number; r: number }>,
   groupByIdx: Map<number, { id: string; scale: number }>,
+  mines: Set<number>,
 ): Cell {
   const cell: Cell = {};
   const t = p.t[i];
@@ -173,6 +182,7 @@ function cellAt(
   if (dome?.has(i)) cell.voidFog = true;
   const hall = hallByIdx.get(i);
   if (hall) cell.townHall = hall;
+  if (mines.has(i)) cell.mine = true;
   const grp = groupByIdx.get(i);
   if (grp) {
     cell.groupId = grp.id;

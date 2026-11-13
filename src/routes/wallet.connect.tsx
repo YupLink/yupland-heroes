@@ -45,13 +45,11 @@ import { addKeyAction } from "@/lib/nearTx";
 import { base58 } from "@scure/base";
 import { saveWalletDappConnection } from "@/server/api/walletConnect";
 import { CreateForm, ImportForm } from "@/routes/admin.wallet";
+import { returnUrlOrThrow, safeReturnUrl } from "@/lib/walletReturnUrl";
 
 export const Route = createFileRoute("/wallet/connect")({
   head: () => ({
-    meta: [
-      { title: "Подключение dApp — YupLink Wallet" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Подключение dApp — YupLink Wallet" }, { name: "robots", content: "noindex" }],
   }),
   component: WalletConnectPage,
 });
@@ -77,6 +75,10 @@ function parseQuery(): ParsedRequest | { error: string } {
   const publicKey = q.get("public_key") || q.get("publicKey") || "";
   if (!successUrl || !publicKey) {
     return { error: "success_url и public_key обязательны" };
+  }
+  // Только https (и http на localhost): «javascript:» выполнил бы чужой код у нас.
+  if (!safeReturnUrl(successUrl) || (failureUrl && !safeReturnUrl(failureUrl))) {
+    return { error: "success_url / failure_url должны быть https-адресами" };
   }
   if (!/^ed25519:/.test(publicKey)) {
     return { error: "public_key должен начинаться с ed25519:" };
@@ -268,9 +270,7 @@ function WalletConnectPage() {
           publicKey: request.publicKey,
           contractId: request.contractId,
           methods: request.methods.length > 0 ? request.methods : null,
-          allowanceYocto: request.allowanceYocto
-            ? request.allowanceYocto.toString()
-            : null,
+          allowanceYocto: request.allowanceYocto ? request.allowanceYocto.toString() : null,
           grantedTxHash: r.txHash,
         },
       });
@@ -311,7 +311,7 @@ function WalletConnectPage() {
       }
 
       // Редирект на success_url по конвенции MyNearWallet
-      const u = new URL(request.successUrl);
+      const u = returnUrlOrThrow(request.successUrl);
       u.searchParams.set("account_id", selectedWallet);
       u.searchParams.set("public_key", request.publicKey);
       u.searchParams.set("all_keys", request.publicKey);
@@ -321,9 +321,11 @@ function WalletConnectPage() {
     onError: (e: Error) => {
       const m = e.message || "";
       toast.error(
-        m === "APP_PWD_REQUIRED" || m === "APP_LOCKED"
-          ? t("wconnect.err_enter_wallet_password")
-          : m
+        m === "APP_PWD_SETUP"
+          ? t("wvault.need_setup")
+          : m === "APP_PWD_REQUIRED" || m === "APP_LOCKED"
+            ? t("wconnect.err_enter_wallet_password")
+            : m,
       );
     },
   });
@@ -358,7 +360,7 @@ function WalletConnectPage() {
     }
     const url = request.failureUrl || request.successUrl;
     try {
-      const u = new URL(url);
+      const u = returnUrlOrThrow(url);
       u.searchParams.set("errorCode", "userRejected");
       u.searchParams.set("errorMessage", "User rejected the request");
       window.location.href = u.toString();
@@ -381,12 +383,8 @@ function WalletConnectPage() {
         <div className="mx-auto max-w-xl px-4 pb-20 pt-10">
           <div className="rounded-2xl border border-success/30 bg-success/5 p-6 text-center">
             <Check className="mx-auto h-10 w-10 text-success" />
-            <h1 className="mt-3 font-display text-lg font-bold">
-              {t("wconnect.done")}
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t("wconnect.done_close_window")}
-            </p>
+            <h1 className="mt-3 font-display text-lg font-bold">{t("wconnect.done")}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{t("wconnect.done_close_window")}</p>
           </div>
         </div>
       </AppShell>
@@ -399,9 +397,7 @@ function WalletConnectPage() {
         <div className="mx-auto max-w-xl px-4 pb-20 pt-6">
           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-center">
             <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
-            <h1 className="mt-3 font-display text-lg font-bold">
-              {t("wconnect.invalid_request")}
-            </h1>
+            <h1 className="mt-3 font-display text-lg font-bold">{t("wconnect.invalid_request")}</h1>
             <p className="mt-2 text-sm text-muted-foreground">{parseError}</p>
           </div>
         </div>
@@ -446,12 +442,8 @@ function WalletConnectPage() {
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <div className="truncate font-display text-base font-semibold">
-                {request.appName}
-              </div>
-              <div className="truncate text-[11px] text-muted-foreground">
-                {request.dappOrigin}
-              </div>
+              <div className="truncate font-display text-base font-semibold">{request.appName}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{request.dappOrigin}</div>
             </div>
           </div>
         </div>
@@ -469,44 +461,30 @@ function WalletConnectPage() {
                 {t("wconnect.full_access_title")}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                {t("wconnect.full_access_desc_1")}{" "}
-                <b>{t("wconnect.full_access_sign_any_tx")}</b>{" "}
+                {t("wconnect.full_access_desc_1")} <b>{t("wconnect.full_access_sign_any_tx")}</b>{" "}
                 {t("wconnect.full_access_desc_2")}
               </p>
             </div>
           ) : (
             <div className="space-y-2 text-xs">
               <div className="rounded-lg border border-border bg-secondary/30 p-2">
-                <span className="text-muted-foreground">
-                  {t("wconnect.contract")}
-                </span>{" "}
-                <code className="font-mono text-gold">
-                  {request.contractId}
-                </code>
+                <span className="text-muted-foreground">{t("wconnect.contract")}</span>{" "}
+                <code className="font-mono text-gold">{request.contractId}</code>
               </div>
               <div className="rounded-lg border border-border bg-secondary/30 p-2">
-                <span className="text-muted-foreground">
-                  {t("wconnect.methods")}
-                </span>{" "}
+                <span className="text-muted-foreground">{t("wconnect.methods")}</span>{" "}
                 {request.methods.length > 0 ? (
-                  <span className="font-mono">
-                    {request.methods.join(", ")}
-                  </span>
+                  <span className="font-mono">{request.methods.join(", ")}</span>
                 ) : (
-                  <span className="font-mono">
-                    {t("wconnect.all_contract_methods")}
-                  </span>
+                  <span className="font-mono">{t("wconnect.all_contract_methods")}</span>
                 )}
               </div>
               <div className="rounded-lg border border-border bg-secondary/30 p-2">
-                <span className="text-muted-foreground">
-                  {t("wconnect.gas_limit")}
-                </span>{" "}
+                <span className="text-muted-foreground">{t("wconnect.gas_limit")}</span>{" "}
                 <span className="font-mono">{allowanceHuman ?? "—"}</span>
               </div>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                {t("wconnect.fcak_desc_1")}{" "}
-                <b>function-call access key</b>{" "}
+                {t("wconnect.fcak_desc_1")} <b>function-call access key</b>{" "}
                 {t("wconnect.fcak_desc_2")}
               </p>
             </div>
@@ -622,7 +600,7 @@ function WalletConnectPage() {
               "flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-sm font-bold shadow-gold transition disabled:opacity-50",
               request.isFullAccess
                 ? "bg-destructive text-destructive-foreground hover:scale-[1.01]"
-                : "gradient-gold text-gold-foreground hover:scale-[1.01]"
+                : "gradient-gold text-gold-foreground hover:scale-[1.01]",
             )}
           >
             {approve.isPending ? (
@@ -630,9 +608,7 @@ function WalletConnectPage() {
             ) : (
               <Check className="h-4 w-4" />
             )}
-            {request.isFullAccess
-              ? t("wconnect.connect_understand_risk")
-              : t("wconnect.connect")}
+            {request.isFullAccess ? t("wconnect.connect_understand_risk") : t("wconnect.connect")}
           </button>
         </div>
       </div>
@@ -658,8 +634,7 @@ function InlineWalletSetup({
     return (
       <div className="space-y-2.5">
         <p className="text-xs text-muted-foreground">
-          {t("wconnect.setup_intro_1")}{" "}
-          <b className="text-foreground">{dappName}</b>
+          {t("wconnect.setup_intro_1")} <b className="text-foreground">{dappName}</b>
           {t("wconnect.setup_intro_2")}
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -684,17 +659,11 @@ function InlineWalletSetup({
 
   if (mode === "create") {
     return (
-      <CreateForm
-        onDone={(accountId) => onDone(accountId)}
-        onCancel={() => setMode("choose")}
-      />
+      <CreateForm onDone={(accountId) => onDone(accountId)} onCancel={() => setMode("choose")} />
     );
   }
 
   return (
-    <ImportForm
-      onDone={(accountId) => onDone(accountId)}
-      onCancel={() => setMode("choose")}
-    />
+    <ImportForm onDone={(accountId) => onDone(accountId)} onCancel={() => setMode("choose")} />
   );
 }

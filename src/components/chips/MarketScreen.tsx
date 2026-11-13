@@ -1,6 +1,6 @@
 import { TicketBalance } from "./TicketBalance";
 // Маркетплейс фишек — доступен всем. Активные листинги + создание/покупка.
-// Минимальная цена листинга — 0.1 билета. Статистика комиссий — только админам.
+// С 21.10.2026 цена — целое золото от 1 (market-gold/*). Статистика — только админам.
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -11,7 +11,6 @@ import {
   ShoppingCart,
   Plus,
   Star,
-  Ticket,
   TrendingUp,
   X,
   Lock,
@@ -19,14 +18,20 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import { getSession } from "@/server/api/user-auth";
 import { myChipInventory } from "@/server/api/chips-pack";
 import { ChipImage, chipPanelClasses } from "@/components/ChipImage";
 import { thumb } from "@/lib/image";
-import { TirageStatBlock } from "@/components/chips/TirageStats";
 import { chipBusyOf, chipBusyView, useNowTick } from "@/components/chips/chipBusy";
 import { humanError } from "@/lib/humanError";
+import { RESOURCES_KEY } from "@/lib/hooks/useResources";
+import { useGoldBalance } from "./market-gold/useGoldBalance";
+import { GoldPrice } from "./market-gold/GoldPrice";
+import { MarketCardBuy } from "./market-gold/MarketCardBuy";
+import { MarketListingModal } from "./market-gold/MarketListingModal";
+import { GoldPriceInput } from "./market-gold/GoldPriceInput";
+import { goldShortfall, goldShortText, parseGoldPrice } from "./market-gold/goldMarket";
 import {
   adminCreateMarketListing,
   createMarketListingsBatch,
@@ -144,9 +149,9 @@ function sortListings(rows: Listing[], sort: MarketSort): Listing[] {
   out.sort((a, b) => {
     switch (sort) {
       case "price_asc":
-        return a.priceTickets - b.priceTickets;
+        return a.priceGold - b.priceGold;
       case "price_desc":
-        return b.priceTickets - a.priceTickets;
+        return b.priceGold - a.priceGold;
       case "level_desc":
         return b.chip.level - a.chip.level;
       case "level_asc":
@@ -158,13 +163,16 @@ function sortListings(rows: Listing[], sort: MarketSort): Listing[] {
 
 function ListingsGrid() {
   const t = useT();
+  const ru = useLang() === "ru";
   const qc = useQueryClient();
+  const gold = useGoldBalance();
   const [sort, setSort] = useState<MarketSort>("price_asc");
   const [onlyMine, setOnlyMine] = useState(false);
   const [collectionFilter, setCollectionFilter] = useState<string | null>(null);
   const [detail, setDetail] = useState<Listing | null>(null);
   const q = useQuery({
-    queryKey: ["market", "listings"],
+    // Ключ «-gold»: суточный кэш со старыми лотами в билетах сюда не попадёт.
+    queryKey: ["market", "listings-gold"],
     queryFn: () => listMarketListings(),
     refetchInterval: 20_000,
   });
@@ -172,7 +180,7 @@ function ListingsGrid() {
   // вкладка «Мои» теряла листинги вне глобального топ-100 (см. коммент на
   // listMyMarketListings).
   const myQ = useQuery({
-    queryKey: ["market", "my-listings"],
+    queryKey: ["market", "my-listings-gold"],
     queryFn: () => listMyMarketListings(),
     refetchInterval: 20_000,
   });
@@ -195,16 +203,11 @@ function ListingsGrid() {
   const buy = useMutation({
     mutationFn: (listingId: string) => buyMarketListing({ data: { listingId } }),
     onSuccess: (r) => {
-      toast.success(
-        t("market.bought_toast", {
-          price: r.pricePaid,
-          seller: r.sellerGot,
-          commission: r.commission,
-        }),
-      );
+      toast.success(t("market.bought_toast", { price: r.pricePaid }));
       qc.invalidateQueries({ queryKey: ["market"] });
       qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: RESOURCES_KEY });
+      qc.invalidateQueries({ queryKey: ["my-chip-history"] });
       setDetail(null);
     },
     onError: (e: Error) => toast.error(humanError(e)),
@@ -215,6 +218,7 @@ function ListingsGrid() {
       toast.success(t("market.unlisted_toast"));
       qc.invalidateQueries({ queryKey: ["market"] });
       qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
+      qc.invalidateQueries({ queryKey: ["my-chip-history"] });
       setDetail(null);
     },
     onError: (e: Error) => toast.error(humanError(e)),
@@ -231,12 +235,14 @@ function ListingsGrid() {
     queryFn: () => getMarketAccess(),
   });
   const marketLocked = !!access.data?.locked;
-  const tryBuy = (id: string) => {
+  const tryBuy = (l: Listing) => {
     if (marketLocked) {
       toast.error("Купи хотя бы 1 пак в Магазине, чтобы открыть Маркет");
       return;
     }
-    buy.mutate(id);
+    const short = goldShortfall(l.priceGold, gold);
+    if (short) return void toast.error(goldShortText(short, ru));
+    buy.mutate(l.id);
   };
   // Владение листингом — по всему аккаунту (myQ = listMyMarketListings по sisters),
   // а не по активному кошу: иначе листинг, созданный с сестры, показывал бы «Купить»
@@ -371,13 +377,10 @@ function ListingsGrid() {
                 </span>
               </div>
               <div className="mt-1 truncate text-center text-[10px] text-muted-foreground">
-                @{l.sellerUsername ?? l.sellerWallet}
+                {l.sellerUsername ?? l.sellerWallet}
                 {mine && ` · ${t("market.you")}`}
               </div>
-              <div className="mt-1 flex items-center justify-center gap-1 text-xs font-bold text-gold">
-                <Ticket className="h-3 w-3" />
-                {l.priceTickets}
-              </div>
+              <GoldPrice value={l.priceGold} caption className="mt-1 text-xs font-bold text-gold" glyphClassName="h-3 w-3" />
               {mine ? (
                 <button
                   type="button"
@@ -390,21 +393,7 @@ function ListingsGrid() {
                   {t("market.unlist")}
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    tryBuy(l.id);
-                  }}
-                  disabled={buy.isPending}
-                  className="mt-2 w-full rounded-lg gradient-gold py-1 text-[11px] font-bold text-gold-foreground shadow-gold transition hover:scale-[1.02] disabled:opacity-50"
-                >
-                  {buy.isPending ? (
-                    <Loader2 className="mx-auto h-3 w-3 animate-spin" />
-                  ) : (
-                    t("market.buy")
-                  )}
-                </button>
+                <MarketCardBuy price={l.priceGold} gold={gold} pending={buy.isPending} onBuy={() => tryBuy(l)} />
               )}
             </div>
           );
@@ -420,11 +409,12 @@ function ListingsGrid() {
         </button>
       )}
       {detail && (
-        <ListingDetailModal
+        <MarketListingModal
           listing={detail}
           mine={myListingIds.has(detail.id)}
           buying={buy.isPending}
-          onBuy={() => tryBuy(detail.id)}
+          gold={gold}
+          onBuy={() => tryBuy(detail)}
           onClose={() => setDetail(null)}
         />
       )}
@@ -432,116 +422,7 @@ function ListingsGrid() {
   );
 }
 
-// Инфо о фишке перед покупкой — открывается по клику на карточку листинга.
-function ListingDetailModal({
-  listing,
-  mine,
-  onBuy,
-  buying,
-  onClose,
-}: {
-  listing: Listing;
-  mine: boolean;
-  onBuy: () => void;
-  buying: boolean;
-  onClose: () => void;
-}) {
-  const t = useT();
-  const c = listing.chip;
-  const [confirm, setConfirm] = useState(false);
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/80 backdrop-blur-md sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className={cn(
-          "relative w-full max-w-sm overflow-hidden rounded-t-3xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-3xl",
-          chipPanelClasses(c.level),
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 z-10 rounded-full bg-background/70 p-1 text-muted-foreground hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <div className="relative mx-auto w-40">
-          <ChipImage src={c.imageUrl ?? ""} level={c.level} alt={c.name} className="w-full" />
-          {/* Вид (#шаблон) слева-сверху, серийник (#экземпляр) справа-сверху. */}
-          {c.templateNo != null && (
-            <span className="absolute left-1.5 top-1.5 inline-flex items-center justify-center rounded-full bg-background/80 px-1.5 py-0.5 text-[10px] font-bold backdrop-blur">
-              #{c.templateNo}
-            </span>
-          )}
-          <span className="absolute right-1.5 top-1.5 inline-flex items-center justify-center rounded-full bg-background/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground backdrop-blur">
-            #{c.serialNo ?? "?"}
-          </span>
-        </div>
-        {/* Название пака (коллекции). */}
-        <div className="mt-3 text-center text-sm font-bold">{listing.collectionName ?? c.name}</div>
-        <div className="mt-3 space-y-1.5 rounded-2xl bg-background/40 p-3">
-          {/* Боевые статы (Атака/Жизнь с бустом «×N босс»). Уровень/вид/тираж/
-              серийник убраны — вид и серийник теперь на картинке сверху. */}
-          <TirageStatBlock level={c.level} isPremium={!!c.isPremium} supply={c.tirage} hideSupply />
-          <div className="flex items-center justify-between border-t border-border/50 pt-1.5 text-xs">
-            <span className="text-muted-foreground">{t("market.seller")}</span>
-            <span className="truncate pl-2 font-semibold">
-              @{listing.sellerUsername ?? listing.sellerWallet}
-            </span>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center justify-center gap-1.5 text-lg font-bold text-gold">
-          <Ticket className="h-4 w-4" />
-          {listing.priceTickets}
-        </div>
-        {mine ? (
-          <div className="mt-3 rounded-full border border-border bg-background/40 py-2.5 text-center text-sm font-bold text-muted-foreground">
-            {t("market.you")}
-          </div>
-        ) : confirm ? (
-          // Окно подтверждения покупки: «купить за N билетов — подтвердить».
-          <div className="mt-3 space-y-2">
-            <div className="rounded-2xl border border-gold/30 bg-gold/5 p-3 text-center text-sm">
-              Купить за <b className="text-gold">{listing.priceTickets}</b> билетов?
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={buying}
-                onClick={() => setConfirm(false)}
-                className="flex-1 rounded-full border border-border py-2.5 text-sm font-bold text-muted-foreground transition hover:text-foreground disabled:opacity-50"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                disabled={buying}
-                onClick={onBuy}
-                className="flex-1 rounded-full gradient-gold py-2.5 text-sm font-bold text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-50"
-              >
-                {buying ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Подтвердить"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            disabled={buying}
-            onClick={() => setConfirm(true)}
-            className="mt-3 w-full rounded-full gradient-gold py-2.5 text-sm font-bold text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-50"
-          >
-            {t("market.buy")}
-          </button>
-        )}
-      </div>
-    </div>,
-    document.body,
-  );
-}
+// Инфо о фишке перед покупкой — market-gold/MarketListingModal.tsx.
 
 function CreateListingModal({ onClose }: { onClose: () => void }) {
   const t = useT();
@@ -603,7 +484,7 @@ function CreateListingModal({ onClose }: { onClose: () => void }) {
   const create = useMutation({
     mutationFn: () =>
       createMarketListingsBatch({
-        data: { chipIds: picked, priceTickets: Number(price) },
+        data: { chipIds: picked, priceGold: parseGoldPrice(price) ?? 0 },
       }),
     onSuccess: (r) => {
       const failed = r.failed.length;
@@ -628,6 +509,7 @@ function CreateListingModal({ onClose }: { onClose: () => void }) {
       }
       qc.invalidateQueries({ queryKey: ["market"] });
       qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
+      qc.invalidateQueries({ queryKey: ["my-chip-history"] });
       // Окно закрываем, только если что-то ушло в продажу: иначе игрок теряет
       // выбор и не может снять с него отказавшую фишку.
       if (r.listed > 0) onClose();
@@ -635,8 +517,8 @@ function CreateListingModal({ onClose }: { onClose: () => void }) {
     onError: (e: Error) => toast.error(humanError(e)),
   });
 
-  // Минимальная цена — 0.1 билета.
-  const canSubmit = picked.length > 0 && Number(price) >= 0.1 && !create.isPending;
+  // Цена — целое золото от 1 (с 21.10.2026).
+  const canSubmit = picked.length > 0 && parseGoldPrice(price) != null && !create.isPending;
 
   // Рендерим в body через portal — иначе fixed-модал зажимается в
   // stacking-context'е родительской секции (main: relative z-10),
@@ -821,30 +703,7 @@ function CreateListingModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="shrink-0 space-y-3 border-t border-border/60 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div>
-            <div className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
-              {t("market.price_label")}
-            </div>
-            <input
-              type="number"
-              min={0.1}
-              step={0.1}
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder={t("market.price_placeholder")}
-              className="w-full rounded-lg border border-border bg-background/40 px-3 py-2 text-sm"
-            />
-            <div className="mt-1 text-[10px] text-muted-foreground">
-              {t("market.commission_note", {
-                amount:
-                  Number(price) > 0
-                    ? t("market.tickets_amount", {
-                        n: (Number(price) * 0.91).toFixed(2),
-                      })
-                    : "—",
-              })}
-            </div>
-          </div>
+          <GoldPriceInput value={price} onChange={setPrice} />
 
           <button
             type="button"

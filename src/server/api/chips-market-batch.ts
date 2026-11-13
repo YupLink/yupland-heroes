@@ -1,4 +1,4 @@
-// Выставить НЕСКОЛЬКО фишек одной ценой.
+// Выставить НЕСКОЛЬКО фишек одной ценой — в золоте (с 21.10.2026, chips-market-gold.ts).
 //
 // Просьба игроков: у кого сотни одинаковых фишек, выставлять их по одной —
 // мучение. Каждая фишка всё равно становится отдельным лотом (цена одна на
@@ -12,6 +12,7 @@ import { requireWallet } from "../auth";
 import { isChipResting } from "../chipRest";
 import { CHIP_STUNNED_MIN_KEY, loadStunUntil, stunMinutesLeft } from "./chips-market-stun";
 import { accountOf } from "./user-shared";
+import { goldPriceSchema, insertGoldListing, requireGoldPrice } from "./chips-market-gold";
 
 /** Разом больше сотни лотов не заводим: это и так много для одной пачки. */
 const MAX_BATCH = 100;
@@ -21,9 +22,9 @@ export const createMarketListingsBatch = createServerFn({ method: "POST" })
     z
       .object({
         chipIds: z.array(z.string().min(1)).min(1).max(MAX_BATCH),
-        priceTickets: z.number().min(0.1).max(1_000_000),
+        priceGold: goldPriceSchema,
       })
-      .parse(d),
+      .parse(requireGoldPrice(d)),
   )
   .handler(async ({ data }) => {
     const wallet = requireWallet();
@@ -101,19 +102,7 @@ export const createMarketListingsBatch = createServerFn({ method: "POST" })
 
       const id = `mkl_${nanoid(10)}`;
       try {
-        await pg.chipMarketListings.insert({
-          id,
-          seller_account: batchAccount,
-          buyer_account: null,
-          seller_wallet: wallet,
-          chip_id: chipId,
-          price_tickets: data.priceTickets,
-          status: "active",
-          buyer_wallet: null,
-          sold_price_tickets: null,
-          created_at: now,
-          sold_at: null,
-        });
+        await insertGoldListing({ id, account: batchAccount, wallet, chipId, priceGold: data.priceGold, now });
         listed.push(id);
       } catch {
         // Лот не создался — возвращаем фишку владельцу, а не оставляем в лимбо.

@@ -8,13 +8,17 @@ import { requireFreshClient } from "../buildGate";
 import { DARAI_DECIMALS, DARAI_DEPOSIT_RECEIVER } from "./chips-utils";
 import { settleDaraiPackByTx } from "./chips-pack-darai";
 import { assertWalletPurchaseAllowed } from "./account-rollout";
+import { goldForTicketPrice } from "@/lib/ticketGold";
+import { accAccountId } from "./currency/move";
+import { goldOf } from "./gold-move";
 
 export const buyChipPack = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
         packId: z.string().min(1),
-        payWith: z.enum(["tickets", "darai"]),
+        // tickets — старый клиент: билетов нет (§8.61) — отказ «обнови страницу».
+        payWith: z.enum(["gold", "tickets", "darai"]),
         count: z.number().int().min(1).max(50).default(1),
       })
       .parse(d),
@@ -25,23 +29,20 @@ export const buyChipPack = createServerFn({ method: "POST" })
       const p = await pg.chipPacks.findOne({ id: data.packId });
       if (p?.market_hidden) throw new Error("Этот пак только для раздач");
     }
-    if (data.payWith === "tickets") {
-      const pack = await pg.chipPacks.findOne({ id: data.packId });
-      if (!pack) throw new Error("Пак не найден");
-      if (pack.price_tickets == null) throw new Error("Этот пак нельзя купить за билеты");
-      const { computeTickets } = await import("./user");
-      const tix = await computeTickets(wallet);
-      const need = pack.price_tickets * data.count;
-      if (tix.availableRaw < need) {
-        throw new Error(`Не хватает билетов (есть ${tix.availableRaw.toFixed(2)}, нужно ${need})`);
-      }
-    }
+    // Цена пака в билетах (price_tickets) платится золотом ×500: списывает сама
+    // buy_chip_pack_atomic (res_move chip_pack, ref grant:{id}) в одной
+    // транзакции с выдачей. Здесь — только понятный отказ до первой покупки.
+    // «tickets» шлёт только старая вкладка с ценой в билетах — пусть обновится.
+    if (data.payWith === "tickets") throw new Error("Обнови страницу — цены теперь в золоте");
+    const payWith = data.payWith === "darai" ? "darai" : "gold";
+    if (payWith === "gold") await assertPackGold(wallet, data.packId, data.count);
     const grantIds: string[] = [];
+    let goldSpent = 0;
     for (let i = 0; i < data.count; i++) {
       const { data: rpcRows, error } = await sb.rpc("buy_chip_pack_atomic", {
         p_wallet: wallet,
         p_pack_id: data.packId,
-        p_pay_with: data.payWith,
+        p_pay_with: payWith,
       });
       if (error) {
         const msg = error.message || String(error);
@@ -55,26 +56,38 @@ export const buyChipPack = createServerFn({ method: "POST" })
           throw new Error(`Дневной лимит ${m?.[1] ?? ""} паков для этого вида исчерпан`);
         }
         if (msg.includes("not_enough_darai")) throw new Error("Не хватает $DARAI");
-        if (msg.includes("no_tickets_price")) throw new Error("Пак не продаётся за билеты");
+        const gold = msg.match(/not_enough_gold:([\d.]+):([\d.]+)/);
+        if (gold)
+          throw new Error(
+            `Не хватает золота: нужно ${gold[2]}, у тебя ${Math.floor(Number(gold[1]))}`,
+          );
+        if (msg.includes("в минус")) throw new Error("Не хватает золота");
+        if (msg.includes("no_tickets_price")) throw new Error("Пак не продаётся за золото");
         if (msg.includes("no_darai_price")) throw new Error("Пак не продаётся за $DARAI");
         throw new Error(msg);
       }
-      grantIds.push((rpcRows as Array<{ grant_id: string }>)[0].grant_id);
-    }
-    if (data.payWith === "tickets" && grantIds.length > 0) {
-      // Билеты списывает САМА функция buy_chip_pack_atomic — там это в одной
-      // транзакции с выдачей пака (ref `grant:{id}`). Второе списание отсюда
-      // брало бы плату дважды: ключи идемпотентности разные, гард не спасал.
-      const { invalidateTicketsCache } = await import("./user");
-      invalidateTicketsCache(wallet);
+      const row = (rpcRows as Array<{ grant_id: string; gold_spent?: number | string }>)[0];
+      grantIds.push(row.grant_id);
+      goldSpent += Number(row.gold_spent) || 0;
     }
     // Первый купленный пак «дозревает» реферала: пригласивший получает свой тир.
     if (grantIds.length > 0) {
       const { noteReferralPurchase } = await import("../referralQualify");
       await noteReferralPurchase(wallet);
     }
-    return { ok: true, grantIds, bought: grantIds.length };
+    return { ok: true, grantIds, bought: grantIds.length, goldSpent };
   });
+
+/** Хватит ли золота на `count` паков: отказ словами до первой покупки. */
+async function assertPackGold(wallet: string, packId: string, count: number): Promise<void> {
+  const pack = await pg.chipPacks.findOne({ id: packId });
+  if (!pack) throw new Error("Пак не найден");
+  if (pack.price_tickets == null) throw new Error("Пак не продаётся за золото");
+  const need = goldForTicketPrice(pack.price_tickets) * count;
+  const account = await accAccountId(wallet);
+  const have = account ? await goldOf(account) : 0;
+  if (have < need) throw new Error(`Не хватает золота: нужно ${need}, у тебя ${Math.floor(have)}`);
+}
 
 export const purchaseChipPackViaDarai = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>

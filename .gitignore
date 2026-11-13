@@ -58,3 +58,12 @@ NEW_SHARES.secret.txt
 
 # временные скрипты сессии (SQL-запросы к проду)
 .tmp-*
+
+# Архив файлов прошлых сборок (server/assetArchive)
+.assets-archive
+
+# Сокет транскрибатора yuplink-asr на сервере (лаборатория §8.81)
+/.run/
+
+# Сборка мини-игр (scripts/build-minigames.mjs) — из minigames/, в репо не храним
+public/minigames/

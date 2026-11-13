@@ -202,7 +202,7 @@ export const claimUniversityLikes = createServerFn({ method: "POST" })
     return { likes: minted, level: here.level, bonus: here.bonus };
   });
 
-/** Открыть ещё одно место под обучение — за билеты. */
+/** Открыть ещё одно место под обучение — за золото (§8.61, university-slot-pay). */
 export const buyUniversitySlot = createServerFn({ method: "POST" })
   .inputValidator(cell)
   .handler(async ({ data }) => {
@@ -215,37 +215,15 @@ export const buyUniversitySlot = createServerFn({ method: "POST" })
     const price = slotPrice(acc.slots);
     if (price === null) throw new Error("Все места уже открыты");
 
-    // Сначала деньги: билеты списываются идемпотентно по номеру места, поэтому
-    // повтор запроса не снимет их дважды. Место добавляется следом и тоже
-    // условно — на пределе оно просто не откроется, а билеты вернутся.
-    const { moveTickets } = await import("../tickets-ledger");
-    const slotRef = `uni-slot:${account}:${acc.slots + 1}`;
-    const paid = await moveTickets({
-      wallet,
-      delta: -price,
-      kind: "university_slot",
-      ref: slotRef,
-    });
-    // Ключ повтора одноразовый: если билеты не списались (не хватило или ключ
-    // уже израсходован прошлой попыткой), место открывать нельзя — иначе оно
-    // достанется бесплатно.
-    if (!paid.applied) throw new Error("Не хватило билетов");
+    // Сначала деньги; место добавляется следом и условно — на пределе оно
+    // просто не откроется, а золото вернётся.
+    const { payUniversitySlot, refundUniversitySlot } = await import("./university-slot-pay");
+    const ref = await payUniversitySlot(account, price, acc.slots + 1);
     try {
       const slots = await addUniversitySlot(account);
       return { slots, paid: price, next: slotPrice(slots) };
     } catch (e) {
-      await moveTickets({
-        wallet,
-        delta: price,
-        kind: "refund",
-        ref: `uni-slot-undo:${account}:${acc.slots + 1}`,
-      }).catch(() => {});
-      // Возврат гасит и ключ списания: иначе повтор покупки того же места
-      // упирался бы в израсходованный ключ и открывал место без оплаты.
-      await mcpExec(
-        `DELETE FROM yuplink.ticket_move
-          WHERE kind = 'university_slot' AND ref = ${sqlStr(slotRef)}`,
-      ).catch(() => undefined);
+      await refundUniversitySlot(account, price, ref);
       throw e;
     }
   });

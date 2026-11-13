@@ -11,6 +11,7 @@ import { BattleResult, RoundLog } from "./BossBattleResult";
 import { FIELD_SLOTS } from "./boss-screen-types";
 import type { BattleSession, BossSessionState, RoundInfo, FightResult, PlayerHit, BossTarget } from "./boss-screen-types";
 
+import { thumb } from "@/lib/image";
 type RoundFx =
   | { phase: "idle" }
   | { phase: "players"; hits: PlayerHit[]; bossTarget: BossTarget | null }
@@ -117,7 +118,7 @@ export function BossBattle({
               "relative h-20 w-20 overflow-hidden rounded-2xl border-2 border-red-500 bg-secondary glow-boss transition",
               fx.phase === "players" && "animate-boss-hit",
             )}>
-              {img ? <img src={img} alt="" className="h-full w-full object-cover" />
+              {img ? <img src={thumb(img, 160)} alt="" className="h-full w-full object-cover" />
                 : <div className="grid h-full w-full place-items-center"><Skull className="h-8 w-8 text-red-400/80" /></div>}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/15" />
               {fx.phase === "players" && fx.hits.length > 0 && (

@@ -181,7 +181,7 @@ export async function syncOwnPieces(id: string, metric: OwnMetric): Promise<void
       const joined = await loadJoined(id);
       const items = new Set(rows.map((r) => r.item_key));
       const lots = await auctionHist(w.till, items);
-      const pre = potions ? await preDrinkHist(potions) : stockHist(items, w.till);
+      const pre = potions ? await preDrinkHist(potions) : await stockHist(items, w.till);
       points = ownPoints(metric, [...rows, ...lots, ...pre], { ...w, joined });
     }
   }

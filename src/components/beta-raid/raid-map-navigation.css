@@ -1,6 +1,8 @@
 .raid-map-nav{position:absolute;inset:auto 10px max(48px,env(safe-area-inset-bottom)) 10px;display:block;pointer-events:none;z-index:25;color:#f5efdc;font-family:var(--font-sans)}
 .raid-map-nav__actions{display:flex;align-items:center;gap:4px;width:100%;min-height:48px}
-.raid-map-nav__castle-slot{flex:none}
+.raid-map-nav__castle-slot{flex:none;display:flex;align-items:flex-end;gap:6px}
+.raid-map-nav__button.raid-map-nav__creator{width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;color:#f3ca62}
+.raid-map-nav__button.raid-map-nav__creator svg{width:22px;height:22px}
 .raid-map-nav__button.raid-map-nav__castle{width:48px;height:48px;border-radius:50%;padding:8px}
 .raid-map-nav__button.raid-map-nav__castle--away{width:48px;padding:8px;border-color:#88939899;background:#172023cc}
 .raid-map-nav__castle--away img{filter:grayscale(.8);opacity:.8}

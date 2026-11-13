@@ -15,30 +15,39 @@ export function BetaNearbyPanels({
   objectBusy,
   onOpenShip,
   onOpenObject,
+  onInfoObject,
 }: {
   ship: AdjacentShip | null;
   object: AdjacentObject | null;
   objectBusy: boolean;
   onOpenShip: (ship: AdjacentShip) => void;
   onOpenObject: (object: AdjacentObject) => void;
+  /** «i» у цели боя: нынешнее окно цели (отряд, награды, топ). */
+  onInfoObject: (target: { objectId: string; q: number; r: number }) => void;
 }) {
   const t = useT();
+  const action = object
+    ? objectAction(objectKind(object.id, object.meta, object.kind), object.meta, t)
+    : null;
   return (
     <>
       {ship && (
         <ShipAdjacent ship={ship.mark} aboard={ship.aboard} onOpen={() => onOpenShip(ship)} />
       )}
-      {object && (
+      {object && action && (
         <BetaAdjacentObject
           name={object.name}
           imageUrl={object.imageUrl}
           kind={objectKind(object.id, object.meta, object.kind)}
           badgeLabel={objectBadge(object.id, object.meta, object.kind, t)}
-          actionLabel={
-            objectAction(objectKind(object.id, object.meta, object.kind), object.meta, t).label
-          }
+          actionLabel={action.label}
           busy={objectBusy}
           onOpen={() => onOpenObject(object)}
+          onInfo={
+            action.opensBattle
+              ? () => onInfoObject({ objectId: object.id, q: object.q, r: object.r })
+              : undefined
+          }
         />
       )}
     </>

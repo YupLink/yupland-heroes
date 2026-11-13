@@ -16,6 +16,7 @@ import { assertNotMaintenance } from "../maintenance";
 import { setAccountEnergy } from "../accountBalances";
 import { hpOf, powerOf } from "@/lib/chipStats";
 import { tirageBonus, isPremiumCollection } from "@/lib/tirageBonus";
+import { secureRandom } from "@/lib/secureRandom";
 import { getHallwayConfig } from "./hallwayConfig";
 import { getSisterWallets } from "./user";
 import { notRestingOrFilter } from "../chipRest";
@@ -23,6 +24,8 @@ import type { PgChipBoss, PgChipBossSession } from "../db/pg";
 import { accountOf, accountIdOf } from "./user-shared";
 import { noteEnergySpend } from "./beta-raid/econ/energy-note";
 import { usdtInFillers, USDT_BANNED_MSG } from "@/lib/usdtBanned";
+import { customNameSql } from "@/server/api/player-name/player-name-sql";
+import { assertRewardMoneyRight } from "./reward-money";
 
 function requireWallet(): string {
   const w = getCurrentWallet();
@@ -60,7 +63,7 @@ function nextResetAt(from = new Date()): string {
 
 // Боевые характеристики фишки — единый модуль (см. lib/chipStats), тот же
 // источник, что и анкета фишки, чтобы числа совпадали.
-const rollIn = ([lo, hi]: [number, number]) => lo + Math.floor(Math.random() * (hi - lo + 1));
+const rollIn = ([lo, hi]: [number, number]) => lo + Math.floor(secureRandom() * (hi - lo + 1));
 const roundDamage = (round: number) =>
   Math.round(DMG_BASE * Math.pow(DMG_GROWTH, Math.min(round, DMG_GROWTH_CAP_ROUND) - 1));
 
@@ -159,7 +162,7 @@ export const getActiveBoss = createServerFn({ method: "GET" }).handler(async () 
   const [rows, ydRows, energyRes, rrRows] = await Promise.all([
     mcpExec(
       `SELECT r.week_no, min(r.wallet) AS wallet,
-                COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
+                COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
                 SUM(r.damage)::int AS total
            FROM yuplink.chip_boss_run r
            LEFT JOIN yuplink.users u ON u.wallet = r.wallet
@@ -206,12 +209,18 @@ export const getActiveBoss = createServerFn({ method: "GET" }).handler(async () 
         ),
   ]);
 
-  const lb = rows
-    .filter((r) => r.week_no === cur)
-    .map((r) => ({ wallet: r.wallet, name: r.name, total: r.total }));
-  const lastWeek = rows
-    .filter((r) => r.week_no === cur - 1)
-    .map((r) => ({ wallet: r.wallet, name: r.name, total: r.total }));
+  // Telegram-номер наружу не отдаём (publicWallet, аудит 11.11.2026).
+  const { publicRows } = await import("../publicWallet");
+  const lb = await publicRows(
+    rows
+      .filter((r) => r.week_no === cur)
+      .map((r) => ({ wallet: r.wallet, name: r.name, total: r.total })),
+  );
+  const lastWeek = await publicRows(
+    rows
+      .filter((r) => r.week_no === cur - 1)
+      .map((r) => ({ wallet: r.wallet, name: r.name, total: r.total })),
+  );
   const yourDamage = ydRows[0]?.t ?? 0;
   // Место игрока в турнире этой недели (по ВСЕМ участникам per-TG, не только
   // топ-20). null, если урона ещё нет. Ранг = сколько бойцов бьют сильнее, +1.
@@ -331,7 +340,7 @@ export const listBossLeaderboard = createServerFn({ method: "GET" })
     // per-TG: агрегируем урон по Telegram-аккаунту, показываем ЮЗЕР-ИД (TG-ник).
     const rows = (await mcpExec(
       `SELECT min(r.wallet) AS wallet,
-              COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
+              COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
               SUM(r.damage)::int AS total
          FROM yuplink.chip_boss_run r
          LEFT JOIN yuplink.users u ON u.wallet = r.wallet
@@ -348,7 +357,10 @@ export const listBossLeaderboard = createServerFn({ method: "GET" })
       { wrapJson: true },
     )) as Array<{ n: number }>;
     const total = Number(cnt?.[0]?.n ?? 0);
-    const out = rows.map((r) => ({ wallet: r.wallet, name: r.name, total: Number(r.total) }));
+    const { publicRows } = await import("../publicWallet");
+    const out = await publicRows(
+      rows.map((r) => ({ wallet: r.wallet, name: r.name, total: Number(r.total) })),
+    );
     return { rows: out, total, hasMore: off + out.length < total };
   });
 
@@ -405,25 +417,16 @@ export const claimBossRewards = createServerFn({ method: "POST" }).handler(async
         await addLikes(await likeAccountId(wallet), amt);
         summary["лайки"] = (summary["лайки"] ?? 0) + amt;
       } else if (kind === "tickets") {
-        await pg.ticketPurchases.insert({
-          id: `tp_${nanoid(10)}`,
-          wallet,
-          offer_id: "boss",
-          tickets_added: amt,
-          energy_spent: 0,
-          yupland_tx_id: null,
-          payment_token: null,
-          payment_amount: null,
-          near_tx_hash: null,
-          idempotency_key: `bossclaim:${r.id}`,
-          created_at: now,
+        // Фонд в билетах (старые настройки) выдаётся золотом, 100 за билет (§8.61).
+        // ref по id награды — повтор не задвоит.
+        const { creditGoldForTickets } = await import("./gold-earn");
+        const gold = await creditGoldForTickets({
+          account: claimAccount,
+          tickets: amt,
+          kind: "boss",
+          ref: `bossclaim:${r.id}`,
         });
-        {
-          // Награда босса — в леджер; ref по id награды, повтор не задвоит.
-          const { moveTickets } = await import("./tickets-ledger");
-          await moveTickets({ wallet, delta: amt, kind: "nft_claim", ref: `bossclaim:${r.id}` });
-        }
-        summary["билеты"] = (summary["билеты"] ?? 0) + amt;
+        summary["золото"] = (summary["золото"] ?? 0) + gold;
       } else if (kind === "energy") {
         await sb.rpc("add_energy", { p_wallet: wallet, p_amount: amt, p_kind: "energy_boss" }); // канон. кош
         summary["энергия"] = (summary["энергия"] ?? 0) + amt;
@@ -565,7 +568,7 @@ export const getBossTournamentHistory = createServerFn({ method: "GET" }).handle
   const rows = (await mcpExec(
     `WITH lb AS (
          SELECT r.boss_id, r.week_no,
-                COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS pname,
+                COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS pname,
                 SUM(r.damage)::int AS total,
                 (r.account_id = ${sqlStr(myKey)}) AS is_me,
                 row_number() OVER (PARTITION BY r.boss_id, r.week_no ORDER BY SUM(r.damage) DESC) AS place
@@ -798,7 +801,7 @@ export const fightBoss = createServerFn({ method: "POST" })
         break;
       }
       const base = DMG_BASE * Math.pow(DMG_GROWTH, Math.min(round, DMG_GROWTH_CAP_ROUND) - 1);
-      const bossDmg = Math.max(1, Math.round(base * (1 + (Math.random() * 2 - 1) * DMG_VARIANCE)));
+      const bossDmg = Math.max(1, Math.round(base * (1 + (secureRandom() * 2 - 1) * DMG_VARIANCE)));
       const target = field.find((c) => c.alive) ?? null;
       let targetDied = false;
       let broughtInLevel: number | null = null;
@@ -1233,7 +1236,7 @@ export const bossFightRound = createServerFn({ method: "POST" })
       // roundDamage уже с потолком R5.
       const dmg = Math.max(
         1,
-        Math.round(roundDamage(round) * (1 + (Math.random() * 2 - 1) * DMG_VARIANCE)),
+        Math.round(roundDamage(round) * (1 + (secureRandom() * 2 - 1) * DMG_VARIANCE)),
       );
       if (state.field.length > 0) {
         const target = state.field[0];
@@ -1398,9 +1401,8 @@ export const adminUpsertBoss = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     requireAdmin();
     const now = new Date().toISOString();
-    const cfg = data.rewardConfig
-      ? data.rewardConfig
-      : { fillers: [], split: [...DEFAULT_SPLIT], packs: [] };
+    const cfg = data.rewardConfig ?? { fillers: [], split: [...DEFAULT_SPLIT], packs: [] };
+    await assertRewardMoneyRight(cfg, "chip_boss", data.id);
     const activate = data.active && !data.asUpcoming;
     if (activate) {
       await mcpExec(`UPDATE yuplink.chip_boss SET active=false WHERE active=true;`);
@@ -1819,12 +1821,11 @@ export const adminForceActivateBoss = createServerFn({ method: "POST" })
   });
 
 // ──────── МИНИ-БОСС: разовое админ-событие ────────
-// Мини-босс временно ЗАМЕЩАЕТ главного: у него свой boss_id (лидерборд/награды
-// изолированы), свой пул, HP задаётся напрямую (без роста). Пока он активен,
-// главный «на паузе» (queue_status='paused', состояние заморожено). Так как мини
-// становится ЕДИНСТВЕННЫМ active-боссом, весь боевой контур (getActiveBoss,
-// fightBoss, клейм, килл-хук с раздачей наград) работает без изменений.
-// Возврат главного: вручную кнопкой (adminEndMiniBoss) или в понедельник (крон).
+// Мини-босс временно ЗАМЕЩАЕТ главного: у него свой boss_id (лидерборд/награды изолированы),
+// свой пул, HP задаётся напрямую (без роста). Пока он активен, главный «на паузе»
+// (queue_status='paused', состояние заморожено). Так как мини становится ЕДИНСТВЕННЫМ
+// active-боссом, весь боевой контур (getActiveBoss, fightBoss, клейм, килл-хук с раздачей
+// наград) работает без изменений. Возврат главного: кнопкой (adminEndMiniBoss) или в понедельник.
 const miniBossInput = z.object({
   name: z.string().min(1),
   imageUrl: z.string().nullable().optional(),
@@ -1841,6 +1842,7 @@ export const adminReleaseMiniBoss = createServerFn({ method: "POST" })
     if (active.is_mini) throw new Error("Мини-босс уже выпущен — сначала заверши текущего");
     const now = new Date().toISOString();
     const cfg = data.rewardConfig ?? { fillers: [], split: [...DEFAULT_SPLIT], packs: [] };
+    await assertRewardMoneyRight(cfg, "chip_boss");
     // Замораживаем главного как есть (HP/неделю не трогаем) — вернём после мини.
     await mcpExec(
       `UPDATE yuplink.chip_boss SET active=false, queue_status='paused' WHERE id=${sqlStr(active.id)};`,

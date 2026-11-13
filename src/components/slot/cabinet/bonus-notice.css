@@ -1,0 +1,6 @@
+/* Only the announcement uses this smaller copy. Cave gameplay keeps its art. */
+.casino-ui dialog.bonus-intro {
+  background-image:
+    radial-gradient(ellipse at 50% 43%, #7f3e1999 0%, #151424e8 57%, #080b13fa 100%),
+    url("/slot/cabinet/assets/bonus-notice-background-v1.jpg");
+}

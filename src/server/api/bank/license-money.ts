@@ -5,16 +5,17 @@
 //  · половина — как подписка: те же доли и корзины (moneyCtes / splitPayment).
 // Разложение — одним запросом с отметкой booked: повтор ничего не удваивает,
 // недоразложенное (сбой между оплатой и разложением) подбирает обход.
-// Только DARAI и USDT: лицензия за алмазы пишется сразу разложенной (алмазы
-// сгорают), и обход её не трогает — иначе она ушла бы в долларовую ветку.
+// Звёзды (31.10.2026) — целиком как подписка (корзина звёзд): золото на них не откупить.
+// Лицензия за алмазы (до 31.10) пишется сразу разложенной, обход её не трогает.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { moneyCtes } from "../energy-sub/money-sql";
 
-export type LicenseToken = "Darai" | "USDT";
+export type LicenseToken = "Darai" | "USDT" | "STARS";
 
-/** Половины оплаты: на откуп и как подписка; сумма — ровно цена. */
+/** Половины оплаты: на откуп и как подписка; сумма — ровно цена. Звёзды — всё как подписка. */
 export function splitLicense(token: LicenseToken, price: number): { buyback: number; sub: number } {
+  if (token === "STARS") return { buyback: 0, sub: price };
   const dp = token === "USDT" ? 1e6 : 1e8;
   const buyback = Math.floor((price / 2) * dp) / dp;
   return { buyback, sub: Math.round((price - buyback) * dp) / dp };
@@ -26,20 +27,27 @@ type Buy = { id: string; token: LicenseToken; price: number };
 export function bookSql(b: Buy): string {
   const { buyback, sub } = splitLicense(b.token, b.price);
   const bank =
-    b.token === "Darai"
-      ? `INSERT INTO yuplink.bank_buyback (id, token, amount, source, ref)
+    b.token === "STARS"
+      ? "SELECT 1 FROM lic WHERE false"
+      : b.token === "Darai"
+        ? `INSERT INTO yuplink.bank_buyback (id, token, amount, source, ref)
   SELECT 'bb_' || lic.id, 'Darai', ${buyback.toFixed(8)}, 'license', 'banklic:' || lic.id || ':bank' FROM lic
-  ON CONFLICT (ref) DO NOTHING`
-      : `INSERT INTO yuplink.money_bucket_move (id, bucket, token, amount, kind, ref, note)
+  ON CONFLICT (ref) DO NOTHING
+  RETURNING 1`
+        : `INSERT INTO yuplink.money_bucket_move (id, bucket, token, amount, kind, ref, note)
   SELECT 'mbm_' || lic.id || '_bank_usd', 'bank_usd', 'USDT', ${buyback.toFixed(6)}, 'income',
          'banklic:' || lic.id || ':bank_usd', 'лицензия банка: откуп золота'
     FROM lic
-  ON CONFLICT (ref) DO NOTHING`;
+  ON CONFLICT (ref) DO NOTHING
+  RETURNING 1`;
   const money = moneyCtes({
     after: "lic",
     id: b.id,
     prefix: "banklic",
-    note: "лицензия банка: половина как подписка",
+    note:
+      b.token === "STARS"
+        ? "лицензия банка: звёзды как подписка"
+        : "лицензия банка: половина как подписка",
     token: b.token,
     amount: sub,
   });
@@ -50,7 +58,6 @@ WITH lic AS (
   RETURNING id
 ), bank AS (
   ${bank}
-  RETURNING 1
 )${money}
 SELECT row_to_json(_t.*) AS _row FROM (SELECT (SELECT count(*) FROM lic)::int AS booked) _t;`;
 }
@@ -63,10 +70,10 @@ export async function runBuyback(): Promise<void> {
 }
 
 async function book(b: Buy): Promise<void> {
-  if (b.token !== "Darai" && b.token !== "USDT") return;
+  if (b.token !== "Darai" && b.token !== "USDT" && b.token !== "STARS") return;
   await mcpExec(bookSql(b));
   if (b.token === "Darai") await runBuyback();
-  else {
+  else if (b.token === "USDT") {
     // Доллары откупа — на Ref сразу, как «$ → карта».
     const { runDueBatches } = await import("../energy-sub/batch");
     void runDueBatches({ force: "bank_usd" }).catch(() => {});
@@ -78,7 +85,7 @@ type Row = { id: string; token: LicenseToken; price: number | string };
 /** Разложить покупку по ключу оплаты (зовётся сразу после покупки). */
 export async function bookLicenseMoney(opRef: string): Promise<void> {
   const rows = (await mcpExec(
-    `SELECT id, token, price FROM yuplink.bank_license_buy WHERE op_ref = ${sqlStr(opRef)} AND NOT booked AND token IN ('Darai', 'USDT') LIMIT 1;`,
+    `SELECT id, token, price FROM yuplink.bank_license_buy WHERE op_ref = ${sqlStr(opRef)} AND NOT booked AND token IN ('Darai', 'USDT', 'STARS') LIMIT 1;`,
     { wrapJson: true },
   )) as Row[];
   const r = rows?.[0];
@@ -89,7 +96,7 @@ export async function bookLicenseMoney(opRef: string): Promise<void> {
 export async function bookPendingLicenseMoney(): Promise<void> {
   const rows = (await mcpExec(
     `SELECT id, token, price FROM yuplink.bank_license_buy
-      WHERE NOT booked AND token IN ('Darai', 'USDT')
+      WHERE NOT booked AND token IN ('Darai', 'USDT', 'STARS')
         AND created_at < now() - interval '1 minute' ORDER BY created_at LIMIT 20;`,
     { wrapJson: true },
   )) as Row[];

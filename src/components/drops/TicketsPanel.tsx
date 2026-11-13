@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n";
 import {
   Loader2,
   Check,
-  Ticket,
+  Coins,
   Sparkles,
   Lock,
 } from "lucide-react";
@@ -13,7 +13,7 @@ import {
   claimTicketEvent,
   claimAllTicketEvents,
 } from "@/server/api/user-tickets";
-import { getMyTicketHistory } from "@/server/api/user-shop";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import { formatFractional, fmtMs, useSecondTick } from "./shop-shared";
 import { TicketEventCard } from "./TicketEventCard";
 import { CollapsibleTicketSection } from "./CollapsibleTicketSection";
@@ -24,6 +24,7 @@ export { FarmTooltip } from "./FarmTooltip";
 export { TicketNftCard } from "./TicketNftCard";
 export { CollapsibleTicketSection } from "./CollapsibleTicketSection";
 
+/** Холд NFT: события копят золото (бывшие билеты ×100, ПРАВИЛА §8.61). */
 export function TicketsPanel() {
   const t = useT();
   const qc = useQueryClient();
@@ -33,11 +34,6 @@ export function TicketsPanel() {
     staleTime: 2 * 60_000,
     gcTime: 10 * 60_000,
   });
-  const ticketHist = useQuery({
-    queryKey: ["my-ticket-history"],
-    queryFn: () => getMyTicketHistory(),
-    staleTime: 60_000,
-  });
 
   const hasTimers = (events.data?.length ?? 0) > 0;
   useSecondTick(hasTimers);
@@ -45,9 +41,9 @@ export function TicketsPanel() {
   const claim = useMutation({
     mutationFn: (eventId: string) => claimTicketEvent({ data: { eventId } }),
     onSuccess: (res) => {
-      toast.success(t("mynfts.toast_tickets_awarded", { n: formatFractional(res.ticketsAwarded) }));
+      toast.success(t("mynfts.toast_tickets_awarded", { n: formatFractional(res.goldAwarded) }));
       qc.invalidateQueries({ queryKey: ["my-ticket-events"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       qc.invalidateQueries({ queryKey: ["my-nfts"] });
     },
     onError: (e: Error) => {
@@ -59,13 +55,13 @@ export function TicketsPanel() {
   const claimAll = useMutation({
     mutationFn: () => claimAllTicketEvents(),
     onSuccess: (res) => {
-      if (res.ticketsAwarded === 0) {
+      if (!(res.goldAwarded > 0)) {
         toast.info(t("mynfts.toast_nothing_to_claim"));
       } else {
-        toast.success(t("mynfts.toast_tickets_awarded_n", { n: formatFractional(res.ticketsAwarded), c: res.claims }));
+        toast.success(t("mynfts.toast_tickets_awarded_n", { n: formatFractional(res.goldAwarded), c: res.claims }));
       }
       qc.invalidateQueries({ queryKey: ["my-ticket-events"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       qc.invalidateQueries({ queryKey: ["my-nfts"] });
     },
     onError: (e: Error) => toast.error(humanError(e)),
@@ -84,7 +80,7 @@ export function TicketsPanel() {
   if (list.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">
-        <Ticket className="mb-3 h-10 w-10 text-muted-foreground" />
+        <Coins className="mb-3 h-10 w-10 text-muted-foreground" />
         <p className="text-sm font-medium">{t("mynfts.no_events")}</p>
         <p className="mt-1 max-w-sm text-xs text-muted-foreground">{t("mynfts.no_events_tickets_hint")}</p>
       </div>
@@ -122,11 +118,11 @@ export function TicketsPanel() {
       {claimableNowTotal > 0 ? (
         <button onClick={() => claimAll.mutate()} disabled={claimAll.isPending} className="inline-flex w-full items-center justify-center gap-2 rounded-xl gradient-gold px-4 py-3 text-sm font-bold uppercase tracking-wider text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-60">
           {claimAll.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          {t("mynfts.claim_all")} · +{formatFractional(claimableNowTotal)}
+          {t("mynfts.claim_all")} · +{formatFractional(goldForEarnedTickets(claimableNowTotal))}
         </button>
       ) : accruedTotal > 0 && nextClaimSecLeft > 0 ? (
         <div className="rounded-xl border border-border bg-secondary/30 px-4 py-3 text-center text-xs text-muted-foreground">
-          {t("mynfts.accrued_label")} <b className="text-foreground">+{formatFractional(accruedTotal)}</b> · {t("mynfts.next_claim_in")} <b className="text-foreground">{fmtMs(nextClaimSecLeft * 1000)}</b>
+          {t("mynfts.accrued_label")} <b className="text-foreground">+{formatFractional(goldForEarnedTickets(accruedTotal))}</b> · {t("mynfts.next_claim_in")} <b className="text-foreground">{fmtMs(nextClaimSecLeft * 1000)}</b>
           <span className="ml-1 opacity-70">{t("mynfts.min_4h_between")}</span>
         </div>
       ) : null}
@@ -146,21 +142,6 @@ export function TicketsPanel() {
           {noNft.map((e) => (
             <TicketEventCard key={e.id} e={e} claim={claim} claimPending={claim.isPending && claim.variables === e.id} now={now} />
           ))}
-        </CollapsibleTicketSection>
-      )}
-
-      {(ticketHist.data?.length ?? 0) > 0 && (
-        <CollapsibleTicketSection title={t("mynfts.ticket_purchase_history")} icon={<Ticket className="h-4 w-4 text-muted-foreground" />} count={ticketHist.data?.length ?? 0}>
-          <div className="space-y-1">
-            {(ticketHist.data ?? []).map((h, i) => (
-              <div key={i} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs odd:bg-secondary/30">
-                <span className="min-w-0 truncate text-muted-foreground">
-                  {new Date(h.createdAt).toLocaleDateString()} · {h.kind === "token" ? `${h.paymentAmount} ${h.paymentToken}` : h.kind === "energy" ? `${h.energySpent} ⚡` : t("mynfts.ticket_hist_comp")}
-                </span>
-                <b className="shrink-0 text-gold">+{formatFractional(h.ticketsAdded)}</b>
-              </div>
-            ))}
-          </div>
         </CollapsibleTicketSection>
       )}
     </div>

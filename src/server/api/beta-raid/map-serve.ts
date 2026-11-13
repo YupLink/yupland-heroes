@@ -71,12 +71,28 @@ export async function snapshotFor(map: MapRow, admin: boolean): Promise<MapSnaps
   // Точки возрождения мобов: встать, шагнуть (mob-spawn/mob-spawn.ts).
   const { startMobSpawner } = await import("./mob-spawn/mob-spawn");
   startMobSpawner();
+  // Поломки шахт v2 (§8.59): раз в минуту (mine-break-sweep.ts).
+  const { startMineBreakSweeper } = await import("./mine-break-sweep");
+  startMineBreakSweeper();
+  (await import("./dmine/dmine-sweep")).startDaraiMineSweeper(); // DARAI-шахта в рюкзаке: час → мешочек
+  (await import("@/server/api/castle-architect/blueprint-sweep")).startBlueprintSweeper(); // добор оплаченных заготовок
+  (await import("./mine-place/mine-place-resend")).startMinePlaceResender(); // досылка постановок шахт
+  (await import("./weather/weather-sweep")).startWeatherSweeper(); // погода всех карт раз за слот
   // Стейкинг банка: золото за сутки, выводы холдеров по сроку (bank/stake-ticker.ts).
   const { startBankStakeTicker } = await import("../bank/stake-ticker");
   startBankStakeTicker();
+  // Рефка золотом: суточное начисление пригласившим (§8.101, referral-gold/ref-payout.ts).
+  (await import("../referral-gold/ref-payout")).startRefPayoutTicker();
   // Сторож «Свободно USDT»: минус — сигнал админам (usdt-watch.ts).
   const { startUsdtWatch } = await import("../usdt-watch");
   startUsdtWatch();
+  // «Вестник героев»: газета дня в 10:00 МСК, по понедельникам — сводка недели.
+  (await import("@/server/news/vestnik-schedule")).startVestnik();
+  // Клад дня (§8.117): закопать в 09:00 МСК, сутки жизни, админам — скрин (treasure-schedule.ts).
+  (await import("../treasure/treasure-schedule")).startTreasure();
+  // Доля владельцев казино (§8.124): итог суток МСК, строки «Казино» в «Добыче».
+  (await import("../casino/casino-share")).startCasinoShareTicker();
+  (await import("@/server/chain/chain-indexer")).startChainIndexer(); // свой индексатор NEAR (вместо Sendler)
   return getMapSnapshot(map, admin ? "admin" : "player", { wait: true });
 }
 

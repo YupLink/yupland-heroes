@@ -1,6 +1,6 @@
 // Турнир бета-рейда — по образцу raid/RaidTournament.tsx: сворачиваемый блок,
 // бейдж своего места в шапке, подсветка своей строки, догрузка по 20.
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Loader2, Swords, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ import { getBetaRaidTournament } from "@/server/api/beta-raid";
 const PAGE = 20;
 
 /** `defaultOpen` — раскрыть таблицу сразу (окно «Слава» в замке); на экране рейда свёрнута. */
-export function BetaRaidTournament({ defaultOpen = false }: { defaultOpen?: boolean } = {}) {
+function BetaRaidTournamentView({ defaultOpen = false }: { defaultOpen?: boolean } = {}) {
   const t = useT();
   const ru = useLang() === "ru";
   const [open, setOpen] = useState(defaultOpen);
@@ -151,3 +151,7 @@ function TournamentRow({
     </div>
   );
 }
+
+// memo: экран рейда перерисовывается на каждый шаг героя, а этому компоненту
+// шаг ни при чём — без memo он с иконками шёл следом (замер 06.11.2026).
+export const BetaRaidTournament = memo(BetaRaidTournamentView);

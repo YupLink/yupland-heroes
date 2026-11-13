@@ -1,7 +1,7 @@
 // Инструменты админа на карте — по требованию (13.10.2026). Режим бога с окном
 // клетки и редактором объектов, раздача, восстановление, экономика: ~60 КБ кода,
 // который качали все игроки, хотя показывается он только админам.
-import { Suspense, lazy, type ComponentProps } from "react";
+import { memo, Suspense, lazy, type ComponentProps } from "react";
 
 const LiveLayer = lazy(() =>
   import("./AdminLiveLayer").then((m) => ({ default: m.AdminLiveLayer })),
@@ -21,7 +21,7 @@ export function AdminLiveLayer(props: ComponentProps<typeof LiveLayer>) {
   );
 }
 
-export function AdminRaidRestore() {
+function AdminRaidRestoreView() {
   return (
     <Suspense fallback={null}>
       <RaidRestore />
@@ -36,3 +36,7 @@ export function EconomyPanel() {
     </Suspense>
   );
 }
+
+// memo: экран рейда перерисовывается на каждый шаг героя, а этому компоненту
+// шаг ни при чём — без memo он с иконками шёл следом (замер 06.11.2026).
+export const AdminRaidRestore = memo(AdminRaidRestoreView);

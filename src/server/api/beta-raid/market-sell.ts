@@ -14,18 +14,19 @@
 // выдачи → возврат отданного (квитанция spend несёт снятые экземпляры, чтобы
 // «арт по редкости» вернулся РОВНО тем же артефактом, а не однотипным).
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { requireBetaRaid } from "./gate";
 import { myMapId } from "./encounter-where";
+import { requireShopNear } from "./market-near";
 import { accAccountId } from "../currency/move";
 import { marketItemById } from "./market-admin";
 import { assertShopAllowed } from "./market-shop";
 import { assertChestGood } from "./market-chest-buyer";
 import { spend, credit } from "./market-money";
 import { reserveStock, releaseStock } from "./market-stock";
-import { resolveBackpack, assertBackpackRoomFor } from "./market-backpack";
+import { resolveBackpack, assertTradeRoom } from "./market-backpack";
 import { deliverGood } from "./market-deliver";
-import { normalizeQty, QTY_CAP } from "./market-qty";
+import { normalizeQty } from "./market-qty";
+import { sellInput, sellSpendPick } from "./market-sell-input";
 import { payoutMeta } from "./market-payout-meta";
 import { reportUndoFailure } from "./market-undo-alert";
 import { ITEM_PAY, TO_BACKPACK, WHOLE_ONLY, goodAsPrice, payoutAsGood } from "./market-sell-good";
@@ -35,22 +36,6 @@ import type { MarketPriceResource } from "@/lib/marketItem";
 
 // Вид отдаваемого товара живёт в market-sell-good.ts; экспорт оставлен на месте.
 export { goodAsPrice } from "./market-sell-good";
-
-const sellInput = (d: unknown) =>
-  z
-    .object({
-      q: z.number().int(),
-      r: z.number().int(),
-      itemId: z.string(),
-      qty: z.number().positive().max(QTY_CAP).default(1),
-      // Какой именно артефакт отдать: у позиции «любой обычный артефакт»
-      // выбирает игрок, а не сервер наугад. Не пришло — прежнее поведение
-      // (берём самые старые свободные нужной редкости).
-      pick: z.object({ templateId: z.string().min(1) }).optional(),
-      // Лавка города: сколько игрок видел к получению. Цена упала — отказ.
-      expect: z.number().nonnegative().optional(),
-    })
-    .parse(d);
 
 export const sellMarketItem = createServerFn({ method: "POST" })
   .inputValidator(sellInput)
@@ -62,6 +47,7 @@ export const sellMarketItem = createServerFn({ method: "POST" })
     // Продать можно только то, что магазин выставил на скупку. Позиция витрины
     // покупки сюда не годится: там цена — то, что игрок платит.
     if (item.side !== "sell") throw new Error("market.wrong_side");
+    await requireShopNear(wallet, mapId, item.q, item.r);
 
     const account = await accAccountId(wallet);
     if (!account) throw new Error("market.need_account");
@@ -118,7 +104,8 @@ export const sellMarketItem = createServerFn({ method: "POST" })
 
     // Место в рюкзаке — ДО списания и СРАЗУ на все выплаты (раздельные проверки
     // обе проходили, и вторая выплата пропадала). Ключи — канонические, с именем,
-    // как у выдачи: «Помидор» и «Помидоры» — одна ячейка.
+    // как у выдачи: «Помидор» и «Помидоры» — одна ячейка. Отданный товар уходит
+    // со стопки рюкзака раньше выплаты — его место считается освобождённым.
     const { canonStackKey } = await import("./item-alias");
     const toBag = await Promise.all(
       payouts
@@ -132,7 +119,7 @@ export const sellMarketItem = createServerFn({ method: "POST" })
     if (toBag.length > 0) {
       const bp = await resolveBackpack(wallet);
       if (!bp) throw new Error("market.need_hero");
-      await assertBackpackRoomFor(bp, toBag);
+      await assertTradeRoom(bp, toBag, [{ res: good.res, token: good.token, amount: goodAmount }]);
     }
 
     const nonce = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -144,9 +131,9 @@ export const sellMarketItem = createServerFn({ method: "POST" })
     // 1) списание у игрока — то, что он продаёт (giveAmount × qty).
     let receipt: Awaited<ReturnType<typeof spend>> = {};
     try {
-      receipt = await spend(wallet, account, good.res, good.token, goodAmount, payRef, {
-        artTemplateId: data.pick?.templateId ?? null,
-      });
+      // Что именно отдаёт игрок и какого износа — решает sellSpendPick по позиции.
+      const pick = sellSpendPick(item, data.pick);
+      receipt = await spend(wallet, account, good.res, good.token, goodAmount, payRef, pick);
     } catch (e) {
       await releaseStock(item.id, mapId, qty);
       throw e;
@@ -205,6 +192,11 @@ export const sellMarketItem = createServerFn({ method: "POST" })
         // Первая выплата уже у игрока, а забрать её обратно можно не всегда
         // (пак/герой ушли в инвентарь). Товар тогда НЕ возвращаем: иначе у
         // игрока остались бы и товар, и выплата. Вторая просто не доехала.
+        // Сданный герой оплачен — его снимок закрываем (market-pawn.settlePawn).
+        if (receipt.paidHeroes?.length)
+          await (
+            await import("./market-pawn")
+          ).settlePawn({ wallet, account, mapId, item, receipt, minRatio: 0 });
         throw new Error("market.give_failed");
       }
     }
@@ -225,18 +217,23 @@ export const sellMarketItem = createServerFn({ method: "POST" })
       ref: payRef,
     });
 
-    // Ломбард: сданный «любой артефакт» встаёт на витрину покупки с наценкой
-    // (market-pawn). Только за целиком принятую сделку; сбой — не сделке игрока.
-    if (minRatio === 1 && receipt.paidArts?.length) {
-      const { relistPawned } = await import("./market-pawn");
-      await relistPawned({
-        mapId,
-        item,
-        templateIds: receipt.paidArts.map((a) => a.templateId),
-      }).catch((e) => console.error("[pawn] relist failed", e));
-    }
+    // Ломбард (market-pawn): снимок сданного героя закрыт выплатой (paid_at), а
+    // сданное встаёт на витрину покупки с наценкой — только за целиком принятую
+    // сделку. Сбой — не сделке игрока.
+    // Рюкзак сданного героя — мешочком на клетку основного: dropped — для окна.
+    const dropped =
+      receipt.paidArts?.length || receipt.paidHeroes?.length
+        ? await (
+            await import("./market-pawn")
+          ).settlePawn({ wallet, account, mapId, item, receipt, minRatio })
+        : null;
 
+    // Учебная продажа считается только после выплаты, отдельно от самой сделки.
+    if (minRatio >= 1 && mapId.startsWith("isle_") && item.id === `${mapId}_sell_goldIngot`)
+      await (await import("./island/short-tutorial-service"))
+        .noteShortTutorialSale(account, mapId, item.id)
+        .catch((e: unknown) => console.warn("[island] продажа:", e));
     // Остаток скупки виден всем сразу — без перезагрузки клетки.
     publishRaid({ mapId, type: "built", cells: [`${data.q},${data.r}`] });
-    return { ok: true as const, sold: qty, name: item.name };
+    return { ok: true as const, sold: qty, name: item.name, dropped };
   });

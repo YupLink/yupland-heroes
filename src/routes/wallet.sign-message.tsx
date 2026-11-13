@@ -27,28 +27,18 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { toast } from "sonner";
-import {
-  Loader2,
-  AlertTriangle,
-  Check,
-  X,
-  Mail,
-  Lock,
-  Wallet as WalletIcon,
-} from "lucide-react";
+import { Loader2, AlertTriangle, Check, X, Mail, Lock, Wallet as WalletIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listLocalWallets, getKeyPairBytes } from "@/lib/embeddedWallet";
 import { hasAppPassword, isAppUnlocked, unlockApp } from "@/lib/appLock";
 import { signNep413, uint8ToBase64 } from "@/lib/nep413";
 import { base58 } from "@scure/base";
 import { useT } from "@/lib/i18n";
+import { returnUrlOrThrow, safeReturnUrl } from "@/lib/walletReturnUrl";
 
 export const Route = createFileRoute("/wallet/sign-message")({
   head: () => ({
-    meta: [
-      { title: "Подпись сообщения — YupLink Wallet" },
-      { name: "robots", content: "noindex" },
-    ],
+    meta: [{ title: "Подпись сообщения — YupLink Wallet" }, { name: "robots", content: "noindex" }],
   }),
   component: SignMessagePage,
 });
@@ -81,6 +71,8 @@ function parseQuery(): ParsedRequest | { error: string } {
   if (!recipient) return { error: "recipient обязателен" };
   if (!nonceStr) return { error: "nonce обязателен (32 байта base64)" };
   if (!callbackUrl) return { error: "callbackUrl обязателен" };
+  // Только https (и http на localhost): «javascript:» выполнил бы чужой код у нас.
+  if (!safeReturnUrl(callbackUrl)) return { error: "callbackUrl должен быть https-адресом" };
   let nonce: Uint8Array;
   try {
     nonce = base64ToBytes(nonceStr);
@@ -150,7 +142,7 @@ function SignMessagePage() {
           recipient: request.recipient,
           nonce: request.nonce,
         },
-        kp.privateKey
+        kp.privateKey,
       );
       const publicKey = `ed25519:${base58.encode(kp.publicKey)}`;
       return {
@@ -162,7 +154,7 @@ function SignMessagePage() {
     onSuccess: (r) => {
       if (!request) return;
       toast.success(t("wsignmsg.toast_signed"));
-      const u = new URL(request.callbackUrl);
+      const u = returnUrlOrThrow(request.callbackUrl);
       u.searchParams.set("accountId", r.accountId);
       u.searchParams.set("publicKey", r.publicKey);
       u.searchParams.set("signature", r.signature);
@@ -172,9 +164,11 @@ function SignMessagePage() {
     onError: (e: Error) => {
       const m = e.message || "";
       toast.error(
-        m === "APP_PWD_REQUIRED" || m === "APP_LOCKED"
-          ? t("wsignmsg.toast_enter_wallet_password")
-          : m
+        m === "APP_PWD_SETUP"
+          ? t("wvault.need_setup")
+          : m === "APP_PWD_REQUIRED" || m === "APP_LOCKED"
+            ? t("wsignmsg.toast_enter_wallet_password")
+            : m,
       );
     },
   });
@@ -185,7 +179,7 @@ function SignMessagePage() {
       return;
     }
     try {
-      const u = new URL(request.callbackUrl);
+      const u = returnUrlOrThrow(request.callbackUrl);
       u.searchParams.set("errorCode", "userRejected");
       u.searchParams.set("errorMessage", "User rejected the request");
       if (request.state) u.searchParams.set("state", request.state);
@@ -201,9 +195,7 @@ function SignMessagePage() {
         <div className="mx-auto max-w-xl px-4 pb-20 pt-6">
           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-center">
             <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
-            <h1 className="mt-3 font-display text-lg font-bold">
-              {t("wsignmsg.invalid_request")}
-            </h1>
+            <h1 className="mt-3 font-display text-lg font-bold">{t("wsignmsg.invalid_request")}</h1>
             <p className="mt-2 text-sm text-muted-foreground">{parseError}</p>
           </div>
         </div>
@@ -243,7 +235,8 @@ function SignMessagePage() {
             {request.recipient}
           </code>
           <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-            {t("wsignmsg.recipient_desc_pre")} <b>{t("wsignmsg.recipient_desc_only")}</b> {t("wsignmsg.recipient_desc_post")}
+            {t("wsignmsg.recipient_desc_pre")} <b>{t("wsignmsg.recipient_desc_only")}</b>{" "}
+            {t("wsignmsg.recipient_desc_post")}
           </p>
         </div>
 
@@ -355,7 +348,7 @@ function SignMessagePage() {
               (appLockNeeded && !appPwd.trim())
             }
             className={cn(
-              "flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-50"
+              "flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-50",
             )}
           >
             {approve.isPending ? (

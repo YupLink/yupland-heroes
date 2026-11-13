@@ -14,6 +14,7 @@ import { assertNotMaintenance } from "../maintenance";
 import { accAccountId, accBalance } from "./currency/move";
 import { moneyGate } from "../rateGate";
 import { requireAccountUser } from "./account-rollout";
+import { ENERGY_PAY_ONLY, isEnergyPayAllowed } from "@/lib/energyPayAllowed";
 
 export const buyEnergyPackFromAccount = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -33,6 +34,11 @@ export const buyEnergyPackFromAccount = createServerFn({ method: "POST" })
     const wallet = await requireAccountUser();
     await moneyGate("epack-acc", wallet);
 
+    // Энергопак со счёта — только DARAI (владелец, 20.10.2026, §8.61): USDT,
+    // magicdust, RF и прочие токены не принимаются. Звёзды — energy-packs-usd-pay.
+    if (!isEnergyPayAllowed(data.payKind === "darai" ? "Darai" : data.symbol)) {
+      throw new Error(ENERGY_PAY_ONLY);
+    }
     const pack = await pg.energyPacks.findOne({ id: data.packId });
     if (!pack || !pack.active) throw new Error("Пак не найден");
 
@@ -69,7 +75,7 @@ export const buyEnergyPackFromAccount = createServerFn({ method: "POST" })
       // клиента, а цена бралась из пака.
       const want = String(pack.price_token_symbol ?? "").trim();
       if (!want || want.toLowerCase() !== symbol.toLowerCase()) {
-        throw new Error(`Этот пак оплачивается только ${want || "билетами"}`);
+        throw new Error(`Этот пак оплачивается только ${want || "золотом"}`);
       }
       price = Number(pack.price_token_amount ?? 0);
     }

@@ -7,7 +7,11 @@
 // Путь — тот же, что у портала (movePlayerThroughPortal): он ссаживает с судна
 // и не оставляет игрока в воде без лодки. Судно за героем НЕ тащим: заклинание
 // обещает перенести только героя, а не позвать корабль через всю карту.
-import { publishRaid } from "../../raidLive";
+//
+// Тем же путём синий динамит относит домой экипаж взорванного корабля
+// (dynamite-crew-home): ключ — аккаунт, события — ничьи (`by: null`), иначе поток
+// бросившего принял бы чужой перенос за свой шаг.
+import { publishRaid, type RaidEvent } from "../../raidLive";
 import { raidOwner } from "./owner";
 import { activeBetaMapId, myMapId, ownCell, type Cell } from "./encounter-where";
 import { leaveShipBehind, movePlayerThroughPortal, portalShipContext } from "./portal-ship";
@@ -18,7 +22,12 @@ export type TeleportHome =
   | { ok: true; moved: Cell; map: string | null }
   | { ok: false; reasonKey: string };
 
-export async function teleportHome(wallet: string): Promise<TeleportHome> {
+export async function teleportHome(
+  wallet: string,
+  /** Автор событий; не задан — игрок запроса (заклинание). */
+  opts: { by?: string | null } = {},
+): Promise<TeleportHome> {
+  const pub = (e: RaidEvent) => publishRaid(e, "by" in opts ? (opts.by ?? null) : undefined);
   const [current, main, account] = await Promise.all([
     myMapId(wallet),
     activeBetaMapId(),
@@ -38,17 +47,17 @@ export async function teleportHome(wallet: string): Promise<TeleportHome> {
   if (!res.moved) return { ok: false, reasonKey: "spell.teleport_failed" };
   if (cross) {
     // На прежнем этаже точка исчезает, в главном мире появляется.
-    publishRaid({ mapId: current, type: "moved" });
-    publishRaid({ mapId: main, type: "moved" });
-    if (leftShip) publishRaid({ mapId: current, type: "ships" });
+    pub({ mapId: current, type: "moved" });
+    pub({ mapId: main, type: "moved" });
+    if (leftShip) pub({ mapId: current, type: "ships" });
   } else {
-    publishRaid(
+    pub(
       before
         ? { mapId: main, type: "moved", from: { q: before.q, r: before.r }, to: target }
         : { mapId: main, type: "moved" },
     );
     // Судно тоже могло поехать (пришло за героем или осталось свободным).
-    if (res.mode !== "none") publishRaid({ mapId: main, type: "ships" });
+    if (res.mode !== "none") pub({ mapId: main, type: "ships" });
   }
   return { ok: true, moved: target, map: cross ? main : null };
 }

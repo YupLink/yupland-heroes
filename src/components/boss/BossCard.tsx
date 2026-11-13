@@ -3,7 +3,9 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { Skull, Crown, Sparkles, ChevronDown, Heart } from "lucide-react";
 import { fmtCountdown, fillerMeta, type Filler } from "./boss-screen-types";
+import { rewardShownAmount } from "@/lib/rewardKinds";
 
+import { thumb } from "@/lib/image";
 export function BossCard({
   b,
   dead,
@@ -61,7 +63,7 @@ export function BossCard({
             dead ? "border-gold shadow-[0_0_30px_rgba(212,175,55,0.5)]" : "border-red-500 glow-boss",
           )}>
             {b.imageUrl ? (
-              <img src={b.imageUrl} alt="" className={cn("h-full w-full object-cover transition", dead && "grayscale")} />
+              <img src={thumb(b.imageUrl, 128)} alt="" className={cn("h-full w-full object-cover transition", dead && "grayscale")} />
             ) : (
               <div className="grid h-full w-full place-items-center bg-gradient-to-b from-red-950/40 to-black/60">
                 <Skull className={cn("h-14 w-14", dead ? "text-gold" : "text-red-400/80 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]")} />
@@ -131,7 +133,7 @@ export function BossCard({
                 const m = fillerMeta(fillerFl);
                 return (
                   <span key={i} className="inline-flex items-center gap-1 rounded-lg border border-gold/20 bg-gradient-to-b from-gold/10 to-transparent px-2 py-1">
-                    <span>{m.icon}</span> {m.label}: <b className="text-gold">{fl.amount.toLocaleString()}</b>
+                    <span>{m.icon}</span> {m.label}: <b className="text-gold">{rewardShownAmount(fl.kind, fl.amount).toLocaleString()}</b>
                   </span>
                 );
               })}
@@ -142,7 +144,7 @@ export function BossCard({
                     className="inline-flex items-center gap-1.5 rounded-lg border border-neon/25 bg-neon/5 py-1 pl-1 pr-2 text-neon"
                     title={meta?.name ?? undefined}>
                     {meta?.image ? (
-                      <img src={meta.image} alt={meta.name ?? "pack"} className="h-6 w-6 rounded-md object-cover ring-1 ring-neon/30" loading="lazy" />
+                      <img src={thumb(meta.image, 64)} alt={meta.name ?? "pack"} className="h-6 w-6 rounded-md object-cover ring-1 ring-neon/30" loading="lazy" />
                     ) : (
                       <span className="pl-1">🎴</span>
                     )}

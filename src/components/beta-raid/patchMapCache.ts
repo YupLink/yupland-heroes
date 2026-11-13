@@ -17,6 +17,8 @@ import type { PackedCells } from "./unpackMap";
 import { PackedEdit } from "./packedEdit";
 import { addAssetsToDicts, type AssetLookup, type MapDicts } from "./cellAssets";
 import { clampIconScale } from "@/lib/mergeScale";
+import { mineAfterPatch, type BuildingEntry } from "./packedMines";
+import { applyVeinEdits, veinEditOf, type VeinEdit } from "./veinPatch";
 
 export type MapLike =
   | (MapDicts & {
@@ -56,6 +58,11 @@ export function applyCellPatches(
   // ?? [] — карта из старого суточного кэша приезжает без этих колонок.
   const dome = new Set(p.voidFog ?? []);
   const runners = new Set(p.runners ?? []);
+  const mines = new Set(p.mines ?? []);
+  // Словари — до прохода: отметке шахты нужна запись свежепоставленной постройки.
+  const dicts = addAssetsToDicts(old, patches, assets);
+  const buildings = (dicts?.buildings ?? old.buildings ?? {}) as Record<string, BuildingEntry>;
+  const entryOf = (id: string) => buildings[id];
   // Блоки: индекс клетки → [индекс блока в groupIds, масштаб %] из троек.
   const groups = new Map<number, [number, number]>();
   for (let k = 0, flat = p.groups ?? []; k + 2 < flat.length; k += 3)
@@ -63,7 +70,10 @@ export function applyCellPatches(
   let deadDirty = false;
   let domeDirty = false;
   let runnersDirty = false;
+  let minesDirty = false;
   let groupsDirty = false;
+  // Жилы (veinPatch): номер клетки → жила; тройки списка правятся после прохода.
+  const veins = new Map<number, VeinEdit>();
   const tiers = { ...(old.buildingTiers ?? {}) };
 
   for (const patch of patches) {
@@ -90,19 +100,19 @@ export function applyCellPatches(
     const wasBuilding = edit.idAt("buildingIds", edit.read("bld", i));
 
     if (patch.terrainId !== undefined) {
-      edit.col("t")[i] = edit.poolIndex("terrainIds", patch.terrainId);
+      edit.set("t", i, edit.poolIndex("terrainIds", patch.terrainId));
     }
     // Дорога — свой слой поверх местности: местность под ней остаётся своя,
     // и снятие дороги (null) возвращает клетке цену шага её земли. Дорога на
     // клетке ОДНА — кисть её заменяет, а не докладывает.
     if (patch.roadId !== undefined) {
-      edit.col("road")[i] = edit.poolIndex("roadIds", patch.roadId);
+      edit.set("road", i, edit.poolIndex("roadIds", patch.roadId));
     }
     if (patch.decorationId !== undefined) {
-      edit.col("dec")[i] = edit.poolIndex("decorationIds", patch.decorationId);
+      edit.set("dec", i, edit.poolIndex("decorationIds", patch.decorationId));
     }
     if (patch.objectId !== undefined) {
-      edit.col("obj")[i] = edit.poolIndex("objectIds", patch.objectId);
+      edit.set("obj", i, edit.poolIndex("objectIds", patch.objectId));
       // Метку «добыт» снимает только СМЕНА объекта. Повторный мазок тем же
       // самым (мазнули кистью по уже стоящему сундуку) не воскрешает добытое.
       if ((patch.objectId ?? null) !== wasObject) {
@@ -118,7 +128,7 @@ export function applyCellPatches(
     // Идёт после объекта: «погасить» на уже стоящем объекте не должно потеряться.
     if (patch.alive !== undefined) deadDirty = mark(dead, i, !patch.alive) || deadDirty;
     if (patch.buildingId !== undefined) {
-      edit.col("bld")[i] = edit.poolIndex("buildingIds", patch.buildingId);
+      edit.set("bld", i, edit.poolIndex("buildingIds", patch.buildingId));
       // Тир уходит только вместе со СМЕНОЙ постройки: следующая начинает с
       // нуля. Мазок той же постройкой — не смена, и оплаченный игроками тир
       // остаётся на месте (иначе кисть обнуляла чужую верфь третьего тира).
@@ -128,12 +138,17 @@ export function applyCellPatches(
     // та же постройка — тир не трогаем. null пришёл с buildingId базовой
     // постройки выше и уже вернул bld к ней.
     if (patch.buildingSkinId) {
-      edit.col("bld")[i] = edit.poolIndex("buildingIds", `skin:${patch.buildingSkinId}`);
+      edit.set("bld", i, edit.poolIndex("buildingIds", `skin:${patch.buildingSkinId}`));
     }
     if (patch.tier !== undefined) tiers[key] = patch.tier;
+    // Шахта — стена (§8.59 п. 9): отметку правит смена постройки или её настроек.
+    const mine = mineAfterPatch(patch, entryOf, wasBuilding);
+    if (mine !== undefined) minesDirty = mark(mines, i, mine) || minesDirty;
     // Купол — последним: он ничего под собой не переписывает и от порядка
     // остальных слоёв не зависит.
     if (patch.voidFog !== undefined) domeDirty = mark(dome, i, patch.voidFog) || domeDirty;
+    const vein = veinEditOf(patch);
+    if (vein !== undefined) veins.set(i, vein);
     // Блок: null — вывести из блока (масштаб уходит с ним); id — вступить,
     // масштаб — из патча, иначе прежний, иначе 100 %. Масштаб без блока — только
     // у уже состоящих в блоке клеток.
@@ -161,12 +176,14 @@ export function applyCellPatches(
   if (deadDirty) edit.setList("defeated", [...dead]);
   if (domeDirty) edit.setList("voidFog", [...dome]);
   if (runnersDirty) edit.setList("runners", [...runners]);
+  if (minesDirty) edit.setList("mines", [...mines]);
+  const veinList = applyVeinEdits(p.veins, veins);
+  if (veinList) edit.setList("veins", veinList);
   if (groupsDirty) {
     const flat: number[] = [];
     for (const [i, [gi, pct]] of groups) flat.push(i, gi, pct);
     edit.setList("groups", flat);
   }
-  const dicts = addAssetsToDicts(old, patches, assets);
   return { ...old, ...dicts, packed: edit.finish(), buildingTiers: tiers };
 }
 

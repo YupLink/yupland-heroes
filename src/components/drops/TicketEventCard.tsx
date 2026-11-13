@@ -3,10 +3,14 @@ import { cn } from "@/lib/utils";
 import {
   Loader2,
   Check,
-  Ticket,
+  Coins,
   Crown,
 } from "lucide-react";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import { formatFractional, fmtMs } from "./shop-shared";
+
+/** Событие считает в билетах, игроку — золото ×100 (ПРАВИЛА §8.61). */
+const gold = (tickets: number) => formatFractional(goldForEarnedTickets(tickets));
 import { FarmTooltip } from "./FarmTooltip";
 import { TicketNftCard } from "./TicketNftCard";
 
@@ -64,14 +68,14 @@ export function TicketEventCard({
     <div className="card-cv rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <div className="flex items-baseline gap-2">
-          <Ticket className="h-5 w-5 self-center text-gold" />
+          <Coins className="h-5 w-5 self-center text-gold" />
           <span className="font-display text-2xl font-bold text-gradient-gold sm:text-3xl">
-            +{formatFractional(e.rewardTickets)}{" "}
+            +{gold(e.rewardTickets)}{" "}
             <span className="text-xl">{t("mynfts.per_24h")}</span>
           </span>
           {e.nComplete > 1 && (
             <span className="text-xs text-muted-foreground">
-              × {e.nComplete} = {formatFractional(e.rewardTickets * e.nComplete)}
+              × {e.nComplete} = {gold(e.rewardTickets * e.nComplete)}
               {t("mynfts.per_24h")}
             </span>
           )}
@@ -132,15 +136,15 @@ export function TicketEventCard({
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="text-muted-foreground">{t("mynfts.accrued_label")}</span>
             <span className="font-mono font-bold text-gold">
-              +{formatFractional(liveAccrued)}{" "}
-              <span className="text-[10px] text-muted-foreground">{t("mynfts.max_suffix", { n: formatFractional(e.maxAccrual) })}</span>
+              +{gold(liveAccrued)}{" "}
+              <span className="text-[10px] text-muted-foreground">{t("mynfts.max_suffix", { n: gold(e.maxAccrual) })}</span>
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-border/40">
             <div className={cn("h-full transition-all", fillPct >= 100 ? "bg-gradient-to-r from-amber-400 to-amber-300" : "bg-gradient-to-r from-gold/70 to-gold")} style={{ width: `${fillPct}%` }} />
           </div>
           <div className="text-[10px] text-muted-foreground">
-            {t("mynfts.speed_label")}: +{formatFractional(Math.floor(e.ratePerHour * 100) / 100)} {t("mynfts.rate_buffer_interval", { h: Math.round(e.capHours) })}
+            {t("mynfts.speed_label")}: +{gold(Math.floor(e.ratePerHour * 100) / 100)} {t("mynfts.rate_buffer_interval", { h: Math.round(e.capHours) })}
           </div>
         </div>
       )}
@@ -154,7 +158,7 @@ export function TicketEventCard({
         {allOwned && liveCanClaim && (
           <button onClick={() => claim.mutate(e.id)} disabled={claimPending} className="inline-flex w-full items-center justify-center gap-2 rounded-xl gradient-gold px-4 py-2.5 text-sm font-bold uppercase tracking-wider text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-60">
             {claimPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            {t("mynfts.claim_word")} · +{formatFractional(liveAccrued)}
+            {t("mynfts.claim_word")} · +{gold(liveAccrued)}
           </button>
         )}
         {allOwned && !liveCanClaim && minClaimSecLeft > 0 && (

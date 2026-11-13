@@ -1,6 +1,9 @@
 import { convertRuleForChipLevel } from "@/lib/heroLevels";
-/** Exclude the exact equipped copy across every owned hero before grouping. */
-export function freeArtifactGroups<T extends { id: string; kind: string; templateId: string }>(
+/** Exclude the exact equipped copy across every owned hero before grouping.
+ *  Разная прочность — разные плитки: у каждой своя полоса износа. */
+export function freeArtifactGroups<
+  T extends { id: string; kind: string; templateId: string; durability?: number | null; enchantPct?: number | null },
+>(
   items: T[],
   heroes: { equipped?: unknown }[],
   rewardItemId?: string,
@@ -13,7 +16,12 @@ export function freeArtifactGroups<T extends { id: string; kind: string; templat
   const groups = new Map<string, { sample: T; count: number }>();
   for (const item of items) {
     if (item.kind !== "artifact" || worn.has(item.id)) continue;
-    const key = item.id === rewardItemId ? `reward:${item.id}` : item.templateId || item.id;
+    const key =
+      item.id === rewardItemId
+        ? `reward:${item.id}`
+        : item.enchantPct != null
+          ? `ench:${item.id}` // зачарованный — своей плиткой (§8.87)
+          : `${item.templateId || item.id}|${item.durability ?? 100}`;
     const group = groups.get(key);
     if (group) group.count++;
     else groups.set(key, { sample: item, count: 1 });

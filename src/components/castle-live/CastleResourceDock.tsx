@@ -2,25 +2,30 @@ import { useEffect, useRef, useState } from "react";
 import { useResources } from "@/lib/hooks/useResources";
 import "./castle-resource-dock.css";
 
+// Золота здесь нет (§8.66, дизайн Ангелины): оно в шапке замка рядом с «+»
+// покупки. Остальные запасы — как были.
 const RESOURCE_ITEMS = [
   { key: "wood", ru: "Дерево", en: "Wood", icon: "wood" },
   { key: "stone", ru: "Камень", en: "Stone", icon: "stone" },
-  { key: "gold", ru: "Золото", en: "Gold", icon: "gold" },
   { key: "diamonds", ru: "Кристаллы", en: "Crystals", icon: "crystal" },
 ] as const;
 
 type ResourceKey = (typeof RESOURCE_ITEMS)[number]["key"];
 
+/** Дроби — вниз до целого (владелец, 21.10.2026): 548,62 → 548. */
+const whole = (value: number) => Math.floor(value + 1e-9);
+
 function compactAmount(value: number, ru: boolean) {
-  if (value < 1_000) return value.toLocaleString(ru ? "ru-RU" : "en-US");
-  if (value < 1_000_000) {
-    const thousands = value / 1_000;
+  const v = whole(value);
+  if (v < 1_000) return v.toLocaleString(ru ? "ru-RU" : "en-US");
+  if (v < 1_000_000) {
+    const thousands = Math.floor(v / 100) / 10;
     const amount =
-      thousands < 100 ? thousands.toFixed(1).replace(/\.0$/, "") : String(Math.round(thousands));
+      thousands < 100 ? thousands.toFixed(1).replace(/\.0$/, "") : String(Math.floor(thousands));
     return `${amount}${ru ? "к" : "k"}`;
   }
-  const millions = value / 1_000_000;
-  return `${millions < 100 ? millions.toFixed(1).replace(/\.0$/, "") : Math.round(millions)}${ru ? "М" : "M"}`;
+  const millions = Math.floor(v / 100_000) / 10;
+  return `${millions < 100 ? millions.toFixed(1).replace(/\.0$/, "") : Math.floor(millions)}${ru ? "М" : "M"}`;
 }
 
 export function CastleResourceDock({ ru }: { ru: boolean }) {
@@ -70,7 +75,7 @@ export function CastleResourceDock({ ru }: { ru: boolean }) {
               aria-label={
                 value === undefined
                   ? `${name}: ${resources.isError ? (ru ? "ошибка загрузки" : "loading error") : ru ? "загрузка" : "loading"}`
-                  : `${name}: ${value.toLocaleString(ru ? "ru-RU" : "en-US")}`
+                  : `${name}: ${whole(value).toLocaleString(ru ? "ru-RU" : "en-US")}`
               }
               aria-pressed={selected === item.key}
               disabled={value === undefined}
@@ -99,7 +104,7 @@ export function CastleResourceDock({ ru }: { ru: boolean }) {
             type="button"
             className="castle-resource-dock__exact"
             onClick={() => setSelected(null)}
-            aria-label={`${exactName}: ${exactValue.toLocaleString(ru ? "ru-RU" : "en-US")}. ${ru ? "Скрыть точное количество" : "Hide exact amount"}`}
+            aria-label={`${exactName}: ${whole(exactValue).toLocaleString(ru ? "ru-RU" : "en-US")}. ${ru ? "Скрыть точное количество" : "Hide exact amount"}`}
           >
             {brokenIcons[selectedItem.key] ? (
               <span className="castle-resource-dock__icon-fallback" aria-hidden="true">
@@ -115,7 +120,7 @@ export function CastleResourceDock({ ru }: { ru: boolean }) {
               />
             )}
             <span>{exactName}</span>
-            <strong>{exactValue.toLocaleString(ru ? "ru-RU" : "en-US")}</strong>
+            <strong>{whole(exactValue).toLocaleString(ru ? "ru-RU" : "en-US")}</strong>
             <span aria-hidden="true">×</span>
           </button>
         ) : null}

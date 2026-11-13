@@ -2,7 +2,7 @@
 // что у старого окна энергии (useEnergyPurchase, EnergySubSection,
 // EnergyLikeOfferCard), общие ключи кэша — шапка и Казна видят покупку сразу.
 // Платим только со счёта и игровыми валютами: подпись в кошельке осталась в
-// старом окне на карте.
+// старом окне на карте. Игровая валюта энергопака — золото (бывшие билеты, §8.61).
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listEnergyPacksPublic, buyEnergyPackViaTickets } from "@/server/api/energyPacks";
@@ -13,8 +13,9 @@ import { getEnergySubOffers } from "@/server/api/energy-sub/tiers";
 import { buyEnergySub } from "@/server/api/energy-sub/buy";
 import { myLikeBalance } from "@/server/api/likes";
 import { ACC_BALANCES_KEY, useAccountBalances } from "@/lib/hooks/useAccountBalances";
-import { TICKETS_KEY, useTickets } from "@/lib/hooks/useTickets";
+import { RESOURCES_KEY, useResources } from "@/lib/hooks/useResources";
 import { newOpId } from "@/lib/opId";
+import { useEntryRules } from "@/hooks/useEntryRules";
 import { likesCard, packCard, subSaving, type PackCard, type PayOpt } from "./energyOffers";
 
 /** Тот же ключ, что у EnergySubSection: витрина подписки одна на приложение. */
@@ -25,7 +26,8 @@ const LIKES_KEY = ["my-like-balance"];
 
 const AFTER_BUY = [
   ["my-energy"],
-  TICKETS_KEY,
+  // Золото — вместо билетов (§8.61): шапка и док ресурсов видят трату сразу.
+  RESOURCES_KEY,
   LIKES_KEY,
   ["my-darai-balance"],
   PACKS_KEY,
@@ -45,24 +47,23 @@ export function useEnergyBuy(open: boolean) {
   const like = useQuery({ queryKey: LIKE_OFFER_KEY, queryFn: () => getEnergyLikeOffer(), enabled: open });
   const subs = useQuery({ queryKey: ESUB_KEY, queryFn: () => getEnergySubOffers(), enabled: open, staleTime: 60_000 });
   const likes = useQuery({ queryKey: LIKES_KEY, queryFn: () => myLikeBalance(), staleTime: 30_000 });
-  const tickets = useTickets();
+  const resources = useResources();
   const account = useAccountBalances();
+  // §8.127: без настоящего Telegram звёзд среди способов оплаты нет.
+  const { stars, googleOnly } = useEntryRules();
 
   const cards = useMemo<PackCard[]>(() => {
-    const list = (packs.data?.packs ?? []).map(packCard).filter((c) => c.game || c.others.length);
+    const list = (packs.data?.packs ?? []).map((p) => packCard(p, stars)).filter((c) => c.game || c.others.length);
     const l = likesCard(like.data);
     return [...(l ? [l] : []), ...list].sort((a, b) => a.amount - b.amount);
-  }, [packs.data, like.data]);
+  }, [packs.data, like.data, stars]);
 
   const tiers = useMemo(() => (subs.data?.visible ? subs.data.tiers : []), [subs.data]);
   const savings = useMemo(() => tiers.map((t) => subSaving(t, cards)), [tiers, cards]);
 
   /** Сколько есть у игрока того, чем он платит. null — ещё не знаем. */
   const balanceOf = (o: PayOpt): number | null => {
-    if (o.method === "tickets") {
-      const t = tickets.data as { availableRaw?: number; available?: number } | undefined;
-      return t ? Number(t.availableRaw ?? t.available ?? 0) : null;
-    }
+    if (o.method === "gold") return resources.data ? Number(resources.data.gold ?? 0) : null;
     if (o.method === "likes") return likes.data ? Number(likes.data.available ?? 0) : null;
     if (account.isFetching && !account.data) return null;
     const rows = Array.isArray(account.data?.balances) ? account.data.balances : null;
@@ -75,16 +76,20 @@ export function useEnergyBuy(open: boolean) {
    * Ключ операции — один на экран подтверждения: и повтор транспорта, и
    * повторное нажатие после обрыва связи не спишут дважды.
    */
-  const pay = async (o: PayOpt, opId: string = newOpId()): Promise<void> => {
+  const pay = async (o: PayOpt, opId: string = newOpId()): Promise<{ subId: string } | null> => {
     const h = o.how;
     try {
-      if (h.kind === "tickets") await buyEnergyPackViaTickets({ data: { packId: h.packId } });
+      if (h.kind === "gold") await buyEnergyPackViaTickets({ data: { packId: h.packId, gold: true } });
       else if (h.kind === "likes") await buyEnergyForLikes({ data: { expectedPrice: h.expected } });
       else if (h.kind === "account")
         await buyEnergyPackFromAccount({ data: { packId: h.packId, symbol: h.symbol, payKind: h.payKind, opId } });
       else if (h.kind === "usd")
         await buyEnergyPackForUsd({ data: { packId: h.packId, token: h.token, shown: o.price, opId } });
-      else await buyEnergySub({ data: { tierId: h.tierId, token: h.token, expected: o.price, opId } });
+      else {
+        const result = await buyEnergySub({ data: { tierId: h.tierId, token: h.token, expected: o.price, opId } });
+        return { subId: result.subId };
+      }
+      return null;
     } finally {
       for (const key of AFTER_BUY) void qc.invalidateQueries({ queryKey: [...key], refetchType: "all" });
     }
@@ -104,10 +109,12 @@ export function useEnergyBuy(open: boolean) {
     void like.refetch();
   };
   return {
-    cards, tiers, mine: subs.data?.visible ? subs.data.mine : [], savings, status, sectionStatus, retry,
+    cards, tiers, mine: subs.data?.visible ? subs.data.mine : [], analyticsId: subs.data?.analyticsId ?? null,
+    savings, status, sectionStatus, retry,
     retryPacks: () => void packs.refetch(),
     retrySubs: () => void subs.refetch(),
     retryLike: () => void like.refetch(),
-    balanceOf, pay, account,
+    balanceOf, pay, account, stars, googleOnly,
   };
 }
+

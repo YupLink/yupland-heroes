@@ -89,14 +89,15 @@ export const swapHeroInTavern = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
-        // heroId — у героя с экземпляром; templateId — у спящего, которого
-        // ещё ни разу не качали и не ставили основным.
+        // heroId — у героя с экземпляром; itemId — копия спящего, которого ещё
+        // ни разу не качали и не ставили основным (templateId — старый клиент).
         heroId: z.string().min(1).optional(),
+        itemId: z.string().min(1).optional(),
         templateId: z.string().min(1).optional(),
         q: z.number().int(),
         r: z.number().int(),
       })
-      .refine((v) => !!v.heroId || !!v.templateId, { message: "Не выбран герой" })
+      .refine((v) => !!v.heroId || !!v.itemId || !!v.templateId, { message: "Не выбран герой" })
       .parse(d),
   )
   .handler(async ({ data }) => {
@@ -109,7 +110,7 @@ export const swapHeroInTavern = createServerFn({ method: "POST" })
     const list = await walletList(wallet);
     // Спящему героя-предмету экземпляр заводим здесь: сама проверка владения
     // сидит в пробуждении (предмет обязан лежать в инвентаре игрока).
-    const heroId = await tavernHeroInstanceId(wallet, data.heroId, data.templateId);
+    const heroId = await tavernHeroInstanceId(wallet, data.heroId, data.templateId, data.itemId);
     // Спрашиваем ровно этого героя, а не весь список: у игрока их могут быть
     // сотни, и «не нашёлся в первых шестидесяти» выглядело бы как чужой герой.
     const own = (await mcpExec(

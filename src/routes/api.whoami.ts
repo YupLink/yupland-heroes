@@ -33,11 +33,9 @@ export const Route = createFileRoute("/api/whoami")({
         const url = new URL(request.url);
         const tgParam = url.searchParams.get("tg_id");
         if (tgParam) {
-          const secret = process.env.CRON_SECRET;
-          const auth = request.headers.get("authorization");
-          if (!secret || auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
+          const { cronDenied } = await import("@/server/cronAuth");
+          const denied = await cronDenied(request);
+          if (denied) return denied;
           const tgId = Number(tgParam);
           if (!Number.isInteger(tgId) || tgId <= 0) return new Response("bad tg_id", { status: 400 });
           return Response.json(await byTelegram(tgId), NO_STORE);

@@ -19,6 +19,19 @@ export function closeAuction(): void {
   window.dispatchEvent(new CustomEvent(CLOSE));
 }
 
+/** Ссылка «сразу в окно аукционов» (кнопка анонса в боте): /chips?auction=1. */
+export const AUCTION_LINK_PARAM = "auction";
+
+/** Пришли по ссылке на аукцион? Да — убрать метку из адреса (обновление страницы не откроет снова). */
+export function takeAuctionLink(): boolean {
+  if (typeof window === "undefined") return false;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has(AUCTION_LINK_PARAM)) return false;
+  url.searchParams.delete(AUCTION_LINK_PARAM);
+  window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  return true;
+}
+
 /** Подписка на открытие/закрытие. Возвращает отписку. */
 export function onAuctionToggle(cb: (open: boolean, tab: AuctionTab) => void): () => void {
   if (typeof window === "undefined") return () => {};

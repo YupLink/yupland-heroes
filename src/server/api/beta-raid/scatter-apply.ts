@@ -26,6 +26,7 @@ import { dropVoidCache } from "./voidCells";
 import { dropFleeCache } from "./flee-cells";
 import { readDaraiHold, settleDaraiHold } from "./map-darai-hold";
 import { FREE_CELL, type CellRef } from "./scatter-cells";
+import { mobGroundSql, spawnGuardedSql } from "./mob-ground";
 import { cellInGroup } from "./pile-kind";
 import type { ScatterGroup } from "@/lib/raid/scatterPlan";
 
@@ -131,6 +132,8 @@ export async function removeKilled(mapId: string, group: ScatterGroup): Promise<
  * Беглец и игрок проверяются в источнике (EXISTS по FREE_CELL): их не выразить
  * условием над одной строкой клетки. Окно между снимком и записью там
  * миллисекундное, а цена ошибки мелкая — объект встанет поверх гриба.
+ * Босс и убегающее существо на дорогу и жилу не встают и здесь (mob-ground):
+ * запись решает последней.
  */
 function placeSql(mapId: string, part: Placement[]): string {
   const m = sqlStr(mapId);
@@ -145,7 +148,8 @@ function placeSql(mapId: string, part: Placement[]): string {
        SELECT ${m}, v.q, v.r, v.object_id, v.object_config, now()
          FROM (VALUES ${values}) AS v(q, r, object_id, object_config)
         WHERE EXISTS (SELECT 1 FROM yuplink.raid_map_cells c
-                       WHERE c.map_id = ${m} AND c.q = v.q AND c.r = v.r AND ${FREE_CELL})
+                       WHERE c.map_id = ${m} AND c.q = v.q AND c.r = v.r AND ${FREE_CELL}
+                         AND (NOT ${spawnGuardedSql("v.object_id")} OR ${mobGroundSql("c")}))
        ON CONFLICT (map_id, q, r) DO UPDATE
           SET object_id = EXCLUDED.object_id, object_config = EXCLUDED.object_config,
               saved_at = now()

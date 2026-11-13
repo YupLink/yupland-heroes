@@ -6,10 +6,11 @@ import {
   Gift,
   Loader2,
   Sparkles,
-  Ticket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { goldForTicketPrice } from "@/lib/ticketGold";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { NftImage } from "@/components/NftImage";
 import type { listMyNfts } from "@/server/api/user-drops";
 import { TiersBreakdown } from "./shop-shared";
@@ -26,13 +27,13 @@ export { ComboOfferCard } from "./ComboOfferCard";
 
 const DropOfferCard = memo(function DropOfferCard({
   group,
-  ticketsAvailable,
+  goldAvailable,
   claiming,
   onClaim,
   onHide,
 }: {
   group: Group;
-  ticketsAvailable: number;
+  goldAvailable: number;
   claiming: boolean;
   onClaim: () => void;
   onHide: () => void;
@@ -42,7 +43,7 @@ const DropOfferCard = memo(function DropOfferCard({
     return (
       <ComboOfferCard
         group={group}
-        ticketsAvailable={ticketsAvailable}
+        goldAvailable={goldAvailable}
         claiming={claiming}
         onClaim={onClaim}
         onHide={onHide}
@@ -51,10 +52,11 @@ const DropOfferCard = memo(function DropOfferCard({
   }
   const readyItems = group.items.filter((i) => i.status === "ready");
   const ready = readyItems.length;
-  const ticketCost = group.ticketCost ?? 1;
+  // Цена клейма хранится в билетах, платится золотом ×500 (ПРАВИЛА §8.61).
+  const goldCost = goldForTicketPrice(group.ticketCost ?? 1);
   const claimable = group.freeClaim
     ? ready
-    : Math.min(ready, Math.floor(ticketsAvailable / Math.max(1, ticketCost)));
+    : Math.min(ready, Math.floor(goldAvailable / Math.max(1, goldCost)));
   const previewItem = readyItems[0] ?? group.items[0];
 
   const rewardPerOne =
@@ -81,8 +83,8 @@ const DropOfferCard = memo(function DropOfferCard({
               <Gift className="h-3 w-3" /> free
             </span>
           ) : (
-            <span className="inline-flex items-center gap-0.5 rounded-md bg-gold/90 px-1.5 py-0.5 text-[10px] font-bold text-gold-foreground" title={t("mynfts.paid_claim_per_nft", { n: ticketCost })}>
-              <Ticket className="h-3 w-3" />×{ticketCost}
+            <span className="inline-flex items-center gap-0.5 rounded-md bg-gold/90 px-1.5 py-0.5 text-[10px] font-bold text-gold-foreground" title={t("mynfts.paid_claim_per_nft", { n: goldCost })}>
+              <ResourceGlyph kind="gold" className="h-3 w-3" />{goldCost}
             </span>
           )}
           <button type="button" onClick={(e) => { e.stopPropagation(); onHide(); }} title={t("mynfts.hide_drop")} className="flex h-6 w-6 items-center justify-center rounded-md bg-black/60 text-white/80 backdrop-blur-sm transition hover:bg-black/80 hover:text-white">
@@ -107,7 +109,7 @@ const DropOfferCard = memo(function DropOfferCard({
         )}
         {!group.freeClaim && (
           <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/5 px-1.5 py-0.5 text-[9px] font-medium text-gold">
-            <Ticket className="h-2.5 w-2.5" /> {t("mynfts.tix_short", { n: ready * ticketCost })}
+            <ResourceGlyph kind="gold" className="h-2.5 w-2.5" /> {t("mynfts.tix_short", { n: ready * goldCost })}
           </div>
         )}
       </div>
@@ -115,7 +117,7 @@ const DropOfferCard = memo(function DropOfferCard({
       <div className="mt-2">
         {claimable === 0 ? (
           <Link to="/referrals" className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border bg-secondary/40 px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground" title={t("mynfts.not_enough_tickets_hint")}>
-            <Ticket className="h-3 w-3" /> {t("mynfts.need_tickets")}
+            <ResourceGlyph kind="gold" className="h-3 w-3" /> {t("mynfts.need_tickets")}
           </Link>
         ) : (
           <button onClick={onClaim} disabled={claiming} className="inline-flex w-full items-center justify-center gap-1 rounded-lg gradient-gold px-2 py-2 text-[11px] font-bold text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-60 disabled:hover:scale-100">

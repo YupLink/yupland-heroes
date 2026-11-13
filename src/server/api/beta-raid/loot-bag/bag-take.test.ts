@@ -4,6 +4,7 @@
 // закопанный не забирается; метки происхождения едут в рюкзак. Порции вида
 // уходят от той, что сгорит раньше; откат возвращает в те же порции.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { TTL, countOf, db, md5, packOf, resetDb, seedBag } from "./bag.fake";
 import { runCmd } from "./bag.fake-cmd";
 
@@ -32,6 +33,7 @@ const takeFn = mod.takeFromLootBag as unknown as (a: { data: unknown }) => Promi
 
 const BANANA = "custom:cst_banana";
 const BAG = `lb_${md5("seed")}`;
+const BANANAS = CELL_SIZE + 10; // в мешочке — две ячейки: полная и ещё 10
 let n = 0;
 /** Нажатие игрока `wallet`: стопка с количеством или «Забрать всё». */
 const take = (wallet: string, o: { stackKey?: string; qty?: number; op?: string } = {}) => {
@@ -71,14 +73,14 @@ beforeEach(() => {
     // Обе клетки — соседи мешочка (5,7).
     db.pos.set(w, { q, r });
   }
-  seed(30);
+  seed(BANANAS);
 });
 
 describe("забрать", () => {
-  it("всё — сколько влезет (ячейка = 20 шт.), остаток в мешочке, метка «с мобов» едет", async () => {
+  it(`всё — сколько влезет (ячейка = ${CELL_SIZE} шт.), остаток в мешочке, метка «с мобов» едет`, async () => {
     const res = await take("w1");
-    expect(res.taken).toEqual([{ stackKey: BANANA, qty: 20 }]);
-    expect(packOf("h1").get(BANANA)).toMatchObject({ count: 20, marks: { mob: 20 } });
+    expect(res.taken).toEqual([{ stackKey: BANANA, qty: CELL_SIZE }]);
+    expect(packOf("h1").get(BANANA)).toMatchObject({ count: CELL_SIZE, marks: { mob: CELL_SIZE } });
     expect(left()).toMatchObject({ count: 10, marks: { mob: 10 } });
     expect(db.events).toEqual(["5,7"]);
   });
@@ -86,7 +88,7 @@ describe("забрать", () => {
   it("стопку с количеством (окно QtyDialog) — ровно просьбу", async () => {
     await take("w1", { stackKey: BANANA, qty: 7 });
     expect(packOf("h1").get(BANANA)?.count).toBe(7);
-    expect(left()?.count).toBe(23);
+    expect(left()?.count).toBe(BANANAS - 7);
   });
 
   it("забрали всё — мешочек пуст и больше не виден никому", async () => {
@@ -101,9 +103,9 @@ describe("забрать", () => {
     db.accounts.set("w1", "acc1");
     db.heroes.set("w1", { heroId: "h1", capacity: 1, potionCapacity: 0 });
     db.pos.set("w1", { q: 5, r: 6 });
-    seed(30, { mob: 0, mine: 0, field: 0, loot: 12 });
+    seed(BANANAS, { mob: 0, mine: 0, field: 0, loot: 12 });
     await take("w1");
-    // 18 безымянных ушли первыми, из 12 собранных — 2; в мешочке — 10 собранных.
+    // Безымянные (ячейка без двух) ушли первыми, из 12 собранных — 2; в мешочке — 10 собранных.
     expect(packOf("h1").get(BANANA)?.marks).toMatchObject({ loot: 2 });
     expect(left()).toMatchObject({ count: 10, marks: { loot: 10 } });
   });
@@ -116,7 +118,7 @@ describe("гонки и повторы", () => {
     }
     const out = await Promise.allSettled([take("w1"), take("w2")]);
     const got = (packOf("h1").get(BANANA)?.count ?? 0) + (packOf("h2").get(BANANA)?.count ?? 0);
-    expect(got).toBe(30);
+    expect(got).toBe(BANANAS);
     expect(left()?.count).toBe(0);
     expect(out.filter((o) => o.status === "fulfilled").length).toBeGreaterThanOrEqual(1);
   });
@@ -125,37 +127,37 @@ describe("гонки и повторы", () => {
     const first = await take("w1", { op: "same-op-1" });
     const again = await take("w1", { op: "same-op-1" });
     expect(again).toEqual(first);
-    expect(packOf("h1").get(BANANA)?.count).toBe(20);
+    expect(packOf("h1").get(BANANA)?.count).toBe(CELL_SIZE);
     expect(left()?.count).toBe(10);
   });
 
   it("повтор моста (ответ снятия потерян после записи) — снято и положено один раз", async () => {
     db.replay = 1;
     await take("w1");
-    expect(packOf("h1").get(BANANA)?.count).toBe(20);
+    expect(packOf("h1").get(BANANA)?.count).toBe(CELL_SIZE);
     expect(left()?.count).toBe(10);
   });
 
   it("рюкзак не принял (место заняли) — снятое назад в мешочек с метками, отказ игроку", async () => {
     packOf("h1").set("custom:cst_other", {
-      count: 20,
+      count: CELL_SIZE,
       marks: { mob: 0, mine: 0, field: 0, loot: 0 },
       wear: 0,
     });
     db.staleBag = true;
     await expect(take("w1")).rejects.toThrow("market.backpack_need");
-    expect(left()).toMatchObject({ count: 30, marks: { mob: 30 } });
+    expect(left()).toMatchObject({ count: BANANAS, marks: { mob: BANANAS } });
     expect(packOf("h1").has(BANANA)).toBe(false);
     // Повтор того же нажатия после отката — второй попытки нет.
     const op = [...db.ops.keys()][0].split(":")[2];
     await expect(take("w1", { op })).rejects.toThrow();
-    expect(left()?.count).toBe(30);
+    expect(left()?.count).toBe(BANANAS);
   });
 
   it("ответ выдачи потерян, но выдача прошла — «забор» это видит: назад не возвращаем", async () => {
     db.loseDeposit = 1;
     await take("w1");
-    expect(packOf("h1").get(BANANA)?.count).toBe(20);
+    expect(packOf("h1").get(BANANA)?.count).toBe(CELL_SIZE);
     expect(left()?.count).toBe(10);
   });
 });
@@ -164,7 +166,7 @@ describe("отказы", () => {
   it("закопанный мешочек не забирается", async () => {
     db.bags.get(BAG)!.buried = true;
     await expect(take("w1")).rejects.toThrow("bag.buried");
-    expect(left()?.count).toBe(30);
+    expect(left()?.count).toBe(BANANAS);
   });
 
   it("не вплотную — «подойди»", async () => {
@@ -175,7 +177,7 @@ describe("отказы", () => {
   it("без выбранного героя — отказ, мешочек цел", async () => {
     db.heroes.delete("w1");
     await expect(take("w1")).rejects.toThrow("market.backpack_no_hero");
-    expect(left()?.count).toBe(30);
+    expect(left()?.count).toBe(BANANAS);
   });
 
   it("срок вышел — мешочка нет", async () => {
@@ -191,7 +193,7 @@ describe("порции со своим сроком", () => {
       q: 5,
       r: 7,
       items: [
-        { stackKey: BANANA, count: 30, expiresAt: db.now + TTL, marks: { mob: 0, mine: 0, field: 0, loot: 30 } },
+        { stackKey: BANANA, count: BANANAS, expiresAt: db.now + TTL, marks: { mob: 0, mine: 0, field: 0, loot: BANANAS } },
         { stackKey: BANANA, count: 5, expiresAt: db.now + HOUR, marks: { mob: 5, mine: 0, field: 0, loot: 0 } },
       ],
     });
@@ -201,7 +203,7 @@ describe("порции со своим сроком", () => {
     await take("w1", { stackKey: BANANA, qty: 8 });
     const bag = db.bags.get(BAG)!;
     expect(bag.items.find((p) => p.expiresAt === db.now + HOUR)?.count).toBe(0);
-    expect(bag.items.find((p) => p.expiresAt === db.now + TTL)?.count).toBe(27);
+    expect(bag.items.find((p) => p.expiresAt === db.now + TTL)?.count).toBe(BANANAS - 3);
     expect(packOf("h1").get(BANANA)).toMatchObject({ count: 8, marks: { mob: 5, loot: 3 } });
   });
 
@@ -209,14 +211,14 @@ describe("порции со своим сроком", () => {
     twoPortions();
     db.now += HOUR + 1;
     const res = await take("w1");
-    expect(res.taken).toEqual([{ stackKey: BANANA, qty: 20 }]);
+    expect(res.taken).toEqual([{ stackKey: BANANA, qty: CELL_SIZE }]);
     expect(countOf(db.bags.get(BAG), BANANA)).toBe(10);
   });
 
   it("рюкзак не принял — снятое вернулось в те же порции, с их сроками и метками", async () => {
     twoPortions();
     packOf("h1").set("custom:cst_other", {
-      count: 20,
+      count: CELL_SIZE,
       marks: { mob: 0, mine: 0, field: 0, loot: 0 },
       wear: 0,
     });
@@ -228,8 +230,8 @@ describe("порции со своим сроком", () => {
       marks: { mob: 5 },
     });
     expect(bag.items.find((p) => p.expiresAt === db.now + TTL)).toMatchObject({
-      count: 30,
-      marks: { loot: 30 },
+      count: BANANAS,
+      marks: { loot: BANANAS },
     });
   });
 

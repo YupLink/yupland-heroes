@@ -2,7 +2,7 @@
 //
 // Когда баланс DARAI на системном коше darai_gdrop.near пересекает
 // очередной миллиард (1 млрд, 2 млрд, …) — шлём ЗАМЕТНОЕ TG-уведомление
-// ТОЛЬКО владельцу (owner.example.tg), по требованию «оповести только меня».
+// ТОЛЬКО владельцу (TEAM_OWNER_WALLET), по требованию «оповести только меня».
 //
 // Дедуп: в settings храним последний уже-оповещённый миллиард
 // (darai_treasury_notified_billions). Шлём один раз на каждый рубеж —
@@ -13,11 +13,11 @@
 
 import { pg } from "./db/pg";
 import { tgSendMessage, WEBAPP_URL } from "./tg";
+import { teamOwnerWallet } from "./team";
 
 const DARAI_FT_CONTRACT = "darai.tkn.near";
 const DARAI_DECIMALS = 18;
 const TREASURY_WALLET = "darai_gdrop.near";
-const OWNER_WALLET = "owner.example.tg";
 const SETTINGS_KEY = "darai_treasury_notified_billions";
 const BILLION = 1_000_000_000;
 
@@ -45,11 +45,13 @@ async function fetchTreasuryDaraiHuman(): Promise<number> {
   }
 }
 
-/** telegram_id владельца: env OWNER_TG_ID (жёсткий канал) → users по кошельку. */
+/** telegram_id владельца: env OWNER_TG_ID (жёсткий канал) → users по кошельку владельца (server/team). */
 async function resolveOwnerTgId(): Promise<number | null> {
   const envId = Number((process.env.OWNER_TG_ID ?? "").trim());
   if (Number.isFinite(envId) && envId > 0) return envId;
-  const row = await pg.users.findOne({ wallet: OWNER_WALLET });
+  const ownerWallet = teamOwnerWallet();
+  if (!ownerWallet) return null;
+  const row = await pg.users.findOne({ wallet: ownerWallet });
   return typeof row?.telegram_id === "number" ? row.telegram_id : null;
 }
 
@@ -107,7 +109,7 @@ export async function checkDaraiMilestone(
       });
     } else {
       console.warn(
-        "[daraiMilestone] telegram_id владельца не найден (owner.example.tg / OWNER_TG_ID)"
+        "[daraiMilestone] telegram_id владельца не найден (TEAM_OWNER_WALLET / OWNER_TG_ID)"
       );
     }
     // Фиксируем достигнутый рубеж — даже если отправка не удалась, чтобы

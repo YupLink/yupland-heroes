@@ -46,6 +46,39 @@ export const oblivionStateSql = (account: string): string =>
       AND expires_at > now();`;
 
 /**
+ * Запись броска в строку эффекта — одна строка на `<from>` (CTE-ключ выдачи):
+ * пустой `from` — ничего не пишем. Общая для выдачи (oblivionGrantSql) и
+ * зелий (potion-drink-sql: весь набор и все эффекты — одним оператором).
+ * Лок `oblivion:<аккаунт>` берёт вызывающий, отдельным оператором до WITH.
+ * null — пустой бросок, выдавать нечего.
+ */
+export function oblivionPutSql(
+  o: { id: string; account: string; level: number; minutes: number; source: string | null },
+  from: string,
+): string | null {
+  const mode = oblivionRollMode(o.level, o.minutes);
+  if (!mode) return null;
+  const src = o.source ? sqlStr(o.source.slice(0, 80)) : "NULL";
+  const kind = mode === "lv" ? LV : mode === "lvt" ? LVT : TIME;
+  const value = mode === "time" ? 1 : Math.max(1, Math.floor(o.level));
+  const until =
+    mode === "lv" ? FOREVER : `now() + interval '${Math.max(1, Math.floor(o.minutes))} minutes'`;
+  const upd =
+    mode === "lv"
+      ? `value = ${CARRY}, expires_at = EXCLUDED.expires_at`
+      : mode === "lvt"
+        ? `value = ${CARRY}, expires_at = ${EXTEND}`
+        : `value = 1, expires_at = ${EXTEND}`;
+  return `INSERT INTO yuplink.beta_raid_player_effects AS e
+        (id, account_id, kind, value, expires_at, created_at, source)
+      SELECT ${sqlStr(o.id)}, ${sqlStr(o.account)}, ${kind}, ${value}, ${until},
+             now(), ${src}
+        FROM ${from}
+      ON CONFLICT (account_id, kind) WHERE kind NOT LIKE 'buff_%' DO UPDATE
+        SET ${upd}, source = COALESCE(EXCLUDED.source, e.source)`;
+}
+
+/**
  * Выдать бросок: заряды (minutes = 0), заряды со сроком или безлимит на время
  * (level = 0). Заряды прибавляются к живым, срок продлевает остаток — то же
  * правило, что у дебаффов и иммунитета (applyPlayerEffect). Пустой бросок —
@@ -60,19 +93,8 @@ export function oblivionGrantSql(o: {
   ref: string;
   source: string | null;
 }): string | null {
-  const mode = oblivionRollMode(o.level, o.minutes);
-  if (!mode) return null;
-  const src = o.source ? sqlStr(o.source.slice(0, 80)) : "NULL";
-  const kind = mode === "lv" ? LV : mode === "lvt" ? LVT : TIME;
-  const value = mode === "time" ? 1 : Math.max(1, Math.floor(o.level));
-  const until =
-    mode === "lv" ? FOREVER : `now() + interval '${Math.max(1, Math.floor(o.minutes))} minutes'`;
-  const upd =
-    mode === "lv"
-      ? `value = ${CARRY}, expires_at = EXCLUDED.expires_at`
-      : mode === "lvt"
-        ? `value = ${CARRY}, expires_at = ${EXTEND}`
-        : `value = 1, expires_at = ${EXTEND}`;
+  const put = oblivionPutSql(o, "mark");
+  if (!put) return null;
   return `${oblivionLockSql(o.account)}
     WITH mark AS (
       INSERT INTO yuplink.raid_backpack_op (op) VALUES (${sqlStr(o.ref)})
@@ -80,13 +102,7 @@ export function oblivionGrantSql(o: {
       RETURNING 1
     ),
     put AS (
-      INSERT INTO yuplink.beta_raid_player_effects AS e
-        (id, account_id, kind, value, expires_at, created_at, source)
-      SELECT ${sqlStr(o.id)}, ${sqlStr(o.account)}, ${kind}, ${value}, ${until},
-             now(), ${src}
-        FROM mark
-      ON CONFLICT (account_id, kind) WHERE kind NOT LIKE 'buff_%' DO UPDATE
-        SET ${upd}, source = COALESCE(EXCLUDED.source, e.source)
+      ${put}
       RETURNING 1
     )
     SELECT row_to_json(_t.*) AS _row FROM (

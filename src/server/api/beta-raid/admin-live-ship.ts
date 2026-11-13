@@ -9,10 +9,11 @@ import { nanoid } from "nanoid";
 import { mcpExec } from "../../db/mcpClient";
 import { requireAdmin } from "../../auth";
 import { sqlStr } from "../raid-shared";
-import { godMapId } from "./god-map";
 import { shipMaxHp } from "@/lib/shipHealth";
 import { WATER_SQL } from "./ships";
+import { bridgeCellSql } from "./cell-sql";
 import { publishRaid } from "../../raidLive";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 const cell = { q: z.number().int(), r: z.number().int() };
 
@@ -36,8 +37,7 @@ export const adminPlaceShip = createServerFn({ method: "POST" })
     z.object({ ...cell, kind: z.enum(["small", "big"]).default("small") }).parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     const rows = (await mcpExec(
       // Полный запас хода: у большого судна он вдвое больше малого.
       `INSERT INTO yuplink.beta_raid_ship (id, map_id, q, r, owner, kind, hp)
@@ -47,6 +47,7 @@ export const adminPlaceShip = createServerFn({ method: "POST" })
          JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
         WHERE c.map_id = ${sqlStr(mapId)} AND c.q = ${data.q} AND c.r = ${data.r}
           AND ${WATER_SQL}
+          AND NOT ${bridgeCellSql("c")}
        RETURNING id;`,
       { wrapJsonCte: true },
     )) as Array<{ id: string }>;
@@ -85,8 +86,7 @@ export const adminRemoveShip = createServerFn({ method: "POST" })
     z.object({ ...cell, kind: z.enum(["small", "big"]).optional() }).parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     const at = (alias: string) =>
       `${alias}.map_id = ${sqlStr(mapId)} AND ${alias}.q = ${data.q} AND ${alias}.r = ${data.r}`;
     const remainingBigSql = (extra: string) =>

@@ -6,13 +6,14 @@
 //
 // Устаревание считается по источникам, а не «всё заново»: журнал маски
 // тумана даёт номера свежеразведанных клеток, дельта карты — новые колонки
-// местности/дорог/декора, которые сравниваем со старыми по номерам клеток. Сетка
-// или купол сменились, включили раскрытие — сбрасываем всё.
+// местности/дорог/декора и список жил, которые сравниваем со старыми по номерам
+// клеток. Сетка или купол сменились, включили раскрытие — сбрасываем всё.
 import type { MapStore } from "./mapStore";
 import type { FogMask } from "./fogMask";
 import type { WorldView } from "./mapIndex";
 import { R, ROAD_DIRS } from "./hexGeometry";
 import { RIBBON_DRAW_H, RIBBON_DRAW_W } from "./roadRibbonCache";
+import { veinDiff } from "./veinPatch";
 
 /** Сторона куска в мировых пикселях (~8 колонок × 9 рядов гексов). */
 export const CHUNK = 384;
@@ -97,7 +98,7 @@ export class ChunkIndex {
     return cleared;
   }
 
-  /** Дельта карты: сравнить колонки местности, декора и дорог по номерам клеток. */
+  /** Дельта карты: сравнить колонки местности, декора, дорог и жилы по номерам клеток. */
   private diffColumns(prev: MapStore, next: MapStore): void {
     const a = prev.packed;
     const b = next.packed;
@@ -105,6 +106,9 @@ export class ChunkIndex {
     if (a.t !== b.t || a.terrainIds !== b.terrainIds) {
       for (let i = 0; i < n; i++) if (a.t[i] !== b.t[i]) this.dropCell(next, i);
     }
+    // Жила (veinPatch): игрок положил её дельтой — печётся в кусок, как местность.
+    if (a.veins !== b.veins)
+      for (const i of veinDiff(a.veins, b.veins)) if (i < n) this.dropCell(next, i);
     if (a.dec !== b.dec || a.decorationIds !== b.decorationIds) {
       // Старое дерево тоже торчало вверх — ронять куски над клеткой и когда
       // декор сняли, а не только когда поставили.

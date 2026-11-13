@@ -10,10 +10,11 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
 import { mcpExec } from "../db/mcpClient";
-// Рейды открыты всем админам (в т.ч. Ярославу = darai_collection.near), не только
+// Рейды открыты всем админам (в т.ч. партнёру), не только
 // владельцу: гейт requireAdmin (ADMIN_WALLETS), а не requirePayoutsAdmin.
 import { requireAdmin } from "../auth";
 import { assertNoUsdtFillers } from "@/lib/usdtBanned"; // ПРАВИЛА §8.49а
+import { assertRewardMoneyRight } from "./reward-money";
 import { parseAbilities } from "./beta-raid/abilities";
 import { dropFleeCache } from "./beta-raid/flee-cells";
 import { parseFiller, type Filler } from "./reward-filler";
@@ -23,6 +24,12 @@ import type {
   PgRaidBossTemplate,
   PgChipBoss,
 } from "../db/pg";
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
+import {
+  assertBossTemplateFree,
+  requireCatalogEditor,
+  withoutMoney,
+} from "@/server/api/catalog-auth";
 
 // ── Дефолты рейд-боссов (в тон недельному боссу; своя копия, чтобы не связываться
 //    с модулем boss.ts). Балансовые числа боевого босса НЕ трогаем. ──
@@ -242,11 +249,8 @@ export const adminUpsertRaidLocation = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     requireAdmin();
     assertNoUsdtFillers(data.rewardConfig);
-    const cfg = data.rewardConfig ?? {
-      fillers: [],
-      split: [...DEFAULT_SPLIT],
-      packs: [],
-    };
+    const cfg = data.rewardConfig ?? { fillers: [], split: [...DEFAULT_SPLIT], packs: [] };
+    await assertRewardMoneyRight(cfg, "raid_location", data.id);
     if (data.id) {
       await pg.raidLocation.update(
         { id: data.id },
@@ -306,11 +310,7 @@ export const adminUpsertRaidBoss = createServerFn({ method: "POST" })
     requireAdmin();
     assertNoUsdtFillers(data.rewardConfig);
     const now = new Date().toISOString();
-    const cfg = data.rewardConfig ?? {
-      fillers: [],
-      split: [...DEFAULT_SPLIT],
-      packs: [],
-    };
+    const cfg = data.rewardConfig ?? { fillers: [], split: [...DEFAULT_SPLIT], packs: [] };
     // Узел + его босс.
     let nodeId = data.nodeId ?? null;
     let bossId: string | null = null;
@@ -318,6 +318,7 @@ export const adminUpsertRaidBoss = createServerFn({ method: "POST" })
       const node = await pg.raidNode.findOne({ id: nodeId });
       bossId = node?.boss_id ?? null;
     }
+    await assertRewardMoneyRight(cfg, "chip_boss", bossId);
     if (bossId) {
       // правим существующего рейд-босса (баланс-константы фикс, HP по админу).
       // current_hp сбрасываем ТОЛЬКО если реально сменился max_hp — иначе правка
@@ -439,6 +440,7 @@ export const adminUpsertRaidNode = createServerFn({ method: "POST" })
     requireAdmin();
     assertNoUsdtFillers(data.chestConfig);
     const cfg = data.type === "fork" ? null : data.chestConfig ?? null;
+    await assertRewardMoneyRight(cfg, "raid_node", data.nodeId);
     if (data.nodeId) {
       await pg.raidNode.update(
         { id: data.nodeId },
@@ -698,7 +700,7 @@ export const adminSetForkImage = createServerFn({ method: "POST" })
 
 export const adminListBossTemplates = createServerFn({ method: "GET" }).handler(
   async () => {
-    requireAdmin();
+    await requireDesigner();
     const { data } = await pg.raidBossTemplate
       .raw()
       .select("*")
@@ -778,11 +780,15 @@ export const adminSaveBossTemplate = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    // Админ — как было; право catalogs — без денег (catalog-auth).
+    const actor = await requireCatalogEditor();
     const isUpdate = !!data.id;
     const id = data.id ?? `rbt_${nanoid(8)}`;
+    if (isUpdate) await assertBossTemplateFree(actor, id);
+    data.rewardConfig = withoutMoney(actor, data.rewardConfig);
     // USDT в награде шаблона — обещание каждого живого босса этого шаблона (§8.49а).
     if (isUpdate) await assertBossTemplateUsdt(id, data.rewardConfig?.fillers);
+    await assertRewardMoneyRight(data.rewardConfig, "raid_boss_template", data.id);
     const row: Record<string, unknown> = {
       name: data.name,
       image_url: data.imageUrl ?? null,

@@ -16,7 +16,6 @@ import { pg, sb } from "../db/pg";
 import type {
   PgLikePromocode,
   PgLikePromocodeActivation,
-  PgLikePurchase,
   PgLikeShopOffer,
   PgNftLikeCandidate,
   PgUserLikeBalance,
@@ -25,7 +24,9 @@ import { getCurrentWallet, isAdminWallet } from "../auth";
 import { assertNotMaintenance } from "../maintenance";
 import { setAccountLikes } from "../accountBalances";
 import { normalizeTitle } from "@/lib/normalizeTitle";
+import { secureRandom } from "@/lib/secureRandom";
 import { guessGate } from "../rateGate";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 
 // ──────── Settings helpers ────────
 
@@ -726,6 +727,8 @@ export const listLikeShopOffers = createServerFn({ method: "GET" }).handler(asyn
   return ((data ?? []) as PgLikeShopOffer[]).map((o) => ({
     id: o.id,
     tickets: o.tickets,
+    // Цена в билетах платится золотом ×500 (§8.61) — столько и спишется.
+    gold: goldForTicketPrice(o.tickets),
     likes: o.likes,
     priceStars: o.price_stars,
     sortOrder: o.sort_order,
@@ -734,93 +737,9 @@ export const listLikeShopOffers = createServerFn({ method: "GET" }).handler(asyn
   }));
 });
 
-// ──────── Public: купить пакет лайков ────────
+// ──────── Public: купить пакет лайков — за золото (§8.61), likes-gold-buy.ts ────────
 
-export const buyLikePackage = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) =>
-    z
-      .object({
-        offerId: z.string().min(1),
-        quantity: z.number().int().min(1).max(50).default(1),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data }) => {
-    const wallet = getCurrentWallet();
-    if (!wallet) throw new Error("Кошелёк не подключён");
-    assertNotMaintenance(wallet);
-    const user = await pg.users.findOne({ wallet });
-    if (!user?.telegram_id) {
-      throw new Error("Нужна привязка Telegram");
-    }
-
-    const offer = await pg.likeShopOffers.findOne({
-      id: data.offerId,
-      active: true,
-    });
-    if (!offer) throw new Error("Пакет не найден или отключён");
-
-    const qty = data.quantity;
-    const totalTickets = offer.tickets * qty;
-    const totalLikes = offer.likes * qty;
-
-    // Билетный баланс — derived через computeTickets.
-    const { computeTickets } = await import("./user");
-    const tix = await computeTickets(wallet);
-    if (tix.availableRaw < totalTickets) {
-      throw new Error(
-        `Не хватает билетов (есть ${tix.availableRaw.toFixed(2)}, нужно ${totalTickets})`,
-      );
-    }
-
-    // ИДЕМПОТЕНТНОСТЬ (анти-двойное-списание): сначала пишем РАСХОД с
-    // детерминированным ключом (wallet+offer+3-сек бакет). Двойной тап в
-    // пределах 3с → тот же ключ → UNIQUE-конфликт → отклоняем ДО начисления
-    // лайков. Раньше ключ имел случайный nanoid → покупка не была идемпотентной,
-    // двойной тап списывал билеты дважды (главный источник скрытого минуса).
-    const bucket = Math.floor(Date.now() / 3000);
-    const purchase: PgLikePurchase = {
-      id: `lp_${nanoid(10)}`,
-      wallet,
-      tickets_spent: totalTickets,
-      likes_added: totalLikes,
-      idempotency_key: `lp:${wallet}:${data.offerId}:${bucket}`,
-      created_at: new Date().toISOString(),
-    };
-    try {
-      await pg.likePurchases.insert(purchase);
-      if (totalTickets > 0) {
-        const { moveTickets } = await import("./tickets-ledger");
-        await moveTickets({
-          wallet,
-          delta: -totalTickets,
-          kind: "like_purchase",
-          ref: purchase.idempotency_key,
-        });
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/23505|duplicate|unique/i.test(msg)) {
-        throw new Error("Покупка уже обрабатывается — подожди секунду и обнови баланс");
-      }
-      throw e;
-    }
-
-    // Расход записан (идемпотентно) — начисляем лайки.
-    const buyerAccount = await likeAccountId(wallet);
-    await addLikes(buyerAccount, totalLikes, "lifetime_purchased");
-    const bal = await likeRow(buyerAccount);
-    const { invalidateTicketsCache } = await import("./user");
-    invalidateTicketsCache(wallet);
-
-    return {
-      ok: true,
-      likesAdded: totalLikes,
-      ticketsSpent: totalTickets,
-      newLikeBalance: Number(bal.available) + totalLikes,
-      remainingTickets: tix.availableRaw - totalTickets,
-    };
-  });
+export { buyLikePackage } from "./likes-gold-buy";
 
 // ──────── Admin: CRUD для пакетов лайков ────────
 
@@ -1153,7 +1072,7 @@ export const redeemLikePromocode = createServerFn({ method: "POST" })
     const likes =
       rewardMin === rewardMax
         ? rewardMin
-        : Math.floor(Math.random() * (rewardMax - rewardMin + 1)) + rewardMin;
+        : Math.floor(secureRandom() * (rewardMax - rewardMin + 1)) + rewardMin;
 
     // Проверка лимита
     if (promo.limit_type === "uses") {
@@ -1287,8 +1206,8 @@ export const adminCreateLikePromocode = createServerFn({ method: "POST" })
     if (!wallet || !isAdminWallet(wallet)) throw new Error("Только админ");
     const code = normalizePromocode(data.code);
     if (code.length < 1) throw new Error("Пустой код");
-    const existing = await pg.likePromocodes.findOne({ code });
-    if (existing) throw new Error("Такой промокод уже существует");
+    const { codeTaken } = await import("./promo/promo-taken"); // и среди новых промокодов
+    if (await codeTaken(code)) throw new Error("Такой промокод уже существует");
     const row: PgLikePromocode = {
       id: `pc_${nanoid(10)}`,
       code,

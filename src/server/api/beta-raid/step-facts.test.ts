@@ -2,8 +2,15 @@
 // (decorBlocksSql уже решил), объект — только живой И существующий.
 // Тестов на stepBlockedReason не было вовсе; правило про мёртвые ссылки
 // (декор 20.09, объекты раньше) закрепляем таблицей.
-import { describe, expect, it } from "vitest";
-import { stepBlockedReason, type StepFacts } from "./step-facts";
+import { describe, expect, it, vi } from "vitest";
+
+const db = vi.hoisted(() => ({ sql: "", rows: [] as unknown[] }));
+vi.mock("../../db/mcpClient", () => ({
+  mcpExec: async (sql: string) => ((db.sql = sql), db.rows),
+}));
+
+import { loadStepFacts, stepBlockedReason, type StepFacts } from "./step-facts";
+import { mineCellSql } from "./mine-cell-sql";
 
 const base: StepFacts = {
   terrainId: "terrain_x",
@@ -17,6 +24,7 @@ const base: StepFacts = {
   water: false,
   ocean: false,
   cost: 1,
+  mine: false,
   berth: null,
   gate: null,
 };
@@ -51,6 +59,29 @@ describe("step-facts.stepBlockedReason", () => {
     expect(stepBlockedReason(defeated, "w")).toBeNull();
   });
 
+  it("шахта — стена для всех (§8.59 п. 9): отказ ключом словаря", () => {
+    expect(stepBlockedReason({ ...base, mine: true }, "w")).toBe("braid.mine_blocked");
+    // Не зависит от того, кто идёт: в отличие от купола, обхода нет ни у кого.
+    expect(stepBlockedReason({ ...base, mine: true }, null)).toBe("braid.mine_blocked");
+  });
+
+  it("сойти С шахты можно: решает только целевая клетка", () => {
+    // Факты описывают клетку, КУДА шагают; клетка под ногами в них не участвует.
+    expect(stepBlockedReason(base, "w")).toBeNull();
+  });
+
+  it("порядок отказов: местность → туман → декор → шахта → объект", () => {
+    const wall = {
+      ...base,
+      decorationBlocks: true,
+      mine: true,
+      objectId: "chest:a",
+      objectKnown: true,
+    };
+    expect(stepBlockedReason(wall, "w")).toMatch(/преграда/);
+    expect(stepBlockedReason({ ...wall, decorationBlocks: false }, "w")).toBe("braid.mine_blocked");
+  });
+
   it("порядок отказов: местность → туман → декор → объект", () => {
     const all = {
       ...base,
@@ -62,5 +93,13 @@ describe("step-facts.stepBlockedReason", () => {
     };
     expect(stepBlockedReason(all, "w")).toBe("braid.void_blocked");
     expect(stepBlockedReason({ ...all, voidFog: false }, "w")).toMatch(/преграда/);
+  });
+
+  it("loadStepFacts спрашивает шахту тем же признаком (mineCellSql) и отдаёт флаг", async () => {
+    db.rows = [{ terrain_id: "t", cost: 1, mine: true }];
+    expect((await loadStepFacts("m", 1, 2))?.mine).toBe(true);
+    expect(db.sql).toContain(`${mineCellSql("c")} AS mine`);
+    db.rows = [{ terrain_id: "t", cost: 1, mine: null }];
+    expect((await loadStepFacts("m", 1, 2))?.mine).toBe(false);
   });
 });

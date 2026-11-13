@@ -70,7 +70,7 @@ export function WalletHero({
           <div className="animate-hero-sheen absolute inset-y-0 -left-1/4 w-1/3 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
         </div>
         <img
-          src="/yuplink-logo.png"
+          src="/yuplink-logo.webp"
           alt=""
           aria-hidden="true"
           draggable={false}

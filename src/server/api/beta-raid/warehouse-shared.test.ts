@@ -4,6 +4,7 @@
 // теряет метки, и забранное оттуда приходит безымянным. Базы нет: фейк
 // (src/test/warehouseFake.ts) считает тем же SQL, что уйдёт в Postgres.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { dec, decNum } from "@/test/numeric";
 import { K, db, item, resetDb, shelf } from "@/test/warehouseFake";
 import { invariantBroken, totalMarks } from "@/test/warehouseFakeOps";
@@ -54,14 +55,16 @@ describe("общая полка — не «моя»: метки сбрасыва
   });
 
   it("«Сам»: личной — помеченное первым, не влезшее на общую — теряет метки", async () => {
-    // Личная полка на две ячейки, одна занята молоком: своему товару — 20 штук.
-    db.shelves.push({ ...shelf("own", "acc1", "20"), key: "custom:milk" });
-    db.bp.set(K, item("30", { loot: "25", mob: "1" }));
-    expect(await put({ qty: 30 })).toMatchObject({ own: 20, shared: 10 });
-    expect(ownRow()).toMatchObject({ count: dec("20"), ...m("1", "0", "0", "19") });
+    // Личная полка на две ячейки, одна занята молоком: своему товару — одна ячейка.
+    const cell = `${CELL_SIZE}`;
+    db.shelves.push({ ...shelf("own", "acc1", cell), key: "custom:milk" });
+    db.bp.set(K, item(`${CELL_SIZE + 10}`, { loot: `${CELL_SIZE + 5}`, mob: "1" }));
+    expect(await put({ qty: CELL_SIZE + 10 })).toMatchObject({ own: CELL_SIZE, shared: 10 });
+    const ownLoot = `${CELL_SIZE - 1}`;
+    expect(ownRow()).toMatchObject({ count: dec(cell), ...m("1", "0", "0", ownLoot) });
     // 6 собранных не влезли в личное — уехали на общую и стали ничьими.
     expect(sharedRow()).toMatchObject({ count: dec("10"), ...NONE });
-    expect(totalMarks()).toEqual(m("1", "0", "0", "19"));
+    expect(totalMarks()).toEqual(m("1", "0", "0", ownLoot));
     expect(invariantBroken()).toBeNull();
   });
 

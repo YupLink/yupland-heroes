@@ -28,6 +28,7 @@ export type BuildingRow = {
 const KIND_OF: Record<NonNullable<BuildingEffect>, WorldMarkKind> = {
   mine: "mine",
   market: "shop",
+  building_shop: "shop",
   town_hall: "town",
   field: "field",
   warehouse: "warehouse",
@@ -46,6 +47,12 @@ const KIND_OF: Record<NonNullable<BuildingEffect>, WorldMarkKind> = {
   sign: "sign",
   // Своей метки у казино пока нет: на карте мира оно в «прочих».
   casino: "other",
+  buckwheat: "other",
+  // Лавка зачарования — тоже в «прочих», своей метки владелец не просил.
+  enchant: "other",
+  hero_enchant: "other",
+  // Генератор артефактов (§8.122) — в «прочих», своей метки владелец не просил.
+  art_gen: "other",
 };
 
 /** Вид метки по эффекту постройки; без поведения — «прочие». */

@@ -63,3 +63,22 @@ export function overlayRunners(opts: {
 
   return { cells, runnerKeys, defeatedKeys };
 }
+
+/**
+ * Чьи шаблоны нужны словарю объектов карты: всё, что показано на клетках, и
+ * беглецы, спрятанные под живым верхним.
+ *
+ * Спрятанного в колонках не видно, и раньше его шаблон в словарь не попадал,
+ * если такого же не было на виду где-то ещё. Добили моба — под ним открылся
+ * заяц, а нарисовать его нечем: безымянный тёмный жетон без кнопки «забрать»
+ * до F5. Под куполом беглецов не отдаём — словарь не должен выдавать зону.
+ */
+export function dictObjectIds(
+  shown: string[],
+  runners: RunnerRow[],
+  hidden: Set<string>,
+): string[] {
+  const out = [...shown];
+  for (const run of runners) if (!hidden.has(`${run.q},${run.r}`)) out.push(run.objectId);
+  return out;
+}

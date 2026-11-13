@@ -31,6 +31,8 @@ export type ClientSample = {
   conn: string | null;
   /** Размер видимой области, CSS px. */
   screen: string;
+  /** Сборка клиента (8 знаков git-SHA): после выката старый код живёт до перезахода. */
+  build?: string;
   frames: {
     n: number;
     /** Из них — кадры при движении камеры/героя. */

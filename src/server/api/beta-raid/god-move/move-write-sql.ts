@@ -18,14 +18,20 @@
 //    журнал склада; ключи суточного тика («tick:<день>:<карта>:<q>,<r>:…»)
 //    переписываются на новую клетку, иначе второй тик в те же сутки съел бы и
 //    произвёл заново;
+//  • raid_town_cash, raid_town_cash_move — касса ратуши и её журнал (11.11: касса
+//    оставалась на старой клетке); забытая касса на цели — отказ (move-target-sql);
 //  • raid_warehouse_slot — склад (личные полки и общая);
 //  • raid_field_worker — герои на грядке;
 //  • raid_mine_state, raid_mine_guard, raid_mine_capture_log — шахта, её
-//    охрана (если на клетке нет магического сундука — тогда охрана его) и
-//    журнал «шахту отбили»;
+//    охрана (если на клетке нет магического сундука — тогда охрана его),
+//    журнал «шахту отбили» и замок шахтёра raid_mine_ward (11.11);
 //  • hero_swap_log — заряды таверны (считаются по её клетке);
 //  • trade_journal — сделки самой постройки (TRADE_MOVES): у склада по месту
-//    «турнир → золото» узнаёт, чьё купленное лежит на полке.
+//    «турнир → золото» узнаёт, чьё купленное лежит на полке;
+//  • raid_hero_rite и raid_enchant_spell — обряды улучшения героев и заклинания
+//    лавки зачарования (владелец 11.11: «чтобы переезжали вместе со зданием» —
+//    оставались на старой клетке, окно писало «Обрядов нет»). Забытые на цели
+//    от убранной там постройки снимаются, если едут свои — списки не смешиваются.
 // На клетке остаётся то, что лежит на ЗЕМЛЕ, а не в постройке: сундуки,
 // мешочки, ямка, объект с боевым состоянием, беглец, корабль, игроки, туман.
 import { sqlStr } from "@/server/api/raid-shared";
@@ -78,6 +84,17 @@ const shift = (name: string, table: string, o: BuildingHop, extra = ""): string 
         WHERE ${atCell("x", o.mapId, o.from)}${extra}
        RETURNING 1
      )`;
+
+/** Список настроек по клетке (обряды, заклинания): свои едут, сироты цели — снять. */
+const listSql = (name: string, table: string, o: BuildingHop): string => {
+  const own = `SELECT 1 FROM yuplink.${table} s WHERE ${atCell("s", o.mapId, o.from)}`;
+  return `${name}_drop AS (
+       DELETE FROM yuplink.${table} x USING go
+        WHERE ${atCell("x", o.mapId, o.to)} AND EXISTS (${own})
+       RETURNING 1
+     ),
+     ${shift(name, table, o)}`;
+};
 
 /** Тир: на цели — тир переезжающей (поверх сироты), прежний — снять. */
 const tierSql = (o: BuildingHop): string => {
@@ -160,13 +177,18 @@ export function writeCtes(o: BuildingHop): string {
     shift("towns", "raid_town", o),
     shift("stock", "raid_town_stock", o),
     stockLogSql(o),
+    shift("cash", "raid_town_cash", o),
+    shift("cash_log", "raid_town_cash_move", o),
     shift("wh", "raid_warehouse_slot", o),
     shift("workers", "raid_field_worker", o),
     shift("mines", "raid_mine_state", o),
     shift("guard", "raid_mine_guard", o, notChestGuard),
     shift("mine_log", "raid_mine_capture_log", o),
+    shift("ward", "raid_mine_ward", o),
     shift("swaps", "hero_swap_log", o),
     shift("trades", "trade_journal", o, ` AND x.source IN (${tradeSources()})`),
+    listSql("rites", "raid_hero_rite", o),
+    listSql("spells", "raid_enchant_spell", o),
   ].join(",\n     ");
 }
 
@@ -185,11 +207,18 @@ export const WRITE_NAMES = [
   "towns",
   "stock",
   "stock_log",
+  "cash",
+  "cash_log",
   "wh",
   "workers",
   "mines",
   "guard",
   "mine_log",
+  "ward",
   "swaps",
   "trades",
+  "rites_drop",
+  "rites",
+  "spells_drop",
+  "spells",
 ] as const;

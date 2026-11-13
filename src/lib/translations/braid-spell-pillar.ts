@@ -31,6 +31,10 @@ export const dict: Record<string, Record<Lang, string>> = {
     ru: "Призывает ближайший свободный корабль к герою",
     en: "Summons the nearest free ship to the hero",
   },
+  "spellpillar.kind_big_ship_create": {
+    ru: "Спускает большой корабль на воду рядом с героем, и в океан тоже",
+    en: "Launches a big ship next to the hero, ocean included",
+  },
   "spellpillar.kind_ship_create": {
     ru: "Спускает новый корабль на воду рядом с героем",
     en: "Launches a new ship on the water next to the hero",

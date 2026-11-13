@@ -78,6 +78,7 @@ export function SpellPillarCard({
         {!spell.learned && (
           <button
             type="button"
+            data-spell-pillar-learn
             onClick={onLearn}
             disabled={busy || !spell.canLearn}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl gradient-gold px-4 py-2.5 text-sm font-bold text-gold-foreground disabled:opacity-50"
@@ -105,3 +106,4 @@ export function SpellPillarCard({
     </div>
   );
 }
+

@@ -29,7 +29,8 @@ export type TownOp = "buy" | "sell" | "both";
 /** Один товар города. id стабильный — по нему привязан склад в raid_town_stock. */
 export interface TownGood {
   id: string;
-  kind: MarketKind;
+  /** Дерево для посадки (tree) — товар только витрины лавки, не ратуши. */
+  kind: Exclude<MarketKind, "tree" | "rock" | "land" | "vein" | "recipe" | "building">;
   /** Для resource — 'stone'/'wood'/'diamonds'/'token'/…; для прочих — id шаблона. */
   refId: string | null;
   /** Для kind='resource' && refId='token' — символ токена. Иначе null. */
@@ -41,6 +42,11 @@ export interface TownGood {
   consumePerResident: number;
   /** Сколько город производит за сутки (пока не голодает). */
   producePerDay: number;
+  /**
+   * Своя наценка продажи игроку, % — поверх правила города (владелец, 05.11.2026:
+   * ресы для портала «в несколько раз дороже для покупки, чем для продажи»). Нет — как у города.
+   */
+  markupPct?: number;
 }
 
 export interface TownConfig {
@@ -54,21 +60,24 @@ export interface TownConfig {
 const MARKET_KIND_ENUM = z.enum(["resource", "pack", "hero", "art", "boss", "custom"]);
 const OP_ENUM = z.enum(["buy", "sell", "both"]);
 
-const goodSchema = z.object({
-  id: z.string().min(1),
-  kind: MARKET_KIND_ENUM,
-  refId: z.string().nullable(),
-  token: z.string().nullable(),
-  operation: OP_ENUM,
-  marketPrice: z.number().min(0),
-  /** Старые форматы нормы (на город, на жителя, ×дней) — читаем молча, не храним. */
-  normDays: z.number().min(0).nullable().optional(),
-  normPerResident: z.number().min(0).optional(),
-  norm: z.number().min(0).optional(),
-  consumePerResident: z.number().min(0),
-  producePerDay: z.number().min(0),
-  // USDT товаром ратуши — живые деньги из воздуха: продал одному, купил другой (§8.49а).
-}).refine((g) => !isUsdt(g.token) && !(g.kind !== "resource" && isUsdt(g.refId)), USDT_BANNED_MSG);
+const goodSchema = z
+  .object({
+    id: z.string().min(1),
+    kind: MARKET_KIND_ENUM,
+    refId: z.string().nullable(),
+    token: z.string().nullable(),
+    operation: OP_ENUM,
+    marketPrice: z.number().min(0),
+    /** Старые форматы нормы (на город, на жителя, ×дней) — читаем молча, не храним. */
+    normDays: z.number().min(0).nullable().optional(),
+    normPerResident: z.number().min(0).optional(),
+    norm: z.number().min(0).optional(),
+    consumePerResident: z.number().min(0),
+    producePerDay: z.number().min(0),
+    markupPct: z.number().min(0).max(100_000).nullable().optional(),
+    // USDT товаром ратуши — живые деньги из воздуха: продал одному, купил другой (§8.49а).
+  })
+  .refine((g) => !isUsdt(g.token) && !(g.kind !== "resource" && isUsdt(g.refId)), USDT_BANNED_MSG);
 
 export const townConfigSchema = z.object({
   name: z.string().max(200).optional(),
@@ -95,6 +104,7 @@ function normalizeGood(g: RawGood): TownGood {
     marketPrice: g.marketPrice,
     consumePerResident: g.consumePerResident,
     producePerDay: g.producePerDay,
+    ...(g.markupPct != null ? { markupPct: g.markupPct } : {}),
   };
 }
 

@@ -8,22 +8,26 @@ import { customAlphabet } from "nanoid";
 import { pg } from "../db/pg";
 import { getCurrentWallet, getSessionTgId, setCurrentWallet } from "../auth";
 import { mcpExec } from "../db/mcpClient";
+import { isGoogleTg, isWalletTg } from "@/lib/auth/googleTg";
 
 // Читаемый код без неоднозначных символов (0/O, 1/I/L), 8 знаков (~31^8 ≈ 8·10^11).
 const genCode = customAlphabet("ABCDEFGHJKMNPQRSTUVWXYZ23456789", 8);
 const TTL_MS = 5 * 60 * 1000;
 
-// Грубый глобальный троттл на погашение — бэкстоп от перебора (нет per-IP инфры).
-// 8-знач. код + ~40 попыток/мин делают брутфорс невозможным.
+// Перебор кодов: 10 попыток в минуту с одного адреса (guessGate) и общий
+// бэкстоп. Раньше был только общий порог 40/мин — один перебирающий закрывал
+// вход по коду всем (аудит 11.11.2026). 8-знач. код перебором не взять и так.
 let redeemWindowStart = 0;
 let redeemCount = 0;
-const REDEEM_MAX_PER_MIN = 40;
+const REDEEM_MAX_PER_MIN = 600;
 
 /** Создать код для входа в браузере. Требует активной сессии (ты уже вошёл). */
 export const createLoginCode = createServerFn({ method: "POST" }).handler(
   async () => {
     const wallet = getCurrentWallet();
     if (!wallet || !getSessionTgId()) throw new Error("Сначала войди в приложении через Telegram");
+    (await import("../walletOnlySession")).assertNotWalletOnly();
+    await assertGoogleOpen(getSessionTgId());
     const me = (await pg.users.findOne({ wallet })) as {
       account_id?: string | null;
     } | null;
@@ -49,7 +53,14 @@ export const redeemLoginCode = createServerFn({ method: "POST" })
     z.object({ code: z.string().min(4).max(12) }).parse(d)
   )
   .handler(async ({ data }) => {
-    // Троттл-бэкстоп от перебора кодов.
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
+    const ip =
+      getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() ||
+      getRequestHeader("x-real-ip") ||
+      "-";
+    const { guessGate } = await import("../rateGate");
+    await guessGate("login_code", ip);
+    // Общий бэкстоп от перебора с многих адресов.
     const now = Date.now();
     if (now - redeemWindowStart > 60_000) {
       redeemWindowStart = now;
@@ -74,6 +85,15 @@ export const redeemLoginCode = createServerFn({ method: "POST" })
     if (!owner || !Number.isSafeInteger(tg) || tg <= 0) {
       throw new Error("Кошелёк не привязан к Telegram — войди через Telegram");
     }
+    await assertGoogleOpen(tg);
     setCurrentWallet(rows[0].wallet, tg);
     return { ok: true as const, wallet: rows[0].wallet };
   });
+
+/** Google-игрок, пока вход через Google закрыт (§8.91), по коду не входит — только из админки. */
+async function assertGoogleOpen(tg: number | null): Promise<void> {
+  // Вход по кошельку (06.11.2026) открыт — код на другое устройство можно.
+  if (!isGoogleTg(tg) || isWalletTg(tg)) return;
+  const { readGoogleSettings } = await import("./google-login/googleStore");
+  if (!(await readGoogleSettings()).open) throw new Error("google.closed");
+}

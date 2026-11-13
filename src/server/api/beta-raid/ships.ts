@@ -6,10 +6,12 @@
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { getNeighbors } from "./helpers";
-import { CELL_COST_JOIN, CELL_COST_SQL, WATER_SQL, OCEAN_SQL, decorBlocksSql } from "./cell-sql";
+import { CELL_COST_JOIN, CELL_COST_SQL, WATER_SQL, OCEAN_SQL, decorBlocksSql, bridgeCellSql } from "./cell-sql";
 import { VOID_SQL } from "./voidCells";
 import { objectKnownSql } from "./boss-snapshot";
 import { DOOR_SQL } from "./gate-sql";
+import { mineCellSql } from "./mine-cell-sql";
+import { blastedHereSql } from "./ship-blasted";
 
 // Вода и цена клетки переехали в cell-sql.ts — их читает ещё и шаг по карте.
 // Реэкспорт оставлен: WATER_SQL импортируют отсюда (admin-live-ship.ts).
@@ -27,9 +29,13 @@ export type ShipRow = {
 };
 
 /**
- * Клетка занята тем, что мешает встать: глухой туман, декор-преграда или
- * живой объект. Туман здесь закрывает разом и спуск корабля, и сход на
+ * Клетка занята тем, что мешает встать: глухой туман, декор-преграда, шахта
+ * или живой объект. Туман здесь закрывает разом и спуск корабля, и сход на
  * берег — обе выборки ходят через этот предикат.
+ *
+ * Шахта (§8.59 п. 9) — тем же правилом, что у шага (mineCellSql): сход на
+ * берег, выход из портала, клетка у замка и спасение застрявших иначе ставили
+ * бы героя туда, куда пешком не пускают.
  *
  * VOID_SQL читает колонку КЛЕТКИ (`c.void_fog`), а не тип местности: в обеих
  * выборках ниже таблица клеток названа `c`, а join шаблона `t` остаётся ради
@@ -52,6 +58,7 @@ export type ShipRow = {
 export const blockedSql = (bypassVoid: boolean) => `(${bypassVoid ? "false" : VOID_SQL}
    OR ${DOOR_SQL("c")}
    OR ${decorBlocksSql("c")}
+   OR ${mineCellSql("c")}
    OR (c.object_id IS NOT NULL AND ${objectKnownSql("c")} AND NOT EXISTS (
          SELECT 1 FROM yuplink.beta_raid_object_hp h
           WHERE h.map_id = c.map_id AND h.q = c.q AND h.r = c.r
@@ -81,6 +88,8 @@ export async function loadShips(mapId: string): Promise<ShipRow[]> {
  * Пустую воду берём в первую очередь, дальше — где судов меньше, чтобы флот
  * расходился по берегу, а не копился в одной клетке. Отказ «нет воды» — только
  * когда рядом нет подходящей воды вовсе.
+ *
+ * Исключение — подбитый корабль (dynamite-08): его клетка занята, туда не ставим.
  */
 export async function freeWaterAround(
   mapId: string,
@@ -100,8 +109,10 @@ export async function freeWaterAround(
       WHERE c.map_id = ${sqlStr(mapId)}
         AND (c.q, c.r) IN (${pairs})
         AND ${WATER_SQL}
+        AND NOT ${bridgeCellSql("c")}
         ${kind === "small" ? `AND NOT ${OCEAN_SQL}` : ""}
         AND NOT ${blockedSql(bypassVoid)}
+        AND NOT ${blastedHereSql("c")}
       ORDER BY (SELECT count(*) FROM yuplink.beta_raid_ship s
                  WHERE s.map_id = c.map_id AND s.q = c.q AND s.r = c.r), c.q, c.r
       LIMIT 1;`,

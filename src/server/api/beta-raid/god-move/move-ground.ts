@@ -10,8 +10,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "@/server/db/mcpClient";
 import { requireAdmin } from "@/server/auth";
-import { godMapId } from "@/server/api/beta-raid/god-map";
 import { atCell } from "@/server/api/beta-raid/god-move/move-where";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 /** Сундук клетки: ref для переноса («magic:<хозяин>» / «plain:<id>»), имя, бугорок. */
 export type GroundChest = { ref: string; magic: boolean; name: string; buried: boolean };
@@ -49,8 +49,7 @@ export function parseGround(raw: Raw | undefined): GroundView {
 export const getAdminCellGround = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ q: z.number().int(), r: z.number().int() }).parse(d))
   .handler(async ({ data }): Promise<GroundView> => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     const at = (a: string) => atCell(a, mapId, data);
     const rows = (await mcpExec(
       `SELECT

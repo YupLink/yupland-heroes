@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { pg } from "../db/pg";
 import { getCurrentWallet, setCurrentWallet } from "../auth";
-import { preferredActiveWallet } from "./user-drops-hallway";
+import { preferredActiveWallet, verifyTelegramInitData } from "./user-drops-hallway";
 
 export const createTgChallenge = createServerFn({ method: "POST" }).handler(async () => {
   const wallet = getCurrentWallet();
@@ -128,53 +128,13 @@ export const loginViaTelegramInitData = createServerFn({ method: "POST" })
     z.object({ initData: z.string().min(20), ref: z.string().max(120).optional() }).parse(d),
   )
   .handler(async ({ data }) => {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) {
-      return tgFail("bot_not_configured");
-    }
-
-    // initData — URL-encoded "k1=v1&k2=v2&hash=H".
-    const params = new URLSearchParams(data.initData);
-    const hash = params.get("hash");
-    if (!hash) {
-      return tgFail("no_hash");
-    }
-    params.delete("hash");
-    // data_check_string: пары key=value, отсортированные по key, через \n.
-    const pairs: string[] = [];
-    params.forEach((v, k) => pairs.push(`${k}=${v}`));
-    pairs.sort();
-    const dataCheckString = pairs.join("\n");
-
-    const { createHmac } = await import("node:crypto");
-    // Mini-App-вариант: secret = HMAC("WebAppData", botToken)
-    const secret = createHmac("sha256", "WebAppData").update(botToken).digest();
-    const expected = createHmac("sha256", secret).update(dataCheckString).digest("hex");
-    if (expected !== hash) {
-      return tgFail("bad_signature");
-    }
-
-    // auth_date — для свежести (≤ 24 часа)
-    const authDate = Number(params.get("auth_date"));
-    if (!authDate || Math.floor(Date.now() / 1000) - authDate > 86400) {
-      return tgFail("stale");
-    }
-
-    // user — JSON-строка с { id, first_name, ... }
-    const userRaw = params.get("user");
-    if (!userRaw) {
-      return tgFail("no_user");
-    }
-    let user: { id?: number; username?: string } = {};
-    try {
-      user = JSON.parse(userRaw);
-    } catch {
-      return tgFail("user_parse");
-    }
-    const telegramId = user.id;
-    if (typeof telegramId !== "number") {
-      return tgFail("no_user_id");
-    }
+    // Подпись проверяет общий помощник: годится любой наш бот (кошелёк
+    // @yuplink_bot, игра @yupland_heroes_bot, прихожая), и он же говорит, какой
+    // именно открыл мини-апку — кошельковый ведёт только в кошелёк.
+    const v = await verifyTelegramInitData(data.initData);
+    if (!v.ok) return tgFail(v.error);
+    const { telegramId, bot } = v;
+    const user = { username: v.username ?? undefined };
 
     // Ищем привязанные wallet'ы этого TG. Если несколько — берём
     // наиболее свежий по telegram_linked_at (или alphabetically).
@@ -186,7 +146,7 @@ export const loginViaTelegramInitData = createServerFn({ method: "POST" })
       // прихожей, а не вход. (Тот же механизм, что и startHallwaySession.)
       const synthetic = `tg${telegramId}`;
       // Реф берём из адреса мини-аппа, а если его нет — из start_param.
-      const refRaw = (data.ref || params.get("start_param") || "").trim();
+      const refRaw = (data.ref || v.startParam || "").trim();
       let created = false;
       try {
         await pg.users.insert({
@@ -212,9 +172,13 @@ export const loginViaTelegramInitData = createServerFn({ method: "POST" })
         const { skipHallwayForNewPlayer } = await import("./hallway-skip");
         await skipHallwayForNewPlayer(synthetic, telegramId);
       }
-      setCurrentWallet(synthetic, telegramId);
-      return { ok: true as const, wallet: synthetic };
+      setCurrentWallet(synthetic, telegramId, { proven: true });
+      return { ok: true as const, wallet: synthetic, bot };
     }
+    // Один аккаунт на Telegram (владелец, 06.11.2026): второй — в архив по правилу базы.
+    await import("../accountArchive")
+      .then((m) => m.oneAccountPerTg(telegramId, "tg-login"))
+      .catch((e) => console.warn("[one-per-tg]", e instanceof Error ? e.message : e));
     rows.sort((a, b) => {
       const ax = a.telegram_linked_at ?? "";
       const bx = b.telegram_linked_at ?? "";
@@ -228,8 +192,8 @@ export const loginViaTelegramInitData = createServerFn({ method: "POST" })
       pool.map((r) => r.wallet),
       pool[0].wallet,
     );
-    setCurrentWallet(wallet, telegramId);
-    return { ok: true as const, wallet };
+    setCurrentWallet(wallet, telegramId, { proven: true });
+    return { ok: true as const, wallet, bot };
   });
 
 /**
@@ -305,9 +269,13 @@ export const loginViaTelegramWidget = createServerFn({ method: "POST" })
         const { skipHallwayForNewPlayer } = await import("./hallway-skip");
         await skipHallwayForNewPlayer(synthetic, telegramId);
       }
-      setCurrentWallet(synthetic, telegramId);
+      setCurrentWallet(synthetic, telegramId, { proven: true });
       return { ok: true as const, wallet: synthetic, newbie: true };
     }
+    // Один аккаунт на Telegram (владелец, 06.11.2026): второй — в архив по правилу базы.
+    await import("../accountArchive")
+      .then((m) => m.oneAccountPerTg(telegramId, "tg-login"))
+      .catch((e) => console.warn("[one-per-tg]", e instanceof Error ? e.message : e));
     rows.sort((a, b) => {
       const ax = a.telegram_linked_at ?? "";
       const bx = b.telegram_linked_at ?? "";
@@ -320,6 +288,6 @@ export const loginViaTelegramWidget = createServerFn({ method: "POST" })
       pool.map((r) => r.wallet),
       pool[0].wallet,
     );
-    setCurrentWallet(wallet, telegramId);
+    setCurrentWallet(wallet, telegramId, { proven: true });
     return { ok: true as const, wallet, newbie: false };
   });

@@ -9,10 +9,12 @@
 // между сообщениями (~50ms = 20/sec). Это в фоне (fire-and-forget из триггеров).
 
 import { pg } from "./db/pg";
+import { isGoogleTg } from "@/lib/auth/googleTg"; // Google-игрокам (id ≥ 2^52) Bot API не зовём
+import { teamOwnerTg, teamPartnerTg, teamTgIds } from "./team";
 
-// Хардкод-получатели уведомления «пул закончился». Это TG-ID людей,
-// которые отвечают за пополнение сервисного кошелька.
-const LOW_BALANCE_RECIPIENTS = [100000002, 100000001];
+// Получатели уведомления «пул закончился» — партнёр и владелец (TG id из env,
+// server/team): они отвечают за пополнение сервисного кошелька.
+const lowBalanceRecipients = (): number[] => teamTgIds(teamPartnerTg(), teamOwnerTg());
 
 // URL Mini App. Используется в inline-кнопках чтобы юзер мог открыть
 // приложение прямо из ответа бота, не выходя в браузер.
@@ -59,12 +61,24 @@ export function openAppButtonWithRef(refParam: string): ReplyMarkup {
 // JSON {ok, result|description}. Для Stars-платежей провайдер НЕ нужен
 // (provider_token=""), это единственный разрешённый способ оплаты цифровых
 // товаров в Telegram.
+//
+// Звёзды идут через игровой бот @yupland_heroes_bot (владелец 02.11.2026: «оплаты будто их берёт
+// YupLand Heroes — звёзды должны идти на тот кош»): счёт выставляет он, ему же приходят
+// pre_checkout_query и successful_payment (api.tg-game-webhook). Счета, выставленные кошельковым
+// @yuplink_bot до 02.11, дообрабатывает он (api.tg-webhook) — отвечать обязан тот же бот.
+export type TgBot = "wallet" | "game";
+
+// Токены — буквально process.env.X: в сборке их подставляет define (vite.config).
+const botToken = (bot: TgBot): string | undefined =>
+  bot === "game" ? process.env.TELEGRAM_GAME_BOT_TOKEN : process.env.TELEGRAM_BOT_TOKEN;
+
 export async function tgApi<T = unknown>(
   method: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  bot: TgBot = "wallet"
 ): Promise<{ ok: boolean; result?: T; description?: string }> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return { ok: false, description: "no TELEGRAM_BOT_TOKEN" };
+  const token = botToken(bot);
+  if (!token) return { ok: false, description: `no token for ${bot} bot` };
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST",
@@ -84,9 +98,9 @@ export async function tgApi<T = unknown>(
   }
 }
 
-/** Создаёт invoice-ссылку для оплаты Stars (XTR). amountStars — целое число
- *  звёзд. payload ≤ 128 байт (наш идентификатор заказа). Открывается на
- *  клиенте через WebApp.openInvoice(link). */
+/** Создаёт invoice-ссылку для оплаты Stars (XTR) от игрового бота — звёзды ложатся на его
+ *  баланс. amountStars — целое число звёзд. payload ≤ 128 байт (наш идентификатор заказа).
+ *  Открывается на клиенте через WebApp.openInvoice(link). */
 export async function createStarsInvoiceLink(opts: {
   title: string;
   description: string;
@@ -102,35 +116,39 @@ export async function createStarsInvoiceLink(opts: {
     currency: "XTR",
     provider_token: "", // Stars — без провайдера
     prices: [{ label: opts.label ?? opts.title, amount: opts.amountStars }],
-  });
+  }, "game");
   return r.ok ? (r.result ?? null) : null;
 }
 
 /** Ответ на pre_checkout_query — ОБЯЗАТЕЛЬНО в течение 10с, иначе платёж
- *  отменяется. ok=false + error_message → показать юзеру причину отказа. */
+ *  отменяется. ok=false + error_message → показать юзеру причину отказа.
+ *  Отвечает тот бот, которому пришёл запрос (чей счёт). */
 export async function answerPreCheckoutQuery(
   id: string,
   ok: boolean,
-  errorMessage?: string
+  errorMessage?: string,
+  bot: TgBot = "wallet"
 ): Promise<boolean> {
   const r = await tgApi("answerPreCheckoutQuery", {
     pre_checkout_query_id: id,
     ok,
     ...(ok ? {} : { error_message: errorMessage ?? "Платёж недоступен" }),
-  });
+  }, bot);
   if (!r.ok) console.error("answerPreCheckoutQuery FAILED", r.description);
   return r.ok;
 }
 
-/** Полный возврат Stars-платежа. Требует telegram_payment_charge_id. */
+/** Полный возврат Stars-платежа. Требует telegram_payment_charge_id; возвращает бот,
+ *  которому заплатили (с 02.11 — игровой). */
 export async function refundStarPayment(
   userId: number,
-  chargeId: string
+  chargeId: string,
+  bot: TgBot = "game"
 ): Promise<boolean> {
   const r = await tgApi("refundStarPayment", {
     user_id: userId,
     telegram_payment_charge_id: chargeId,
-  });
+  }, bot);
   return r.ok;
 }
 
@@ -143,7 +161,7 @@ export async function tgSendMessage(
   } = {}
 ): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return false;
+  if (!token || isGoogleTg(chatId)) return false;
   // Default: прикрепляем openAppButton ко ВСЕМ сообщениям. Без этого
   // Telegram не показывает кнопку «Открыть» в превью списка диалогов.
   // Caller может передать null чтобы убрать кнопку, или свою replyMarkup.
@@ -207,7 +225,8 @@ export async function sendTgMessageToAdmins(
     .filter((n) => Number.isFinite(n) && n > 0);
 
   // 2. Fallback / дополнение: telegram_id юзеров с wallet'ом из ADMIN_WALLETS.
-  const allowlist = (process.env.ADMIN_WALLETS ?? "demo.near,admin.near")
+  // Пустой env — никого (раньше подставлялись чужие demo.near/admin.near).
+  const allowlist = (process.env.ADMIN_WALLETS ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
@@ -248,10 +267,8 @@ export async function tgSendPhoto(
   opts: { replyMarkup?: ReplyMarkup | null } = {}
 ): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) {
-    console.warn("[tgSendPhoto] TELEGRAM_BOT_TOKEN не задан");
-    return false;
-  }
+  if (!token) console.warn("[tgSendPhoto] TELEGRAM_BOT_TOKEN не задан");
+  if (!token || isGoogleTg(chatId)) return false;
   // Default reply_markup — кнопка «Открыть приложение», как у обычных сообщений.
   const replyMarkup =
     opts.replyMarkup === null ? undefined : opts.replyMarkup ?? openAppButton;
@@ -353,7 +370,7 @@ export async function tgSendIfEnabled(
 
 /**
  * Один раз в день (по календарной дате UTC) уведомить «системных» админов
- * (LOW_BALANCE_RECIPIENTS) что пул токена закончился. Триггерится из
+ * (lowBalanceRecipients) что пул токена закончился. Триггерится из
  * withdrawTokens когда на сервисном кошельке не хватает баланса.
  *
  * Дедуп через settings: ключ `low_balance_notified.<SYMBOL>` хранит ISO
@@ -384,7 +401,7 @@ export async function notifyLowNearDaily(yoctoBalance: string): Promise<void> {
       `Без NEAR не сможем платить газ за claim'ы и storage_deposit. ` +
       `Пополни darai_gdrop.near.`;
     let anySent = false;
-    for (const chatId of LOW_BALANCE_RECIPIENTS) {
+    for (const chatId of lowBalanceRecipients()) {
       const ok = await tgSendMessage(chatId, text);
       if (ok) anySent = true;
       await new Promise((r) => setTimeout(r, 50));
@@ -409,7 +426,7 @@ export async function notifyLowBalanceDaily(symbol: string): Promise<void> {
 
     const text = `Пул "${symbol}" закончился — ожидаю пополнения.`;
     let anySent = false;
-    for (const chatId of LOW_BALANCE_RECIPIENTS) {
+    for (const chatId of lowBalanceRecipients()) {
       const ok = await tgSendMessage(chatId, text);
       if (ok) anySent = true;
       await new Promise((r) => setTimeout(r, 50));

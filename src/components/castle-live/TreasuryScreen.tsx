@@ -7,6 +7,7 @@ import { getSession } from "@/server/api/user-auth";
 import { getAccountDepositInfo } from "@/server/api/currency/deposit";
 import { useAccountBalances } from "@/lib/hooks/useAccountBalances";
 import { isCastleToken } from "@/lib/castleTokenScope";
+import { coinIcon } from "@/lib/coinIcon";
 import { AccountModal } from "@/components/account/AccountModal";
 import { AccountTopUp } from "@/components/account/AccountTopUp";
 import { AccountWithdraw } from "@/components/account/AccountWithdraw";
@@ -16,6 +17,9 @@ import { TreasuryWalletConnection } from "./TreasuryWalletConnection";
 import { TreasuryPortalConnection } from "./TreasuryPortalConnection";
 import { TreasurySolanaConnection } from "./TreasurySolanaConnection";
 import { TreasuryEthConnection } from "./TreasuryEthConnection";
+import { useWalletLinks } from "./useWalletLinks";
+import { useEntryRules } from "@/hooks/useEntryRules";
+import { TreasuryDebt } from "./TreasuryDebt";
 import vaultRoom from "@/assets/treasury/vault-room.webp";
 import "./castle-profile.css";
 import "./treasury-screen.css";
@@ -47,12 +51,16 @@ export function TreasuryScreen({
     staleTime: 5 * 60_000,
   });
   const balances = useAccountBalances();
+  // Звёзды — только с настоящим Telegram; вывод — только белому списку (§8.127).
+  const rules = useEntryRules();
   const [selection, setSelection] = useState<Selection | null>(null);
   const [scrolled, setScrolled] = useState(false);
   // Вход только через Telegram (tg<id>) — не кошелёк: звездочник видит звёзды и
   // добытые монеты без пополнения и вывода (владелец, 07.10.2026).
   const connected = walletStatus ? walletStatus === "connected" : isWalletLinked(session.data?.wallet);
   const wallet = session.data?.wallet ?? null;
+  // Подключать кошелёк — только тем, у кого он уже есть (владелец, 09.11.2026).
+  const links = useWalletLinks(connected);
   useEffect(() => setSelection(null), [wallet, connected]);
   const tokens = (info.data?.tokens ?? []).filter((token) => isCastleToken(token.symbol));
   const stars = tokens.find((token) => token.stars);
@@ -63,7 +71,9 @@ export function TreasuryScreen({
   const currencies = tokens
     .filter((token) => !token.stars)
     .sort((a, b) => amountOf(b.symbol) - amountOf(a.symbol) || a.symbol.localeCompare(b.symbol));
-  const visibleCurrencies = connected ? currencies : currencies.filter((token) => amountOf(token.symbol) > 0);
+  // «Только Google» (владелец, 13.11.2026): DarAi видно всегда, хоть 0; остальное — когда появится.
+  const alwaysShown = (symbol: string) => rules.googleOnly && symbol.toLowerCase() === "darai";
+  const visibleCurrencies = connected ? currencies : currencies.filter((token) => amountOf(token.symbol) > 0 || alwaysShown(token.symbol));
   const hasEarnedCoins = visibleCurrencies.length > 0;
   const showCurrencies = connected || (accountOpen && !!wallet && (info.isPending || balances.isPending || hasEarnedCoins));
   const selectedToken = tokens.find((token) => token.symbol === selection?.symbol);
@@ -94,7 +104,8 @@ export function TreasuryScreen({
         </div>
 
         <section className="treasury-ledger" aria-label={ru ? "Счёт казны" : "Treasury account"}>
-          <div className="treasury-stars">
+          <TreasuryDebt />
+          {rules.stars && <div className="treasury-stars">
             <span className="treasury-stars__icon" aria-hidden="true"><Star /></span>
             <div className="treasury-stars__balance">
               <h2>Telegram Stars</h2>
@@ -113,9 +124,9 @@ export function TreasuryScreen({
               disabled={!accountOpen || !wallet || !stars?.allowed || balances.isError}
               onClick={() => stars && setSelection({ symbol: stars.symbol, mode: "top-up" })}
             >{ru ? "Пополнить" : "Top up"}</button>
-          </div>
+          </div>}
 
-          {stars && !stars.allowed && <p className="treasury-state" role="status">{ru ? "Пополнение звёзд сейчас недоступно." : "Stars top-up is unavailable right now."}</p>}
+          {rules.stars && stars && !stars.allowed && <p className="treasury-state" role="status">{ru ? "Пополнение звёзд сейчас недоступно." : "Stars top-up is unavailable right now."}</p>}
 
           {session.isError && <p className="treasury-state" role="alert">{ru ? "Не удалось загрузить Казну." : "Could not load Treasury."} <button type="button" onClick={() => void session.refetch()}>{ru ? "Повторить" : "Retry"}</button></p>}
           {accountOpen && (info.isError || balances.isError) && <p className="treasury-state" role="alert">{ru ? "Баланс временно недоступен." : "Balance is unavailable."} <button type="button" onClick={() => { void info.refetch(); void balances.refetch(); }}>{ru ? "Повторить" : "Retry"}</button></p>}
@@ -129,7 +140,7 @@ export function TreasuryScreen({
                 <ul className="treasury-currencies__list">
                   {visibleCurrencies.map((token) => {
                     const coin = <>
-                        <span className="treasury-currency__icon" aria-hidden="true">{token.symbol.slice(0, 2).toUpperCase()}</span>
+                        <span className="treasury-currency__icon" aria-hidden="true">{coinIcon(token.symbol) ? <img src={coinIcon(token.symbol)!} alt="" /> : token.symbol.slice(0, 2).toUpperCase()}</span>
                         <span className="treasury-currency__symbol">{token.symbol}</span>
                         <strong className={amountOf(token.symbol) ? "" : "treasury-currency__empty"}>{format(amountOf(token.symbol))}</strong>
                         {connected && <ChevronRight aria-hidden="true" />}
@@ -148,7 +159,7 @@ export function TreasuryScreen({
             <div className="treasury-history__body"><AccountHistory castleScope /></div>
           </details>}
 
-          <section className="treasury-connections" aria-labelledby="treasury-connections-title">
+          {links.ready && links.any && <section className="treasury-connections" aria-labelledby="treasury-connections-title">
             <h2 id="treasury-connections-title">{ru ? "Подключения" : "Connections"}</h2>
             {!connected && <p className="treasury-connections__hint">{hasEarnedCoins
               ? (ru ? "Монеты из рейда уже хранятся в Казне. Подключи кошелёк, чтобы оплачивать ими покупки или вывести их." : "Coins found in raids are already in Treasury. Connect a wallet to pay for purchases with them or withdraw them.")
@@ -157,7 +168,7 @@ export function TreasuryScreen({
             <TreasurySolanaConnection />
             <TreasuryEthConnection />
             <TreasuryPortalConnection walletConnected={connected} />
-          </section>
+          </section>}
         </section>
       </div>
 
@@ -170,13 +181,13 @@ export function TreasuryScreen({
             <div className="treasury-coin-actions">
               <p>{ru ? "На счёте" : "On account"}: {format(amountOf(selection.symbol))} {selection.symbol}</p>
               <button type="button" data-game-button="primary" disabled={!selectedToken.allowed || !info.data?.receiverId} onClick={() => setSelection({ ...selection, mode: "top-up" })}>{ru ? "Пополнить" : "Top up"}</button>
-              <button type="button" data-game-button="secondary" disabled={amountOf(selection.symbol) < selectedToken.minWithdraw || !info.data?.wallets?.length} onClick={() => setSelection({ ...selection, mode: "withdraw" })}>{ru ? "Вывести" : "Withdraw"}</button>
+              {rules.canWithdraw && <button type="button" data-game-button="secondary" disabled={amountOf(selection.symbol) < selectedToken.minWithdraw || !info.data?.wallets?.length} onClick={() => setSelection({ ...selection, mode: "withdraw" })}>{ru ? "Вывести" : "Withdraw"}</button>}
               {!selectedToken.allowed && <p className="text-xs text-muted-foreground">{ru ? "Пополнение этой валюты сейчас недоступно." : "Top up is unavailable for this currency."}</p>}
               {selectedToken.allowed && !info.data?.receiverId && <p className="text-xs text-muted-foreground">{ru ? "Адрес для пополнения пока недоступен." : "The deposit address is unavailable."}</p>}
-              {amountOf(selection.symbol) < selectedToken.minWithdraw && <p className="text-xs text-muted-foreground">{ru ? `Для вывода нужно минимум ${format(selectedToken.minWithdraw)} ${selection.symbol}.` : `Withdraw at least ${format(selectedToken.minWithdraw)} ${selection.symbol}.`}</p>}
-              {!info.data?.wallets?.length && <p className="text-xs text-muted-foreground">{ru ? "Нет доступного кошелька для вывода." : "No wallet is available for withdrawal."}</p>}
+              {rules.canWithdraw && amountOf(selection.symbol) < selectedToken.minWithdraw && <p className="text-xs text-muted-foreground">{ru ? `Для вывода нужно минимум ${format(selectedToken.minWithdraw)} ${selection.symbol}.` : `Withdraw at least ${format(selectedToken.minWithdraw)} ${selection.symbol}.`}</p>}
+              {rules.canWithdraw && !info.data?.wallets?.length && <p className="text-xs text-muted-foreground">{ru ? "Нет доступного кошелька для вывода." : "No wallet is available for withdrawal."}</p>}
             </div>
-          ) : selection.mode === "withdraw" ? (
+          ) : selection.mode === "withdraw" && rules.canWithdraw ? (
             <AccountWithdraw tokens={tokens} wallets={info.data?.wallets} symbol={selection.symbol} />
           ) : selection.symbol === "STARS" ? (
             <StarsTopUp />

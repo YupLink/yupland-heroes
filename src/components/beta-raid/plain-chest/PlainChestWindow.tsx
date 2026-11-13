@@ -9,6 +9,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Backpack, Footprints, Loader2, Package, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useLang, useT } from "@/lib/i18n";
+import { storageRoom, fitStorageRequest } from "@/lib/storageTransfer";
+import { DUST } from "@/lib/warehouseCells";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
+import { StorageMoveStatus } from "../useStorageMove";
 import { serverErrorText } from "@/lib/serverErrorText";
 import { localizeAssetName } from "@/lib/translations/assetNames";
 import { getMyBackpack } from "@/server/api/beta-raid/market-backpack-read";
@@ -68,8 +72,12 @@ export function PlainChestWindow({
 
   const d = view.data;
   const submit = (qty: number) => {
-    if (!pick) return;
-    const v = { stackKey: pick.stackKey, qty };
+    if (!pick || act.busy || !d || view.isError || bp.isError) return;
+    const available = pick.mode === 'put' ? bp.data?.stacks.find(s => s.stackKey === pick.stackKey)?.count : d.slots.find(s => s.stackKey === pick.stackKey)?.count;
+    const sourceStack = bp.data?.stacks.find(s => s.stackKey === pick.stackKey);
+    const fitting = pick.mode === 'put' ? fitStorageRequest(qty, sourceStack ? movableOf(sourceStack) : pick.total, storageRoom(d.slots, pick.stackKey, d.cells, CELL_SIZE), DUST) : qty;
+    if (fitting <= 0) { toast.error(t('pchest.full')); return; }
+    const v = { stackKey: pick.stackKey, qty: fitting, requested: qty, sourceTotal: available ?? pick.total };
     if (pick.mode === "put") act.put.mutate(v);
     else act.take.mutate(v);
   };
@@ -92,6 +100,7 @@ export function PlainChestWindow({
           )
         ) : (
           <div className="space-y-2.5">
+            <StorageMoveStatus move={act.move}/>
             {d.open === false ? (
               <OpenButton
                 price={d.price ?? 0}
@@ -104,12 +113,13 @@ export function PlainChestWindow({
                 backpack={bp.data}
                 busyKey={act.put.isPending || act.take.isPending ? (pick?.busyKey ?? null) : null}
                 onPut={(c) => {
+                  if (act.busy) return;
                   const s = bp.data?.stacks.find((x) => x.stackKey === c.stack.stackKey);
                   const movable = s ? movableOf(s) : 0;
                   if (movable > 0) setPick(putPick(c, movable));
                   else toast.error(t("braid.tool_worn_stays"));
                 }}
-                onTake={(c) => setPick(takePick(c))}
+                onTake={(c) => { if (!act.busy) setPick(takePick(c)); }}
               />
             )}
             <div className="flex gap-2">
@@ -158,7 +168,7 @@ export function PlainChestWindow({
           icon={pick.mode === "put" ? Package : Backpack}
           label={t(pick.mode === "put" ? "pchest.put" : "pchest.take")}
           tone="gold"
-          busy={act.put.isPending || act.take.isPending}
+          busy={act.busy}
           onSubmit={submit}
           onClose={() => setPick(null)}
         />

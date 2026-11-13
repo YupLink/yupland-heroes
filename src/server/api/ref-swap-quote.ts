@@ -14,7 +14,6 @@ export const USDT_DECIMALS = 6;
 export const DARAI_SWAP_CONTRACT = "darai.tkn.near";
 export const DARAI_SWAP_DECIMALS = 18;
 const SMARTROUTER = "https://smartrouter.ref.finance/findPath";
-const PRICE_API = "https://indexer.ref.finance/list-token-price";
 
 /** Один шаг маршрута в формате Ref v2 swap. pool_id — число (u64 в контракте). */
 export type RefAction = {
@@ -100,16 +99,11 @@ function buildActions(routes: PathRoute[]): RefAction[] {
   return actions;
 }
 
+// Спот — тот же курс, что у подписок (rate.ts: живой обмен 1 USDT → DARAI).
 async function fetchSpotRate(): Promise<number | null> {
-  try {
-    const res = await fetch(PRICE_API, { signal: AbortSignal.timeout(12_000) });
-    if (!res.ok) return null;
-    const d = (await res.json()) as Record<string, { price?: string }>;
-    const p = Number(d[DARAI_SWAP_CONTRACT]?.price);
-    return Number.isFinite(p) && p > 0 ? 1 / p : null; // DARAI за 1 USDT
-  } catch {
-    return null;
-  }
+  const { fetchDaraiUsd } = await import("./energy-sub/rate");
+  const p = await fetchDaraiUsd();
+  return p ? 1 / p : null; // DARAI за 1 USDT
 }
 
 /**

@@ -1,3 +1,4 @@
+import {CASTLE_PLACEMENT} from '@/lib/castlePlacementLimits';
 import {orientedBuilding,type SceneBuilding} from './modularCastleLayout';
 type Point=[number,number];
 function hull(points:Point[]):Point[]{
@@ -17,8 +18,10 @@ function overlap(a:Point[],b:Point[]){
 }
 /** Visual prototype bounds only; authoritative territory/placement comes from Misha's API. */
 export function placementProblem(object:SceneBuilding,objects:SceneBuilding[]):'bounds'|'occupied'|null{
+ if(object.placed===false)return null;
  const points=base(object);
- if(points.some(([x,y])=>x< -600||x>1400||(object.id!=='gates'&&(y<330||y>1500))))return 'bounds';
- if(objects.some(other=>other.id!==object.id&&overlap(points,base(other))))return 'occupied';
+ if(points.some(([x,y])=>x<CASTLE_PLACEMENT.left||x>CASTLE_PLACEMENT.right||(object.id!=='gates'&&(y<330||y>1500))))return 'bounds';
+ if(objects.some(other=>other.id!==object.id&&other.placed!==false&&overlap(points,base(other))))return 'occupied';
  return null;
 }
+

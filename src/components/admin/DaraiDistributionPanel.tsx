@@ -123,17 +123,17 @@ export function DaraiDistributionPanel() {
         />
         <SplitRow
           color="border-sky-400/30 bg-sky-400/5 text-sky-300"
-          title="player03"
-          wallet={d.yarsib.wallet}
-          percent={d.yarsib.sharePercent}
-          amount={d.yarsib.amountHuman}
+          title={d.partner.title}
+          wallet={d.partner.wallet}
+          percent={d.partner.sharePercent}
+          amount={d.partner.amountHuman}
         />
         <SplitRow
           color="border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
-          title="miplix"
-          wallet={d.miplix.wallet}
-          percent={d.miplix.sharePercent}
-          amount={d.miplix.amountHuman}
+          title={d.owner.title}
+          wallet={d.owner.wallet}
+          percent={d.owner.sharePercent}
+          amount={d.owner.amountHuman}
         />
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-3 text-amber-300">
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
@@ -167,11 +167,9 @@ export function DaraiDistributionPanel() {
           className="mb-3 text-[11px] text-muted-foreground"
           title="Одной транзакцией, получатели разбиваются по 15 на подпись, атомарно — либо всё, либо ничего."
         >
-          Отправит{" "}
-          <span className="font-mono text-rose-200">{fmt(d.totalHuman)}</span>{" "}
-          DARAI на {recipients} получателей: duplo, player03, miplix и{" "}
-          {d.legendary.holders.length} держателей легендарок. Одно подтверждение
-          в TG.
+          Отправит <span className="font-mono text-rose-200">{fmt(d.totalHuman)}</span> DARAI на{" "}
+          {recipients} получателей: duplo, {d.partner.title}, {d.owner.title} и{" "}
+          {d.legendary.holders.length} держателей легендарок. Одно подтверждение в TG.
         </div>
         <button
           type="button"

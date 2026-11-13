@@ -1,0 +1,36 @@
+/* Static raster decoration. No animation, backdrop filter, or map traversal. */
+.raid-anomaly{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none;contain:layout paint}
+.raid-anomaly[data-mode="frozen"]{background:rgb(22 62 112 / 30%)}
+/* One painted background replaces the tint element and both corner pseudo-elements. */
+.raid-anomaly[data-mode="infernal"]{
+ background-image:radial-gradient(ellipse farthest-side at bottom left,#251316 0%,#251316 35%,#251316d9 52%,transparent 76%),radial-gradient(ellipse farthest-side at top right,#251316 0%,#251316 35%,#251316d9 52%,transparent 76%),linear-gradient(90deg,#19080ef5 0%,#2d0b18d9 3%,#370c1b66 9%,transparent 17%,transparent 83%,#370c1b66 91%,#2d0b18d9 97%,#19080ef5 100%),linear-gradient(180deg,#19080ee6,transparent 13%,transparent 87%,#19080ee6);
+ background-size:min(44vw,200px) min(30vh,220px),min(44vw,200px) min(30vh,220px),100% 100%,100% 100%;
+ background-position:left bottom,right top,center,center;
+ background-repeat:no-repeat;
+}
+.raid-anomaly__smoke{position:absolute;width:min(140vw,640px);height:auto;pointer-events:none}
+/* Push the raster transparent rim outside the clipped viewport. */
+.raid-anomaly__smoke--a{left:0;bottom:0;translate:-6% 10%}
+.raid-anomaly__smoke--b{right:0;top:0;rotate:180deg;translate:6% -10%}
+/* Same asset, opacity, dimensions and edge mask as the existing blizzard frost. */
+.raid-anomaly__frost{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:fill;opacity:.72;mix-blend-mode:screen;mask-image:linear-gradient(90deg,#000 0%,#000 3%,transparent 22%,transparent 78%,#000 97%,#000 100%);pointer-events:none}
+/* Avoid doubling the original border when the base weather is a blizzard. */
+.raid-weather-visuals:has(~ .raid-anomaly[data-mode="frozen"]) .frost{display:none}
+
+
+/* Dark outer rim covers the light edge of the smoke sprite as well. */
+.raid-anomaly[data-mode="infernal"]::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#18070de6,transparent 8%,transparent 92%,#18070de6),linear-gradient(180deg,#18070d99,transparent 7%,transparent 93%,#18070d99)}
+.raid-anomaly__fire-rain{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.raid-anomaly__fire-particle{position:absolute;top:-72px;animation:raid-fire-fall linear infinite;pointer-events:none}
+.raid-anomaly__fire-particle>img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+/* Explicit selectors prevent the base image inset from overriding sparks. */
+.raid-anomaly__fire-particle>img.raid-anomaly__spark{inset:auto;width:5px;height:5px;object-fit:fill;animation:raid-ember-shed .85s ease-out infinite;opacity:0}
+.raid-anomaly__fire-particle>img.raid-anomaly__spark--a{left:45%;top:65%;--spark-x:-10px;animation-delay:-.3s}
+.raid-anomaly__fire-particle>img.raid-anomaly__spark--b{left:55%;top:78%;--spark-x:9px;animation-delay:-.7s}
+.raid-anomaly__fire-particle:nth-child(3n)>img.raid-anomaly__spark{animation-duration:1.3s}
+.raid-anomaly__fire-particle:nth-child(3n+1)>img.raid-anomaly__spark{animation-duration:1.05s}
+@keyframes raid-fire-fall{from{transform:translate3d(30px,0,0) rotate(8deg)}to{transform:translate3d(-90px,calc(100vh + 100px),0) rotate(8deg)}}
+@keyframes raid-ember-shed{0%,15%{transform:translate(0,0) scale(.5);opacity:0}25%{opacity:1}100%{transform:translate(var(--spark-x),-12px) scale(.35);opacity:0}}
+.raid-anomaly__fire-rain[data-paused="true"] .raid-anomaly__fire-particle,.raid-anomaly__fire-rain[data-paused="true"] .raid-anomaly__spark{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.raid-anomaly__fire-rain{display:none}}
+

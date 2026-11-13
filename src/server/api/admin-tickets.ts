@@ -5,6 +5,7 @@ import { pg } from "../db/pg";
 import { mcpExec } from "../db/mcpClient";
 import { requireAdmin } from "../auth";
 import { fireBroadcast, shouldBroadcastNewDrop } from "./admin-helpers";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 
 const SENDLER_TICKET_CONTRACT = "yuplandshop.mintbase1.near";
 
@@ -104,10 +105,11 @@ export const createTicketEvent = createServerFn({ method: "POST" })
         ? `\n…и ещё ${data.requirements.length - 8}`
         : "";
     if (shouldBroadcastNewDrop()) {
+      // Награда события идёт золотом, 100 за билет настройки (§8.61).
       fireBroadcast(
-        `🎫 <b>Новое билет-событие!</b>\n\n` +
+        `🎫 <b>Новое событие для холдеров NFT!</b>\n\n` +
           `Собери:\n${reqLines}${more}\n\n` +
-          `За набор: +${data.rewardTickets} билет(ов)\n\n` +
+          `За набор: +${goldForEarnedTickets(data.rewardTickets)} золота в сутки\n\n` +
           `Подробнее на <a href="https://service.yupland.io/my-nfts">сайте</a>.`
       );
     }

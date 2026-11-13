@@ -6,10 +6,10 @@ import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { nanoid } from "nanoid";
 import { ownCell } from "./encounter-where";
-import { areNeighbors, hexDistance } from "./helpers";
+import { areNeighbors } from "./helpers";
 import { loadCellBuilding } from "./building-action";
 import { isBuilt } from "@/lib/buildingEffect";
-import { OWN_CELLS, SHARED_CELLS, stackCells, splitDeposit } from "@/lib/warehouseCells";
+import { SHARED_CELLS, stackCells, splitDeposit } from "@/lib/warehouseCells";
 // Запись на полку живёт отдельно (лимит 250 строк), зовут её и отсюда, и из окна склада.
 import { upsertSlot } from "./warehouse-upsert";
 import { noteShelf } from "./econ/trade-hooks";
@@ -82,60 +82,8 @@ export const toStack = (row: SlotRow): WarehouseStack => ({
   scope: row.scope,
 });
 
-/** Предикат «клетка — склад»: cell-override эффекта, meta шаблона или имя. */
-const WAREHOUSE_CELL_SQL = `(c.building_config->>'effect' = 'warehouse'
-  OR t.meta->>'effect' = 'warehouse' OR t.name ILIKE '%склад%')`;
-
-/**
- * Ближайший ДОСТРОЕННый склад в радиусе (гекс-расстояние ≤ maxDist). Уникален по
- * клетке — никак не связан с другими складами. Недостроенный склад пропускаем:
- * его окно не открыть (warehouseAt отказывает), урожай завис бы в нём мёртво —
- * лучше пусть копится на поле. null — годного склада рядом нет.
- */
-/** Достроенные склады карты (клетки). Один запрос на карту — «Добыча» ищет склад для
- *  каждой грядки, и по запросу на грядку выходило 40 мс × 35 грядок (16.10). */
-export async function warehouseCells(mapId: string): Promise<Array<{ q: number; r: number }>> {
-  const rows = (await mcpExec(
-    `SELECT c.q, c.r FROM yuplink.raid_map_cells c
-       JOIN yuplink.mystic_item_template t ON t.id = c.building_id
-       LEFT JOIN yuplink.beta_raid_building_state s
-              ON s.map_id = c.map_id AND s.q = c.q AND s.r = c.r
-      WHERE c.map_id = ${sqlStr(mapId)} AND c.building_id IS NOT NULL AND ${WAREHOUSE_CELL_SQL}
-        AND jsonb_typeof(t.meta->'tiers') = 'array'
-        AND jsonb_array_length(t.meta->'tiers') > 0
-        AND COALESCE(s.tier, 0) >= jsonb_array_length(t.meta->'tiers') - 1;`,
-    { wrapJson: true },
-  ).catch(() => [])) as Array<{ q: number; r: number }>;
-  return (rows ?? []).map((w) => ({ q: Number(w.q), r: Number(w.r) }));
-}
-
-/** Ближайший из списка складов в радиусе (гекс-расстояние ≤ maxDist); нет — null. */
-export function nearestOf(
-  cells: Array<{ q: number; r: number }>,
-  q: number,
-  r: number,
-  maxDist: number,
-): { q: number; r: number } | null {
-  let best: { q: number; r: number } | null = null;
-  let bestD = Infinity;
-  for (const w of cells) {
-    const d = hexDistance(w.q, w.r, q, r);
-    if (d <= maxDist && d < bestD) {
-      bestD = d;
-      best = { q: w.q, r: w.r };
-    }
-  }
-  return best;
-}
-
-export async function nearestWarehouse(
-  mapId: string,
-  q: number,
-  r: number,
-  maxDist: number,
-): Promise<{ q: number; r: number } | null> {
-  return nearestOf(await warehouseCells(mapId), q, r, maxDist);
-}
+// Достроенные склады карты (с кэшем 30 с) — warehouse-map-cells.ts.
+export { warehouseCells, nearestOf, nearestWarehouse } from "./warehouse-map-cells";
 
 /**
  * Зачислить units ТОВАРА на склад: сначала личные ячейки аккаунта, остаток — в
@@ -164,13 +112,18 @@ export async function creditItemToWarehouse(opts: {
 }): Promise<{ own: number; shared: number; rejected: number; failed: number }> {
   const { mapId, at, account, stackKey, snap, units, op } = opts;
   if (units <= 0) return { own: 0, shared: 0, rejected: 0, failed: 0 };
-  const slots = await loadSlots(mapId, at.q, at.r, account);
+  const { ownCellsOf } = await import("./account-upgrade");
+  const [slots, ownCells] = await Promise.all([
+    loadSlots(mapId, at.q, at.r, account),
+    ownCellsOf(account),
+  ]);
   const same = (scope: "own" | "shared") =>
     slots.find((s) => s.scope === scope && s.stack_key === stackKey)?.count ?? 0;
   const counts = (scope: "own" | "shared") =>
     slots.filter((s) => s.scope === scope).map((s) => Number(s.count) || 0);
   const plan = splitDeposit({
     qty: units,
+    ownCells,
     ownSame: Number(same("own")) || 0,
     ownCounts: counts("own"),
     sharedSame: Number(same("shared")) || 0,
@@ -193,7 +146,7 @@ export async function creditItemToWarehouse(opts: {
         snap,
         plan.own,
         `${op}:own`,
-        OWN_CELLS,
+        ownCells,
         originAdds(plan.own, opts.origin),
       );
       own = okOwn ? plan.own : 0;

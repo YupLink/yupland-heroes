@@ -6,27 +6,45 @@
 // карте или в аккаунте (сундук открыт, артефакт забран, надет); засчитанное остаётся
 // засчитанным. «Понятно» — шаг-объяснение: прочитал подсказку у подсвеченной
 // кнопки (ackIsland). Как вести по интерфейсу — guidePaths на клиенте.
+import { SHORT_STEP_IDS, type ShortStepId, type ShortLesson } from "./shortTutorial";
 import type { Cell } from "@/lib/raid/worldgen/geo";
+import {
+  ISLAND_PILOT_STEP_IDS,
+  PILOT_ONLY_STEPS,
+  pilotChapter,
+  type PilotOnlyStepId,
+} from "./stepsPilot";
 
 export const ISLAND_STEP_IDS = [
   "hello",
-  // Карта
+  // Герой в подарок — окно выбора расы сразу после приветствия (20.10); шаг
+  // засчитан, когда герой острова выбран (раз на аккаунт). В списке — чтобы
+  // порядок шагов шёл за действиями игрока (25.10, пробный выпуск обучения).
+  "hero_pick",
+  // Карта. Паки из первого сундука — до боёв (владелец, 20.10.2026: «нужно
+  // открыть паки — и только потом идти бить боссов, иначе не будет фишек»).
   "walk",
   "chest",
+  "pack_got",
+  "x_pack",
   "axe",
   "chop",
   // Бой
   "x_energy",
   "x_warriors",
   "slime",
+  // Награда за слизня ЭТОГО острова забрана из «Добычи» (26.10, Ангелина):
+  // лайки и шансы — в «Добыче», руда — сразу в рюкзаке (island-facts).
+  "slime_loot",
   "x_satiety",
-  // Инструменты
+  // Инструменты. Лопата и клад — до лесопилки (владелец, 20.10.2026): починка
+  // стоит 20 золота — 10 из сундука и 10 за слиток из главного клада.
   "pickaxe",
   "crystal",
-  "mine",
-  "harvest",
   "shovel",
   "dig",
+  "mine",
+  "harvest",
   // Замок
   "x_castle",
   "chips",
@@ -35,8 +53,6 @@ export const ISLAND_STEP_IDS = [
   "art_take",
   "equip",
   "pack_boss",
-  "pack_got",
-  "x_pack",
   "hero_chip",
   // Развитие: Храм — первым, игрок ещё в замке после «Герой из фишки».
   "grow_temple",
@@ -48,7 +64,11 @@ export const ISLAND_STEP_IDS = [
   "leave",
 ] as const;
 
-export type IslandStepId = (typeof ISLAND_STEP_IDS)[number];
+/** Плюс шаги маршрута тестового аккаунта, которых нет в общем (stepsPilot.ts). */
+export type IslandStepId = (typeof ISLAND_STEP_IDS)[number] | PilotOnlyStepId | ShortStepId | "short_finish";
+
+// Маршрут тестового аккаунта (Ангелина/Кай, 26.10) — stepsPilot.ts.
+export { ISLAND_PILOT_STEP_IDS } from "./stepsPilot";
 
 /** Шаги-объяснения: засчитываются кнопкой «Понятно» (остальные — по факту). */
 export const ACK_STEPS = [
@@ -60,11 +80,14 @@ export const ACK_STEPS = [
   "x_castle",
   "chips",
   "hero",
+  ...PILOT_ONLY_STEPS,
   "hero_chip",
   "grow_temple",
   "grow_tree",
   "grow_shop",
   "grow_bosses",
+  "chest_backpack",
+  "short_finish",
 ] as const satisfies readonly IslandStepId[];
 
 export const isAckStep = (id: string): boolean => (ACK_STEPS as readonly string[]).includes(id);
@@ -72,9 +95,19 @@ export const isAckStep = (id: string): boolean => (ACK_STEPS as readonly string[
 export type IslandChapter = "map" | "battle" | "tools" | "castle" | "grow" | "exit";
 
 /** Глава шага — подпись на панели. */
-export function stepChapter(step: IslandStepId): IslandChapter {
-  const i = ISLAND_STEP_IDS.indexOf(step);
-  const at = (id: IslandStepId) => ISLAND_STEP_IDS.indexOf(id);
+export function stepChapter(
+  step: IslandStepId,
+  order: readonly IslandStepId[] = ISLAND_STEP_IDS,
+): IslandChapter {
+  const i = order.indexOf(step);
+  const at = (id: IslandStepId) => order.indexOf(id);
+  if (order === SHORT_STEP_IDS) {
+    if (step === "hello" || step === "hero_pick" || step === "hero") return "castle";
+    if (i < at("axe")) return "map";
+    if (i < at("boat")) return "battle";
+    return "exit";
+  }
+  if (order === ISLAND_PILOT_STEP_IDS) return pilotChapter(i, at);
   if (i < at("x_energy")) return "map";
   if (i < at("pickaxe")) return "battle";
   if (i < at("x_castle")) return "tools";
@@ -85,23 +118,37 @@ export function stepChapter(step: IslandStepId): IslandChapter {
 
 /** Роли клеток острова: куда ведёт кнопка «Показать» у шага. */
 export type IslandPlaces = {
+  /** Новый короткий маршрут; старые острова сохраняют прежнюю проходку. */
+  lesson?: ShortLesson;
   spawn: Cell;
   chest: Cell;
   workshop: Cell;
   trees: Cell[];
   /** Все боссы; первый — слизень задания (руда на кирку и лопату). */
   monsters: Cell[];
-  /** Босс с артефактом и босс с тренировочным паком — случайные, не первый. */
+  /**
+   * Босс с артефактом и босс с паком — у островов до 20.10; у новых null:
+   * артефакт и пак падают с любого босса с шансом (drops.ts).
+   */
   artifact: Cell | null;
   pack: Cell | null;
   crystals: Cell[];
+  /** Лесопилка — цель шага «Шахта». */
   mine: Cell;
+  /** Шахты камня, золота и алмазов (ISLAND_EXTRA_MINES); у старых островов — []. */
+  mines: Cell[];
   treasure: Cell;
   /** Прочие клады (сверх главного со слитком); у старых островов — []. */
   digs: Cell[];
   /** Стартовая лодка на мелководье у берега; у старых островов — null. */
   /** Верфь у берега: корабль игрок строит сам (17.10.2026). */
   shipyard: Cell | null;
+  /**
+   * В первом сундуке лежит подарок острова с паками (20.10). Нет — аккаунт его
+   * уже получал (или остров старше): шаги «забери добычу / открой паки» — по
+   * паку с босса, если он есть.
+   */
+  gift: boolean;
   portal: Cell;
   hall: Cell | null;
 };
@@ -112,6 +159,13 @@ export function stepTarget(step: IslandStepId, p: IslandPlaces): Cell | null {
     case "walk":
     case "chest":
       return p.chest;
+    case "boat":
+      return p.shipyard;
+    case "sail":
+      return p.lesson?.shore ?? null;
+    case "spell":
+      return p.lesson?.pillar ?? p.lesson?.shore ?? null;
+    case "sell":
     case "axe":
     case "pickaxe":
     case "shovel":
@@ -139,6 +193,9 @@ export function stepTarget(step: IslandStepId, p: IslandPlaces): Cell | null {
       return p.pack;
     // Шаги в замке: замок открывается у ратуши острова.
     case "x_castle":
+    case "hero_level":
+    case "hero_sets":
+    case "return_island":
     case "chips":
     case "hero":
     case "equip":
@@ -152,44 +209,43 @@ export function stepTarget(step: IslandStepId, p: IslandPlaces): Cell | null {
   }
 }
 
-/** Шаг есть на этом острове: у старых островов может не быть пака или артефакта. */
+/**
+ * Шаг есть на этом острове. Артефакт и «найди пак» — только у островов с
+ * призами на боссах (до 20.10); паки из первого сундука — у всех.
+ */
 export function stepAvailable(step: IslandStepId, p: IslandPlaces): boolean {
   if (step === "x_artifact" || step === "art_take" || step === "equip") return p.artifact !== null;
-  if (step === "pack_boss" || step === "pack_got" || step === "x_pack") return p.pack !== null;
+  if (step === "pack_boss") return p.pack !== null;
+  if (step === "pack_got" || step === "x_pack") return p.gift || p.pack !== null;
   return true;
 }
 
+/**
+ * Шаг ждёт своей очереди: без подарка в сундуке пак даёт только босс с паком —
+ * «забери / открой пак» тогда после победы над ним, как было до 20.10.
+ */
+const waits = (s: IslandStepId, done: ReadonlySet<string>, p: IslandPlaces) =>
+  !p.gift && (s === "pack_got" || s === "x_pack") && !done.has("pack_boss");
+
 /** Текущий шаг — первый незасчитанный из доступных; всё засчитано — null. */
-export function currentStep(done: ReadonlySet<string>, p?: IslandPlaces): IslandStepId | null {
-  return ISLAND_STEP_IDS.find((s) => !done.has(s) && (!p || stepAvailable(s, p))) ?? null;
+export function currentStep(
+  done: ReadonlySet<string>,
+  p?: IslandPlaces,
+  order: readonly IslandStepId[] = ISLAND_STEP_IDS,
+): IslandStepId | null {
+  return (
+    order.find((s) => !done.has(s) && !(order === SHORT_STEP_IDS && done.has(`skip:${s}`)) && (!p || (stepAvailable(s, p) && !waits(s, done, p)))) ?? null
+  );
 }
 
-const isCell = (v: unknown): v is Cell => {
-  const c = v as Cell | null;
-  return !!c && Number.isInteger(c.q) && Number.isInteger(c.r);
-};
-const cells = (v: unknown): Cell[] => (Array.isArray(v) ? v.filter(isCell) : []);
+// Разбор ролей из базы — parsePlaces.ts (вынесен, чтобы файл не рос за 250 строк).
+export { parsePlaces } from "./parsePlaces";
 
-/** Разбор ролей из базы (jsonb): мусор — пустые списки, без падения окна. */
-export function parsePlaces(raw: unknown): IslandPlaces | null {
-  const o = (raw ?? {}) as Record<string, unknown>;
-  const one = ["spawn", "chest", "workshop", "mine", "treasure", "portal"] as const;
-  if (!one.every((k) => isCell(o[k]))) return null;
-  return {
-    spawn: o.spawn as Cell,
-    chest: o.chest as Cell,
-    workshop: o.workshop as Cell,
-    trees: cells(o.trees),
-    monsters: cells(o.monsters),
-    // Острова до 15.10: артефакт — у второго слизня, пак — у хомяка (или нет).
-    artifact: isCell(o.artifact) ? o.artifact : (cells(o.monsters)[1] ?? null),
-    pack: isCell(o.pack) ? o.pack : isCell(o.hamster) ? o.hamster : null,
-    crystals: cells(o.crystals),
-    mine: o.mine as Cell,
-    treasure: o.treasure as Cell,
-    digs: cells(o.digs),
-    shipyard: isCell(o.shipyard) ? o.shipyard : null,
-    portal: o.portal as Cell,
-    hall: isCell(o.hall) ? o.hall : null,
-  };
-}
+
+/**
+ * Порядок определяет сервер; существующий остров сам по себе не сбрасывается.
+ * Короткое — у острова с уроком (places.lesson): с 11.11 такие создаются всем
+ * (island_short); прежние острова без урока идут прежним маршрутом.
+ */
+export const islandTutorialOrder = (pilot: boolean, p: IslandPlaces) =>
+  p.lesson ? SHORT_STEP_IDS : pilot ? ISLAND_PILOT_STEP_IDS : ISLAND_STEP_IDS;

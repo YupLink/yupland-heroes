@@ -46,3 +46,7 @@ export const patchSchema = cellPatch.refine(
 );
 
 export type AdminCellPatch = z.infer<typeof patchSchema>;
+
+/** Снять «стереть местность» (terrainId: null) с правки — вне мира креатора (admin-live-batch). */
+export const keepTerrain = (c: AdminCellPatch): AdminCellPatch =>
+  c.terrainId === null ? { ...c, terrainId: undefined } : c;

@@ -85,6 +85,7 @@ export function BuildingCellEditor({
   // сколько за час. Цена захвата у поля не спрашивается: его не захватывают.
   const isField = building?.effect === "field";
   const isMarket = building?.effect === "market";
+  const isBuildingShop = building?.effect === "building_shop";
   const isPortal = building?.effect === "portal";
   const isBoost = building?.effect === "boost";
   // Покои: цены — тот же список ServicePrice[], редактор дерева уровней
@@ -191,6 +192,7 @@ export function BuildingCellEditor({
 
         {/* Маркет: витрина товаров ЭТОЙ клетки (уходят сразу, не по «Сохранить»). */}
         {isMarket && <MarketEditor q={q} r={r} />}
+        {isBuildingShop && <MarketEditor q={q} r={r} buildingShop />}
 
         {/* Табличка подписывается здесь же: надпись у каждой своя. */}
         {isSign && (

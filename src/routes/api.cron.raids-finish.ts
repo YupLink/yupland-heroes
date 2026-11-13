@@ -3,16 +3,14 @@
 // осталось на руках. С ?apply=1 выполняет.
 import { createFileRoute } from "@tanstack/react-router";
 import { planRaidFinish, runRaidFinish } from "@/server/api/raid-finish";
+import { cronDenied } from "@/server/cronAuth";
 
 export const Route = createFileRoute("/api/cron/raids-finish")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         const apply = new URL(request.url).searchParams.get("apply") === "1";
         try {
           const body = apply

@@ -8,6 +8,7 @@ import {
   Coins,
   DoorOpen,
   Flame,
+  Hammer,
   LogOut,
   Medal,
   Percent,
@@ -116,8 +117,8 @@ export const CASTLE_SECTION: GuideSection = {
       icon: c(Castle, "#f5c451"),
       name: ["Основной замок", "Home castle"],
       what: [
-        "Твоя ратуша-дом. Первый выбор бесплатно, переезд — 5 билетов. «Телепорт к замку» переносит сюда из любого мира.",
-        "Your home town hall. First pick is free, moving costs 5 tickets. “Teleport to castle” brings you here from any world.",
+        "Твоя ратуша-дом. Первый выбор бесплатно, переезд — 2 500 золота. «Телепорт к замку» переносит сюда из любого мира.",
+        "Your home town hall. First pick is free, moving costs 2,500 gold. “Teleport to castle” brings you here from any world.",
       ],
     },
     {
@@ -198,6 +199,19 @@ export const CASTLE_SECTION: GuideSection = {
       icon: c(LogOut, "#9aa4bd"),
       name: ["Выход в мир", "Exit to world"],
       what: ["Переход на карту мира.", "Go to the world map."],
+    },
+    {
+      id: "c-architect",
+      icon: c(Hammer, "#c9a26b"),
+      name: ["Архитектор", "Architect"],
+      what: [
+        "Строится в Ратуше замка, 4 уровня: лесопилка → + каменная → + золотая → + алмазная шахта. Делает заготовку шахты за ресурсы (и товары из рюкзака героя, если их задал админ), она ложится в рюкзак.",
+        "Built in the castle town hall, 4 levels: sawmill → + stone → + gold → + diamond mine. Crafts a mine blueprint for resources (and items from the hero's backpack, if the admin set them); it goes to the backpack.",
+      ],
+      where: [
+        "Лесопилка — рядом ≥3 деревьев, каменная — ≥3 гор, золотая и алмазная — на жилу своего вида; под собой или рядом, не на дороге. Герою-«Строителю» Архитектор не нужен.",
+        "A sawmill needs ≥3 trees around, a stone mine ≥3 mountains, gold and diamond mines go on a vein of their kind; under you or next to you, not on a road. A Builder hero needs no Architect.",
+      ],
     },
     {
       id: "c-hall",

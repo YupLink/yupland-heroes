@@ -34,20 +34,18 @@ function same(a: ReadonlyMap<string, number>, b: ReadonlyMap<string, number>): b
 /**
  * Прибыль продаж за золото по всем товарам сразу (каждый список — вся история
  * одного товара), с переносом цены отданного товаром в цену купленного.
- * start — старт турнира (по умолчанию since), см. goldProfitFlow.
  */
 export function linkedGoldProfit(
   items: Iterable<readonly FlowRow[]>,
   since: number,
   till: number,
-  start: number = since,
 ): ProfitPoint[] {
   const lists = [...items];
   let extra = new Map<string, number>();
   let points: ProfitPoint[] = [];
   for (let pass = 0; pass < MAX_PASSES; pass++) {
     const paid = new Map<string, number>();
-    points = lists.flatMap((l) => goldProfitFlow(l, since, till, { extra, paid }, start));
+    points = lists.flatMap((l) => goldProfitFlow(l, since, till, { extra, paid }));
     const next = new Map<string, number>();
     for (const [ref, cost] of paid) {
       const buy = buyRefOfPay(ref);

@@ -7,7 +7,6 @@
 // В базу карты здесь по-прежнему ничего не пишется: шаблон — это рецепт, а
 // клетки уезжают прежним путём, через очередь кисти и «Выгрузить».
 import { createServerFn } from "@tanstack/react-start";
-import { requireAdmin } from "@/server/auth";
 import { presetBlueprints } from "@/lib/raid/zonegen/blueprint-presets";
 import type { TownBlueprint } from "@/lib/raid/zonegen/blueprint-types";
 import { loadBuildingOptions } from "./catalog-buildings";
@@ -18,13 +17,15 @@ import {
   saveBlueprint,
   saveBlueprintInputSchema,
 } from "./blueprints";
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
+import { requireCatalogEditor } from "@/server/api/catalog-auth";
 
 export type TownBlueprintsOutput = { list: TownBlueprint[] };
 
 /** Все шаблоны: предустановленные из справочника + сохранённые из базы. */
 export const adminTownBlueprints = createServerFn({ method: "GET" }).handler(
   async (): Promise<TownBlueprintsOutput> => {
-    requireAdmin();
+    await requireDesigner();
     const [options, saved] = await Promise.all([loadBuildingOptions(), listBlueprints()]);
     return { list: [...presetBlueprints(options), ...saved] };
   },
@@ -38,7 +39,7 @@ export const adminTownBlueprints = createServerFn({ method: "GET" }).handler(
 export const adminSaveTownBlueprint = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => saveBlueprintInputSchema.parse(d))
   .handler(async ({ data }): Promise<{ blueprint: TownBlueprint }> => {
-    const wallet = requireAdmin();
+    const { wallet } = await requireCatalogEditor();
     return { blueprint: await saveBlueprint(data, wallet) };
   });
 
@@ -46,7 +47,7 @@ export const adminSaveTownBlueprint = createServerFn({ method: "POST" })
 export const adminDeleteTownBlueprint = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => deleteBlueprintInputSchema.parse(d))
   .handler(async ({ data }): Promise<{ ok: true }> => {
-    requireAdmin();
+    await requireCatalogEditor();
     await deleteBlueprint(data.id);
     return { ok: true };
   });

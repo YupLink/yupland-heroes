@@ -16,8 +16,8 @@ export const dict: Record<string, Entry> = {
     en: "Needs chips of the same kind, {level}★",
   },
   "chips.upg_chips": { ru: "Не хватает фишек: {list}", en: "Not enough chips: {list}" },
-  "chips.upg_tickets": {
-    ru: "Не хватает билетов: нужно {need}, есть {have}",
-    en: "Not enough tickets: {need} needed, {have} available",
+  "chips.upg_gold": {
+    ru: "Не хватает золота: нужно {need}, у тебя {have}",
+    en: "Not enough gold: need {need}, you have {have}",
   },
 };

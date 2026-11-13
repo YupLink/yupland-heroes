@@ -36,10 +36,19 @@ const ROWS = [
 /** Номер «под себя» в PLACE_DIRS. */
 export const PLACE_HERE = PLACE_DIRS.findIndex((d) => d.dq === 0 && d.dr === 0);
 
+/** Подсветка гекса: можно (зелёный), нельзя (красный); null — обычный. */
+export type PlaceTone = "ok" | "bad" | null;
+
+const TONE_CLASS: Record<"ok" | "bad", string> = {
+  ok: "bg-success/80 text-background",
+  bad: "bg-destructive/70 text-white",
+};
+
 export function PlaceDirGrid({
   selected = PLACE_HERE,
   busyAt = null,
   disabled = false,
+  tones,
   onPick,
 }: {
   /** Выделенный гекс (золотой); по умолчанию — «под себя». */
@@ -47,6 +56,8 @@ export function PlaceDirGrid({
   /** На каком гексе крутится ожидание ответа. */
   busyAt?: number | null;
   disabled?: boolean;
+  /** Подсветка по гексам (порядок PLACE_DIRS) — посадка дерева, lib/treePlant. */
+  tones?: ReadonlyArray<PlaceTone>;
   onPick: (i: number) => void;
 }) {
   return (
@@ -56,6 +67,7 @@ export function PlaceDirGrid({
           {row.map((i) => {
             const Icon = ICONS[i];
             const d = PLACE_DIRS[i];
+            const tone = tones?.[i] ?? null;
             return (
               <button
                 key={i}
@@ -68,7 +80,9 @@ export function PlaceDirGrid({
                   "grid h-16 w-14 place-items-center [clip-path:polygon(50%_0,100%_25%,100%_75%,50%_100%,0_75%,0_25%)] disabled:opacity-60",
                   i === selected
                     ? "bg-gold text-gold-foreground"
-                    : "bg-secondary/70 text-foreground",
+                    : tone
+                      ? TONE_CLASS[tone]
+                      : "bg-secondary/70 text-foreground",
                 )}
               >
                 {busyAt === i ? (

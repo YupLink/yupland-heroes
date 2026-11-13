@@ -5,6 +5,7 @@ import { labelForLevel } from "@/components/chips/levelLabel";
 import { myChipInventory } from "@/server/api/chips-pack";
 import { ArrowRight } from "lucide-react";
 
+import { thumb } from "@/lib/image";
 type InvItem = Awaited<ReturnType<typeof myChipInventory>>[number];
 
 function fmtTickets(x: number): string {
@@ -134,7 +135,7 @@ function CandidatesGrid({
               )}
             >
               <ChipImage
-                src={c.item.imageUrl}
+                src={thumb(c.item.imageUrl, 320)}
                 level={c.item.level}
                 alt={c.item.templateName}
                 className="w-full"
@@ -161,12 +162,14 @@ export type { InvItem };
 export { fmtTickets, fmtFarm, fmtBurnedPct, levelKey, Badge, KV, CraftHeader, CandidatesGrid };
 
 /**
- * Чем карточка коллекции забирает билеты. Задаёт вызывающий: музей на карте
+ * Чем карточка коллекции забирает доход (золото, бывшие билеты). Задаёт вызывающий: музей на карте
  * шлёт свою ручку (с клеткой и надбавкой за тир), раздел «Фишки» не шлёт
  * ничего — оттуда сбор убран.
  */
 export type ClaimFarmFn = (collectionId: string) => Promise<{
   claimedTickets: number;
+  /** Начислено золота (билеты ×100). Старый сервер не присылает — считаем сами. */
+  claimedGold?: number;
   totalClaimed: number;
   minLevel: number;
   ratePerDay: number;

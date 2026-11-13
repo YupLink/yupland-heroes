@@ -107,7 +107,9 @@ export function TelegramVerify({ context }: { context?: "profile" } = {}) {
           ? ru
             ? "Привяжи Telegram к кошельку, чтобы использовать промокоды. Список друзей доступен и без подтверждения."
             : "Link Telegram to your wallet to use promo codes. You can view your friends without verification."
-          : "Кошелёк привязывается к твоему Telegram навсегда. К одному Telegram можно привязать несколько кошельков — награды и билеты считаются вместе. Без подтверждения нельзя погашать NFT и видеть свой раздел."}
+          : ru
+            ? "Кошелёк привязывается к твоему Telegram навсегда. К одному Telegram можно привязать несколько кошельков — награды и золото считаются вместе. Без подтверждения нельзя погашать NFT и видеть свой раздел."
+            : "Your wallet is linked to your Telegram forever. Several wallets can be linked to one Telegram — rewards and gold are counted together. Without verification you can't redeem NFTs or see your section."}
       </p>
 
       {waitingForBot ? (

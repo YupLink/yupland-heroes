@@ -15,7 +15,11 @@ export type EconomyTab =
   | "delta"
   | "resource"
   | "trades"
-  | "loopholes";
+  | "loopholes"
+  | "news"
+  | "refs"
+  | "chain"
+  | "treasure";
 
 /** label — готовая русская подпись сводки; labelKey — ключ словаря econ.*. */
 export type EconomyTabDef = { key: EconomyTab } & ({ label: string } | { labelKey: string });
@@ -29,6 +33,10 @@ export const ECONOMY_TABS: EconomyTabDef[] = [
   { key: "resource", labelKey: "econ.tab.resource" },
   { key: "trades", labelKey: "econ.tab.trades" },
   { key: "loopholes", labelKey: "econ.tab.loopholes" },
+  { key: "news", labelKey: "econ.tab.news" },
+  { key: "refs", labelKey: "econ.tab.refs" },
+  { key: "chain", labelKey: "econ.tab.chain" },
+  { key: "treasure", labelKey: "econ.tab.treasure" },
 ];
 
 const OVERVIEW_TABS: ReadonlySet<EconomyTab> = new Set(["goods", "players", "towns", "prices"]);

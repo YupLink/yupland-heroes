@@ -65,14 +65,15 @@ export function useSpellbook({
   const [now, setNow] = useState(() => Date.now());
   // Часы заводим, только если кому-то правда идёт откат: книга без откатов
   // не должна перерисовываться раз в секунду просто так.
-  const ticking = (book.data?.spells ?? []).some((s) => s.cooldownLeftSec > 0);
+  const updatedAt = book.dataUpdatedAt;
+  const elapsed = Math.max(0, Math.floor((now - updatedAt) / 1000));
+  const ticking = (book.data?.spells ?? []).some((s) => s.cooldownLeftSec > elapsed);
   useEffect(() => {
     if (!ticking) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [ticking]);
 
-  const updatedAt = book.dataUpdatedAt;
   const spells = useMemo(() => {
     const list = book.data?.spells ?? [];
     const elapsed = Math.max(0, Math.floor((now - updatedAt) / 1000));
@@ -171,6 +172,8 @@ function castLine(
   const line = res.rolls.map((r) => boostRollText(r, lang)).join(" · ");
   // Новый борт и пришедший чужой — разные события, и слова у них разные.
   if (res.ship && res.kind === "create_ship") return t("braid.spell_done_ship_create", { name });
+  if (res.ship && res.kind === "create_big_ship")
+    return t("braid.spell_done_big_ship_create", { name });
   if (res.ship && res.kind === "repair_ship") return t("braid.spell_done_ship_repair", { name });
   if (res.ship) return t("braid.spell_done_ship", { name });
   if (res.moved) return t("braid.spell_done_teleport", { name });
@@ -178,3 +181,4 @@ function castLine(
 }
 
 export type Spellbook = ReturnType<typeof useSpellbook>;
+

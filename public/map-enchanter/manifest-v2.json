@@ -1,0 +1,80 @@
+{
+  "version": "v2",
+  "cell": 192,
+  "columns": 8,
+  "staticForegroundPixels": 5401,
+  "atlases": {
+    "idle": {
+      "file": "idle-v2.webp",
+      "frames": 32,
+      "width": 1536,
+      "height": 768,
+      "bytes": 239850,
+      "sha256": "dd3ae9054da30dfedf9010a3975c3076b64751941a658bfbf5f6cf22a9c4d5ee",
+      "decodedBytes": 4718592,
+      "fixedForegroundFailures": []
+    },
+    "hand": {
+      "file": "hand-v2.webp",
+      "frames": 8,
+      "width": 1536,
+      "height": 192,
+      "bytes": 39200,
+      "sha256": "205c74a0538cfe050ac75df74288aadcad6aaa0d2defcbe57b751f274a021730",
+      "decodedBytes": 1179648,
+      "fixedForegroundFailures": []
+    },
+    "boot": {
+      "file": "boot-v2.webp",
+      "frames": 11,
+      "width": 1536,
+      "height": 384,
+      "bytes": 209412,
+      "sha256": "2afbfba7fe64190b2544c7bda5de6c45ffafb5198afd7044bcb25ff5583cdbb2",
+      "decodedBytes": 2359296,
+      "fixedForegroundFailures": []
+    },
+    "snake": {
+      "file": "snake-v2.webp",
+      "frames": 12,
+      "width": 1536,
+      "height": 384,
+      "bytes": 216158,
+      "sha256": "34ff6769e42b6f9dd279571a57605fa0763e692c7b134577f0bde4deebb2dd91",
+      "decodedBytes": 2359296,
+      "fixedForegroundFailures": []
+    },
+    "spit": {
+      "file": "spit-v2.webp",
+      "frames": 12,
+      "width": 1536,
+      "height": 384,
+      "bytes": 208616,
+      "sha256": "a7f97d1ca2fd05770f11d4361059d25119d1d53431a78d00bdb29a0272fd08ac",
+      "decodedBytes": 2359296,
+      "fixedForegroundFailures": []
+    },
+    "flower": {
+      "file": "flower-v2.webp",
+      "frames": 12,
+      "width": 1536,
+      "height": 384,
+      "bytes": 120764,
+      "sha256": "00d4695c3730b51c787bbf6d3ee29ce0beaffdfe1246a2e9ed4ab6760c4b89f6",
+      "decodedBytes": 2359296,
+      "fixedForegroundFailures": []
+    },
+    "butterflies": {
+      "file": "butterflies-v2.webp",
+      "frames": 12,
+      "width": 1536,
+      "height": 384,
+      "bytes": 113598,
+      "sha256": "2af2271f90401610b41cef909e62646c3778ad020c8bf8182e0c0d604bc19108",
+      "decodedBytes": 2359296,
+      "fixedForegroundFailures": []
+    }
+  },
+  "totalBytes": 1147598,
+  "totalDecodedBytes": 17694720
+}

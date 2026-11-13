@@ -28,6 +28,21 @@ export async function preferredActiveWallet(
   return fallback;
 }
 
+/** Через какого бота открыта мини-апка: кошелёк (@yuplink_bot), игра (@yupland_heroes_bot) или прихожая. */
+export type TgBot = "wallet" | "game" | "hallway";
+
+/** Боты, чьей подписью может прийти initData. Одинаковые токены — один раз. */
+function initDataBots(): Array<{ bot: TgBot; token: string }> {
+  const out: Array<{ bot: TgBot; token: string }> = [];
+  const add = (bot: TgBot, token: string | undefined) => {
+    if (token && !out.some((b) => b.token === token)) out.push({ bot, token });
+  };
+  add("hallway", process.env.TELEGRAM_HALLWAY_BOT_TOKEN);
+  add("wallet", process.env.TELEGRAM_BOT_TOKEN);
+  add("game", process.env.TELEGRAM_GAME_BOT_TOKEN);
+  return out;
+}
+
 export async function verifyTelegramInitData(initData: string): Promise<
   | {
       ok: true;
@@ -35,11 +50,12 @@ export async function verifyTelegramInitData(initData: string): Promise<
       username: string | null;
       firstName: string | null;
       startParam: string | null;
+      bot: TgBot;
     }
   | { ok: false; error: string }
 > {
-  const botToken = process.env.TELEGRAM_HALLWAY_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) return { ok: false, error: "bot_not_configured" };
+  const bots = initDataBots();
+  if (bots.length === 0) return { ok: false, error: "bot_not_configured" };
 
   const params = new URLSearchParams(initData);
   const hash = params.get("hash");
@@ -51,10 +67,14 @@ export async function verifyTelegramInitData(initData: string): Promise<
   pairs.sort();
   const dataCheckString = pairs.join("\n");
 
+  // Подпись Mini App: secret = HMAC("WebAppData", токен бота). Подошёл токен —
+  // значит, мини-апку открыл именно этот бот.
   const { createHmac } = await import("node:crypto");
-  const secret = createHmac("sha256", "WebAppData").update(botToken).digest();
-  const expected = createHmac("sha256", secret).update(dataCheckString).digest("hex");
-  if (expected !== hash) return { ok: false, error: "bad_signature" };
+  const signedBy = bots.find(({ token }) => {
+    const secret = createHmac("sha256", "WebAppData").update(token).digest();
+    return createHmac("sha256", secret).update(dataCheckString).digest("hex") === hash;
+  });
+  if (!signedBy) return { ok: false, error: "bad_signature" };
 
   const authDate = Number(params.get("auth_date"));
   if (!authDate || Math.floor(Date.now() / 1000) - authDate > 86400) {
@@ -77,6 +97,7 @@ export async function verifyTelegramInitData(initData: string): Promise<
     username: user.username ?? null,
     firstName: user.first_name ?? null,
     startParam: params.get("start_param"),
+    bot: signedBy.bot,
   };
 }
 
@@ -110,8 +131,11 @@ export const startHallwaySession = createServerFn({ method: "POST" })
       .filter((u) => !/^tg\d+$/i.test(u.wallet) && !u.disconnected)
       .map((u) => u.wallet);
     if (realWallets.length > 0) {
+      await import("../accountArchive")
+        .then((m) => m.oneAccountPerTg(tgId, "tg-login"))
+        .catch((e) => console.warn("[one-per-tg]", e instanceof Error ? e.message : e));
       const chosen = await preferredActiveWallet(tgId, realWallets, realWallets[0]);
-      setCurrentWallet(chosen, tgId);
+      setCurrentWallet(chosen, tgId, { proven: true });
       return { ok: true as const, wallet: chosen, newbie: false, tgId };
     }
 
@@ -137,6 +161,6 @@ export const startHallwaySession = createServerFn({ method: "POST" })
       await skipHallwayForNewPlayer(synthetic, tgId);
       u = await pg.users.findOne({ wallet: synthetic });
     }
-    setCurrentWallet(synthetic, tgId);
+    setCurrentWallet(synthetic, tgId, { proven: true });
     return { ok: true as const, wallet: synthetic, newbie: true, tgId };
   });

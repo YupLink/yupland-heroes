@@ -1,18 +1,19 @@
-import { Coins, ImageIcon, Package, Zap } from "lucide-react";
+import { Backpack, Coins, ImageIcon, Package, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function KindToggle({
   value,
   onChange,
 }: {
-  value: "ft" | "nft" | "pack" | "energy";
-  onChange: (v: "ft" | "nft" | "pack" | "energy") => void;
+  value: "ft" | "nft" | "pack" | "energy" | "custom";
+  onChange: (v: "ft" | "nft" | "pack" | "energy" | "custom") => void;
 }) {
-  const opts: Array<{ key: "ft" | "nft" | "pack" | "energy"; label: string; icon: typeof Coins }> = [
+  const opts: Array<{ key: "ft" | "nft" | "pack" | "energy" | "custom"; label: string; icon: typeof Coins }> = [
     { key: "ft", label: "Токены", icon: Coins },
     { key: "nft", label: "NFT", icon: ImageIcon },
     { key: "pack", label: "Лут-бокс", icon: Package },
     { key: "energy", label: "Энергия", icon: Zap },
+    { key: "custom", label: "Товар", icon: Backpack },
   ];
   return (
     <div className="inline-flex h-8 select-none items-center rounded-full border border-border bg-secondary/60 p-0.5 text-[11px] font-medium">

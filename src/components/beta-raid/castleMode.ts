@@ -12,8 +12,13 @@ export type CastleMode = {
   enter: () => void;
   /** Direct entry from a specific building card; never starts movement. */
   enterAt?: (q: number, r: number) => Promise<boolean>;
+  /** Offer the existing main-castle confirmation for this exact town hall. */
+  offerMainAt?: (q: number, r: number) => Promise<void>;
   /** Кнопка профиля в правом верхнем углу карты (профиль доступен всегда). */
   profileButton: ReactNode;
+  /** Sound stays below the shared balance HUD, independent of the actions menu. */
+  musicControl?: () => ReactNode;
+  musicActive?: boolean;
   /** Экран таверны замка — у любой таверны мира. */
   openTavern: () => void;
 };

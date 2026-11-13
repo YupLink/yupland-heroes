@@ -11,6 +11,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CHEST_NET_CELLS, netUsed, type ChestNetView } from "@/lib/magicChest";
 import { chestOpenPrice } from "@/lib/openPass";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 import { resolveBackpack } from "@/server/api/beta-raid/market-backpack";
 import { guardViewIfAlive, loadGuardRow } from "@/server/api/beta-raid/mine-guard-read";
 import { chestActor, chestNearAny } from "@/server/api/beta-raid/chest/chest-row";
@@ -38,7 +39,8 @@ export const getChestNet = createServerFn({ method: "GET" })
     // Без оплаченного входа сеть не показываем — только цену: то же, что спишет «Открыть».
     if (!open) {
       const backpack = { heroName: bp?.heroName ?? null, capacity: 0, occupied: 0, stacks: [] };
-      const price = chestOpenPrice(used);
+      // На острове — в 10 раз дешевле (island/energy), ровно как спишет pass-price.
+      const price = scaleEnergy(chestOpenPrice(used), energyMultOf(a.mapId));
       const cells = CHEST_NET_CELLS;
       return { cells, used, slots: [], backpack, guard, locked: true, price, foreign };
     }

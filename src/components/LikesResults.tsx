@@ -1,3 +1,4 @@
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -5,8 +6,10 @@ import { ThumbsUp, Plus, Loader2, X, Star } from "lucide-react";
 import { buyLikePackage, listLikeShopOffers, myLikeBalance } from "@/server/api/likes";
 import { buyLikesWithStars } from "@/server/api/likes-stars-pay";
 import { useAccountEnabled, ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
+import { useEntryRules } from "@/hooks/useEntryRules";
 import { useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 
 export function fmtLikes(x: number): string {
   const n = Number(x) || 0;
@@ -34,7 +37,7 @@ export function LikesChip() {
         <ThumbsUp className="h-3 w-3" />
         {fmtLikes(bal.data.available)}
         <span className="text-rose-300/70">/{bal.data.maxPool}</span>
-        <button onClick={() => setShopOpen(true)} title={t("likes.buy_likes_for_tickets")} className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-400/20 text-rose-300 transition hover:bg-rose-400/30">
+        <button onClick={() => setShopOpen(true)} title={t("likes.buy_likes_for_gold")} className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-400/20 text-rose-300 transition hover:bg-rose-400/30">
           <Plus className="h-3 w-3" />
         </button>
       </span>
@@ -50,6 +53,7 @@ export function BuyLikesModal({
   onClose: () => void;
   currentLikes: number;
 }) {
+  usePurchaseMusic(open);
   const t = useT();
   const qc = useQueryClient();
   const offers = useQuery({ queryKey: ["like-shop-offers"], queryFn: () => listLikeShopOffers(), enabled: open });
@@ -57,14 +61,16 @@ export function BuyLikesModal({
   const buy = useMutation({
     mutationFn: (args: { offerId: string; quantity: number }) => buyLikePackage({ data: args }),
     onSuccess: (res) => {
-      toast.success(t("likes.bought_toast", { likes: res.likesAdded, tickets: res.ticketsSpent }));
+      // Платится золотом ×500 от цены в билетах (§8.61).
+      toast.success(t("likes.bought_toast_gold", { likes: res.likesAdded, gold: res.goldSpent.toLocaleString("ru-RU") }));
       qc.invalidateQueries({ queryKey: ["my-like-balance"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       onClose();
     },
     onError: (e: Error) => toast.error(humanError(e)),
   });
   const accountOn = useAccountEnabled();
+  const starsOn = useEntryRules().stars; // §8.127: звёзды — только с Telegram
   const buyStars = useMutation({
     mutationFn: (args: { offerId: string; quantity: number }) => {
       const c = globalThis.crypto as { randomUUID?: () => string } | undefined;
@@ -117,7 +123,7 @@ export function BuyLikesModal({
               const qty = Math.max(1, Math.min(50, Math.floor(Number(qtyRaw)) || 1));
               const setQtyStr = (v: string) => setQtyByOffer((m) => ({ ...m, [o.id]: v }));
               const totalLikes = o.likes * qty;
-              const totalTickets = o.tickets * qty;
+              const totalGold = goldForTicketPrice(o.tickets * qty);
               const bonusPct = baseRatio > 0 ? Math.round(((o.ratio - baseRatio) / baseRatio) * 100) : 0;
               const isBuying = buy.isPending && buy.variables?.offerId === o.id;
               return (
@@ -131,7 +137,7 @@ export function BuyLikesModal({
                         {qty > 1 ? t("likes.for_all", { qty }) : t("likes.for_price")}
                       </div>
                       <div className="text-sm font-medium">
-                        {t("likes.tickets_count", { n: totalTickets })}
+                        {t("likes.gold_count", { n: totalGold.toLocaleString("ru-RU") })}
                       </div>
                       {bonusPct > 0 && (
                         <div className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-medium text-success">
@@ -149,7 +155,7 @@ export function BuyLikesModal({
                       {t("likes.buy")}
                     </button>
                   </div>
-                  {accountOn && o.priceStars != null && (
+                  {starsOn && accountOn && o.priceStars != null && (
                     <button
                       type="button"
                       onClick={() => buyStars.mutate({ offerId: o.id, quantity: qty })}
@@ -181,3 +187,4 @@ export function BuyLikesModal({
     </div>
   );
 }
+

@@ -16,6 +16,7 @@ const s = vi.hoisted(() => ({
   satBack: [] as number[],
   giveFail: false,
   chops: [] as Array<{ tool: string | null | undefined; hand: boolean | undefined }>,
+  map: "map1",
 }));
 
 const [WOOD, STONE] = ["cst_frxf3xh6mq6g", "cst_g7uwp1syvmng"];
@@ -82,7 +83,7 @@ vi.mock("./item-alias", () => ({
 vi.mock("./gate", () => ({ requireBetaRaid: async () => "w1" }));
 vi.mock("../../rateGate", () => ({ actionGate: async () => {} }));
 vi.mock("./encounter-where", () => ({
-  myMapId: async () => "map1",
+  myMapId: async () => s.map,
   playerCell: async () => ({ q: 0, r: 0 }),
   requireAdjacent: () => {},
 }));
@@ -137,6 +138,7 @@ beforeEach(() => {
     satBack: [],
     giveFail: false,
     chops: [],
+    map: "map1",
   });
   mod.dropInteractiveDecorCache();
 });
@@ -151,10 +153,10 @@ describe("список: что рубится руками", () => {
 });
 
 describe("рубка руками", () => {
-  it("10 энергии вместо цены декора, 30 сытости, инструмент не тронут; турниру — как топор", async () => {
+  it("энергия ×2 от цены декора (3 → 6, 25.10), 30 сытости, инструмент не тронут; турниру — как топор", async () => {
     const res = await chop();
-    expect(res).toMatchObject({ cost: 10, hand: true, satietyCost: 30, toolName: null });
-    expect(s.pay).toEqual([{ cost: 10, reason: "decor" }]);
+    expect(res).toMatchObject({ cost: 6, hand: true, satietyCost: 30, toolName: null });
+    expect(s.pay).toEqual([{ cost: 6, reason: "decor" }]);
     expect([s.satiety, s.hits, s.onCell]).toEqual([70, 0, false]);
     await vi.waitFor(() => expect(s.chops).toEqual([{ tool: null, hand: true }]));
   });
@@ -172,7 +174,7 @@ describe("рубка руками", () => {
 
   it("энергии не хватило — сытость назад, декор на клетку", async () => {
     s.payFail = true;
-    await expect(chop()).rejects.toThrow("Нужно 10 энергии");
+    await expect(chop()).rejects.toThrow("Нужно 6 энергии");
     expect([s.satiety, s.satBack, s.onCell]).toEqual([100, [30], true]);
   });
 
@@ -182,9 +184,19 @@ describe("рубка руками", () => {
     expect([s.refunds, s.satiety, s.onCell]).toEqual([1, 100, true]);
   });
 
+  it("остров новичка: энергия и сытость в 10 раз меньше — 0,6 и 3 (21.10)", async () => {
+    s.map = "isle_abc";
+    const res = await chop();
+    expect(res).toMatchObject({ cost: 0.6, satietyCost: 3 });
+    expect([s.pay, s.satiety]).toEqual([[{ cost: 0.6, reason: "decor" }], 97]);
+    s.satiety = 2;
+    s.onCell = true;
+    await expect(chop()).rejects.toThrow('braid.decor_hand_hungry|{"n":3}');
+  });
+
   it("героя нет — шкалы нет: рубка за энергию, сытость 0", async () => {
     s.satiety = null;
-    expect(await chop()).toMatchObject({ cost: 10, satietyCost: 0 });
+    expect(await chop()).toMatchObject({ cost: 6, satietyCost: 0 });
   });
 
   it("без hand путь прежний: инструмент из списка и цена декора", async () => {

@@ -7,12 +7,13 @@ import {
   Gift,
   Heart,
   CheckSquare,
-  Ticket,
+  Coins,
   Store,
   ScrollText,
   Gamepad2,
   Sparkles,
   Wallet,
+  IdCard,
   Send,
   Wrench,
   Map,
@@ -27,6 +28,7 @@ import {
   ListTodo,
   CalendarClock,
   Trophy,
+  Swords,
   Mail,
   Globe,
   type LucideIcon,
@@ -37,6 +39,9 @@ import {
 export type AdminNavTo =
   | "/admin/drops"
   | "/admin/testers"
+  | "/admin/google"
+  | "/admin/wallet-login"
+  | "/admin/passport"
   | "/admin/likes"
   | "/admin/tasks"
   | "/admin/tickets"
@@ -50,7 +55,9 @@ export type AdminNavTo =
   | "/admin/worldgen"
   | "/admin/spells"
   | "/admin/tournaments"
+  | "/admin/duel"
   | "/admin/letters"
+  | "/admin/lab"
   | "/admin/assets"
   | "/admin/payouts"
   | "/admin/redemptions"
@@ -100,26 +107,26 @@ export const adminNavGroups: AdminNavGroup[] = [
     ],
   },
   {
-    title: "Билеты",
-    blurb: "Как игрок зарабатывает и тратит билеты.",
+    title: "Золото",
+    blurb: "Как игрок зарабатывает золото (бывшие билеты).",
     items: [
       {
         to: "/admin/tasks",
-        label: "Задания (+билеты)",
+        label: "Задания (+золото)",
         icon: CheckSquare,
-        desc: "Подписки/кастомные за +1 билет",
+        desc: "Подписки/кастомные за +100 золота",
       },
       {
         to: "/admin/tickets",
-        label: "Билеты за NFT",
-        icon: Ticket,
-        desc: "Билеты за держание набора NFT",
+        label: "Золото за NFT",
+        icon: Coins,
+        desc: "Золото за держание набора NFT",
       },
       {
         to: "/admin/shop",
-        label: "Магазин билетов",
+        label: "Раздача DARAI",
         icon: Store,
-        desc: "Цены: энергия/токен → билеты",
+        desc: "Раздача дохода · счета",
       },
     ],
   },
@@ -156,7 +163,7 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     title: "Рейды",
     blurb: "Локации, цепочки боссов и сундуков, награды за суммарный урон.",
-    // Открыто всем админам (в т.ч. Ярославу/darai_collection.near), не только владельцу.
+    // Открыто всем админам (в т.ч. партнёру), не только владельцу.
     items: [
       {
         to: "/admin/raids",
@@ -188,7 +195,14 @@ export const adminNavGroups: AdminNavGroup[] = [
         icon: Trophy,
         desc: "Категория · дни · места и призы · запуск",
       },
+      {
+        to: "/admin/duel",
+        label: "Дуэль героев",
+        icon: Swords,
+        desc: "Пошаговый бой 16×8 · концепт · песочница",
+      },
       { to: "/admin/letters", label: "Письма игрокам", icon: Mail, desc: "Окно при входе в игру" },
+      { to: "/admin/lab", label: "Лаборатория", icon: FlaskConical, desc: "Артефакты из нейросети · тест" },
       {
         to: "/admin/assets",
         label: "Редактор ассетов",
@@ -219,18 +233,24 @@ export const adminNavGroups: AdminNavGroup[] = [
     title: "Тестеры",
     blurb: "Группа игроков, которым механики открываются раньше остальных.",
     gate: "payouts",
+    items: [{ to: "/admin/testers", label: "Тестеры", icon: FlaskConical, desc: "Кошельки · что им открыто" }],
+  },
+  {
+    title: "Вход через Google",
+    blurb: "Тестовый вход Google-игроком; для всех выключен.",
+    items: [{ to: "/admin/google", label: "Вход через Google", icon: Globe, desc: "Client ID · аккаунты" }],
+  },
+  {
+    title: "Вход по кошельку",
+    blurb: "NEAR-кошелёк без Telegram: места, входы, совпадения устройств. Паспорт — связки входов каждого аккаунта.",
     items: [
-      {
-        to: "/admin/testers",
-        label: "Тестеры",
-        icon: FlaskConical,
-        desc: "Кошельки · что им открыто",
-      },
+      { to: "/admin/wallet-login", label: "Вход по кошельку", icon: Wallet, desc: "Места · кто входил · мультиаккаунты" },
+      { to: "/admin/passport", label: "Паспорт аккаунта", icon: IdCard, desc: "Telegram · кошельки · Google · два аккаунта на Telegram" },
     ],
   },
   {
     title: "Выплаты",
-    blurb: "Казна по токенам и журнал выплат NFT. Раздача DARAI — в «Магазине билетов».",
+    blurb: "Казна по токенам и журнал выплат NFT. Раздача DARAI — в группе «Золото».",
     gate: "payouts",
     items: [
       {

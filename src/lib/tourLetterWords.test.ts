@@ -35,7 +35,7 @@ describe("письмо о турнирах — слова", () => {
 
   it("призы: склонения, артефакт по редкости, штучное по имени", () => {
     expect(letterPrize({ kind: "likes", amount: 21 }, "ru")).toBe("21 лайк");
-    expect(letterPrize({ kind: "tickets", amount: 3 }, "ru")).toBe("3 билета");
+    expect(letterPrize({ kind: "tickets", amount: 3 }, "ru")).toBe("300 золота"); // §8.61: билеты → золото ×100
     expect(letterPrize({ kind: "resource", amount: 1, refId: "diamonds" }, "en")).toBe("1 diamond");
     expect(letterPrize({ kind: "art", amount: 2, refId: "rarity:epic" }, "ru")).toBe(
       "2 эпических артефакта",

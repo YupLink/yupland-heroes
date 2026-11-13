@@ -64,11 +64,12 @@ export const dict = {
     ru: "энергия на всё остальное",
     en: "energy spent on anything else",
   },
+  // {time} — время снимка: за минуту до конца турнира (metricSources.farmSnapClock).
   "tour.rules.farm.y1": {
-    ru: "1 очко в день за каждую шахту (23:59 UTC)",
-    en: "1 point a day per mine (23:59 UTC)",
+    ru: "1 очко в день за каждую шахту ({time} UTC)",
+    en: "1 point a day per mine ({time} UTC)",
   },
-  "tour.rules.farm.n1": { ru: "шахта, потерянная до 23:59", en: "a mine lost before 23:59" },
+  "tour.rules.farm.n1": { ru: "шахта, потерянная до {time}", en: "a mine lost before {time}" },
   "tour.rules.fish_catch.y1": {
     ru: "рыба, пойманная удочкой, — 1 очко за штуку",
     en: "a fish caught with a rod — 1 point each",

@@ -11,14 +11,18 @@
 // сундука: содержимое приходит тем же ответом. Кнопка занята, пока окно не
 // перечитано (мутация ждёт перечитку); тап по ещё не перечитанному окну сервер
 // и так не берёт второй раз — вход жив.
+//
+// Рыба от красного динамита (30.10.2026) с башмаком: сервер снял её при открытии
+// (ответ boot) — тост «Упс, показалось» и слой мешочков: рыбы на карте больше нет.
 import { useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { humanError } from "@/lib/humanError";
+import { useT } from "@/lib/i18n";
 import { newOpId } from "@/lib/opId";
 import { ENERGY_KEY } from "@/lib/hooks/useEnergy";
 import { closeStorage, openStorage } from "@/server/api/beta-raid/open-pass/pass";
-import { BAGS_KEY, PLAIN_KEY } from "@/components/beta-raid/loot-bag/lootBagLive";
+import { BAGS_KEY, PLAIN_KEY, invalidateBags } from "@/components/beta-raid/loot-bag/lootBagLive";
 import { CHEST_NET_KEY } from "@/components/beta-raid/chest/chestLive";
 
 /** Энергия списалась (открыть, лопата): шапка и полоса рейда — сразу. */
@@ -41,6 +45,7 @@ function refetchWindows(qc: ReturnType<typeof useQueryClient>): Promise<unknown>
  */
 export function useOpenStorage(cell: { q: number; r: number }, what: "chest" | "bags" = "chest") {
   const qc = useQueryClient();
+  const t = useT();
   // Ключи нажатий окна и мешочки, которые оно открывало, — закрыть с окном.
   const ops = useRef(new Set<string>());
   const bagIds = useRef(new Set<string>());
@@ -54,8 +59,12 @@ export function useOpenStorage(cell: { q: number; r: number }, what: "chest" | "
     // Содержимое приходит окнам тем же ответом: окна мешочков клетки, обычного
     // сундука и сети магического — слой карты не трогаем. Промис — кнопка
     // «Открыть» остаётся занятой, пока окно не перечитано.
-    onSuccess: () => {
+    onSuccess: (res) => {
       invalidateEnergy(qc);
+      if (res.boot) {
+        toast(t("bag.fish_boot"));
+        invalidateBags(qc);
+      }
       return refetchWindows(qc);
     },
     // Отказ («цена изменилась», «подойди», сундука нет) — окно тоже перечитать.

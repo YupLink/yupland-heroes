@@ -9,6 +9,7 @@
 import { mcpExec } from "@/server/db/mcpClient";
 import { sqlStr } from "@/server/api/raid-shared";
 import { TRAINING_PACK_CHIPS } from "@/lib/raid/island/catalog";
+import { secureRandomInt } from "@/lib/secureRandom";
 
 export const ISLAND_PACK_CHIP_SOURCE = "island_pack";
 const STARS = [1, 1.5, 2, 2.5, 3];
@@ -36,7 +37,7 @@ async function starImages(): Promise<Record<string, string | null>> {
 export async function openTrainingPack(wallet: string, grant: Grant): Promise<TrainingReveal[]> {
   const stars = Array.from(
     { length: TRAINING_PACK_CHIPS },
-    () => STARS[Math.floor(Math.random() * STARS.length)],
+    () => STARS[secureRandomInt(0, STARS.length)],
   );
   const ids = stars.map((_, i) => sqlStr(`${grant.id}_t${i}`));
   const values = stars

@@ -43,10 +43,25 @@ function open(): Promise<IDBDatabase | null> {
  * известную запись не перепишут. Если в снимке ошибочная запись словаря (07.10:
  * облик ратуши без тиров → серый квадрат), исправленный сервер её игроку не
  * донесёт; новое поколение — разовая перекачка снимка у каждого (~80 КБ).
+ * g3 (20.10): в снимке появился список шахт (packed.mines) — без перекачки
+ * старый снимок без списка водил бы героя сквозь шахты, пока не перекачается.
+ * g4 (21.10): в снимке жилы золота и алмазов (lists.veins) — старый снимок
+ * без них не показал бы жилы до ближайшей перекачки.
+ * g5 (21.10): жилы перерисованы гнёздами по 1–2 клетки (minev2-31) — версия
+ * карты от этого не меняется, без нового поколения висели бы старые жилы.
+ * g6 (23.10): новая картинка золотого гриба (облик bskin_dm_gold →
+ * mushroom-gold-v3.webp) — запись словаря уже известна, дельта её не перепишет.
  */
-const GEN = 2;
+const GEN = 6;
 const keyOf = (mapId: string, variant: string) => `${mapId}:${variant}:g${GEN}`;
-const legacyKeyOf = (mapId: string, variant: string) => `${mapId}:${variant}`;
+/** Прежние поколения: без суффикса (первое), g2, g3, g4 и g5. */
+const legacyKeysOf = (mapId: string, variant: string) => [
+  `${mapId}:${variant}`,
+  `${mapId}:${variant}:g2`,
+  `${mapId}:${variant}:g3`,
+  `${mapId}:${variant}:g4`,
+  `${mapId}:${variant}:g5`,
+];
 
 export async function readCachedMap(mapId: string, variant: string): Promise<CachedMap | null> {
   const db = await open();
@@ -76,7 +91,7 @@ export async function writeCachedMap(entry: CachedMap): Promise<void> {
       const store = tx.objectStore(STORE);
       store.put(entry, keyOf(entry.mapId, entry.variant));
       // Прежнее поколение больше не читается — место не держим.
-      store.delete(legacyKeyOf(entry.mapId, entry.variant));
+      for (const k of legacyKeysOf(entry.mapId, entry.variant)) store.delete(k);
       tx.oncomplete = () => {
         db.close();
         resolve();

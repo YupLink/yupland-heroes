@@ -1,0 +1,9 @@
+.raid-music-control {
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  z-index: auto;
+  flex: none;
+}
+.raid-music-control[hidden] { display: none; }

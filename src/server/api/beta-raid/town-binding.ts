@@ -11,9 +11,9 @@ import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { requireAdmin } from "../../auth";
 import { hexDistance } from "@/lib/raid/hex";
-import { godMapId } from "./god-map";
 import { cleanTownName } from "@/lib/townConfig";
 import type { TownKey } from "./town-stock";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 /** Ратуша в списке выбора: где стоит, как зовётся и сколько до неё клеток. */
 export type TownHallOption = {
@@ -93,8 +93,7 @@ const cellInput = z.object({ q: z.number().int(), r: z.number().int() });
 export const getShopTownBinding = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => cellInput.parse(d))
   .handler(async ({ data }): Promise<ShopTownBinding> => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     const [town, halls] = await Promise.all([
       shopTown(mapId, data.q, data.r),
       townHallsNear(mapId, data.q, data.r),
@@ -105,8 +104,7 @@ export const getShopTownBinding = createServerFn({ method: "GET" })
 export const setShopTownBinding = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => cellInput.extend({ town: cellInput.nullable() }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     if (data.town) {
       // Привязать можно только к живой ратуше этой же карты: иначе лавка
       // числилась бы за городом, которого нет, и торговала бы как обычная.

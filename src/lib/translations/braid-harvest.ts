@@ -2,6 +2,38 @@
 import type { Lang } from "../store";
 
 export const dict: Record<string, Record<Lang, string>> = {
+
+  "harvest.captures_title": { ru: "Перехвачены", en: "Captured" },
+  "harvest.collect_one": { ru: "Собрать", en: "Collect" },
+  "harvest.collect_one_label": { ru: "Собрать: {name}", en: "Collect: {name}" },
+  "harvest.collecting": { ru: "Сбор…", en: "Collecting…" },
+  "harvest.capture_unavailable": { ru: "Этот остаток уже собран или недоступен", en: "This remainder is already collected or unavailable" },
+  "harvest.source_count": { ru: "· {n} шт.", en: "· {n} total" },
+  "harvest.seized_n": { ru: "· Перехвачено {n}", en: "· Taken {n}" },
+  "harvest.stopped_n": { ru: "· Остановлено {n}", en: "· Stopped {n}" },
+  "harvest.my_mines_mushrooms_n": { ru: "Шахты и грибы · {n}", en: "Mines and mushrooms · {n}" },
+  "harvest.my_farms_n": { ru: "Фермы · {n}", en: "Farms · {n}" },
+  "harvest.no_mines_mushrooms": { ru: "Шахт и грибов пока нет", en: "No mines or mushrooms yet" },
+  "harvest.no_active_farms": {
+    ru: "На фермах нет твоих героев",
+    en: "None of your heroes are farming",
+  },
+  "harvest.mushroom_seized": { ru: "Перехвачен", en: "Taken" },
+  "harvest.mushroom_expired": { ru: "Исчез", en: "Expired" },
+  "harvest.until_expiry": { ru: "До исчезновения", en: "Expires in" },
+  "harvest.ready_to_collect": { ru: "К сбору", en: "Ready to collect" },
+  "harvest.mine_seized": { ru: "Перехвачена", en: "Captured" },
+  "harvest.mine_stopped": { ru: "Остановлена", en: "Stopped" },
+  "harvest.cell_short": { ru: "кл. {q},{r}", en: "cell {q},{r}" },
+  "harvest.until_break": { ru: "До поломки", en: "Until breakdown" },
+  "harvest.mine_status": { ru: "Статус", en: "Status" },
+  "harvest.mine_broken": { ru: "Сломана", en: "Broken" },
+  "harvest.personal_slots_label": { ru: "Личные ячейки", en: "Personal slots" },
+  "harvest.hours_short": { ru: "ч", en: "h" },
+  "harvest.my_sources_n": { ru: "Мои шахты и фермы · {n}", en: "My mines and farms · {n}" },
+  "harvest.details": { ru: "Подробнее", en: "Details" },
+  "harvest.hide_details": { ru: "Свернуть", en: "Hide details" },
+  "harvest.collected_label": { ru: "Собрано", en: "Collected" },
   // ─────────── Добыча ───────────
   "harvest.title": { ru: "Добыча", en: "Harvest" },
   "harvest.mines": { ru: "Шахты", en: "Mines" },
@@ -15,6 +47,7 @@ export const dict: Record<string, Record<Lang, string>> = {
     en: "at the field's warehouse: {n} · cell",
   },
   "harvest.cell": { ru: "клетка {q},{r}", en: "cell {q},{r}" },
+  "harvest.show_on_map": { ru: "Показать на карте", en: "Show on map" },
   "harvest.no_mines": { ru: "Захваченных шахт пока нет", en: "No mines captured yet" },
   "harvest.no_fields": { ru: "Ты нигде не сеешь", en: "You are not farming anywhere" },
   "harvest.no_rewards": { ru: "Наград к получению нет", en: "Nothing to claim" },
@@ -62,8 +95,8 @@ export const dict: Record<string, Record<Lang, string>> = {
   "gifts.claimed_n": { ru: "Забрано подарков: {n}", en: "Gifts claimed: {n}" },
   "gifts.from_admin": { ru: "От команды игры", en: "From the game team" },
   "gifts.hint": {
-    ru: "Награда придёт на счёт после того, как заберёшь её здесь — на это есть 48 часов",
-    en: "The reward lands on your account once you claim it here — you have 48 hours",
+    ru: "Награда придёт на счёт, когда заберёшь её здесь",
+    en: "The reward lands on your account once you claim it here",
   },
   // Срок в карточке: подарок ждёт 48 часов и сгорает (gifts-expire.ts).
   "gifts.expires_in": { ru: "сгорит через {n} ч", en: "expires in {n} h" },
@@ -80,14 +113,14 @@ export const dict: Record<string, Record<Lang, string>> = {
   },
   "gifts.err_taken": { ru: "Подарок уже забран", en: "This gift is already claimed" },
   "gifts.err_expired": {
-    ru: "Подарок сгорел — его не забрали за 48 часов",
-    en: "This gift has expired — it wasn't claimed within 48 hours",
+    ru: "Срок вышел — подарок сгорел",
+    en: "Time's up — the gift has expired",
   },
 
   // Виды подарков — подпись в списке.
   "gifts.kind.likes": { ru: "Лайки", en: "Likes" },
   "gifts.kind.energy": { ru: "Энергия", en: "Energy" },
-  "gifts.kind.tickets": { ru: "Билеты", en: "Tickets" },
+  "gifts.kind.tickets": { ru: "Золото", en: "Gold" },
   "gifts.kind.resource": { ru: "Ресурс", en: "Resource" },
   "gifts.kind.token": { ru: "Монеты", en: "Coins" },
   "gifts.kind.pack": { ru: "Пак", en: "Pack" },
@@ -143,3 +176,4 @@ export const dict: Record<string, Record<Lang, string>> = {
     en: "Could not confirm the claim. Refresh the list and try again",
   },
 };
+

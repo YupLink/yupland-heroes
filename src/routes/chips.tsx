@@ -10,8 +10,8 @@ import wideScene from "@/assets/loading/yupik-scene-wide.webp";
 export const Route = createFileRoute("/chips")({
   head: () => ({
     links: [
-      { rel: "preload", as: "image", href: portraitScene, media: "(max-aspect-ratio: 749/1000)" },
-      { rel: "preload", as: "image", href: wideScene, media: "(min-aspect-ratio: 3/4)" },
+      { rel: "preload", as: "image", href: portraitScene, media: "(max-aspect-ratio: 599/1000), (max-width: 599px) and (max-aspect-ratio: 749/1000)" },
+      { rel: "preload", as: "image", href: wideScene, media: "(min-aspect-ratio: 3/4), (min-width: 600px) and (min-aspect-ratio: 3/5)" },
     ],
     meta: [
       { title: "Фишки — YupLink" },

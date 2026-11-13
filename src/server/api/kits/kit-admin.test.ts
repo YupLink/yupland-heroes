@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sqls: string[] = [];
-const st = { deleted: true, exists: true, box: true };
+const st = { deleted: true, exists: true, box: true, money: false };
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
@@ -18,6 +18,11 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }));
 vi.mock("../../auth", () => ({ requireAdmin: () => "admin.near" }));
+vi.mock("../mystic-money", () => ({
+  assertPackMoneyRight: async () => {
+    if (st.money) throw new Error("только для владельца");
+  },
+}));
 vi.mock("../energy-sub/rate", () => ({ daraiPerUsd: async () => ({ rate: 2_000_000, ageMs: 0 }) }));
 vi.mock("../../db/mcpClient", () => ({
   mcpExec: async (sql: string) => {
@@ -60,7 +65,7 @@ const fields = {
 
 beforeEach(() => {
   sqls.length = 0;
-  Object.assign(st, { deleted: true, exists: true, box: true });
+  Object.assign(st, { deleted: true, exists: true, box: true, money: false });
 });
 
 describe("список наборов", () => {
@@ -105,6 +110,12 @@ describe("сохранение набора", () => {
       "kits.err_price",
     );
     expect(sqls).toHaveLength(0);
+  });
+
+  it("бокс с DARAI/Stars — только админ выплат, без записи", async () => {
+    st.money = true;
+    await expect(adminKitSave({ data: fields })).rejects.toThrow("владельца");
+    expect(sqls.filter((s) => s.startsWith("INSERT") || s.startsWith("UPDATE"))).toHaveLength(0);
   });
 
   it("не бокс из конструктора (пак, удалённый) — отказ, без записи", async () => {

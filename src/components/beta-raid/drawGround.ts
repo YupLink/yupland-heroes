@@ -1,4 +1,4 @@
-// Подложка клетки (местность + дорога) и проверка границы разведанного.
+// Подложка клетки (местность + жила + дорога) и проверка границы разведанного.
 // Вынесено из betaCanvasDraw.ts (правило ≤250 строк).
 import { ROAD_DIRS } from "./hexGeometry";
 import type { MapStore } from "./mapStore";
@@ -6,18 +6,23 @@ import { TILE_DRAW_H, TILE_DRAW_W } from "./hexTileCache";
 import { RIBBON_DRAW_H, RIBBON_DRAW_W } from "./roadRibbonCache";
 import type { SceneCell } from "./mapIndex";
 import { COLOR, type DrawScene } from "./betaCanvasScene";
+import { veinKey, veinsOf } from "./veinStore";
+import { drawVein } from "./veinDraw";
 
-/** Местность и дорога одной клетки — тот же порядок, что при выпечке куска. */
-export function drawGround(scene: DrawScene, c: SceneCell, hex: Path2D): void {
+/** Местность, жила и дорога одной клетки — тот же порядок, что при выпечке куска. */
+export function drawGround(scene: DrawScene, c: SceneCell, hex: Path2D, store: MapStore): void {
   const { g } = scene;
   g.translate(c.x, c.y);
   if (c.cell.terrainId) {
-    const tile = scene.tiles.get(c.tileKey, scene.images.get(c.tileKey));
+    const tile = scene.tiles.get(c.tileKey, scene.images.get(c.tileKey), c.q, c.r);
     if (tile) g.drawImage(tile, -TILE_DRAW_W / 2, -TILE_DRAW_H / 2, TILE_DRAW_W, TILE_DRAW_H);
     else {
       g.fillStyle = COLOR.grass;
       g.fill(hex);
     }
+    const veins = veinsOf(store.packed);
+    const vein = veins.size ? veins.get(veinKey(c.q, c.r)) : undefined;
+    if (vein) drawVein(g, scene.images, vein);
   } else {
     g.fillStyle = COLOR.emptyTile;
     g.fill(hex);
@@ -47,3 +52,4 @@ export function touchesSeen(
   }
   return false;
 }
+

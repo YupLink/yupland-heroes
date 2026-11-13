@@ -22,7 +22,7 @@ describe("ItemHeroFields", () => {
   it("список способностей с пустым пунктом, выбранная отмечена", () => {
     const html = render("fisher");
     expect(html).toContain("Способность");
-    for (const ru of ["Животновод", "Рыбак", "Владелец казино", "Дипломат", "Искатель кладов", "Владелец рынков", "Фермер", "Киллер"])
+    for (const ru of ["Животновод", "Рыбак", "Владелец казино", "Дипломат", "Искатель кладов", "Владелец рынков", "Фермер", "Киллер", "Шахтёр"])
       expect(html).toContain(ru);
     expect(html).toMatch(/<option value="fisher" selected="">Рыбак<\/option>/);
   });

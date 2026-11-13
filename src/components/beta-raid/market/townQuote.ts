@@ -32,3 +32,20 @@ export function cityCartTotals(
   }
   return out;
 }
+
+/**
+ * Цена «/шт» на плитке городской лавки при большом количестве — СРЕДНЯЯ, а не
+ * цена первой штуки (владелец, 04.11.2026: «120 × 3,95 ≠ 267,05»). Делим ту же
+ * сумму, что в итоге корзины (cityCartTotals), на число единиц — до копейки.
+ * null — писать цену штуки как есть: позиция не городская, взято 0–1, сделка
+ * не пройдёт или средняя совпала с ценой штуки (кривая тут плоская).
+ */
+export function cityAvgPrice(
+  it: Pick<MarketItemView, "town" | "priceAmount">,
+  qty: number,
+  total: number | null | undefined,
+): number | null {
+  if (!it.town || !(qty > 1) || total == null) return null;
+  const avg = Math.round((total / qty) * 100) / 100;
+  return Math.abs(avg - it.priceAmount) < 0.005 ? null : avg;
+}

@@ -1,6 +1,6 @@
 /* Шрифты замка явно (дизайн Ангелины, 07.10): без них окно лайков брало общий шрифт игры. */
-@font-face { font-family: "Castle HUD Golos"; src: url("../../assets/tavern/GolosText.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
-@font-face { font-family: "Castle HUD Russo"; src: url("../../assets/tavern/RussoOne.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Castle HUD Golos"; src: url("../../assets/tavern/GolosText.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Castle HUD Russo"; src: url("../../assets/tavern/RussoOne.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 /* Шапка замка (CastleMainHud): в мастерской — fixed поверх превью, в игре —
    первый элемент строки шапки CastleLiveView, справа от неё кружок профиля. */
 .castle-main-hud {
@@ -45,7 +45,8 @@
   background: #ffd32e33;
 }
 .castle-main-hud__icon { flex: none; width: 25px; height: 25px; object-fit: contain; image-rendering: pixelated; }
-.castle-main-hud__icon--tickets { width: 27px; height: 27px; }
+/* Золото (§8.66) — на месте прежних билетов: значок игры чуть крупнее, как у них был. */
+.castle-main-hud__icon--gold { width: 27px; height: 27px; }
 .castle-main-hud__numbers { display: flex; flex: 1 1 0; flex-direction: column; min-width: 0; line-height: 1.12; }
 .castle-main-hud__label-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .castle-main-hud__label { font-size: 12px; white-space: nowrap; }
@@ -148,12 +149,12 @@ header:has(> .castle-main-hud) button:is([aria-label="Открыть профи�
   .castle-main-hud__balances { min-height: 55px; border-radius: 15px; }
   .castle-main-hud__balance { gap: 3px; padding: 5px 4px; }
   .castle-main-hud__icon { width: 17px; height: 17px; }
-  .castle-main-hud__icon--tickets { width: 19px; height: 19px; }
-  .castle-main-hud__balance--tickets { flex-grow: 1.1; }
+  .castle-main-hud__icon--gold { width: 19px; height: 19px; }
+  .castle-main-hud__balance--gold { flex-grow: 1; }
   .castle-main-hud__balance--likes { flex-grow: .9; }
   .castle-main-hud__label { font-size: 10px; }
   .castle-main-hud__numbers strong { font-size: 12px; }
-  .castle-main-hud__balance:nth-child(3) { flex-grow: 1.2; }
+  .castle-main-hud__balance--energy { flex-grow: 1.2; }
   .castle-main-hud__numbers strong[data-compact] { font-size: 10px; }
   /* Замерщик меряет полный вид в полном размере — иначе сжатое и полное число переключаются по кругу. */
   .castle-main-hud__numbers strong[data-compact] .castle-main-hud__probe { font-size: 12px; }

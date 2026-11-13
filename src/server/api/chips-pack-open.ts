@@ -5,6 +5,7 @@ import { claimChipPackGrant, releaseChipPackGrant } from "./chips-pack-claim";
 import { insertChipWithSerial } from "./chips-serial";
 import { accountOf } from "./user-shared";
 import { ISLAND_TRAINING_PACK } from "@/lib/raid/island/catalog";
+import { secureRandom, secureRandomInt } from "@/lib/secureRandom";
 
 type Picked = {
   collectionId: string | null;
@@ -21,7 +22,7 @@ function pickOne(
   }>,
   totalWeight: number,
 ): Picked {
-  let r = Math.random() * totalWeight;
+  let r = secureRandom() * totalWeight;
   for (const it of items) {
     r -= it.weight;
     if (r <= 0) {
@@ -123,7 +124,7 @@ async function rollChipPack(wallet: string, grant: Grant) {
       .eq("collection_id", p.collectionId);
     const list = (candidates ?? []) as Array<{ id: string; collection_id: string }>;
     if (list.length === 0) continue;
-    const picked = list[Math.floor(Math.random() * list.length)];
+    const picked = list[secureRandomInt(0, list.length)];
     resolved.push({ collectionId: picked.collection_id, templateId: picked.id, level: p.level });
   }
 

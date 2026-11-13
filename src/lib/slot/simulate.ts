@@ -3,6 +3,7 @@
 // бонусом и супер-бонусом, ровно как играет человек. Только для тестов и замеров.
 import { BONUS_COLS, reachedShore, startBonus, startSuper } from "./bonus";
 import { evaluateSpin } from "./evaluate";
+import { noteRiskPick, noteSpin, rebuildReels, spinWeights } from "./reelLevel";
 import { rollGrid } from "./reels";
 import { nextRisk, resolvePick, startRisk } from "./risk";
 import { slotReducer } from "./reducer";
@@ -15,8 +16,8 @@ import type { Rng } from "./types";
  * • max — до упора (5 удвоений или проигрыш), против любой карты; random — как попало;
  * • peek — забирает при карте соперника 9+; low — выше 5; ace — при тузе;
  * • smart — УМНЫЙ (лучшая стратегия при честной колоде): рискует против карт до
- *   10 (после 3-го удвоения — до 9, после 4-го — до 8), иначе забирает. На него
- *   настроены барабаны: у него 90 %, у остальных — меньше.
+ *   10 (после 3-го удвоения — до 9, после 4-го — до 8), иначе забирает. На обычных
+ *   барабанах 90 % только у него; с мягкой тягой (reelLevel.ts) — у всех.
  */
 export type RiskStyle =
   | "never"
@@ -74,14 +75,23 @@ function takesBeforePick(style: RiskStyle, dealer: number, rounds = 0): boolean 
   return false;
 }
 
-/** Один ход бота по текущей фазе. */
-export function botStep(s: SlotState, style: RiskStyle, rng: Rng): SlotState {
+/** Один ход бота по текущей фазе. `dynamic` — барабаны перестраиваются, как на сервере. */
+export function botStep(
+  s: SlotState,
+  style: RiskStyle,
+  rng: Rng,
+  dynamic = false,
+  target?: number,
+): SlotState {
   switch (s.phase) {
     case "idle":
-    case "won":
+    case "won": {
       if (s.phase === "won" && wantsRisk(style, rng))
         return slotReducer(s, { type: "risk-start", risk: startRisk(s.lastWin, rng) });
-      return slotReducer(s, { type: "spin", result: evaluateSpin(rollGrid(rng), s.lines, s.bet) });
+      const t = dynamic ? rebuildReels(s, target) : s;
+      const result = evaluateSpin(rollGrid(rng, spinWeights(t)), t.lines, t.bet);
+      return slotReducer(dynamic ? noteSpin(t, result) : t, { type: "spin", result });
+    }
     case "spinning":
       return slotReducer(s, { type: "stopped" });
     case "risk": {
@@ -91,10 +101,9 @@ export function botStep(s: SlotState, style: RiskStyle, rng: Rng): SlotState {
           return slotReducer(s, { type: "risk-take" });
         // Как на сервере: исход выпадает в момент выбора, карты — под него.
         const index = Math.floor(rng() * 4);
-        return slotReducer(
-          { ...s, risk: resolvePick(r, index, rng) },
-          { type: "risk-pick", index },
-        );
+        const dealt = resolvePick(r, index, rng);
+        const next = slotReducer({ ...s, risk: dealt }, { type: "risk-pick", index });
+        return dynamic ? noteRiskPick(next, dealt) : next;
       }
       if (r.outcome === "lose") return slotReducer(s, { type: "risk-close" });
       if (r.done || (r.outcome === "win" && !keepsDoubling(style, s, rng)))
@@ -137,6 +146,11 @@ export type SimOptions = {
   start?: number;
   /** Кончились кредиты — стоп (иначе бот пополняет и играет дальше). */
   stopWhenBroke?: boolean;
+  /** Динамические барабаны (reelLevel.ts). */
+  dynamic?: boolean;
+  /** Цель отдачи динамических барабанов (по умолчанию 90 %) и стартовые барабаны. */
+  target?: number;
+  reels?: SlotState["reels"];
 };
 
 /** Прогон `spins` спинов. По умолчанию ставка 1 на 9 линий, с пополнением. */
@@ -146,9 +160,9 @@ export function simulate(
   seed: number,
   opts: SimOptions = {},
 ): SimResult & { broke: boolean } {
-  const { bet = 1, lines = 9, start = 1000, stopWhenBroke = false } = opts;
+  const { bet = 1, lines = 9, start = 1000, stopWhenBroke = false, dynamic = false } = opts;
   const rng = seededRng(seed);
-  let s: SlotState = { ...initialSlotState(start), bet, lines };
+  let s: SlotState = { ...initialSlotState(start), bet, lines, reels: opts.reels };
   let topups = 0;
   let steps = 0;
   let ledgerBroken = false;
@@ -164,7 +178,7 @@ export function simulate(
       s = slotReducer(s, { type: "topup", amount: 100_000 * bet });
       topups += 100_000 * bet;
     }
-    s = botStep(s, style, rng);
+    s = botStep(s, style, rng, dynamic, opts.target);
     steps++;
     if (s.balance !== start + topups - s.stats.wagered + s.stats.won) ledgerBroken = true;
     if (steps > spins * 80) break;

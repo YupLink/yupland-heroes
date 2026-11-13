@@ -14,11 +14,15 @@ import { requireWallet } from "../auth";
 import { sqlStr } from "./raid-shared";
 import { accountOf } from "./user-shared";
 import { heroPowerEnabled, invalidateHeroPower } from "./beta-raid/hero-power";
-import { loadSelectedHero } from "./beta-raid/hero-load";
+import { loadSelectedHero, type LoadedGearPiece } from "./beta-raid/hero-load";
 import { loadOwnedArtifacts, writeEquipped } from "./heroes-gear-read";
 import { preferFreeCopies } from "./heroes-gear-copies";
 import { bestGearFor, type BestGearItem } from "@/lib/hero/bestGear";
+import { artDisabled } from "@/lib/hero/artWear";
+import { artLocked } from "@/lib/hero/artBroken";
+import { artBrokenOn } from "./art-repair/art-repair-gate";
 import { heroSlots, normalizeHeroRarity } from "@/lib/hero/heroSlots";
+import { MOUNT_SLOT } from "@/lib/hero/mount";
 import { effectiveHeroStats } from "@/lib/hero/effectiveHeroStats";
 import type { GearPiece } from "@/lib/hero/heroStatSources";
 import type { HeroStats } from "@/lib/heroStats";
@@ -75,11 +79,19 @@ export const equipBestGear = createServerFn({ method: "POST" }).handler(
     const hero = await loadSelectedHero(wallet);
     if (!hero) throw new Error("Сначала выбери основного героя");
 
-    const slots = heroSlots(normalizeHeroRarity(hero.rarity));
+    // Конь (§8.84) статов не даёт: «лучшее» его не выбирает и не снимает.
+    const slots = heroSlots(normalizeHeroRarity(hero.rarity)).filter((d) => d.slot !== MOUNT_SLOT);
     // Надетое добавляем к инвентарю руками: у коллекционера список артефактов
     // упирается в лимит, и надетый предмет мог бы в него не попасть — тогда
     // «лучший набор» снял бы его как несуществующий.
-    const items: BestGearItem[] = [...(await loadOwnedArtifacts(wallet)), ...hero.gear];
+    // Выключенные поломкой (artDisabled) ничего не дают — в лучший набор не
+    // кандидаты. Сломанный при запущенной механике (§8.63 п.3) надеть нельзя —
+    // просто пропускаем; надетый сломанный «лучшее» снимет. Механика не
+    // запущена — сломанный кандидат, как целый.
+    const brokenOn = await artBrokenOn(wallet);
+    const ok = (p: LoadedGearPiece) => !artDisabled(p.wear) && !artLocked(p.wear, brokenOn);
+    const owned = (await loadOwnedArtifacts(wallet)).filter(ok);
+    const items: BestGearItem[] = [...owned, ...hero.gear.filter(ok)];
     const byId = new Map(items.map((p) => [p.itemId, p]));
     const best = bestGearFor({
       slots,
@@ -103,6 +115,7 @@ export const equipBestGear = createServerFn({ method: "POST" }).handler(
     // Экземпляры на других героях — на свободные копии, если они есть
     // (владелец 29.09); статы те же: копия того же шаблона.
     const equip = await preferFreeCopies(await accountOf(wallet), hero.heroId, best.equip);
+    if (hero.equipped[MOUNT_SLOT]) equip[MOUNT_SLOT] = hero.equipped[MOUNT_SLOT];
     await unequipFromOtherHeroes(wallet, hero.heroId, Object.values(equip)).catch((e) =>
       console.warn("[hero-gear-best] unequip from other heroes failed:", e),
     );

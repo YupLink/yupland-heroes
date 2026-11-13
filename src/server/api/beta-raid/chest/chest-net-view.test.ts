@@ -2,6 +2,7 @@
 // movable («сколько можно положить», собранное без изношенного) и то же число
 // прежним именем mob — вкладка, открытая до v30, читает его и не гасит плитки.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const s = vi.hoisted(() => ({ actor: "acc_o", open: true, net: [] as unknown[] }));
 
@@ -94,9 +95,10 @@ describe("getChestNet: вход и чужой (§8.23, поправки 30.09)",
     expect(view.backpack.stacks).toEqual([]);
   });
 
-  it("цена — занятые ячейки сети хозяина (45 штук — 3), то же спишет «Открыть»", async () => {
+  it("цена — занятые ячейки сети хозяина (две полные и хвост — 3), то же спишет «Открыть»", async () => {
     s.open = false;
-    s.net = [{ stackKey: "custom:ore", kind: "custom", name: "Руда", image: null, count: 45 }];
+    const count = 2 * CELL_SIZE + 5;
+    s.net = [{ stackKey: "custom:ore", kind: "custom", name: "Руда", image: null, count }];
     await expect(open()).resolves.toMatchObject({ locked: true, price: 3 });
   });
 

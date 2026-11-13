@@ -12,6 +12,7 @@ import {
   IMMUNITIES,
   metaLabel,
 } from "@/components/heroMeta";
+import { MOUNT_SLOT, MOUNT_TIERS, mountSpeedLabel, mountTier } from "@/lib/hero/mount";
 import { FieldSel, SelAmt } from "./ItemFieldControls";
 import { RARITY } from "./itemsAdminShared";
 
@@ -29,9 +30,20 @@ export type ArtifactFields = {
   /** Бонус к рыбалке, % к базе шанса (14.10.2026). Пусто — нет. */
   fishBonusPct: string;
   immunities: string[];
+  /** Вид коня (meta.mount, §8.84) — только у места «Конь». */
+  mount: string;
 };
 
 type Setters = { [K in keyof ArtifactFields]: (v: ArtifactFields[K]) => void };
+
+/** Виды коня — подписи для админа (скорость — рядом, из lib/hero/mount). */
+const MOUNT_LABEL: Record<string, string> = {
+  common: "Обычный",
+  rare: "Редкий",
+  epic: "Эпический",
+  legendary: "Легендарный (единорог)",
+  unique: "Уникальный (пегас, прыжок)",
+};
 
 export function ItemArtifactFields({ v, set }: { v: ArtifactFields; set: Setters }) {
   const lang = useLang();
@@ -50,10 +62,20 @@ export function ItemArtifactFields({ v, set }: { v: ArtifactFields; set: Setters
           label="Слот"
           value={v.slot}
           onChange={set.slot}
-          opts={ARTIFACT_SLOTS as unknown as string[]}
+          opts={[...ARTIFACT_SLOTS, MOUNT_SLOT]}
           empty
           renderOpt={label}
         />
+        {v.slot === MOUNT_SLOT && (
+          <FieldSel
+            label="Вид коня"
+            value={v.mount}
+            onChange={set.mount}
+            opts={[...MOUNT_TIERS]}
+            empty
+            renderOpt={(x) => `${MOUNT_LABEL[x] ?? x} · ${mountSpeedLabel(mountTier(x), "ru")}`}
+          />
+        )}
         <SelAmt
           label="Земля"
           sel={v.land}

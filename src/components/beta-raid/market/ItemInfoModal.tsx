@@ -13,16 +13,23 @@ import { artifactSummary } from "@/components/artifactSummary";
 import { metaLabel } from "@/components/heroMeta";
 import { BetaAbilityBadges } from "../BetaAbilityBadges";
 import { boostListText } from "@/lib/hero/boost";
+import { ArtWearBar } from "@/components/ArtWearBar";
+import { RarityBadge } from "@/components/beta-raid/economy/EconomyRarity";
+import { heroRarityByLevel } from "./artAnyIcon";
+import { LAND_REBUILD_ENERGY } from "@/lib/landPlace";
+import {itemInfoContent} from './itemInfoContent';
 
 export function ItemInfoModal({
   id,
   onClose,
   layer = "z-[70]",
+  fullName,
 }: {
   id: string;
   onClose: () => void;
   /** Слой поверх окна, из которого открыли: у окон HUD свой z (110). */
   layer?: string;
+  fullName?: string;
 }) {
   const t = useT();
   const lang = useLang();
@@ -35,21 +42,14 @@ export function ItemInfoModal({
   });
 
   const it = q.data ?? null;
+  // У шаблона героя колонка rarity пуста — редкость по ярусу (как у ломбарда):
+  // без этого в окне героя из лавки её не было вовсе (владелец, 23.10.2026).
+  const heroTier = it?.kind === "hero" && !it.rarity ? heroRarityByLevel(it.level) : null;
   const summary = it ? artifactSummary(it, lang).split("\n").filter(Boolean) : [];
   const num = (n: number) => n.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
   // Кроме имени и картинки карточке есть что сказать? Своему товару без
   // описания — нечего, и вместо пустой шторки честнее так и написать.
-  const hasAny =
-    !!it &&
-    (summary.length > 0 ||
-      !!it.description ||
-      it.hp != null ||
-      !!it.damage ||
-      it.abilities.length > 0 ||
-      !!it.boost?.length ||
-      !!it.rarity ||
-      it.level != null ||
-      !!it.slot);
+  const hasAny = itemInfoContent(it, lang).hasDetails;
 
   const body = (
     <div
@@ -61,7 +61,7 @@ export function ItemInfoModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-2 flex items-center gap-2">
-          <b className="flex-1 truncate">{it?.name ?? t("market.item_info")}</b>
+          <b className={fullName?"flex-1 min-w-0 whitespace-normal break-words":"flex-1 truncate"}>{fullName ?? it?.name ?? t("market.item_info")}</b>
           <button onClick={onClose} className="text-muted-foreground">
             <X className="h-5 w-5" />
           </button>
@@ -78,18 +78,30 @@ export function ItemInfoModal({
         {it && (
           <div className="space-y-3">
             {it.imageUrl && (
-              <img
-                src={thumb(it.imageUrl, 240, "black")}
-                alt=""
-                className="mx-auto aspect-square w-32 rounded-2xl border border-border/60 object-contain"
-              />
+              <div className="relative mx-auto w-32 overflow-hidden rounded-2xl">
+                <img
+                  src={thumb(it.imageUrl, 240, "black")}
+                  alt=""
+                  className="aspect-square w-full rounded-2xl border border-border/60 object-contain"
+                />
+                {/* Витрина продаёт новые артефакты — полоса полная. */}
+                {it.kind === "artifact" && <ArtWearBar durability={100} />}
+              </div>
             )}
 
             <div className="flex flex-wrap justify-center gap-1 text-[10px]">
-              {it.rarity && (
-                <span className="rounded-full border border-gold/40 px-2 py-0.5 text-gold">
-                  {metaLabel(it.rarity, lang)}
-                </span>
+              {heroTier ? (
+                <RarityBadge
+                  rarity={heroTier}
+                  label={metaLabel(heroTier, lang)}
+                  className="rounded-full px-2 py-0.5 normal-case tracking-normal"
+                />
+              ) : (
+                it.rarity && (
+                  <span className="rounded-full border border-gold/40 px-2 py-0.5 text-gold">
+                    {metaLabel(it.rarity, lang)}
+                  </span>
+                )
               )}
               {it.level != null && (
                 <span className="rounded-full border border-border/60 bg-background/40 px-2 py-0.5 text-muted-foreground">
@@ -117,6 +129,13 @@ export function ItemInfoModal({
             {!!it.boost?.length && (
               <p className="rounded-2xl border border-gold/40 bg-gold/10 p-3 text-center text-xs font-bold text-gold">
                 {boostListText(it.boost, lang === "en" ? "en" : "ru")}
+              </p>
+            )}
+
+            {/* Земля из лавки (мир строителей): сколько энергии стоит клетка. */}
+            {it.kind === "terrain" && (
+              <p className="rounded-2xl border border-gold/40 bg-gold/10 p-3 text-center text-xs font-bold text-gold">
+                {t("land.info_energy", { n: LAND_REBUILD_ENERGY })}
               </p>
             )}
 
@@ -156,3 +175,5 @@ export function ItemInfoModal({
   );
   return typeof document === "undefined" ? body : createPortal(body, document.body);
 }
+
+

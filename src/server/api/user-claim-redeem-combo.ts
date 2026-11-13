@@ -1,8 +1,7 @@
 import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
-import { debitClaim, refundClaim } from "./claim-ticket-debit";
+import { claimBudget, debitClaim, refundClaim } from "./claim-ticket-debit";
 import { awardNftTier } from "./claim-nft-tier";
-import { computeTickets } from "./user-claims-tickets";
 import { buildOwnedIndex, getOwnedByTitle } from "./user-claims-inventory";
 import { parseRewardTiers, pickWeightedReward, rollReward } from "../random";
 
@@ -21,7 +20,7 @@ type DropRow = {
   reward_token: string;
 };
 
-/** Снять пачку строк выплат, если билеты не списались. */
+/** Снять пачку строк выплат, если золото не списалось. */
 async function dropRows(ids: string[]): Promise<void> {
   await Promise.all(ids.map((id) => pg.redemptions.delete({ id }).catch(() => undefined)));
 }
@@ -36,10 +35,10 @@ export async function processComboDrop(
   tiers: ReturnType<typeof parseRewardTiers>,
   pickReward: () => { amount: number; token: string; tier?: import("../random").RewardTier } | null
 ) {
-  const hasEnergyTier = !!tiers?.some((t) => t.kind === "energy");
+  const hasEnergyTier = !!tiers?.some((t) => t.kind === "energy" || t.kind === "custom");
   if (hasEnergyTier) {
     throw new Error(
-      "Награду-энергию для комбо-дропов пока нельзя — сделай простым дропом."
+      "Награду-энергию и товар для комбо-дропов пока нельзя — сделай простым дропом."
     );
   }
   let reqs: Array<{ title: string; count: number }> = [];
@@ -83,17 +82,10 @@ export async function processComboDrop(
   }
 
   let capped = false;
+  // Цена комбо в билетах, платится золотом ×500 (§8.61, claim-ticket-debit).
   const comboTicketCost = drop.free_claim ? 0 : (drop.ticket_cost ?? 1);
   if (!drop.free_claim) {
-    const tickets = await computeTickets(wallet);
-    if (tickets.available < comboTicketCost) {
-      throw new Error(
-        comboTicketCost === 1
-          ? "Нет доступных клеймов. Пригласи друга или купи билеты."
-          : `Нужно ${comboTicketCost} билетов за комбо, у тебя ${tickets.available}.`
-      );
-    }
-    const maxAffordable = Math.floor(tickets.available / comboTicketCost);
+    const maxAffordable = await claimBudget(wallet, comboTicketCost);
     if (maxAffordable < N) {
       N = maxAffordable;
       capped = true;
@@ -128,7 +120,7 @@ export async function processComboDrop(
         const { claimPacksReserved, packRedemptionRow } = await import(
           "./user-claim-pack-reserve"
         );
-        // Пак выдаётся необратимо, поэтому билеты списываем ДО брони: раньше
+        // Пак выдаётся необратимо, поэтому золото списываем ДО брони: раньше
         // оплата шла следом, и отказ оставлял пак бесплатным.
         if (!(await debitClaim({ wallet, cost: comboTicketCost, ref: `combo:${packRedId}` })))
           continue;

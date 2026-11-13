@@ -7,6 +7,7 @@ import { HeaderPrefs } from "@/components/HeaderPrefs";
 import { disconnectWallet, getSession, prepareAddWallet, setNotificationsEnabled } from "@/server/api/user-auth";
 import { listMySisterWallets, switchActiveWallet, unlinkSisterWallet } from "@/server/api/user-sisters";
 import { createLoginCode } from "@/server/api/loginCode";
+import { isGoogleOnlyTg, isGoogleTg, isWalletTg } from "@/lib/auth/googleTg";
 import { useState } from "react";
 import { getConnector } from "@/lib/near-connector";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -206,7 +207,7 @@ export function AppHeader({ onConnectClick }: AppHeaderProps) {
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="px-3 py-2">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  {t("header.telegram_label")}
+                  {t(isWalletTg(session?.telegramId) ? "walletLogin.header_label" : isGoogleTg(session?.telegramId) ? "google.header_label" : "header.telegram_label")}
                 </div>
                 {session?.telegramLinked ? (
                   <div className="mt-1 flex items-center gap-2 text-xs">
@@ -214,7 +215,7 @@ export function AppHeader({ onConnectClick }: AppHeaderProps) {
                     <span className="text-foreground">
                       {session.telegramUsername
                         ? `@${session.telegramUsername}`
-                        : t("header.telegram_linked")}
+                        : t(isWalletTg(session.telegramId) ? "walletLogin.header_value" : isGoogleTg(session.telegramId) ? "google.header_value" : "header.telegram_linked")}
                     </span>
                   </div>
                 ) : (
@@ -224,9 +225,8 @@ export function AppHeader({ onConnectClick }: AppHeaderProps) {
                 )}
               </DropdownMenuLabel>
 
-              {/* Тумблер push-уведомлений в TG. Виден только если есть
-                  привязка — иначе слать некуда. */}
-              {session?.telegramLinked && (
+              {/* Тумблер push в TG: есть привязка (у Google-игрока — нет, §8.91). */}
+              {session?.telegramLinked && !isGoogleTg(session.telegramId) && (
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
@@ -287,8 +287,9 @@ export function AppHeader({ onConnectClick }: AppHeaderProps) {
               <DropdownMenuSeparator />
               <HeaderPrefs />
 
-              {/* Мульти-кошелёк: список всех кошельков того же TG */}
+              {/* Мульти-кошелёк: список всех кошельков того же TG (у Google-аккаунта кошельков нет, 09.11) */}
               {session?.telegramLinked &&
+                !isGoogleOnlyTg(session.telegramId) &&
                 sisters.data &&
                 sisters.data.wallets.length > 0 && (
                   <>

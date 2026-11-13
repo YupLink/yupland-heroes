@@ -1,4 +1,4 @@
-import { Bell, Globe, Castle, LogOut, ChevronRight, Gift, ShieldCheck } from "lucide-react";
+import { Bell, Globe, Castle, LogOut, ChevronRight, ShieldCheck } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -7,8 +7,17 @@ import { useT } from "@/lib/i18n";
 import { getConnector } from "@/lib/near-connector";
 import { humanError } from "@/lib/humanError";
 import { disconnectWallet, getSession, setMyLang, setNotificationsEnabled } from "@/server/api/user-auth";
-import { redeemLikePromocode } from "@/server/api/likes";
 import { ProfileViewToggles } from "./ProfileViewToggles";
+import { ProfileNameRow } from "./ProfileNameRow";
+import { TgFrameToggle } from "./TgFrameToggle";
+import { PromoSection } from "./promo/PromoSection";
+import { PromoAdminRow } from "./promo/PromoAdminRow";
+import { DesignerGoldRow } from "./DesignerGoldRow";
+import { DemoIslandRow } from "./DemoIslandRow";
+import { CreatorRow } from "./creator/CreatorRow";
+import { LinkTelegramRow } from "./LinkTelegramRow";
+import { isGoogleOnlyTg, isWalletTg } from "@/lib/auth/googleTg";
+import { GoogleLinkRow } from "./GoogleLinkRow";
 
 /** Castle Profile settings; external connections live in Treasury. */
 export function CastleAccount({ onSignedOut, onEdit }: { onSignedOut?: () => void; onEdit?: () => void; walletStatus?: "connected" | "disconnected"; onPreviewWalletChange?: (connected: boolean) => void }) {
@@ -19,9 +28,6 @@ export function CastleAccount({ onSignedOut, onEdit }: { onSignedOut?: () => voi
   const ru = lang === "ru";
   const qc = useQueryClient();
   const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
-  const [showPromo, setShowPromo] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
-  const [promoReward, setPromoReward] = useState<number | null>(null);
   const [showLanguages, setShowLanguages] = useState(false);
   const [languagePending, setLanguagePending] = useState(false);
   const [languageError, setLanguageError] = useState<string | null>(null);
@@ -46,14 +52,6 @@ export function CastleAccount({ onSignedOut, onEdit }: { onSignedOut?: () => voi
     mutationFn: (enabled: boolean) => setNotificationsEnabled({ data: { enabled } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["session"] }),
     onError: (e: Error) => setNotificationsError(humanError(e)),
-  });
-  const promo = useMutation({
-    mutationFn: () => redeemLikePromocode({ data: { code: promoCode.trim() } }),
-    onSuccess: (result) => {
-      setPromoReward(result.likesAdded);
-      setPromoCode("");
-      void qc.invalidateQueries({ queryKey: ["my-like-balance"] });
-    },
   });
   const logout = useMutation({
     mutationFn: async () => {
@@ -80,6 +78,8 @@ export function CastleAccount({ onSignedOut, onEdit }: { onSignedOut?: () => voi
       </div>
     );
   const user = session.data;
+  // «Только Google» (§8.127): в профиле ни слова о Telegram — без уведомлений бота и рамок.
+  const googleOnly = isGoogleOnlyTg(user.telegramId);
   return (
     <div className="castle-profile__settings">
       <section className="castle-profile__language">
@@ -90,7 +90,7 @@ export function CastleAccount({ onSignedOut, onEdit }: { onSignedOut?: () => voi
         </fieldset>}
         {languageError && <p role="alert" className="px-3 pb-3 text-sm text-destructive">{languageError}</p>}
       </section>
-      {user.telegramLinked && (
+      {user.telegramLinked && !googleOnly && (
         <button data-game-button="row"
           className="castle-profile__row"
           role="switch"
@@ -102,24 +102,26 @@ export function CastleAccount({ onSignedOut, onEdit }: { onSignedOut?: () => voi
         </button>
       )}
       {notificationsError && <p role="alert" className="px-3 text-sm text-destructive">{notificationsError}</p>}
+      {isWalletTg(user.telegramId) && <LinkTelegramRow />}
+      {user.wallet && !googleOnly && <GoogleLinkRow />}
+      {user.wallet && <ProfileNameRow fallback={user.telegramUsername ? `@${user.telegramUsername}` : null} />}
       {user.wallet && <ProfileViewToggles ru={ru} />}
-      <section className="castle-profile__promo">
-        <button data-game-button="row" className="castle-profile__row" aria-expanded={showPromo} aria-controls="profile-promo-form" onClick={() => setShowPromo(!showPromo)}><Gift aria-hidden="true" /><span>{ru ? "Промокод" : "Promo code"}</span><ChevronRight className="castle-profile__chevron" aria-hidden="true" /></button>
-        {showPromo && <form id="profile-promo-form" className="castle-profile__promo-form" onSubmit={event => {event.preventDefault(); if (promoCode.trim() && !promo.isPending) promo.mutate();}}>
-          <label htmlFor="profile-promo-code">{ru ? "Введи промокод" : "Enter promo code"}</label>
-          <input id="profile-promo-code" value={promoCode} maxLength={64} autoComplete="off" autoCapitalize="characters" spellCheck={false} disabled={promo.isPending} aria-describedby={promo.isError ? "profile-promo-error" : undefined} aria-invalid={promo.isError || undefined} onChange={event => {setPromoCode(event.target.value); setPromoReward(null); promo.reset();}} />
-          <button data-game-button="primary" type="submit" className="castle-profile__connect" disabled={!promoCode.trim() || promo.isPending || !user.wallet || !user.telegramLinked}>{promo.isPending ? (ru ? "Проверяю…" : "Checking…") : (ru ? "Применить" : "Apply")}</button>
-          {!user.wallet && <p>{ru ? "Подключи кошелёк, чтобы применить промокод." : "Connect a wallet to redeem a promo code."}</p>}
-          {user.wallet && !user.telegramLinked && <p>{ru ? "Для активации промокода нужно привязать Telegram к аккаунту." : "Link Telegram to your account to redeem a code."}</p>}
-          {promo.isError && <p id="profile-promo-error" role="alert">{humanError(promo.error)}</p>}
-          {promoReward !== null && <p role="status">{ru ? `Промокод применён. Получено лайков: ${promoReward.toLocaleString("ru-RU")}.` : `Code applied. Likes received: ${promoReward.toLocaleString("en-US")}.`}</p>}
-        </form>}
-      </section>
+      {!googleOnly && <TgFrameToggle ru={ru} />}
+      {/* Промокод: новые коды на что угодно, не нашёлся — код на лайки. */}
+      <PromoSection wallet={!!user.wallet} telegramLinked={!!user.telegramLinked} />
       {user.wallet && (
         <>
-          {((onEdit && user.isCastleEditor) || user.isAdmin) && <section className="castle-profile__tools"><h3 className="text-sm text-muted-foreground">{ru ? "Инструменты" : "Tools"}</h3>
+          {/* Золото по кнопке — только Ангелине (сервер решает); у прочих запроса нет. */}
+          {user.isCastleEditor && <DesignerGoldRow ru={ru} />}
+          {/* Демо-остров — по праву demo_island или «уйти», если стоит на нём (сервер решает). */}
+          <DemoIslandRow ru={ru} />
+          {/* Шаблоны поселений — право creator и админ, или «выйти» из работы (сервер решает). */}
+          <CreatorRow />
+          {((onEdit && user.isCastleEditor) || user.isAdmin || user.canPromoSoft) && <section className="castle-profile__tools"><h3 className="text-sm text-muted-foreground">{ru ? "Инструменты" : "Tools"}</h3>
             {/* Админка — только админам (дизайнер видит лишь редактор замка). */}
             {user.isAdmin && <Link to="/admin" data-game-button="row" className="castle-profile__row"><ShieldCheck aria-hidden="true" /><span>{ru ? "Админка" : "Admin panel"}</span><ChevronRight className="castle-profile__chevron" aria-hidden="true" /></Link>}
+            {user.isAdmin && <PromoAdminRow canToken={!!user.isPayoutsAdmin} />}
+            {!user.isAdmin && user.canPromoSoft && <PromoAdminRow canToken={false} soft />}
             {onEdit && user.isCastleEditor && <button data-game-button="row" className="castle-profile__row" onClick={onEdit}><Castle aria-hidden="true" /><span>{ru ? "Редактор замка" : "Castle editor"}</span><ChevronRight className="castle-profile__chevron" aria-hidden="true" /></button>}</section>}
           <button data-game-button="row"
             className="castle-profile__row castle-profile__logout"

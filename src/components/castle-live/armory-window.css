@@ -1,0 +1,60 @@
+[data-armory-preview] { min-height:100dvh;overflow-x:hidden;background:#080808; }
+[data-armory-content] { width:min(100%,480px);min-height:100dvh;margin:0 auto;padding:0 12px 32px; }
+[data-armory-header] { position:relative;height:clamp(142px,38vw,180px);margin:0 -12px 12px;border-bottom:1px solid #6c5430;color:#f6dfa7;background:linear-gradient(90deg,#080b0ee8 0%,#080b0e91 39%,#080b0e00 75%),linear-gradient(180deg,#0008 0%,transparent 55%),url('/design-assets/armory-forge-header-20261023.webp') center/cover no-repeat; }
+[data-armory-header] button { position:absolute;z-index:1;top:12px;left:12px;display:flex;align-items:center;gap:5px;min-height:44px;padding:0 10px;border:1px solid #55504a;border-radius:7px;background:#080808d9;color:#f0e9da;font:400 13px/1.1 var(--font-sans);text-shadow:0 2px 3px #000; }
+[data-armory-header] button:focus-visible { outline:2px solid #f4cf72;outline-offset:2px; }
+[data-armory-header] h1 { position:absolute;top:18px;left:50%;width:calc(100% - 150px);margin:0;transform:translateX(-50%);text-align:center;font:400 clamp(26px,6.8vw,34px)/1.1 var(--font-display);text-shadow:0 2px 5px #000,0 0 12px #000b; }
+[data-armory-equipped] { margin:0 0 16px;padding:7px 10px 9px;border:1px solid #554b3b;border-radius:7px;background:linear-gradient(125deg,#151515,#0c0c0c); }
+[data-armory-equipped-toggle] { display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:36px;padding:0 2px;border:0;background:transparent;color:#e9d8ad;text-align:left;font:400 14px/1.2 var(--font-display); }
+[data-armory-equipped-toggle] svg { flex:none;color:#d5b669;transition:transform .18s ease; }
+[data-armory-equipped-toggle][aria-expanded="true"] svg { transform:rotate(180deg); }
+[data-armory-equipped] p { margin:4px 2px 7px;color:#aeb8c3;font:400 12px/1.35 var(--font-sans); }
+[data-armory-equipped-items] { display:flex;gap:5px;overflow-x:auto;overscroll-behavior-inline:contain;touch-action:pan-x;padding:2px 1px 5px;scrollbar-width:thin; }
+[data-armory-equipped-items] button { display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;padding:2px;border:1px solid;border-radius:4px;background:#111; }
+[data-armory-equipped-items] img { width:100%;height:100%;object-fit:contain;image-rendering:pixelated; }
+[data-armory-equipped-items] svg { width:78%;height:78%; }
+[data-armory-equipped] button:focus-visible { outline:2px solid #e5c77d;outline-offset:2px; }
+[data-armory-gallery] { padding-bottom:20px; }
+[data-armory-preview][data-tavern-style] [data-armory-presets] { margin-top:4px;padding:13px 2px 24px;border-top:1px solid #655136;background:transparent; }
+[data-armory-preview][data-tavern-style] [data-armory-presets] [data-gear-presets] { padding:0;background:transparent; }
+[data-armory-preview][data-tavern-style] [data-armory-presets] [data-preset-quick] [data-preset-row],
+[data-armory-preview][data-tavern-style] [data-armory-presets] [data-preset-others-list] [data-preset-row] { border-color:#51483a;background:#111; }
+[data-armory-preview][data-tavern-style] [data-armory-presets] [data-preset-others] { border-bottom-color:#51483a; }
+[data-armory-preview][data-tavern-style] [data-armory-presets] [data-preset-search] { border-bottom-color:#51483a;background:#111; }
+[data-armory-status] { margin:22px 4px;color:#ece5d8;font:400 14px/1.5 var(--font-sans); }
+[data-armory-preview] [data-tavern-artifacts-page] { padding-top:0; }
+[data-armory-preview][data-tavern-style] [data-armory-gallery][data-tavern-artifacts-page]::before { display:none;content:none; }
+[data-armory-preview] [data-artifacts-heading] { margin-bottom:8px; }
+[data-armory-preview] [data-artifacts-heading] h2 { font-size:clamp(25px,6.5vw,31px); }
+[data-armory-preview] [data-tavern-artifacts-page] [data-artifact-slot] [data-slot-heading] { justify-content:flex-start;gap:9px;min-height:48px; }
+[data-armory-preview] [data-tavern-artifacts-page] [data-artifact-slot] [data-slot-label] { align-items:center;gap:8px;white-space:nowrap;color:#f4d997; }
+[data-armory-preview] [data-tavern-artifacts-page] [data-artifact-slot] [data-slot-icon] { display:grid;place-items:center;flex:none;width:34px;height:34px;padding:0;border:0;border-radius:0;background:none;box-shadow:none; }
+[data-armory-preview] [data-tavern-artifacts-page] [data-artifact-slot] [data-armory-category-glyph] { display:block;width:34px;height:34px;border:0;border-radius:0;background-color:transparent;background-image:url('/design-assets/armory-category-glyphs-20261023.webp');background-repeat:no-repeat;background-size:400% 200%;box-shadow:none; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="0"] { background-position:0% 0%; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="1"] { background-position:33.333% 0%; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="2"] { background-position:66.667% 0%; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="3"] { background-position:100% 0%; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="4"] { background-position:0% 100%; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="5"] { background-position:33.333% 100%; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="6"] { background-position:66.667% 100%; }
+[data-armory-preview] [data-armory-category-glyph][data-icon-index="7"] { background-position:100% 100%; }
+[data-armory-preview] [data-tavern-artifacts-page] [data-artifact-slot] [data-slot-count] { display:none; }
+[data-armory-preview] [data-tavern-artifacts-page] [data-slot-artifacts] { grid-template-columns:repeat(6,minmax(0,1fr)); }
+[data-armory-preview] [data-inline-artifact] [data-art-wear] { inset-inline:4px;bottom:5px;height:2px;border-radius:2px;background:#080808cc;box-shadow:0 0 0 1px #080808aa; }
+[data-armory-preview] [data-inline-artifact] [data-art-wear] > .bg-gold { background:#77838a; }
+[data-armory-preview] [data-tavern-artifacts-page] [data-artifact-slot] [data-slot-rule] { flex:1;min-width:8px;height:1px;background:linear-gradient(90deg,#8a6632,#8a663266); }
+[data-armory-preview] [data-armory-search] { display:grid;gap:8px;margin:0 0 10px; }
+[data-armory-preview] [data-armory-search-row] { display:flex;gap:8px; }
+[data-armory-preview] [data-armory-search] input { min-width:0;flex:1;height:44px;padding:0 12px;border:1px solid #617080;border-radius:8px;background:#111;color:#f0eadc;font:400 14px/1 var(--font-sans); }
+[data-armory-preview] [data-armory-search] input::placeholder { color:#aeb9c6; }
+[data-armory-preview] [data-armory-search-row] > button { display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:1px solid #bd9c54;border-radius:8px;background:#111;color:#efcf83; }
+[data-armory-preview] [data-armory-filter-grid] { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px; }
+[data-armory-preview] [data-armory-filter-grid] label { position:relative;display:grid;gap:2px;min-width:0;color:#cbd4dc;font:400 12px/1.2 var(--font-sans); }
+[data-armory-preview] [data-armory-filter-grid] select { appearance:none;width:100%;height:34px;padding:0 34px 0 10px;border:1px solid #526171;border-radius:6px;background:#111;color:#f1eadb;font:400 13px/1 var(--font-sans); }
+[data-armory-preview] [data-armory-filter-grid] label > svg { position:absolute;right:12px;bottom:9px;color:#cbd4dc;pointer-events:none; }
+[data-armory-preview] [data-armory-clear] { justify-self:start;min-height:40px;border:0;background:none;color:#e8c878;font:400 13px/1 var(--font-sans); }
+[data-armory-preview] [data-armory-empty] { margin:8px 0;color:#cad3da;font:400 13px/1.4 var(--font-sans); }
+[data-armory-preview] [data-armory-search] :is(input,select,button):focus-visible { outline:2px solid #efce78;outline-offset:2px; }
+@media(max-width:380px){[data-armory-header] h1{font-size:20px}}
+@media(max-width:359px){[data-armory-content]{padding-inline:8px}[data-armory-header] button{left:8px;gap:3px;padding-inline:7px;font-size:12px}[data-armory-header] h1{font-size:19px;width:calc(100% - 120px)}}
+@media(max-width:319px){[data-armory-preview] [data-tavern-artifacts-page] [data-slot-artifacts]{grid-template-columns:repeat(4,minmax(0,1fr))}}

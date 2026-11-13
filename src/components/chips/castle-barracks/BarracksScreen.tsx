@@ -10,7 +10,6 @@ import { ChipImage } from "@/components/ChipImage";
 import { BarracksChipDetailLoader } from "./BarracksChipDetailLoader";
 import { TrainingChipDetailModal } from "@/components/chips/TrainingChipDetailModal";
 import { ChipHistoryModal } from "@/components/chips/ChipHistoryModal";
-import { ShopTab } from "@/components/chips/ShopTab";
 import { MyPacksScreen } from "./MyPacksScreen";
 import type { MysticRewardDestination } from "@/lib/mysticRewardDestination";
 import yupikPackPreview from "@/assets/quests/yupik-pack.webp";
@@ -20,6 +19,7 @@ import { chipBusyView } from "@/components/chips/chipBusy";
 import { useNowTick } from "@/components/chips/chipBusy";
 import { useT } from "@/lib/i18n";
 import { useChipUpgradeReadiness } from "@/components/chips/useChipUpgradeReadiness";
+import { useIsland } from "@/components/beta-raid/island/useIsland";
 import { upgradeBlockText } from "@/lib/chips/upgradeBlock";
 import type { FlatChip } from "@/components/chips/FlatChipCard";
 import "./barracks.css";
@@ -31,8 +31,12 @@ export function BarracksScreen({ onClose, onTavern, onViewMysticReward, onInitia
   const train = useQuery({ queryKey: ["my-training-chips"], queryFn: () => myTrainingChips() });
   const packs = useQuery({ queryKey: ["my-chip-packs"], queryFn: () => myChipPackGrants() });
   const boxes = useQuery({ queryKey: ["my-mystic-packs"], queryFn: () => listMyMysticPacks() });
+  const islandLesson = useIsland(true, false).data?.island;
+  // Только на шаге «Твои фишки» (27.10 — ограничили этим шагом). Был ещё
+  // признак пилота, но с 06.11 остров проходят все новички, а подсказка шага
+  // ведёт именно сюда: без ссылки она упиралась в пустую полку паков.
+  const showTutorialChipLink = islandLesson?.current === "chips";
   const [page, setPage] = useState<"chips" | "collections" | "packs">(initialPage);
-  const [packTab, setPackTab] = useState<"owned" | "shop">("owned");
   const [returnPage, setReturnPage] = useState<"chips" | "collections">("chips");
   const [packOrigin, setPackOrigin] = useState<"camp" | "profile" | "close">(onPacksBackToCamp ? "camp" : onInitialPacksBack ? "profile" : initialPage === "packs" ? "close" : "camp");
   const back = useRef<HTMLButtonElement>(null);
@@ -80,9 +84,9 @@ export function BarracksScreen({ onClose, onTavern, onViewMysticReward, onInitia
     onPacksBackToCamp?.();
     setPage(returnPage);
   };
-  return <section className={`barracks-preview${page === "packs" && packTab === "shop" ? " barracks-preview--shop" : ""}`} aria-label={page === "packs" ? (ru ? "Паки" : "Packs") : (ru ? "Тренировочный лагерь" : "Training camp")}>
+  return <section className="barracks-preview" aria-label={page === "packs" ? (ru ? "Паки" : "Packs") : (ru ? "Тренировочный лагерь" : "Training camp")}>
     <header className="barracks-header">
-      <button ref={back} onClick={page === "packs" ? packTab === "shop" ? () => setPackTab("owned") : returnToList : onClose} className="barracks-back"><ArrowLeft size={19} />{page === "packs" ? packTab === "shop" ? (ru ? "Мои паки" : "My packs") : packOrigin === "camp" ? (ru ? "Тренировочный лагерь" : "Training camp") : packOrigin === "profile" ? (ru ? "Профиль" : "Profile") : (ru ? "Назад" : "Back") : (ru ? "Замок" : "Castle")}</button>
+      <button ref={back} onClick={page === "packs" ? returnToList : onClose} className="barracks-back"><ArrowLeft size={19} />{page === "packs" ? packOrigin === "camp" ? (ru ? "Тренировочный лагерь" : "Training camp") : packOrigin === "profile" ? (ru ? "Профиль" : "Profile") : (ru ? "Назад" : "Back") : (ru ? "Замок" : "Castle")}</button>
       <h1 id="castle-window-title">{page === "packs" ? (ru ? "Паки" : "Packs") : (ru ? "Тренировочный лагерь" : "Training camp")}</h1>
       <button className="barracks-history" onClick={() => setHistory(true)} aria-label={ru ? "История фишек" : "Chip history"}><History size={19} /><span>{ru ? "История" : "History"}</span></button>
     </header>
@@ -133,11 +137,12 @@ export function BarracksScreen({ onClose, onTavern, onViewMysticReward, onInitia
         {visible < filtered.length && <button className="barracks-more" onClick={() => setVisible(v => v + 6)}>{ru ? "Показать ещё" : "Show more"}<ChevronDown size={18} /></button>}
         <button className="barracks-tavern" onClick={onTavern}>{ru ? "Герои и снаряжение" : "Heroes and equipment"}<ArrowRight size={16} />{ru ? "Таверна" : "Tavern"}</button>
       </>}
-      {page === "packs" && (packTab === "owned" ? <div className="barracks-packs">{packsContent ?? <MyPacksScreen onViewMysticReward={onViewMysticReward} giftPack={giftPack} onBuyPacks={() => setPackTab("shop")} />}</div> : <ShopTab mode="camp" onClose={() => setPackTab("owned")} onOpenPacks={() => setPackTab("owned")} />)}
+      {page === "packs" && showTutorialChipLink && <button type="button" className="barracks-go-chips" onClick={() => setPage("chips")}>{ru ? "Мои фишки" : "My chips"}</button>}
+      {page === "packs" && <div className="barracks-packs">{packsContent ?? <MyPacksScreen onViewMysticReward={onViewMysticReward} giftPack={giftPack} />}</div>}
       {page === "collections" && <CollectionsTab compactHelp />}
     </div>
     {history && <ChipHistoryModal onClose={() => setHistory(false)} />}
-    {selected && !selected.isTraining && <div className="barracks-chip-detail"><BarracksChipDetailLoader upgradeState={readiness.isError ? undefined : readiness.data?.chips[selected.id]} chipId={selected.id} templateId={selected.templateId} stunUntil={selected.stunUntil} onClose={closeChip} /></div>}
+    {selected && !selected.isTraining && <div className="barracks-chip-detail"><BarracksChipDetailLoader upgradeStates={readiness.isError ? undefined : readiness.data?.chips} chipId={selected.id} templateId={selected.templateId} stunUntil={selected.stunUntil} onClose={closeChip} /></div>}
     {selected?.isTraining && <TrainingChipDetailModal chipId={selected.id} star={selected.level} serialNo={selected.serialNo ?? selected.templateNo} sellTickets={selected.sellTickets ?? 0} sellable={selected.sellable !== false} imageUrl={selected.imageUrl} onClose={closeChip} onSold={() => { closeChip(); void train.refetch(); }} />}
   </section>;
 }

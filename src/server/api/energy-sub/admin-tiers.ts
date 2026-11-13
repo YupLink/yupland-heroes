@@ -7,6 +7,7 @@ import { nanoid } from "nanoid";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { requireAdmin } from "../../auth";
+import { assertPackMoneyRight } from "../mystic-money";
 
 const tierFields = z.object({
   name: z.string().trim().min(1).max(40),
@@ -27,6 +28,8 @@ export const adminSaveSubTier = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => tierFields.extend({ id: z.string().min(1).max(40) }).parse(d))
   .handler(async ({ data }) => {
     requireAdmin();
+    // Бокс тарифа с DARAI/Stars — деньги: только админ выплат (mystic-money.ts).
+    await assertPackMoneyRight(data.boxPackId);
     await mcpExec(
       `UPDATE yuplink.energy_sub_tier
           SET name = ${sqlStr(data.name)}, name_en = ${sqlStr(data.nameEn)},
@@ -45,6 +48,7 @@ export const adminCreateSubTier = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => tierFields.parse(d))
   .handler(async ({ data }) => {
     requireAdmin();
+    await assertPackMoneyRight(data.boxPackId);
     const id = `esub_${nanoid(8)}`;
     await mcpExec(
       `INSERT INTO yuplink.energy_sub_tier

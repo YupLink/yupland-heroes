@@ -12,7 +12,7 @@ describe("entryScreen — вход без кошелька (17.10)", () => {
     expect(entryScreen(true, false, ok("tg1"), true)).toBe("loading");
   });
   it("аккаунт Telegram без кошелька (tg<id>) играет в замке", () => {
-    expect(entryScreen(true, false, ok("tg5270301127"))).toBe("castle");
+    expect(entryScreen(true, false, ok("tg123456789"))).toBe("castle");
   });
   it("старая страница — только вошедшему и только по его выбору", () => {
     expect(entryScreen(true, true, ok("tg1"))).toBe("classic");

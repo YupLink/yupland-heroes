@@ -1,0 +1,113 @@
+/* Illustrated kingdom shell; the interactive board and its motion remain live. */
+:root{color:#f9e4bc;background:#111313}
+body{overflow-x:clip;background:radial-gradient(ellipse at 50% 8%,#49301b88,transparent 40%),radial-gradient(ellipse at 50% 75%,#27201688,transparent 65%),#111313}
+.shell{isolation:isolate;overflow-x:clip;width:min(100%,480px);max-width:480px;padding:8px 8px 22px;min-height:100dvh}
+.ambience{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1}
+.ambience i{position:absolute;width:3px;height:3px;border-radius:50%;background:#ffdb8e;box-shadow:0 0 10px 3px #e5a33544;opacity:.35;animation:ember-drift 9s ease-in-out infinite}
+.ambience i:nth-child(1){left:5%;top:23%}.ambience i:nth-child(2){left:92%;top:37%;animation-delay:-3s}.ambience i:nth-child(3){left:7%;top:77%;animation-delay:-6s}.ambience i:nth-child(4){left:88%;top:85%;animation-delay:-2s}.ambience i:nth-child(5){left:65%;top:8%;animation-delay:-5s}
+.masthead{position:relative;width:calc(100% + 16px);margin:-6px -8px -8px;aspect-ratio:1768/870;text-align:center;z-index:2}
+.canopy-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.masthead h1{position:absolute;top:42%;left:18%;right:18%;margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:900;font-size:clamp(21px,5.8vw,31px);line-height:1.02;color:#3b1b09;text-shadow:0 1px #fff5d0}
+.brand{position:absolute;left:22%;right:22%;top:35%;margin:0;font:800 7px system-ui,sans-serif;letter-spacing:.2em;color:#986125}
+.lantern-halo{position:absolute;top:34%;width:25%;height:42%;border-radius:50%;background:radial-gradient(ellipse,#ffb62d66,transparent 65%);filter:blur(8px);animation:lantern-breathe 4s ease-in-out infinite;pointer-events:none}
+.lantern-halo.left{left:0}.lantern-halo.right{right:0;animation-delay:-2s}
+.game-panel{position:relative;padding:0 0 8px;border:0;border-radius:0;background:none;box-shadow:none}
+.mission-row{display:grid;grid-template-columns:minmax(0,1fr) 76px;gap:7px;align-items:stretch;margin:4px 5px 0}
+.mission-plaque{display:flex;align-items:center;gap:4px;min-height:64px;padding:8px 8px 8px 5px;border:3px solid #cb8741;border-radius:20px;background:linear-gradient(125deg,#ffe9ba,#f2cf94 65%,#ffe2a5);box-shadow:inset 0 0 0 2px #fff2c9,0 3px 0 #5e321a,0 6px 14px #0006;color:#4b270e}
+.mission-plaque>.icon{flex:0 0 43px;width:43px;height:43px;filter:drop-shadow(0 2px 1px #8d4a20aa)}
+.mission-eyebrow{display:block;font:700 8px system-ui,sans-serif;letter-spacing:.06em;color:#8d5a2b;margin-bottom:3px}
+.mission-plaque p{margin:0;font:bold clamp(13px,3.6vw,17px)/1.1 Georgia,serif}
+.mission-plaque p b{white-space:nowrap}
+.moves-stat{position:relative;border:3px solid #cf914b;border-radius:22px 20px 25px 22px;padding:4px 3px 6px;background:radial-gradient(ellipse at top,#8b3b26,#501e1d 80%);box-shadow:inset 0 0 0 2px #f8c578,0 3px 0 #6e3e20,0 6px 14px #0006;overflow:hidden}
+.moves-stat .stat-label{position:relative;z-index:1;color:#fff0ce;font:bold 12px Georgia,serif;letter-spacing:0;text-transform:none}
+.moves-stat strong{position:relative;z-index:1;font:bold 33px/.95 Georgia,serif;color:#fff4cc;text-shadow:0 2px #431b13;margin-top:2px}
+.laurel{position:absolute;bottom:-10px;left:8px;font:37px Georgia,serif;color:#e9b15b;opacity:.65;rotate:-30deg}
+.journey-strip{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 14px 22px;padding:0 3px;color:#efd2a1}
+.crown-tally,.grecha-tally{display:flex;align-items:center;gap:5px;min-height:31px}
+.crown-slot{width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:#201b18;box-shadow:inset 0 0 0 1px #805c37}
+.crown-slot .icon{width:24px;height:24px;opacity:.58;filter:grayscale(.35)}
+.crown-slot.collected{background:#5e3c1b;box-shadow:inset 0 0 0 1px #dba849,0 0 10px #cc8b2233}
+.crown-slot.collected .icon{opacity:1;filter:none}
+.crown-tally>b{margin-left:3px;font:700 14px system-ui,sans-serif;color:#ffe8af}
+.crown-tally>b span{font-weight:400;color:#bfa27e;font-size:11px}
+.grecha-tally>.icon{width:27px;height:27px}
+.grecha-tally>span{display:flex;align-items:center;gap:6px;font:11px system-ui,sans-serif;color:#cdb18b}
+.grecha-tally b{font-size:16px;color:#ffe8af}
+.board-frame{position:relative;padding:15px 12px 15px;border:0;border-radius:23px;background:linear-gradient(145deg,#3a2114,#211710);box-shadow:0 12px 30px #0008;isolation:isolate}
+.board-art{position:absolute;left:-5%;top:-7%;width:110%;height:114%;object-fit:fill;z-index:4;pointer-events:none;user-select:none}
+.board{gap:1px;background:#281a12;border-radius:10px;outline:1px solid #140e0b;z-index:1}
+.cell{background:linear-gradient(145deg,#3a271d,#261a14);box-shadow:inset 0 1px #76503970,inset 1px 0 #76503950,inset 0 -2px #180e0a;border-radius:7px}
+.cell.hole{background:#1b1511;box-shadow:none}
+.cell.selected{outline:2px solid #ffe492;box-shadow:inset 0 0 17px #e6b12d66;z-index:0}
+.cell.exit{box-shadow:inset 0 0 0 2px #dfae4e,inset 0 0 20px #db8f2944}
+.cell.stone{border:0;background:#241a13;box-shadow:inset 0 0 0 1px #67412b;z-index:2}
+.rock{display:block;width:104%;height:104%;background:url('/art/locked-stone.webp') center/contain no-repeat;clip-path:none;filter:drop-shadow(0 2px 1px #0e0907);position:relative;z-index:2}
+.piece .icon{width:98%;height:98%;filter:drop-shadow(0 2px 1px #130a06)}
+.exit-marker{z-index:0;font-size:13px;opacity:.75;bottom:0}
+.exit-scene{position:relative;height:101px;margin:0 12px}
+.exit-portal{position:absolute;width:130px;height:130px;object-fit:contain;left:44.2%;top:-15px;translate:-50% 0;pointer-events:none;z-index:5;filter:drop-shadow(0 3px 5px #0009)}
+.exit-trail{position:absolute;left:44.2%;top:-2px;translate:-50% 0;width:65px;height:67px;background:radial-gradient(ellipse,#ffc45844,transparent 70%);pointer-events:none}
+.exit-label{position:absolute;left:44.2%;top:91px;translate:-50% 0;margin:0;font:700 9px system-ui,sans-serif;letter-spacing:.08em;color:#d9b77b;white-space:nowrap}
+.hint{font:12px/1.35 system-ui,sans-serif;color:#f0ca80;margin:8px 10px 0;min-height:17px}
+.rule{justify-content:center;gap:22px;padding:10px 3px 0;margin:7px 14px 0;border-top:1px solid #b3834144;font-size:10px;color:#ae9678}
+.rule b{color:#dfbf86;font-weight:600}
+.footnote{font:10px/1.4 system-ui,sans-serif;color:#a18b70;margin:7px 0 0}
+.overlay{position:fixed;inset:0;padding:26px 20px;overflow-y:auto;background:#0d0c0ac4;backdrop-filter:blur(3px);z-index:40}
+.dialog{position:relative;width:min(100%,365px);border:3px solid #c98a42;border-radius:28px;padding:25px 23px;background:radial-gradient(ellipse at top,#fff0c9,#f1d49f 80%);box-shadow:inset 0 0 0 2px #fff1c9,0 0 0 3px #5b321a,0 20px 60px #000a}
+.dialog-crown{width:87px;height:87px;margin:-8px auto 2px;filter:drop-shadow(0 0 12px #e9ae4d99)}
+.dialog-eyebrow{font:800 8px system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#97612e}
+.dialog h2{color:#49230f;font:bold 29px/1.05 Georgia,serif;text-shadow:0 1px #fff4d1;margin:9px 0}
+.dialog p{font:14px/1.65 system-ui,sans-serif;color:#77502e;margin:12px 0 17px}
+.dialog b{color:#4d2b13}.dialog .positive{color:#346b25}.dialog .negative{color:#9a3c28}
+.entry-price{margin:15px 0 20px;font:14px system-ui,sans-serif;color:#76502d}
+.entry-price span{display:block;margin-top:7px;font-size:11px;color:#936a42}
+.primary{border:2px solid #f7cf74;border-radius:15px;background:linear-gradient(#ae4e2a,#783021);box-shadow:inset 0 1px 0 #e89755,0 3px 0 #592a19,0 5px 10px #713e2544;color:#fff1c4;padding:13px;font:bold 17px Georgia,serif;text-shadow:0 1px #501e12}
+@keyframes lantern-breathe{0%,100%{opacity:.55}50%{opacity:.95}}
+@keyframes ember-drift{0%,100%{transform:translateY(0);opacity:.2}50%{transform:translateY(-20px);opacity:.6}}
+@media(min-width:600px){.shell{padding-top:12px}.mission-row{grid-template-columns:minmax(0,1fr) 87px}.mission-plaque{min-height:74px}.mission-plaque>.icon{width:51px;height:51px;flex-basis:51px}.mission-eyebrow{font-size:9px}.moves-stat .stat-label{font-size:15px}.moves-stat strong{font-size:40px}.journey-strip{margin-top:13px;margin-bottom:7px}.board-frame{padding:19px 16px}.brand{font-size:8px}.exit-scene{height:93px}.exit-portal{width:120px;height:120px}.exit-label{top:85px}.hint{margin-top:8px}}
+@media(max-width:350px){.mission-row{grid-template-columns:minmax(0,1fr) 67px;gap:5px}.mission-plaque{padding-inline:3px}.mission-plaque>.icon{flex-basis:37px;width:37px;height:37px}.mission-plaque p{font-size:12px}.mission-eyebrow{font-size:7px}.masthead h1{font-size:20px}.crown-slot{width:24px;height:24px}.crown-slot .icon{width:21px;height:21px}.journey-strip{margin-inline:9px}.rule{gap:15px}}
+@media(prefers-reduced-motion:reduce){.lantern-halo,.ambience i{animation:none}}
+@media(min-width:600px){.masthead h1{font-size:28px;left:17%;right:17%;top:43%}.journey-strip{margin-bottom:28px}.exit-scene{height:111px}.exit-portal{width:140px;height:140px}.exit-label{top:101px}}
+
+/* Compact top approved 04 Nov 2026: title, mission + moves, one status strip. */
+.masthead{aspect-ratio:4.45;margin-bottom:3px}
+.canopy-art{object-fit:fill}
+.masthead h1{top:39%;left:18%;right:18%;font-size:clamp(18px,5.25vw,25px);line-height:1}
+.brand{top:16%;left:31%;right:31%;font-size:6px;letter-spacing:.15em;color:#ffdd93;text-shadow:0 1px #6d300c}
+.lantern-halo{top:30%;height:60%;width:22%;filter:blur(5px)}
+.mission-row{grid-template-columns:minmax(0,1fr) 69px;gap:5px;margin:3px 5px 0}
+.mission-plaque{min-height:51px;padding:4px 7px 4px 4px;gap:3px;border-radius:18px}
+.mission-plaque>.icon{flex-basis:35px;width:35px;height:35px}
+.mission-plaque p{font-size:clamp(12px,3.65vw,17px);line-height:1.08}
+.moves-stat{padding:3px 3px 4px;border-radius:18px}
+.moves-stat .stat-label{font-size:12px;line-height:1}
+.moves-stat strong{font-size:29px;line-height:.95;margin-top:1px}
+.journey-strip{gap:8px;margin:9px 7px 15px;padding:1px 13px;min-height:30px;border:1px solid #bc843a;border-radius:50px;background:linear-gradient(100deg,#302117,#171715 55%,#352418);box-shadow:inset 0 1px #ffe0a222}
+.crown-tally,.grecha-tally{gap:4px;min-height:25px;flex-shrink:0}
+.crown-tally>.icon{width:27px;height:27px}
+.crown-tally>b{font-size:16px;margin-left:1px}
+.crown-tally>b span{font-size:12px;color:#ecd1a0}
+.grecha-tally>.icon{width:26px;height:26px}
+.grecha-tally>span{font-size:12px;color:#dfc396;gap:6px}
+.grecha-tally b{font-size:17px;color:#ffe8af}
+.status-divider{height:1px;flex:1;margin:0 4px;background:linear-gradient(90deg,transparent,#d4a454,transparent);position:relative}
+.status-divider:after{content:'';position:absolute;width:5px;height:5px;left:50%;top:50%;transform:translate(-50%,-50%) rotate(45deg);background:#e2b66d;box-shadow:0 0 0 1px #765024}
+.board-art{top:-3%;height:108%}
+@media(min-width:600px){.masthead h1{font-size:25px;top:39%;left:18%;right:18%}.brand{font-size:8px}.mission-row{grid-template-columns:minmax(0,1fr) 85px;gap:6px}.mission-plaque{min-height:61px}.mission-plaque>.icon{width:44px;height:44px;flex-basis:44px}.mission-plaque p{font-size:18px}.moves-stat .stat-label{font-size:14px}.moves-stat strong{font-size:36px}.journey-strip{min-height:34px;margin-top:10px;margin-bottom:20px}.crown-tally>.icon{width:30px;height:30px}.crown-tally>b{font-size:18px}.grecha-tally>span{font-size:14px}.grecha-tally b{font-size:19px}}
+@media(max-width:350px){.mission-row{grid-template-columns:minmax(0,1fr) 63px;gap:4px}.mission-plaque{padding-inline:3px}.mission-plaque>.icon{width:31px;height:31px;flex-basis:31px}.mission-plaque p{font-size:12px}.journey-strip{margin-inline:7px;padding-inline:10px}.status-divider{margin-inline:2px}.grecha-tally>span{font-size:11px}.masthead h1{font-size:17px}}
+/* The transparent header keeps its natural artwork ratio; empty alpha is outside the visible band. */
+.canopy-art{top:-17%;height:145%}
+.brand{top:24%}
+.masthead h1{top:40%;left:20%;right:20%;font-size:clamp(16px,4.95vw,23.5px)}
+.journey-strip{margin-bottom:18px}
+.board-art{top:-7%;height:114%}
+@media(min-width:600px){.masthead h1{top:40%;left:20%;right:20%;font-size:23.5px}.brand{top:24%}.journey-strip{margin-bottom:25px}}
+@media(max-width:350px){.masthead h1{font-size:16px}}
+/* Further reduce the mission row height, per owner review 04 Nov 2026. */
+.mission-plaque{min-height:42px;padding:2px 6px 2px 4px}
+.mission-plaque>.icon{width:30px;height:30px;flex-basis:30px}
+.moves-stat{padding:1px 3px 2px}
+.moves-stat .stat-label{font-size:10px}
+.moves-stat strong{font-size:24px;margin-top:1px}
+@media(min-width:600px){.mission-plaque{min-height:46px;padding-block:2px}.mission-plaque>.icon{width:32px;height:32px;flex-basis:32px}.moves-stat .stat-label{font-size:11px}.moves-stat strong{font-size:27px}}
+@media(max-width:350px){.mission-plaque>.icon{width:28px;height:28px;flex-basis:28px}}

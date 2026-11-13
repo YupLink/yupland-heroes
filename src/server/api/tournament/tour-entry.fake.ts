@@ -1,12 +1,13 @@
 // Подделка базы и платы для тестов записи на турнир (tour-entry*.test.ts):
 // память с той же семантикой, что у операторов tour-entry-sql и у resource-pay.
-// Ресурсы, билеты и токен проводятся по ключу один раз и оставляют след в
-// журнале (res_ledger / ticket_ledger / acc_ledger) — как res_move, ticket_move
-// и acc_move; энергия и товар при keyed — ключом операции `op|pay:<ключ>`
+// Ресурсы и токен проводятся по ключу один раз и оставляют след в журнале
+// (res_ledger / acc_ledger) — как res_move и acc_move; строка «в билетах» —
+// золотом ×500 под своим ключом (§8.61); энергия и товар при keyed — ключом операции `op|pay:<ключ>`
 // (pay-once). Лайки следа не оставляют и ключа не помнят: второй вызов
 // списывает (и возвращает) второй раз — ровно то, от чего защищается разбор
 // зависших записей. В приложение не импортируется.
 import type { TourEntryPrice } from "@/lib/tournament/types";
+import { ticketRowAsGold } from "@/lib/ticketPriceGold";
 
 export type Row = {
   paid: boolean;
@@ -65,7 +66,6 @@ const op: Tag = (key) => `op|pay:${key}`;
 function trail(p: TourEntryPrice, k: Kinds): [Tag, Tag] | null {
   if (["gold", "stone", "wood", "diamonds"].includes(p.resource))
     return [led(k.kind), led(k.refundKind)];
-  if (p.resource === "tickets") return [led("building"), led("raid_reward")];
   if (p.resource === "token") return [led("acc_spend"), led("acc_reward")];
   if (k.keyed && (p.resource === "energy" || p.resource === "item")) return [op, op];
   return null;
@@ -86,8 +86,9 @@ export const fakePay = {
   payResources: async (w: string, prices: TourEntryPrice[], ref: string, k: Kinds) => {
     db.pays.push({ ref, kinds: k });
     const done: Array<[TourEntryPrice, string]> = [];
-    for (const [i, p] of prices.entries()) {
-      const key = `${ref}:${i}:${p.resource}`;
+    for (const [i, row] of prices.entries()) {
+      const key = `${ref}:${i}:${row.resource}`;
+      const p = ticketRowAsGold(row);
       const t = trail(p, k);
       // Ключ уже проведён — «уже оплачено», без списания.
       if (t && db.ledger.has(t[0](key))) continue;
@@ -101,7 +102,8 @@ export const fakePay = {
     }
   },
   refundResources: async (w: string, prices: TourEntryPrice[], ref: string, k: Kinds) => {
-    for (const [i, p] of prices.entries()) back(w, p, `${ref}:${i}:${p.resource}`, k);
+    for (const [i, p] of prices.entries())
+      back(w, ticketRowAsGold(p), `${ref}:${i}:${p.resource}`, k);
   },
 };
 

@@ -9,12 +9,13 @@ type Props = {
   status?: "ready" | "loading" | "error";
   onRetry?: () => void;
   onSelect: (id: string) => void;
+  onOpen?: () => void;
   atCastle?: boolean;
   disabled?: boolean;
 };
 
 /** Presentation only. The host supplies saved sets and handles equipping. */
-export function RaidPresetQuickAccess({ ru, presets, status = "ready", onRetry, onSelect, atCastle = false, disabled = false }: Props) {
+export function RaidPresetQuickAccess({ ru, presets, status = "ready", onRetry, onSelect, onOpen, atCastle = false, disabled = false }: Props) {
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<{ left: string; right: string; bottom: string; maxWidth: string } | null>(null);
   const shell = useRef<HTMLDivElement>(null);
@@ -29,6 +30,7 @@ export function RaidPresetQuickAccess({ ru, presets, status = "ready", onRetry, 
     setPlacement(roomRight >= 104
       ? { left: "calc(100% + 8px)", right: "auto", bottom: "0", maxWidth: `${Math.min(220, roomRight - 8)}px` }
       : { left: "auto", right: `${rect.right - window.innerWidth + 8}px`, bottom: "calc(100% + 8px)", maxWidth: `${Math.min(220, window.innerWidth - 16)}px` });
+    onOpen?.();
     setOpen(true);
   };
 
@@ -52,7 +54,7 @@ export function RaidPresetQuickAccess({ ru, presets, status = "ready", onRetry, 
     if (event.key === "Escape" && open) { setOpen(false); event.stopPropagation(); }
   }}>
     <button ref={toggle} type="button" className="raid-preset-access__toggle" aria-label={ru ? "Комплекты" : "Equipment sets"} title={ru ? "Комплекты" : "Equipment sets"} aria-expanded={open} aria-controls={panelId} disabled={disabled} onClick={togglePanel}>
-      <img src="/resources/raid-hud-art-presets.png" alt="" />
+      <img src="/resources/raid-hud-art-presets.webp" alt="" />
     </button>
     {open && <div id={panelId} className="raid-preset-access__panel" style={placement ?? undefined} aria-label={ru ? "Сохранённые комплекты" : "Saved equipment sets"}>
       {status === "loading" ? <span role="status" className="raid-preset-access__message">{ru ? "Загрузка…" : "Loading…"}</span>
@@ -62,3 +64,4 @@ export function RaidPresetQuickAccess({ ru, presets, status = "ready", onRetry, 
     </div>}
   </div>;
 }
+

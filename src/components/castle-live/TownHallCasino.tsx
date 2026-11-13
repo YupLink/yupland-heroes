@@ -1,9 +1,11 @@
+import {useTownHallPurchaseSuccess} from './TownHallPurchaseSuccess';
 // Ратуша замка → «Казино» (владелец, 14.10.2026): постройка за ресурсы, без
 // уровней. Построено (у админа — сразу) — здание стоит на площади замка
 // (useWithCasino), тут же кнопка «Играть». Цена — lib/castleCasino.ts.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { humanError } from "@/lib/humanError";
 import { Dices, Hammer, Loader2 } from "lucide-react";
 import { buildCastleCasino, getCastleCasino } from "@/server/api/slot/castle-casino";
 import type { CasinoCost } from "@/lib/castleCasino";
@@ -19,6 +21,7 @@ const RES: Array<{ key: keyof CasinoCost; icon: string }> = [
 ];
 
 export function TownHallCasino({ ru }: { ru: boolean }) {
+ const purchaseSuccess=useTownHallPurchaseSuccess();
   const qc = useQueryClient();
   const [playing, setPlaying] = useState(false);
   const q = useQuery({ queryKey: CASTLE_CASINO_KEY, queryFn: () => getCastleCasino() });
@@ -30,11 +33,13 @@ export function TownHallCasino({ ru }: { ru: boolean }) {
   const build = useMutation({
     mutationFn: () => buildCastleCasino({ data: { opId: crypto.randomUUID() } }),
     onSuccess: () => {
+      purchaseSuccess({kind:'building',id:'casino'});
       toast.success(ru ? "Казино построено" : "Casino built");
       refresh();
     },
     onError: (e: unknown) => {
-      toast.error(e instanceof Error ? e.message : String(e));
+      // Отказ ключом (нет места в лимите Ратуши, §8.64) — словом; фраза — как есть.
+      toast.error(humanError(e));
       refresh();
     },
   });
@@ -46,6 +51,7 @@ export function TownHallCasino({ ru }: { ru: boolean }) {
       </section>
     );
   }
+  if (c.closed) return null; // вход через Google — казино в замке нет
   const short = (k: keyof CasinoCost) => (c.resources[k] ?? 0) < c.cost[k];
   return (
     <section className="town-hall-build" aria-label={ru ? "Казино" : "Casino"}>
@@ -92,3 +98,4 @@ export function TownHallCasino({ ru }: { ru: boolean }) {
     </section>
   );
 }
+

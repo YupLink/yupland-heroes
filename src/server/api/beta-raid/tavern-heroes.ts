@@ -17,6 +17,8 @@ import { activeRest } from "../hero-rest";
 export type TavernHero = {
   /** null у спящего: экземпляра ещё нет, есть только шаблон. */
   id: string | null;
+  /** Копия предмета спящего — её и будят (у проснувшегося — null). */
+  itemId?: string | null;
   templateId: string;
   name: string;
   imageUrl: string | null;
@@ -85,6 +87,7 @@ export async function tavernHeroes(wallet: string, list: string): Promise<Tavern
     ...awake,
     ...dormant.map((d) => ({
       id: null,
+      itemId: d.itemId,
       templateId: d.templateId,
       name: d.name,
       imageUrl: d.imageUrl,
@@ -111,9 +114,20 @@ export async function tavernHeroInstanceId(
   wallet: string,
   heroId: string | undefined,
   templateId: string | undefined,
+  itemId?: string,
 ): Promise<string> {
   if (heroId) return heroId;
-  if (!templateId) throw new Error("Не выбран герой");
+  const account = await raidOwner(wallet);
+  // Будят КОПИЮ (heroes-wake, с 22.10): шаблон вместо копии давал «Это не твой
+  // герой» любому спящему — купленному на рынке тоже (жалоба 23.10). Старый
+  // клиент шлёт только шаблон — берём первую спящую копию этого шаблона.
+  const copy =
+    itemId ??
+    (templateId
+      ? (await listDormantHeroes(account).catch(() => [])).find((d) => d.templateId === templateId)
+          ?.itemId
+      : undefined);
+  if (!copy) throw new Error(templateId ? "Это не твой герой" : "Не выбран герой");
   const { wakeHeroInstance } = await import("../heroes-wake");
-  return wakeHeroInstance(wallet, await raidOwner(wallet), templateId);
+  return wakeHeroInstance(wallet, account, copy);
 }

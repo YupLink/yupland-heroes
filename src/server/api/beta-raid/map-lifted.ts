@@ -10,6 +10,7 @@ import { sqlStr } from "../raid-shared";
 import { cellTruthPatches } from "./map-change-hooks";
 import type { CellPatch } from "@/lib/raid/mapDelta";
 import { clampIconScale } from "@/lib/mergeScale";
+import { deltaBuildingConfig } from "@/server/api/beta-raid/delta-building-config";
 
 type CellRow = {
   q: number;
@@ -19,6 +20,7 @@ type CellRow = {
   decoration_id: string | null;
   building_id: string | null;
   building_skin_id: string | null;
+  building_config: unknown;
   group_id: string | null;
   icon_scale: number | string | null;
 };
@@ -36,7 +38,7 @@ export async function fillLifted(mapId: string, patches: CellPatch[]): Promise<C
             CASE WHEN EXISTS (SELECT 1 FROM yuplink.mystic_item_template dk
                                WHERE dk.id = c.decoration_id)
                  THEN c.decoration_id END AS decoration_id,
-            c.building_id, c.building_skin_id, c.group_id, c.icon_scale
+            c.building_id, c.building_skin_id, c.building_config, c.group_id, c.icon_scale
        FROM yuplink.raid_map_cells c
       WHERE c.map_id = ${sqlStr(mapId)} AND (c.q, c.r) IN (${list});`,
     { wrapJson: true },
@@ -55,6 +57,9 @@ export async function fillLifted(mapId: string, patches: CellPatch[]): Promise<C
       decorationId: row.decoration_id,
       buildingId: row.building_id,
       buildingSkinId: row.building_skin_id,
+      // Эффект клетки: без него «Лавка Алхимика» — шахта по эффекту клетки —
+      // у игрока стала бы проходимой (packedMines берёт эффект шаблона).
+      buildingConfig: row.building_id ? deltaBuildingConfig(row.building_config) : null,
       // Снятый купол возвращает игроку и блок: без этого член блока рисовался
       // бы одиночкой до перекачки карты.
       groupId: row.group_id ?? null,

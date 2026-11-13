@@ -23,6 +23,14 @@ import { registerEmbeddedWallet } from "@/server/api/embedded";
 import { linkYupLinkWallet } from "@/lib/linkWallet";
 import { SeedSaveGate } from "@/routes/admin.wallet";
 import { useT } from "@/lib/i18n";
+import { VaultGate } from "@/components/wallet/VaultGate";
+import { vaultReady } from "@/lib/appLock";
+
+// Вход встроенным кошем + регистрация на сервере (best-effort).
+async function linkAndRegister(accountId: string, publicKey: string) {
+  await linkYupLinkWallet(accountId);
+  await registerEmbeddedWallet({ data: { accountId, publicKey } }).catch(() => undefined);
+}
 
 // Объединённое подключение кошелька: выбор между нашим YupLink-кошем
 // (некастодиальный, ключ на устройстве) и внешним через HOT-коннектор.
@@ -31,7 +39,9 @@ export function WalletModal({ open, onClose }: { open: boolean; onClose: () => v
   const t = useT();
   const setWallet = useAppStore((s) => s.setWallet);
   const qc = useQueryClient();
-  const [step, setStep] = useState<"choose" | "yuplink" | "import" | "busy" | "create">("choose");
+  const [step, setStep] = useState<"choose" | "yuplink" | "import" | "busy" | "create" | "vault">(
+    "choose",
+  );
   const [created, setCreated] = useState<{
     accountId: string;
     publicKey: string;
@@ -82,7 +92,7 @@ export function WalletModal({ open, onClose }: { open: boolean; onClose: () => v
     } catch {
       setLocals([]);
     }
-    setStep("yuplink");
+    setStep(vaultReady() ? "yuplink" : "vault"); // пароль кошелька — до входа/создания
   };
 
   const loginLocal = async (accountId: string) => {
@@ -117,14 +127,7 @@ export function WalletModal({ open, onClose }: { open: boolean; onClose: () => v
       const res = text.includes("ed25519:")
         ? await importEmbeddedWalletByPrivateKey({ privateKeyStr: text })
         : await importEmbeddedWalletBySeed({ seedPhrase: text });
-      await linkYupLinkWallet(res.accountId);
-      try {
-        await registerEmbeddedWallet({
-          data: { accountId: res.accountId, publicKey: res.publicKey },
-        });
-      } catch {
-        /* best-effort */
-      }
+      await linkAndRegister(res.accountId, res.publicKey);
       toast.success(t("wmodal.import_success"));
       finish(res.accountId);
     } catch (e) {
@@ -138,14 +141,7 @@ export function WalletModal({ open, onClose }: { open: boolean; onClose: () => v
     if (!created) return;
     setStep("busy");
     try {
-      await linkYupLinkWallet(created.accountId);
-      try {
-        await registerEmbeddedWallet({
-          data: { accountId: created.accountId, publicKey: created.publicKey },
-        });
-      } catch {
-        /* best-effort */
-      }
+      await linkAndRegister(created.accountId, created.publicKey);
       finish(created.accountId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("wmodal.generic_error"));
@@ -174,6 +170,8 @@ export function WalletModal({ open, onClose }: { open: boolean; onClose: () => v
             </div>
             <SeedSaveGate seedPhrase={created.seedPhrase} onDone={finishCreate} />
           </div>
+        ) : step === "vault" ? (
+          <VaultGate onReady={() => setStep("yuplink")} />
         ) : step === "busy" ? (
           <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" /> {t("wmodal.connecting")}

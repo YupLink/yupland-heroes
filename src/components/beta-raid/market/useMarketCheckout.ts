@@ -18,8 +18,16 @@ import { ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
 import type { MarketSide } from "@/lib/marketItem";
 import type { CartLine } from "./cartCost";
 import { SELLABLE_ARTS_KEY, type ArtChoice } from "./MarketArtPick";
+import { SELLABLE_HEROES_KEY } from "./MarketHeroPick";
+import { invalidateHeroQueries } from "@/lib/query";
 import { numText } from "./num";
+import { pickPayload } from "./artPay";
 import { cityCartTotals } from "./townQuote";
+import { showPawnDrops } from "./pawnDropBus";
+import { invalidateBags } from "@/components/beta-raid/loot-bag/lootBagLive";
+import type { PawnDrop } from "@/lib/pawnDrop";
+import type { RecipePrize } from "@/lib/marketRecipe";
+import { showRecipePrizes } from "./recipeResultBus";
 
 export function useMarketCheckout(opts: {
   q: number;
@@ -66,11 +74,14 @@ export function useMarketCheckout(opts: {
   return useMutation({
     mutationFn: async () => {
       const failed: string[] = [];
+      const drops: Array<PawnDrop | null | undefined> = [];
+      // Рецепт: что выпало (§8.104) — в окно «Выпало».
+      const prizes: Array<RecipePrize[] | undefined> = [];
       let done = 0;
       const city = cityCartTotals(opts.lines);
       for (const l of opts.lines) {
-        // pick едет только у позиций «любой арт редкости X»; у остальных его
-        // нет, и сервер сам знает, что списывать. Форма одна на обе витрины:
+        // pick едет только у позиций «любой арт/герой редкости X»; у остальных
+        // его нет, и сервер сам знает, что списывать. Форма одна на обе витрины:
         // в скупке артефакт — товар, в покупке — цена, но выбирает игрок и там,
         // и там, иначе сервер забрал бы самый старый свободный.
         const pick = opts.picks[l.it.id];
@@ -81,14 +92,17 @@ export function useMarketCheckout(opts: {
           r: opts.r,
           itemId: l.it.id,
           qty: l.qty,
-          ...(pick ? { pick: { templateId: pick.templateId } } : {}),
+          ...(pick ? { pick: pickPayload(l.it, pick, l.qty) } : {}),
           ...(expect != null ? { expect } : {}),
         };
         try {
           if (l.it.side === "sell") {
-            await sellMarketItem({ data });
+            // Сданный герой: что выпало из рюкзака (§8.73 п. 4) — в окно.
+            const res = await sellMarketItem({ data });
+            drops.push("dropped" in res ? res.dropped : null);
           } else {
-            await buyMarketItem({ data });
+            const res = await buyMarketItem({ data });
+            prizes.push("prizes" in res ? (res.prizes ?? undefined) : undefined);
           }
           done += l.qty;
         } catch (e) {
@@ -100,9 +114,16 @@ export function useMarketCheckout(opts: {
           failed.push(`${l.it.name}: ${serverErrorText(e, t)}`);
         }
       }
-      return { done, failed };
+      return { done, failed, drops, prizes };
     },
-    onSuccess: ({ done, failed }) => {
+    onSuccess: ({ done, failed, drops, prizes }) => {
+      showPawnDrops(drops);
+      showRecipePrizes(prizes);
+      if (drops.some((d) => d && d.items.length > 0)) invalidateBags(qc);
+      // Герой ушёл в ломбард или пришёл из лавки — списки героев, экипировка
+      // (надетое на сданном освободилось) и «кого сдать» врут до перечитки.
+      if (opts.lines.some((l) => l.it.kind === "hero"))
+        invalidateHeroQueries(qc, [SELLABLE_HEROES_KEY[0]]);
       if (done > 0)
         toast.success(
           t(opts.side === "sell" ? "market.cart_sold" : "market.cart_done", { n: numText(done) }),

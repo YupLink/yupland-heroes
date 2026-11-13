@@ -21,6 +21,9 @@ export type CarveInput = {
 
 const neighbors = (c: Cell): Cell[] => DIRS.map(([dq, dr]) => ({ q: c.q + dq, r: c.r + dr }));
 
+/** Сквозь шахту не пройти (§8.59, mine-cell-sql) — стена, как живой объект. */
+export const isMineCell = (c: WorldCell): boolean => c.buildingConfig?.effect === "mine";
+
 /** Сетка острова: клетка по ключу, суша ли, можно ли стоять. */
 function grid(inp: Pick<CarveInput, "cells" | "water" | "walk">) {
   const at = new Map(inp.cells.map((c, i) => [keyOf(c), i]));
@@ -29,10 +32,11 @@ function grid(inp: Pick<CarveInput, "cells" | "water" | "walk">) {
     return i === undefined ? null : inp.cells[i];
   };
   const land = (k: string) => at.has(k) && !inp.water.has(k);
-  // Стоять можно: суша без живого объекта и без декора-стены; дом проходим.
+  // Стоять можно: суша без живого объекта и без декора-стены; дом проходим,
+  // шахта — нет.
   const open = (k: string) => {
     const c = cell(k);
-    if (!c || !land(k) || c.objectId) return false;
+    if (!c || !land(k) || c.objectId || isMineCell(c)) return false;
     return c.decorationId === null || inp.walk.has(c.decorationId);
   };
   return { at, cell, land, open };
@@ -87,7 +91,7 @@ export function carvePaths(inp: CarveInput): number {
   const cost = (k: string): number | null => {
     if (open(k)) return 0;
     const c = cell(k);
-    if (!c || !land(k) || c.objectId || inp.keep.has(k)) return null;
+    if (!c || !land(k) || c.objectId || isMineCell(c) || inp.keep.has(k)) return null;
     return 1;
   };
 

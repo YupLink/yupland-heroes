@@ -5,6 +5,9 @@ import { RARITY_COLOR } from "@/components/heroes/heroLabels";
 import type { GearItemView, GearSlotView } from "@/server/api/heroes-gear";
 import { GearSlotIcon } from "./GearPaperDoll";
 import { GearItemLines } from "./GearItemLines";
+import { ArtWearBar } from "@/components/ArtWearBar";
+import { useArtLocked } from "@/lib/hooks/useArtBroken";
+import { EnchantMark } from "@/components/EnchantMark";
 
 export const gearSlotLabel = (slot: GearSlotView, lang: string) =>
   slot.index > 1 ? `${metaLabel(slot.slot, lang)} ${slot.index}` : metaLabel(slot.slot, lang);
@@ -30,6 +33,9 @@ export function GearSlotDetails({
 }) {
   const t = useT();
   const lang = useLang();
+  // Сломанный при запущенной механике не надевается (§8.63 п.3): строка видна с
+  // накладкой, но неактивна — сначала в кузницу.
+  const locked = useArtLocked();
   return (
     <div data-gear-item-list className="space-y-2 p-1">
       <div className="text-xs font-bold">
@@ -43,7 +49,7 @@ export function GearSlotDetails({
       {slot.item && (
         <div className="flex items-start gap-2 rounded-xl border border-gold/40 bg-gold/5 p-2">
           <div
-            className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-secondary/40"
+            className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-secondary/40"
             style={{ boxShadow: `0 0 0 2px ${RARITY_COLOR[slot.item.rarity ?? ""] ?? "#9aa4bd"}` }}
           >
             {slot.item.imageUrl ? (
@@ -55,9 +61,13 @@ export function GearSlotDetails({
             ) : (
               <GearSlotIcon slot={slot.slot} />
             )}
+            <ArtWearBar durability={slot.item.durability} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[11px] font-bold">{stripStatSuffix(slot.item.name)}</div>
+            <div className="flex items-baseline gap-1">
+              <span className="min-w-0 truncate text-[11px] font-bold">{stripStatSuffix(slot.item.name)}</span>
+              <EnchantMark pct={slot.item.enchantPct} show="pct" className="text-[10px]" />
+            </div>
             <GearItemLines item={slot.item} />
           </div>
           <button
@@ -83,11 +93,12 @@ export function GearSlotDetails({
               key={item.itemId}
               type="button"
               onClick={() => onEquip(item.itemId, slot.key)}
-              disabled={readOnly || equipPending || !atCastle}
+              disabled={readOnly || equipPending || !atCastle || locked(item.durability)}
+              data-art-locked={locked(item.durability) ? "1" : undefined}
               className="flex min-h-11 w-full items-start gap-2.5 rounded-xl border border-border p-2.5 text-left transition hover:border-gold/40 disabled:opacity-50"
             >
               <div
-                className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-secondary/40"
+                className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-secondary/40"
                 style={{ boxShadow: `0 0 0 2px ${RARITY_COLOR[item.rarity ?? ""] ?? "#9aa4bd"}` }}
               >
                 {item.imageUrl ? (
@@ -99,12 +110,14 @@ export function GearSlotDetails({
                 ) : (
                   <GearSlotIcon slot={slot.slot} />
                 )}
+                <ArtWearBar durability={item.durability} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-1">
                   <span className="min-w-0 truncate text-[11px] font-bold">
                     {stripStatSuffix(item.name)}
                   </span>
+                  <EnchantMark pct={item.enchantPct} show="pct" className="text-[10px]" />
                   {item.count > 1 && (
                     <span className="shrink-0 text-[10px] text-muted-foreground">
                       ×{item.count}

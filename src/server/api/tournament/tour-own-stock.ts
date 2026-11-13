@@ -23,71 +23,44 @@ import type { Hist } from "@/server/api/tournament/tour-profit";
 /** Миг, на который досчитан запас: с него улов и урожай на счёт журнал пишет. */
 export const STOCK_AT = Date.UTC(2026, 9, 12, 12, 30);
 
-/** Аккаунт, вид рыбы (имя канона), сколько штук недоставало учёту на STOCK_AT. */
-export const FISH_STOCK: ReadonlyArray<readonly [string, string, number]> = [
-  ["acc_player19", "обычная рыба", 71],
-  ["acc_player20", "обычная рыба", 91],
-  ["acc_player21", "обычная рыба", 111],
-  ["acc_player22", "золотая рыбка", 1],
-  ["acc_player22", "обычная рыба", 85],
-  ["acc_player23", "золотая рыбка", 10],
-  ["acc_player23", "легендарная рыба", 6],
-  ["acc_player23", "обычная рыба", 30],
-  ["acc_player23", "редкая рыба", 23],
-  ["acc_player24", "обычная рыба", 3],
-  ["acc_player25", "обычная рыба", 10],
-  ["acc_playerX", "обычная рыба", 55],
-  ["acc_player26", "обычная рыба", 29],
-  ["acc_player27", "легендарная рыба", 1],
-  ["acc_player27", "обычная рыба", 20],
-  ["acc_player28", "обычная рыба", 15],
-  ["acc_player29", "обычная рыба", 5],
-  ["acc_player30", "обычная рыба", 24],
-  ["acc_player31", "золотая рыбка", 2],
-  ["acc_player32", "обычная рыба", 1],
-  ["acc_player33", "обычная рыба", 2],
-  ["acc_player34", "золотая рыбка", 3],
-  ["acc_player34", "обычная рыба", 29],
-  ["acc_player34", "редкая рыба", 13],
-  ["acc_player35", "обычная рыба", 51],
-  ["acc_player36", "обычная рыба", 15],
-  ["acc_player37", "золотая рыбка", 1],
-  ["acc_player37", "обычная рыба", 149],
-  ["acc_player37", "редкая рыба", 2],
-  ["acc_player38", "обычная рыба", 3],
-  ["acc_player39", "обычная рыба", 8],
-  ["acc_player40", "обычная рыба", 73],
-  ["acc_player41", "обычная рыба", 80],
-  ["acc_player42", "золотая рыбка", 2],
-  ["acc_player42", "обычная рыба", 11],
-  ["acc_player42", "редкая рыба", 5],
-  ["acc_player43", "обычная рыба", 83],
-  ["acc_player44", "обычная рыба", 53],
-  ["acc_player45", "обычная рыба", 9],
-  ["acc_player46", "золотая рыбка", 2],
-  ["acc_player46", "обычная рыба", 14],
-  ["acc_player46", "редкая рыба", 5],
-  ["acc_player47", "обычная рыба", 43],
-  ["acc_player48", "обычная рыба", 23],
-  ["acc_player49", "редкая рыба", 1],
-  ["acc_player50", "обычная рыба", 17],
-  ["acc_player51", "обычная рыба", 21],
-  ["acc_player52", "обычная рыба", 2],
-  ["acc_player53", "обычная рыба", 40],
-  ["acc_player18", "золотая рыбка", 2],
-  ["acc_player18", "обычная рыба", 35],
-  ["acc_player18", "редкая рыба", 1],
-  ["acc_player54", "золотая рыбка", 2],
-  ["acc_player54", "легендарная рыба", 1],
-  ["acc_player54", "обычная рыба", 18],
-  ["acc_player54", "редкая рыба", 3],
-];
+/**
+ * Аккаунт, вид рыбы (имя канона), сколько штук недоставало учёту на STOCK_AT.
+ * Данные игроков в коде не держим (открытие кода, 11.11.2026): список лежит в
+ * базе — settings 'tour_fish_stock' (JSON [[аккаунт, вид, штук], …]), тот же,
+ * что был здесь константой. Читается раз в 10 минут.
+ */
+type StockRow = readonly [string, string, number];
+let cache: { at: number; rows: StockRow[] } | null = null;
+
+export async function loadFishStock(): Promise<ReadonlyArray<StockRow>> {
+  if (cache && Date.now() - cache.at < 600_000) return cache.rows;
+  const { mcpExec } = await import("@/server/db/mcpClient");
+  const got = (await mcpExec(
+    `SELECT value FROM yuplink.settings WHERE key = 'tour_fish_stock' LIMIT 1;`,
+    { wrapJson: true },
+  )) as Array<{ value: string }> | null;
+  let raw: unknown = [];
+  try {
+    raw = JSON.parse(got?.[0]?.value ?? "[]");
+  } catch {
+    raw = [];
+  }
+  const rows = (Array.isArray(raw) ? raw : []).filter(
+    (r): r is StockRow =>
+      Array.isArray(r) &&
+      typeof r[0] === "string" &&
+      typeof r[1] === "string" &&
+      Number.isInteger(r[2]),
+  );
+  cache = { at: Date.now(), rows };
+  return rows;
+}
 
 /** Строки «своё на счёте до журнала» для товаров items (ключи журнала), если STOCK_AT < till. */
-export function stockHist(items: ReadonlySet<string>, till: number): Hist[] {
+export async function stockHist(items: ReadonlySet<string>, till: number): Promise<Hist[]> {
   if (!(STOCK_AT < till)) return [];
   const out: Hist[] = [];
-  for (const [account, name, qty] of FISH_STOCK) {
+  for (const [account, name, qty] of await loadFishStock()) {
     const key = `custom:name:${name}`;
     if (!items.has(key) || !(qty > 0)) continue;
     out.push({

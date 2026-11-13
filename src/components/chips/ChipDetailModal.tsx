@@ -2,18 +2,23 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUp, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import { ChipImage } from "@/components/ChipImage";
-import { labelForLevel } from "@/components/chips/levelLabel";
 import { TirageStatBlock } from "@/components/chips/TirageStats";
-import { craftPathFrom, CRAFT_TOTALS } from "@/lib/craftPath";
+import { ChipCraftPath } from "@/components/chips/ChipCraftPath";
+import { useCraftGoldPrice } from "@/components/chips/useCraftGoldPrice";
+import { fmtGold, goldAtMultiplier } from "@/lib/craftGold";
+import { useResources } from "@/lib/hooks/useResources";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
+import { GoldRequiredLine, goldShort } from "@/components/chips/GoldPriceLine";
 import { listChipCollectionsPublic } from "@/server/api/chips-stake";
 import { CRAFT_RULES } from "@/server/api/chips-craft";
-import { fmtTickets, levelKey } from "@/components/chips/collectionsHelpers";
+import { levelKey } from "@/components/chips/collectionsHelpers";
 import { ConvertToHeroModal } from "@/components/heroes/ConvertToHeroModal";
 import { getSession } from "@/server/api/user-auth";
 import { convertRuleForChipLevel } from "@/lib/heroLevels";
 import { SingleChipCraftModal } from "@/components/chips/SingleChipCraftModal";
+import { MarketCreateListing } from "@/components/chips/castle-market/MarketCreateListing";
 import { chipBusyView } from "@/components/chips/chipBusy";
 import {
   ChipBusyBadge,
@@ -21,6 +26,7 @@ import {
   chipBusyImageClass,
 } from "@/components/chips/ChipBusyNotice";
 
+import { thumb } from "@/lib/image";
 function ChipDetailModal({
   chipId,
   template,
@@ -49,9 +55,17 @@ function ChipDetailModal({
   onClose: () => void;
 }) {
   const t = useT();
-  const chip = chips.find((c) => c.id === chipId);
+  const ru = useLang() === "ru";
+  const [confirmedChip, setConfirmedChip] = useState<(typeof chips)[number] | null>(null);
+  const activeChipId = confirmedChip?.id ?? chipId;
+  const loadedChip = chips.find((c) => c.id === activeChipId);
+  // Craft creates a new inventory row. Keep its confirmed result visible until the query refreshes.
+  const chip = loadedChip && confirmedChip && loadedChip.level < confirmedChip.level
+    ? confirmedChip
+    : loadedChip ?? confirmedChip;
   const [craftOpen, setCraftOpen] = useState(false);
   const [heroOpen, setHeroOpen] = useState(false);
+  const [sellOpen, setSellOpen] = useState(false);
   // Превращение в героя пока тестируем только на админах (просьба владельца).
   const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
   const heroRule = chip ? convertRuleForChipLevel(chip.level) : null;
@@ -64,7 +78,7 @@ function ChipDetailModal({
   }, []);
   // Оглушение и отдых считает общий модуль: инвентарь, замок и карточка должны
   // говорить одно и то же и до минуты одинаково.
-  const busy = chipBusyView({ restUntil: chip?.restUntil, stunUntil }, nowTick, t);
+  const busy = chipBusyView({ restUntil: chip?.restUntil, stunUntil: confirmedChip ? null : stunUntil }, nowTick, t);
   // Кнопки крафта/героя гасит именно час отдыха — оглушение мешает бою,
   // а не мастерской, и запрет там был бы новым правилом.
   const resting = busy?.kind === "rest";
@@ -76,9 +90,14 @@ function ChipDetailModal({
   });
   const collection = collectionsQ.data?.find((c) => c.id === template.collectionId);
   const supply = collection?.initialSupply;
+  // Улучшение — за золото по текущему курсу: стандарт × множитель с сервера.
+  const goldMult = useCraftGoldPrice().data?.multiplier ?? null;
+  const goldNow = useResources().data?.gold;
   if (!chip) return null;
   const isMax = chip.level >= 5;
   const rule = CRAFT_RULES[levelKey(chip.level)];
+  const cost = rule && goldMult != null ? goldAtMultiplier(rule.costGold, goldMult) : null;
+  const have = typeof goldNow === "number" ? goldNow : null;
 
   return (
     <>
@@ -92,7 +111,7 @@ function ChipDetailModal({
         >
           <div className="relative">
             <ChipImage
-              src={template.imageUrl}
+              src={thumb(template.imageUrl, 640)}
               level={chip.level}
               alt={template.name}
               className={cn("aspect-square w-full", chipBusyImageClass(busy))}
@@ -123,42 +142,14 @@ function ChipDetailModal({
               supply={supply}
             />
 
-            {!isMax && (
-              <details className="rounded-xl border border-border/60 bg-secondary/20 p-2.5 text-[11px]">
-                <summary className="cursor-pointer font-semibold text-gold">
-                  {t("chips.upgrade_path_title")}
-                </summary>
-                <div className="mt-2 space-y-1">
-                  {craftPathFrom(chip.level).map((s) => (
-                    <div key={s.from} className="flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground">
-                        {labelForLevel(s.from)} → {labelForLevel(s.to)}
-                      </span>
-                      <span className="text-right">
-                        {`+${s.chips - 1}× ${labelForLevel(s.sacrificeLevel ?? s.from)} `}
-                        {s.identical ? t("chips.same_kind") : t("chips.any_kind")} · +{s.cost} 🎟
-                      </span>
-                    </div>
-                  ))}
-                  <div className="mt-1.5 border-t border-border/50 pt-1.5 text-muted-foreground">
-                    {t("chips.to_5_star", {
-                      n: CRAFT_TOTALS["5"].lvl1,
-                      c: CRAFT_TOTALS["5"].tickets,
-                    })}
-                  </div>
-                </div>
-              </details>
-            )}
+            {!isMax && <ChipCraftPath level={chip.level} mult={goldMult} />}
 
             {busy && <ChipBusyNotice busy={busy} />}
 
+            {/* «Продать» — выставить на Маркет за золото (снова с 21.10.2026). */}
+            {!isMax && <GoldRequiredLine className="flex items-center gap-1 pt-1 text-xs text-amber-300" need={cost} have={have} />}
             <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                disabled
-                title={t("chips.sell_soon")}
-                className="flex-1 rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-xs font-medium text-muted-foreground"
-              >
+              <button type="button" disabled={!!busy} onClick={() => setSellOpen(true)} className="flex-1 rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-xs font-medium transition hover:bg-secondary disabled:pointer-events-none disabled:opacity-40">
                 {t("chips.sell")}
               </button>
               {isMax ? (
@@ -172,16 +163,18 @@ function ChipDetailModal({
               ) : (
                 <button
                   type="button"
-                  disabled={resting}
+                  disabled={resting || goldShort(cost, have)}
                   onClick={() => setCraftOpen(true)}
+                  aria-label={!resting && cost != null ? t("chips.upgrade_for", { n: fmtGold(cost, ru) }) : undefined}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-rose-500 px-3 py-2.5 text-xs font-bold text-white shadow-[0_0_18px_rgba(244,63,94,0.45)] transition hover:scale-[1.02] hover:bg-rose-400 disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none"
                 >
                   <ArrowUp className="h-3.5 w-3.5" />
                   {resting
                     ? `Отдых · ${restLeft}`
-                    : rule
-                      ? t("chips.upgrade_for", { n: fmtTickets(rule.costTickets) })
-                      : t("chips.upgrade")}
+                    : <>
+                        {t("chips.upgrade")}
+                        {cost != null && <><ResourceGlyph kind="gold" /> {fmtGold(cost, ru)}</>}
+                      </>}
                 </button>
               )}
             </div>
@@ -212,13 +205,17 @@ function ChipDetailModal({
         </div>
       </div>
 
+      {sellOpen && <MarketCreateListing initialChipId={chip.id} onClose={() => setSellOpen(false)} onListed={onClose} />}
       {craftOpen && (
         <SingleChipCraftModal
           chipId={chip.id}
           chipLevel={chip.level}
           template={template}
           onClose={() => setCraftOpen(false)}
-          onCrafted={onClose}
+          onCrafted={(newChipId, newLevel) => {
+            setConfirmedChip({ ...chip, id: newChipId, level: newLevel });
+            setCraftOpen(false);
+          }}
         />
       )}
 

@@ -12,8 +12,12 @@ export function achTarget(track: AchTrackId, p: IslandPlaces): Cell | null {
       return p.crystals[0] ?? null;
     case "hunter":
       return p.monsters[0] ?? null;
-    case "digger":
-      return p.digs[0] ?? p.treasure;
+    case "digger": {
+      // Клад под дубом или камнем не виден, пока его не срубят, — ведём к открытому.
+      const covered = (d: Cell) =>
+        [...p.trees, ...p.crystals].some((c) => c.q === d.q && c.r === d.r);
+      return p.digs.find((d) => !covered(d)) ?? p.treasure;
+    }
     case "fisher":
     case "sailor":
       return p.shipyard ?? null;

@@ -30,7 +30,9 @@ describe("правила авторассылок", () => {
     expect(d.rules.sub_darai).toEqual({ mode: "auto", threshold: 5e8 });
   });
 
-  it("мусор в поле — значение по умолчанию, кривые доли разработчиков — прежние кошельки", () => {
+  it("мусор в поле — значение по умолчанию, кривые доли разработчиков — кошельки команды из env", () => {
+    vi.stubEnv("TEAM_OWNER_WALLET", "owner.tg");
+    vi.stubEnv("TEAM_PARTNER_WALLET", "partner.tg");
     const d = parseDist({
       rules: { darai_free: { mode: "auto", threshold: -5 }, sub_usd: { mode: "boom", threshold: 50 } },
       devWallets: [{ wallet: "x.tg", share: 0.7 }],
@@ -38,6 +40,11 @@ describe("правила авторассылок", () => {
     expect(d.rules.darai_free).toEqual({ mode: "auto", threshold: 100_000_000 });
     expect(d.rules.sub_usd).toEqual({ mode: "auto", threshold: 50 });
     expect(d.devWallets).toEqual(DEFAULT_DIST.devWallets);
+    expect(d.devWallets).toEqual([
+      { wallet: "owner.tg", share: 0.5 },
+      { wallet: "partner.tg", share: 0.5 },
+    ]);
+    vi.unstubAllEnvs();
   });
 
   it("сбой чтения базы — ошибка, а не значения по умолчанию", async () => {

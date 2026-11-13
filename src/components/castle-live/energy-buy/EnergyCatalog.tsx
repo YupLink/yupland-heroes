@@ -2,11 +2,11 @@
 // и разовые пакеты. Stars — золотой основной кнопкой, если доступны.
 // Остальные цены — две видимые и +N для полного списка.
 import { useRef } from "react";
-import { ArrowDown, ArrowRight, Crown } from "lucide-react";
+import { ArrowDown, Crown } from "lucide-react";
 import type { MySub, SubOffer } from "@/server/api/energy-sub/tiers";
 import { gameSpent, type PackCard, type PayOpt } from "./energyOffers";
-import { EnergyTierGlyph } from "./energyGlyphs";
-import { boxesWord, compactDarai, energyWord, num, priceText, tierGlyph, tokenName } from "./energyFormat";
+import { SubscriptionVariants } from "./SubscriptionVariants";
+import { energyWord, num, priceText, tokenName } from "./energyFormat";
 
 const BOX_ART = "/design-assets/purchase/bonus-box.webp";
 
@@ -28,13 +28,16 @@ type Props = {
   mine: MySub[];
   savings: (number | null)[];
   busyKey: string | null;
+  subscriptionLayout: "vertical" | "horizontal";
   onTier: (index: number) => void;
   onGame: (card: PackCard) => void;
   onPrice: (card: PackCard, o: PayOpt) => void;
   onAll: (card: PackCard) => void;
+  /** «Только Google» (§8.127): цены подписок в $ — платит картой. */
+  dollars?: boolean;
 };
 
-export function EnergyCatalog({ ru, walletView, cards, tiers, mine, savings, busyKey, onTier, onGame, onPrice, onAll }: Props) {
+export function EnergyCatalog({ ru, walletView, cards, tiers, mine, savings, busyKey, subscriptionLayout, onTier, onGame, onPrice, onAll, dollars = false }: Props) {
   const subscriptionsRef = useRef<HTMLHeadingElement>(null);
   const packsRef = useRef<HTMLHeadingElement>(null);
   const jumpTo = (target: HTMLHeadingElement | null) => {
@@ -47,15 +50,7 @@ export function EnergyCatalog({ ru, walletView, cards, tiers, mine, savings, bus
     .flatMap((c) => c.others.filter((o) => o.token === "USDT").map((o) => ({ amount: c.amount, price: o.price })))
     .sort((a, b) => b.amount - a.amount)[0];
   const maxBoxes = Math.max(0, ...tiers.map((t) => t.boxesPerDay * t.days));
-  const tierName = (t: SubOffer) => (!ru && t.nameEn ? t.nameEn : t.name);
   const days = tiers[0]?.days ?? 30;
-  const last = tiers.length - 1;
-  const lastLabel =
-    tiers.length >= 3 && walletView && bestSaving != null && savings[last] === bestSaving
-      ? ru ? "МАКСИМУМ ВЫГОДЫ" : "BEST VALUE"
-      : tiers.length >= 3 && tiers[last].boxesPerDay * tiers[last].days === maxBoxes && maxBoxes > 0
-        ? ru ? "БОЛЬШЕ ВСЕГО БОКСОВ" : "MOST BOXES"
-        : null;
 
   return (
     <>
@@ -82,36 +77,8 @@ export function EnergyCatalog({ ru, walletView, cards, tiers, mine, savings, bus
             <span className="energy-buy__sparkle energy-buy__sparkle--right" aria-hidden="true">✦</span>
             <img src={BOX_ART} alt="" aria-hidden="true" />
           </div>
-          <div className="energy-buy__subscriptions">
-            {tiers.map((t, i) => (
-              <button
-                type="button"
-                key={t.id}
-                className={`energy-buy__tier${tierGlyph(i, tiers.length) === 2 ? " energy-buy__tier--expert" : ""}`}
-                onClick={() => onTier(i)}
-              >
-                <EnergyTierGlyph tier={tierGlyph(i, tiers.length)} />
-                <span className="energy-buy__tier-main">
-                  <span className="energy-buy__tier-heading">
-                    <strong>{tierName(t)}</strong>
-                    {walletView && savings[i] != null && <span className="energy-buy__tier-saving">−{savings[i]}%</span>}
-                    {i === last && lastLabel && <span className="energy-buy__expert-label">{lastLabel}</span>}
-                    <ArrowRight aria-hidden="true" />
-                  </span>
-                  <span className="energy-buy__tier-daily">
-                    {num(t.energyPerDay, ru)} {energyWord(ru)}
-                    {t.boxesPerDay > 0 && ` + ${t.boxesPerDay} ${boxesWord(t.boxesPerDay, ru)}`}
-                    {ru ? "/день" : "/day"}
-                  </span>
-                </span>
-                <span className="energy-buy__tier-prices">
-                  {t.prices.STARS != null && <span>{num(t.prices.STARS, ru)} ★</span>}
-                  {walletView && t.prices.USDT != null && <span>{num(t.prices.USDT, ru)} USDT</span>}
-                  {walletView && t.prices.Darai != null && <span>≈ {compactDarai(t.prices.Darai, ru)} DarAi</span>}
-                </span>
-              </button>
-            ))}
-          </div>
+          <SubscriptionVariants tiers={tiers} ru={ru} layout={subscriptionLayout} onTier={onTier} dollars={dollars} />
+          <p className="energy-buy__saving-basis">{ru ? "По одной подписке каждого вида — они складываются." : "One subscription of each plan — they stack."}</p>
           {walletView && bestSaving != null && comparisonPack && (
             <p className="energy-buy__saving-explanation">
               {ru
@@ -191,7 +158,7 @@ export function EnergyCatalog({ ru, walletView, cards, tiers, mine, savings, bus
                           onClick={() => onPrice(card, o)}
                         >
                           <b>{num(o.price, ru)}</b>
-                          <span className="energy-buy__pack-preview-method">{o.method === "stars" ? "★ Stars" : o.method === "tickets" ? (ru ? "Билеты" : "Tickets") : o.method === "likes" ? (ru ? "Лайки" : "Likes") : tokenName(o.token)}</span>
+                          <span className="energy-buy__pack-preview-method">{o.method === "stars" ? "★ Stars" : o.method === "gold" ? (ru ? "Золото" : "Gold") : o.method === "likes" ? (ru ? "Лайки" : "Likes") : tokenName(o.token)}</span>
                         </button>
                       ))}
                       {all && (
@@ -215,3 +182,4 @@ export function EnergyCatalog({ ru, walletView, cards, tiers, mine, savings, bus
     </>
   );
 }
+

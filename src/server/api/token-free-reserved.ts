@@ -40,6 +40,13 @@ export function reservedSql(symbol: string): string {
         -- награды еженедельного босса фишек, не забранные игроками
         + (SELECT COALESCE(sum(reward_amount), 0) FROM yuplink.chip_boss_reward
             WHERE claimed_at IS NULL AND lower(reward_kind) = ${s})
+        -- 10 % с подписок друзей: начислено пригласившему, ещё не забрано (ref-01)
+        + (SELECT COALESCE(sum(amount), 0) FROM yuplink.ref_reward
+            WHERE status = 'pending' AND kind = 'usdt' AND lower(token) = ${s})
+        -- запас пулов банка: монета ждёт обмена (bank-12; с 29.10.2026 кладётся с кошелька игры, bank-13)
+        + (SELECT COALESCE(sum(CASE WHEN lower(token_a) = ${s} THEN reserve_a ELSE 0 END
+                              + CASE WHEN lower(token_b) = ${s} THEN reserve_b ELSE 0 END), 0)
+             FROM yuplink.bank_pool)
         -- монета, лежащая стопкой на складе (урожай полей)
         + (SELECT COALESCE(sum(count), 0) FROM yuplink.raid_warehouse_slot
             WHERE lower(stack_key) = 'resource:token:' || ${s})

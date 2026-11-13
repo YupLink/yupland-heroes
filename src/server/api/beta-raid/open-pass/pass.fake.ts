@@ -5,6 +5,7 @@
 // cellsPriceSql). Повтор того же нажатия или живой вход — без платы и без
 // записи; закрыть — погасить срок (только свои ключи нажатий, если они есть),
 // ключ нажатия остаётся.
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { hexDistance } from "@/lib/raid/hex";
 import { chestOpenPrice } from "@/lib/openPass";
 import { energyOf, f, slotsOf } from "@/server/api/beta-raid/plain-chest/pchest.fake";
@@ -12,7 +13,8 @@ import { energyOf, f, slotsOf } from "@/server/api/beta-raid/plain-chest/pchest.
 type O = Record<string, unknown>;
 const row = (v: unknown) => [{ _row: v }];
 const S = (v: unknown) => String(v);
-const cells = (counts: number[]) => counts.reduce((n, c) => n + (c > 0 ? Math.ceil(c / 20) : 0), 0);
+const cells = (counts: number[]) =>
+  counts.reduce((n, c) => n + (c > 0 ? Math.ceil(c / CELL_SIZE) : 0), 0);
 
 /** Цена в миг открытия: занятые ячейки обычного сундука или сети владельца, не меньше 1. */
 function priceOf(sql: string): number {

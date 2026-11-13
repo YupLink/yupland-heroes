@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { parseAmountRange, amountRangeText } from "@/lib/mysticKinds";
 
 const ev: string[] = [];
-const st = { onceTaken: new Set<string>() };
+const st = { onceTaken: new Set<string>(), goldRefs: new Set<string>() };
 
 vi.mock("../db/pg", () => ({
   pg: {
@@ -18,7 +18,7 @@ vi.mock("../db/pg", () => ({
         }),
       }),
     },
-    userGameItems: { insert: async () => void ev.push("item") },
+    userGameItems: { insert: async () => void ev.push("item"), findOne: async () => null },
   },
   sb: { rpc: async (_f: string, a: { p_amount: number }) => (ev.push(`energy:${a.p_amount}`), { error: null }) },
 }));
@@ -29,6 +29,15 @@ vi.mock("./gifts-once", () => ({
 }));
 vi.mock("./packs", () => ({ grantPackToUser: async (o: { packId: string }) => void ev.push(`pack:${o.packId}`) }));
 vi.mock("./tickets-ledger", () => ({ moveTickets: async (o: { delta: number }) => void ev.push(`tickets:${o.delta}`) }));
+// Золото вместо билетов: журнал проводит ключ (вид, ref) один раз — как res_move.
+vi.mock("./gold-earn", () => ({
+  creditGoldForTickets: async (o: { tickets: number; kind: string; ref: string }) => {
+    const gold = o.tickets * 100;
+    if (!st.goldRefs.has(`${o.kind}:${o.ref}`)) ev.push(`gold:${gold}:${o.kind}:${o.ref}`);
+    st.goldRefs.add(`${o.kind}:${o.ref}`);
+    return gold;
+  },
+}));
 vi.mock("../likesAccount", () => ({
   likeAccountId: async () => "lk_A",
   addLikes: async (_a: string, n: number, _f: string, ref: string) => void ev.push(`likes:${n}:${ref}`),
@@ -57,6 +66,7 @@ const { deliverMysticTier, rollAmount } = await import("./mystic-grant");
 beforeEach(() => {
   ev.length = 0;
   st.onceTaken.clear();
+  st.goldRefs.clear();
 });
 
 describe("количество одним полем", () => {
@@ -103,14 +113,22 @@ describe("выдача приза бокса", () => {
     expect(ev).toEqual(["acc:Darai:1500:acc_reward:mystic:g3", "likes:40:mystic:g4"]);
   });
 
-  it("энергия, пак, предмет, билеты — ровно один раз на бокс", async () => {
+  it("энергия, пак, предмет — ровно один раз на бокс", async () => {
     for (let i = 0; i < 2; i++) {
       await deliverMysticTier("w", "g5", { kind: "energy" }, 100);
       await deliverMysticTier("w", "g6", { kind: "pack", packId: "cp_box" }, 0);
       await deliverMysticTier("w", "g7", { kind: "artifact", itemTemplateId: "art_1" }, 0);
-      await deliverMysticTier("w", "g8", { kind: "tickets" }, 5);
     }
-    expect(ev).toEqual(["energy:100", "pack:cp_box", "item", "ticket_claim", "tickets:5"]);
+    expect(ev).toEqual(["energy:100", "pack:cp_box", "item"]);
+  });
+
+  it("тир билетов (§8.61) — золотом ×100 с ключом бокса, приз «золото», повтор не задваивает", async () => {
+    const r = await deliverMysticTier("w", "g8", { kind: "tickets" }, 5);
+    await deliverMysticTier("w", "g8", { kind: "tickets" }, 5);
+    expect(r).toEqual({ kind: "resource", amount: 500, code: "gold" });
+    expect(ev.filter((e) => e.startsWith("gold:"))).toEqual(["gold:500:mystic:mystic:g8"]);
+    expect(ev).toContain("journal:resource:gold:500:-:mystic:g8");
+    expect(ev.some((e) => e.startsWith("tickets:") || e === "ticket_claim")).toBe(false);
   });
 
   it("старые заглушки nft/ft — «пусто»", async () => {

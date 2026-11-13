@@ -38,7 +38,7 @@ export function LetterWindow({
       className="fixed inset-0 z-[250] flex items-stretch justify-center bg-black/85 sm:items-center sm:p-6"
     >
       <div className="flex h-full w-full max-w-lg flex-col overflow-hidden bg-card sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl sm:border sm:border-border">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-[env(safe-area-inset-top)] sm:pt-0">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-[var(--app-top,env(safe-area-inset-top,0px))] sm:pt-0">
           {src && (
             <img
               src={src}

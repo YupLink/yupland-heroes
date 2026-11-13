@@ -1,5 +1,5 @@
 .raid-hero-dialog.raid-hero-screen{width:100%;height:100dvh;max-width:none;max-height:none;border:0!important;border-radius:0!important;background:#0e1419;box-shadow:none}
-.raid-hero-screen .raid-hero-dialog__toolbar{flex-shrink:0;padding:calc(10px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left))}
+.raid-hero-screen .raid-hero-dialog__toolbar{flex-shrink:0;padding:calc(10px + var(--app-top,env(safe-area-inset-top,0px))) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left))}
 .raid-hero-screen .raid-hero-dialog__body{flex:1;width:100%;padding:8px max(8px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
 .raid-hero-screen .raid-hero-dialog__body>div{width:100%;max-width:640px;margin-inline:auto}
 

@@ -24,7 +24,7 @@ export const dict: Record<string, Entry> = {
     en: "Could not open the building",
   },
   "braid.requires_hero": { ru: "Нужен герой{race}{spec}", en: "Requires a hero{race}{spec}" },
-  "braid.price_tickets": { ru: "{n} билетов", en: "{n} tickets" },
+  "braid.price_tickets": { ru: "{n} золота", en: "{n} gold" }, // §8.61: цена «в билетах» = золото ×500
   "braid.price_likes": { ru: "{n} лайков", en: "{n} likes" },
   "braid.price_energy": { ru: "{n} энергии", en: "{n} energy" },
   "braid.price_tokens": { ru: "{n} {token}", en: "{n} {token}" },
@@ -358,5 +358,5 @@ export const dict: Record<string, Entry> = {
   },
   "braid.boost_item_use": { ru: "Использовать", en: "Use" },
   "braid.boost_item_gives": { ru: "Даёт {gift}", en: "Gives {gift}" },
-  "braid.boost_item_done": { ru: "{hero}: {line}", en: "{hero}: {line}" },
+  "braid.boost_item_done": { ru: "Активировано: {item} · {line}", en: "Activated: {item} · {line}" },
 };

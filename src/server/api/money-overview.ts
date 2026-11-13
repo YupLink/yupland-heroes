@@ -10,7 +10,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requirePayoutsAdmin } from "../auth";
 import { mcpExec } from "../db/mcpClient";
-import { MONEY_SQL } from "./money-overview-sql";
+import { moneySql } from "./money-overview-sql";
+import { teamOwnerWallet, teamPartnerWallet } from "../team";
 import { SPLIT, USD_BUCKET_DEV_SHARE } from "@/lib/energySub";
 
 const n = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -38,7 +39,7 @@ export const adminMoneyOverview = createServerFn({ method: "GET" }).handler(asyn
     freeTokenPool("USDT").catch(() => null),
     bucketBalances(),
     loadDist(),
-    mcpExec(MONEY_SQL),
+    mcpExec(moneySql(teamOwnerWallet(), teamPartnerWallet())),
     fetchDaraiBalance("darai_duplo.near").catch(() => null),
     daraiPerUsd().catch(() => null),
   ]);
@@ -47,7 +48,12 @@ export const adminMoneyOverview = createServerFn({ method: "GET" }).handler(asyn
   const subs = await moneySubs(bal).catch(() => null);
 
   const free = Math.max(0, pools.payoutAvailable);
-  const share = (w: string) => dist.devWallets.find((d) => d.wallet === w)?.share ?? 0;
+  const share = (w: string) => (w ? (dist.devWallets.find((d) => d.wallet === w)?.share ?? 0) : 0);
+  // Кошельки команды — из env (server/team); подписи экрана берутся отсюда.
+  const owner = { name: "Миша", wallet: teamOwnerWallet() };
+  const partner = { name: "Ярослав", wallet: teamPartnerWallet() };
+  const label = (p: { name: string; wallet: string }) =>
+    [p.name, p.wallet].filter(Boolean).join(" · ");
   // Корзина $ (70 % USDT-оплат): разработчикам USDT, остальное — обмен в дупло.
   // «$ → карта» (30 %) меняется сразу после покупки — здесь лишь то, что ждёт обмена.
   const devUsdt = bal.sub_usd * USD_BUCKET_DEV_SHARE;
@@ -55,8 +61,8 @@ export const adminMoneyOverview = createServerFn({ method: "GET" }).handler(asyn
   const ready: Recipient[] = [
     { key: "duplo", name: "Дупло (сжигание)", wallet: "darai_duplo.near", darai: free * 0.5 + bal.sub_burn, usdt: 0, viaSwap: swapUsdt },
     // + аукционы админа: целиком разработчикам по тем же долям (14.10)
-    { key: "miplix", name: "Миша", wallet: "owner.example.tg", darai: free * 0.125 + (bal.sub_dev + bal.auc_darai) * share("owner.example.tg"), usdt: (devUsdt + bal.auc_usd) * share("owner.example.tg"), viaSwap: 0 },
-    { key: "player03", name: "Ярослав", wallet: "admin2.example.tg", darai: free * 0.125 + (bal.sub_dev + bal.auc_darai) * share("admin2.example.tg"), usdt: (devUsdt + bal.auc_usd) * share("admin2.example.tg"), viaSwap: 0 },
+    { key: "owner", ...owner, darai: free * 0.125 + (bal.sub_dev + bal.auc_darai) * share(owner.wallet), usdt: (devUsdt + bal.auc_usd) * share(owner.wallet), viaSwap: 0 },
+    { key: "partner", ...partner, darai: free * 0.125 + (bal.sub_dev + bal.auc_darai) * share(partner.wallet), usdt: (devUsdt + bal.auc_usd) * share(partner.wallet), viaSwap: 0 },
     { key: "legendary", name: "Держатели legendary", wallet: "", darai: free * 0.25, usdt: 0, viaSwap: 0 },
     { key: "map", name: "Пул карты", wallet: "", darai: 0, usdt: 0, viaSwap: bal.sub_usd_map },
   ];
@@ -84,8 +90,10 @@ export const adminMoneyOverview = createServerFn({ method: "GET" }).handler(asyn
       count: n(r.dist_count),
       total: n(r.dist_total),
       duplo: n(r.dist_duplo) + n(r.sub_burned),
-      miplix: n(r.dist_miplix) + n(r.sub_dev_darai) * share("owner.example.tg"),
-      player03: n(r.dist_yarsib) + n(r.sub_dev_darai) * share("admin2.example.tg"),
+      owner: n(r.dist_owner) + n(r.sub_dev_darai) * share(owner.wallet),
+      partner: n(r.dist_partner) + n(r.sub_dev_darai) * share(partner.wallet),
+      /** Подписи строк «Имя · кошелёк» — кошельки из env сервера. */
+      labels: { owner: label(owner), partner: label(partner) },
       legendary: n(r.dist_legendary),
       devUsdt: n(r.sub_dev_usdt),
       failed: n(r.dist_failed),

@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n";
 import { MAX_NFT_BATCH } from "./nft-input-shared";
 import type { NftGroup } from "./useNftGroups";
 
+import { thumb } from "@/lib/image";
 export function NftInputRow({
   group,
   qty,
@@ -51,7 +52,7 @@ export function NftInputRow({
       />
       <div className="relative shrink-0">
         {nft.imageUrl ? (
-          <img src={nft.imageUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
+          <img src={thumb(nft.imageUrl, 96)} alt="" className="h-11 w-11 rounded-lg object-cover" />
         ) : (
           <div className="h-11 w-11 rounded-lg bg-secondary" />
         )}

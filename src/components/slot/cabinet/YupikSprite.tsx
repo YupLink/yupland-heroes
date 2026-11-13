@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { vars } from "./shared";
+import { notifyDigCue } from "../music/digSounds";
 
 const frames = [
   [0, 0, 332, 316, 140, 308],
@@ -46,6 +47,12 @@ const motions = {
 export type Motion = keyof typeof motions;
 export function YupikSprite({ motion }: { motion: Motion }) {
   const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (motion !== "dig") return;
+    if (index === 11) notifyDigCue("shovel");
+    if (index === 14) notifyDigCue("soil");
+  }, [motion, index]);
+  useEffect(() => () => notifyDigCue("stop"), [motion]);
   useEffect(() => {
     const sequence = motions[motion],
       duration = sequence.reduce((n, f) => n + f[1], 0);

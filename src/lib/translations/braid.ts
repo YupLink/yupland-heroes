@@ -7,7 +7,7 @@ type Entry = Record<Lang, string>;
 // Экран боя был написан целиком по-русски: английский игрок читал «Урон за
 // удар» и «ОПАСНОСТИ» посреди своего интерфейса (жалоба 25.08).
 export const dict: Record<string, Entry> = {
-  "braid.energy_next": { ru: "+1 через {time} · до {max}", en: "+1 in {time} · up to {max}" },
+  "braid.energy_next": { ru: "+5 через {time} · до {max}", en: "+5 in {time} · up to {max}" },
   "braid.energy_full": { ru: "Энергия полная", en: "Energy full" },
   "braid.act_interact": { ru: "Взаимодействовать", en: "Interact" },
   // Подсказка на кнопке разворота карты во весь экран (title-тултип).
@@ -70,11 +70,23 @@ export const dict: Record<string, Entry> = {
   "braid.go_here": { ru: "Идти сюда", en: "Walk here" },
   "braid.chambers_title": { ru: "Покои — снять эффекты", en: "Chambers — clear effects" },
   "braid.chambers_rest": { ru: "Отдохнуть", en: "Rest" },
-  "braid.chambers_unfinished": { ru: "Покои ещё не достроены", en: "Chambers still under construction" },
-  "braid.chambers_no_prices": { ru: "Покои закрыты — цена не задана", en: "Chambers closed — no price set" },
+  "braid.chambers_unfinished": {
+    ru: "Покои ещё не достроены",
+    en: "Chambers still under construction",
+  },
+  "braid.chambers_no_prices": {
+    ru: "Покои закрыты — цена не задана",
+    en: "Chambers closed — no price set",
+  },
   "braid.chambers_nothing": { ru: "Сейчас снимать нечего", en: "Nothing to clear right now" },
-  "braid.chambers_price_lost": { ru: "Цена изменилась — открой покои заново", en: "Price changed — reopen the chambers" },
-  "braid.chambers_rested_toast": { ru: "Отдохнули: снято {n}, заплачено {paid}", en: "Rested: {n} cleared, paid {paid}" },
+  "braid.chambers_price_lost": {
+    ru: "Цена изменилась — открой покои заново",
+    en: "Price changed — reopen the chambers",
+  },
+  "braid.chambers_rested_toast": {
+    ru: "Отдохнули: снято {n}, заплачено {paid}",
+    en: "Rested: {n} cleared, paid {paid}",
+  },
   "braid.chambers_grp_slow": { ru: "Замедление", en: "Slow" },
   "braid.chambers_grp_weaken": { ru: "Ослабление", en: "Weaken" },
   "braid.chambers_grp_stun": { ru: "Оглушение фишки", en: "Chip stun" },
@@ -109,7 +121,7 @@ export const dict: Record<string, Entry> = {
     ru: "Мест под обучение: {used} из {total}",
     en: "Study places: {used} of {total}",
   },
-  "braid.uni_slot_buy": { ru: "+1 место · {price} 🎟", en: "+1 place · {price} 🎟" },
+  "braid.uni_slot_buy": { ru: "+1 место · {price} золота", en: "+1 place · {price} gold" },
   "braid.uni_slot_bought": { ru: "Мест стало: {n}", en: "Places now: {n}" },
   "braid.uni_slots_max": { ru: "максимум {n}", en: "max {n}" },
   "braid.uni_slot": { ru: "место", en: "place" },
@@ -135,8 +147,8 @@ export const dict: Record<string, Entry> = {
     en: "The museum is still under construction — claiming opens once it's finished",
   },
   "braid.museum_hint": {
-    ru: "Собранные коллекции копят билеты. Приходи в музей — забирай.",
-    en: "Completed collections farm tickets. Come to the museum to claim them.",
+    ru: "Собранные коллекции копят золото. Приходи в музей — забирай.",
+    en: "Completed collections farm gold. Come to the museum to claim it.",
   },
   "braid.museum_farming": { ru: "Фармят · {n}", en: "Farming · {n}" },
   "braid.museum_none_active": {
@@ -165,7 +177,7 @@ export const dict: Record<string, Entry> = {
   "braid.pl_step": { ru: "шаг|шага|шагов", en: "step|steps" },
 
   // ────────── добыча ──────────
-  "braid.loot_tickets": { ru: "билет", en: "ticket" },
+  "braid.loot_tickets": { ru: "золота", en: "gold" },
   "braid.loot_likes": { ru: "лайк", en: "like" },
   "braid.loot_energy": { ru: "энергия", en: "energy" },
   "braid.loot_pack": { ru: "пак", en: "pack" },
@@ -204,7 +216,7 @@ export const dict: Record<string, Entry> = {
   "braid.total_line": { ru: "Итого: {parts}", en: "Total: {parts}" },
   "braid.claim": { ru: "Забрать", en: "Claim" },
   "braid.place_n": { ru: "место {n}", en: "place {n}" },
-  "braid.rw_tickets": { ru: "билеты", en: "tickets" },
+  "braid.rw_tickets": { ru: "золото", en: "gold" },
   "braid.rw_likes": { ru: "лайки", en: "likes" },
   "braid.rw_energy": { ru: "энергия", en: "energy" },
   "braid.rw_pack": { ru: "пак", en: "pack" },

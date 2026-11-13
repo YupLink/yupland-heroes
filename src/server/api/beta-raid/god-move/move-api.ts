@@ -13,9 +13,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdmin } from "@/server/auth";
-import { godMapId } from "@/server/api/beta-raid/god-map";
 import { refuse, runMove } from "@/server/api/beta-raid/god-move/move-run";
 import { GOD_MOVE_KINDS, type GodMoveResult } from "@/lib/godMove";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 const cell = z.object({ q: z.number().int(), r: z.number().int() });
 
@@ -38,8 +38,7 @@ export const adminGodMove = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }): Promise<GodMoveResult> => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     if (data.mapId && data.mapId !== mapId) return refuse("other_map");
     if (data.from.q === data.to.q && data.from.r === data.to.r) return refuse("same_cell");
     return runMove({ mapId, kind: data.kind, from: data.from, to: data.to, ref: data.ref });

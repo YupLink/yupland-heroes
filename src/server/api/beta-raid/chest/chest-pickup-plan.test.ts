@@ -4,6 +4,7 @@
 // только целая. Чужой (дополнение №2): охраны не получает, сундук без места —
 // мешочком, последний уносит всю сеть хозяина.
 import { describe, expect, it } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import {
   pickupPlan,
   sigOf,
@@ -12,8 +13,15 @@ import {
 } from "@/server/api/beta-raid/chest/chest-pickup-plan";
 
 const caps = { capacity: 4, potionCapacity: 1 };
-const bagOf = (...counts: number[]) =>
-  counts.map((count, i) => ({ stackKey: `custom:x${i}`, count, potion: false }));
+/** Рюкзак из n полных ячеек разных видов. */
+const bagOf = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    stackKey: `custom:x${i}`,
+    count: CELL_SIZE,
+    potion: false,
+  }));
+/** Руды в сети по умолчанию — две ячейки. */
+const ORE = CELL_SIZE + 10;
 const net = (stackKey: string, count: number, potion = false): NetRow => ({
   stackKey,
   kind: "custom",
@@ -29,7 +37,7 @@ const snap = (over: Partial<PickupSnap> = {}): PickupSnap => ({
   guard: { tpl: "rbt_1", name: "Тролль", image: null, whole: true },
   last: false,
   bag: [],
-  net: [net("custom:cst_ore", 30)],
+  net: [net("custom:cst_ore", ORE)],
   bagFp: "fp",
   netFp: "nfp",
   ...over,
@@ -59,23 +67,23 @@ describe("не последний сундук", () => {
 
 describe("места нет (хозяин)", () => {
   it("под сундук нет ячейки — отказ с числами «нужно / свободно»", () => {
-    const plan = pickupPlan(snap({ guard: null, bag: bagOf(20, 20, 20, 20) }), caps);
+    const plan = pickupPlan(snap({ guard: null, bag: bagOf(4) }), caps);
     expect(plan).toMatchObject({ fits: false, need: 1, free: 0, rows: [], bagged: [] });
   });
 
   it("сундук влез, а охране ячейки нет — тоже отказ: нужно две, свободна одна", () => {
-    const plan = pickupPlan(snap({ bag: bagOf(20, 20, 20) }), caps);
+    const plan = pickupPlan(snap({ bag: bagOf(3) }), caps);
     expect(plan).toMatchObject({ fits: false, need: 2, free: 1 });
   });
 
   it("под раненую охрану ячейку не держим: одна свободная — сундук влез", () => {
-    const plan = pickupPlan(snap({ guard: hurt, bag: bagOf(20, 20, 20) }), caps);
+    const plan = pickupPlan(snap({ guard: hurt, bag: bagOf(3) }), caps);
     expect(plan.fits).toBe(true);
     expect(plan.rows.map((r) => r.k)).toEqual(["custom:cst_mc"]);
   });
 
   it("неполный стек сундуков — долив без новой ячейки", () => {
-    const bag = [...bagOf(20, 20, 20), { stackKey: "custom:cst_mc", count: 1, potion: false }];
+    const bag = [...bagOf(3), { stackKey: "custom:cst_mc", count: 1, potion: false }];
     expect(pickupPlan(snap({ guard: null, bag }), caps).fits).toBe(true);
   });
 });
@@ -83,25 +91,34 @@ describe("места нет (хозяин)", () => {
 describe("последний сундук", () => {
   it("всё влезло — товары сети в рюкзак «собрано прочее», мешочка нет", () => {
     const plan = pickupPlan(snap({ last: true }), caps);
-    expect(plan.taken).toEqual([{ stackKey: "custom:cst_ore", qty: 30 }]);
+    expect(plan.taken).toEqual([{ stackKey: "custom:cst_ore", qty: ORE }]);
     expect(plan).toMatchObject({ left: [], bagged: [] });
-    expect(plan.rows[2]).toMatchObject({ k: "custom:cst_ore", qty: 30, loot: 30, ref: "cst_ore" });
+    expect(plan.rows[2]).toMatchObject({
+      k: "custom:cst_ore",
+      qty: ORE,
+      loot: ORE,
+      ref: "cst_ore",
+    });
   });
 
   it("раненая охрана не занимает место товаров сети: им на ячейку больше", () => {
     // Ёмкость 4: одна занята, одна — сундуку; товарам две (с целой охраной — одна).
-    const plan = pickupPlan(snap({ last: true, guard: hurt, bag: bagOf(20) }), caps);
-    expect(plan.taken).toEqual([{ stackKey: "custom:cst_ore", qty: 30 }]);
+    const plan = pickupPlan(snap({ last: true, guard: hurt, bag: bagOf(1) }), caps);
+    expect(plan.taken).toEqual([{ stackKey: "custom:cst_ore", qty: ORE }]);
     expect(plan.bagged).toEqual([]);
   });
 
   it("сначала место под сундук и охрану, товарам — остаток; не влезшее — мешочком с меткой", () => {
     // Ёмкость 4: одна занята, две уходят сундуку и охране — товарам одна ячейка.
     const plan = pickupPlan(
-      snap({ last: true, bag: bagOf(20), net: [net("custom:a", 30), net("custom:b", 5)] }),
+      snap({
+        last: true,
+        bag: bagOf(1),
+        net: [net("custom:a", CELL_SIZE + 10), net("custom:b", 5)],
+      }),
       caps,
     );
-    expect(plan.taken).toEqual([{ stackKey: "custom:a", qty: 20 }]);
+    expect(plan.taken).toEqual([{ stackKey: "custom:a", qty: CELL_SIZE }]);
     expect(plan.left).toEqual([
       { stackKey: "custom:a", qty: 10 },
       { stackKey: "custom:b", qty: 5 },
@@ -113,18 +130,25 @@ describe("последний сундук", () => {
   });
 
   it("рюкзак полон после сундука — вся сеть мешочком, сундук всё равно забирается", () => {
-    const plan = pickupPlan(snap({ last: true, guard: null, bag: bagOf(20, 20, 20) }), caps);
+    const plan = pickupPlan(snap({ last: true, guard: null, bag: bagOf(3) }), caps);
     expect(plan.fits).toBe(true);
     expect(plan.taken).toEqual([]);
-    expect(plan.bagged).toEqual([expect.objectContaining({ k: "custom:cst_ore", n: 30, loot: 30 })]);
+    expect(plan.bagged).toEqual([
+      expect.objectContaining({ k: "custom:cst_ore", n: ORE, loot: ORE }),
+    ]);
   });
 
   it("дробь: влез вид целиком — точно, не влез — тысячные вниз, остаток до крошки — мешочком", () => {
     const plan = pickupPlan(
-      snap({ last: true, guard: null, bag: bagOf(20, 20), net: [net("custom:a", 20.0004), net("custom:b", 0.000321)] }),
+      snap({
+        last: true,
+        guard: null,
+        bag: bagOf(2),
+        net: [net("custom:a", CELL_SIZE + 0.0004), net("custom:b", 0.000321)],
+      }),
       caps,
     );
-    expect(plan.taken).toEqual([{ stackKey: "custom:a", qty: 20 }]);
+    expect(plan.taken).toEqual([{ stackKey: "custom:a", qty: CELL_SIZE }]);
     expect(plan.left).toEqual([
       { stackKey: "custom:a", qty: 0.0004 },
       { stackKey: "custom:b", qty: 0.000321 },
@@ -133,19 +157,19 @@ describe("последний сундук", () => {
 
   it("зелье — только в сумку зелий, остаток — мешочком", () => {
     const plan = pickupPlan(
-      snap({ last: true, guard: null, bag: bagOf(20), net: [net("custom:p", 25, true)] }),
+      snap({ last: true, guard: null, bag: bagOf(1), net: [net("custom:p", CELL_SIZE + 5, true)] }),
       caps,
     );
-    // Сумка на одну ячейку: 20 штук зелья, остаток — мешочком, хотя в рюкзаке
+    // Сумка на одну ячейку: полная ячейка зелья, остаток — мешочком, хотя в рюкзаке
     // после сундука ещё две свободные ячейки.
-    expect(plan.taken).toEqual([{ stackKey: "custom:p", qty: 20 }]);
+    expect(plan.taken).toEqual([{ stackKey: "custom:p", qty: CELL_SIZE }]);
     expect(plan.left).toEqual([{ stackKey: "custom:p", qty: 5 }]);
   });
 
   it("переполненная сумка: зелья сети — мешочком, товары ложатся в рюкзак", () => {
     const bag = [
-      { stackKey: "custom:p", count: 12, potion: true },
-      { stackKey: "custom:q", count: 20, potion: true },
+      { stackKey: "custom:p", count: CELL_SIZE - 8, potion: true },
+      { stackKey: "custom:q", count: CELL_SIZE, potion: true },
     ];
     const plan = pickupPlan(
       snap({ last: true, guard: null, bag, net: [net("custom:p", 5, true), net("custom:a", 5)] }),
@@ -163,31 +187,31 @@ describe("последний сундук", () => {
 
 describe("чужой", () => {
   it("охраны не получает — ни строки, ни ячейки", () => {
-    const plan = pickupPlan(snap({ bag: bagOf(20, 20, 20) }), caps, true);
+    const plan = pickupPlan(snap({ bag: bagOf(3) }), caps, true);
     expect(plan).toMatchObject({ fits: true, chestBagged: false });
     expect(plan.rows.map((r) => r.k)).toEqual(["custom:cst_mc"]);
   });
 
   it("места нет — сундук мешочком без метки, план годен", () => {
-    const plan = pickupPlan(snap({ guard: null, bag: bagOf(20, 20, 20, 20) }), caps, true);
+    const plan = pickupPlan(snap({ guard: null, bag: bagOf(4) }), caps, true);
     expect(plan).toMatchObject({ fits: true, chestBagged: true, rows: [], taken: [] });
     expect(plan.bagged).toEqual([expect.objectContaining({ k: "custom:cst_mc", n: 1, loot: 0 })]);
   });
 
   it("последний без места — сундук и сеть мешочком, долив в свою ячейку — в рюкзак", () => {
-    const bag = [...bagOf(20, 20, 20), { stackKey: "custom:cst_ore", count: 15, potion: false }];
+    const bag = [...bagOf(3), { stackKey: "custom:cst_ore", count: CELL_SIZE - 5, potion: false }];
     const plan = pickupPlan(snap({ guard: null, last: true, bag }), caps, true);
     expect(plan.chestBagged).toBe(true);
     expect(plan.taken).toEqual([{ stackKey: "custom:cst_ore", qty: 5 }]);
     expect(plan.bagged).toEqual([
       expect.objectContaining({ k: "custom:cst_mc", n: 1, loot: 0 }),
-      expect.objectContaining({ k: "custom:cst_ore", n: 25, loot: 25 }),
+      expect.objectContaining({ k: "custom:cst_ore", n: ORE - 5, loot: ORE - 5 }),
     ]);
   });
 
   it("сундук мешочком и тот же вид в сети — одна порция на ключ", () => {
     const plan = pickupPlan(
-      snap({ guard: null, last: true, bag: bagOf(20, 20, 20, 20), net: [net("custom:cst_mc", 2)] }),
+      snap({ guard: null, last: true, bag: bagOf(4), net: [net("custom:cst_mc", 2)] }),
       caps,
       true,
     );

@@ -33,12 +33,13 @@ export function changedRows(prev: PackedCells, next: PackedCells): number[] | nu
     if (!a || !b || a.length !== b.length) return null;
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) rows.add(i);
   }
-  // «Добыт», «под куполом», «беглец» и «ратуша» — списки: состав сверяется
-  // симметрической разностью.
+  // «Добыт», «под куполом», «беглец», «ратуша» и «шахта» — списки: состав
+  // сверяется симметрической разностью.
   diffList(prev.defeated, next.defeated, rows);
   diffList(prev.voidFog, next.voidFog, rows);
   diffList(prev.runners, next.runners, rows);
   diffList(prev.townHalls, next.townHalls, rows);
+  diffList(prev.mines, next.mines, rows);
   // Блоки режима бога — плоские тройки (i, блок, масштаб): смена блока или
   // масштаба перестраивает клетку.
   diffTriples(prev.groups, next.groups, rows);

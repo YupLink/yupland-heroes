@@ -1,0 +1,136 @@
+// «Положить жилу» из рюкзака (lib/veinPlace): окно с сеткой 37 клеток в радиусе 3
+// от героя (та же сетка, что у земли и динамита) с подсветкой по правилам сервера
+// (vein-spots). Зелёные можно натыкать сколько угодно (до остатка стопки) и
+// положить одним нажатием; по красной — под сеткой почему нельзя. «В руку» — жила
+// в главной руке, клетки кладутся с карты (hand/handStore). Окно остаётся
+// открытым; кончилась стопка — закрывается само.
+import { useEffect } from "react";
+import { Gem, Hand, Loader2, Package, X } from "lucide-react";
+import { toast } from "sonner";
+import { useLang, useT } from "@/lib/i18n";
+import { thumb } from "@/lib/image";
+import { formatQty } from "@/lib/formatQty";
+import { serverErrorText } from "@/lib/serverErrorText";
+import { veinNameOr, type VeinCell } from "@/lib/veinPlace";
+import type { BackpackStack } from "@/server/api/beta-raid/market-backpack";
+import { ResourceActionDialog } from "@/components/beta-raid/ResourceActionDialog";
+import { DynamiteHexGrid } from "@/components/beta-raid/dynamite/DynamiteHexGrid";
+import { usePickedCells } from "@/components/beta-raid/dynamite/useCellBatch";
+import { requestHand } from "@/components/beta-raid/hand/handStore";
+import { handActLabel } from "@/components/beta-raid/hand/handLabel";
+import { useVeinPlace } from "./useVeinPlace";
+
+export function VeinPlacePicker({
+  stackKey,
+  stack,
+  onClose,
+}: {
+  stackKey: string;
+  /** Стопка жилы в рюкзаке; null — кончилась. */
+  stack: BackpackStack | null;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const lang = useLang();
+  const { cells, batch } = useVeinPlace(stackKey);
+  const list = cells.data?.cells ?? null;
+  const center = cells.data?.center ?? null;
+  const { picked, why, pick } = usePickedCells<VeinCell>(list, Math.floor(stack?.count ?? 0));
+  const empty = !stack || stack.count < 1;
+  useEffect(() => {
+    if (empty && !batch.busy) onClose();
+  }, [empty, batch.busy, onClose]);
+
+  if (typeof document === "undefined" || empty) return null;
+  const go = () => {
+    if (!picked.length || !center) return;
+    batch.start(picked.map((c) => ({ q: center.q + c.dq, r: center.r + c.dr })));
+  };
+  const toHand = () => {
+    if (!requestHand(stackKey)) toast(t("vein.hand_on_map"));
+    onClose();
+  };
+
+  return (
+    <ResourceActionDialog
+      title={t("vein.title")}
+      busy={batch.busy}
+      onClose={onClose}
+      overlayClassName="fixed inset-0 z-[140] flex items-end justify-center bg-black/75 sm:items-center sm:p-4"
+      className="w-full max-w-xs rounded-t-2xl border border-border bg-background pb-[calc(env(safe-area-inset-bottom)+84px)] sm:rounded-2xl sm:pb-0"
+    >
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h4 className="font-display text-sm font-bold">{t("vein.title")}</h4>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={batch.busy}
+          aria-label={t("common.close")}
+          className="grid h-8 w-8 place-items-center rounded-full border border-border text-muted-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="space-y-3 p-4">
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-secondary/40">
+            {stack.image ? (
+              <img src={thumb(stack.image, 80)} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Package className="m-2.5 h-5 w-5 text-gold/40" />
+            )}
+          </div>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+            {veinNameOr(stackKey, stack.name, lang)}
+          </span>
+          <span className="text-xs font-bold tabular-nums text-muted-foreground">
+            ×{formatQty(stack.count)}
+          </span>
+        </div>
+        <DynamiteHexGrid
+          cells={list}
+          picked={picked}
+          kind="blue"
+          disabled={batch.busy || cells.isLoading}
+          onPick={(c) => pick(c as VeinCell)}
+        />
+        {cells.isError ? (
+          <p className="text-center text-xs text-destructive">
+            {serverErrorText(cells.error, t, t("vein.cells_failed"))}
+          </p>
+        ) : (
+          why && <p className="text-center text-xs text-destructive">{t(why)}</p>
+        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={toHand}
+            disabled={batch.busy}
+            className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-sm font-semibold disabled:opacity-50"
+          >
+            <Hand className="h-4 w-4" />
+            {t("land.hand")}
+          </button>
+          <button
+            type="button"
+            onClick={go}
+            disabled={!picked.length || batch.busy}
+            className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-gold font-display text-sm font-bold text-gold-foreground disabled:opacity-50"
+          >
+            {batch.busy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {picked.length > 1 && `${batch.done}/${picked.length}`}
+              </>
+            ) : (
+              <>
+                <Gem className="h-4 w-4" />
+                {handActLabel(t, "vein", Math.max(1, picked.length), 0)}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </ResourceActionDialog>
+  );
+}

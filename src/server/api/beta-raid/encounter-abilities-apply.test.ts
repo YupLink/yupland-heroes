@@ -1,7 +1,7 @@
 // Усреднение дебаффов за бой: повтор ПРОДЛЕВАЕТ (минуты копятся без потолка —
 // их задаёт админ), сила — среднее по времени, и она НИКОГДА не выходит за
 // границы бросков. Раньше обрезанный знаменатель раздувал weak_luck 40 до 200
-// за 25 раундов (player09, 20.09).
+// за 25 раундов (жалоба игрока 20.09).
 import { describe, expect, it } from "vitest";
 import { applyTargetAbilities, mergeTimed } from "./encounter-abilities-apply";
 import type { AbilityCfg } from "./abilities";

@@ -4,17 +4,17 @@
 //   const state = ready.data?.chips[chip.id];   // нет — нельзя (тренировочная)
 //   state?.can → можно; иначе upgradeBlockText(state.reason, t)
 //
-// Ответ перечитывается сам, как только обновились фишки или билеты
-// (my-chip-inventory, my-tickets) — после улучшения, покупки, продажи, ввода
-// NFT: без отдельной инвалидации в каждом из этих мест.
+// Ответ перечитывается сам, как только обновились фишки или золото
+// (my-chip-inventory, my-resources) — после улучшения, покупки, продажи, ввода
+// NFT, добычи: без отдельной инвалидации в каждом из этих мест.
 import { useEffect } from "react";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { getChipUpgradeReadiness } from "@/server/api/chips-upgrade-ready";
 
 export const UPGRADE_READY_KEY = ["chip-upgrade-ready"] as const;
-const SOURCES = new Set(["my-chip-inventory", "my-tickets"]);
+const SOURCES = new Set(["my-chip-inventory", "my-resources"]);
 
-/** Свежие фишки или билеты → ответ устарел. Возвращает отписку. */
+/** Свежие фишки или золото → ответ устарел. Возвращает отписку. */
 export function watchUpgradeSources(qc: QueryClient): () => void {
   return qc.getQueryCache().subscribe((e) => {
     if (e.type !== "updated" || e.action.type !== "success") return;

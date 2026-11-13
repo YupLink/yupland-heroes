@@ -35,7 +35,8 @@ export function TownGoodsPicker({
   const hints = useQuery({
     queryKey: ["town-price-hints"],
     queryFn: () => getTownPriceHints(),
-    staleTime: 5 * 60_000,
+    // Цены только что настроенного города должны доехать до следующего.
+    staleTime: 0,
   });
   const [chips, setChips] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -198,7 +199,7 @@ export function TownGoodsPicker({
             <button
               type="button"
               onClick={add}
-              disabled={checked.size === 0 || hints.isLoading}
+              disabled={checked.size === 0 || hints.isFetching}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-50"
             >
               <Plus className="h-4 w-4" /> Добавить {checked.size || ""}

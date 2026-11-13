@@ -13,6 +13,7 @@ import { mcpExec } from "@/server/db/mcpClient";
 import type { LootBagCellView, LootBagSpot } from "@/lib/lootBag";
 import type { DigHoleSpot } from "@/lib/digHole";
 import { BAG_OPEN_PRICE } from "@/lib/openPass";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 import { requireBetaRaid } from "@/server/api/beta-raid/gate";
 import { raidOwner } from "@/server/api/beta-raid/owner";
 import { activeBetaMapId } from "@/server/api/beta-raid/encounter-where";
@@ -22,6 +23,8 @@ import { bagActor, blockedAt, requireBagNear } from "@/server/api/beta-raid/loot
 import { cellSql, nearSql } from "@/server/api/beta-raid/loot-bag/bag-read-sql";
 import { findShovel } from "@/server/api/beta-raid/loot-bag/bag-shovel";
 import { holesNearSql, myMoundsSql } from "@/server/api/beta-raid/main-tool/dig-hole";
+import { safeEnchantPcts } from "@/server/api/beta-raid/enchant/enchant-attach";
+import { bagArtOf } from "@/lib/lootBag";
 
 const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -31,7 +34,14 @@ const extra = (sql: () => string): Promise<unknown[]> =>
     .then(() => mcpExec(sql(), { wrapJson: true }) as Promise<unknown[]>)
     .catch(() => []);
 
-type SpotRow = { id: string; q: unknown; r: unknown; buried: boolean; leftMs: unknown };
+type SpotRow = {
+  id: string;
+  q: unknown;
+  r: unknown;
+  buried: boolean;
+  leftMs: unknown;
+  fish?: boolean | null;
+};
 
 const spotOf = (b: SpotRow, mine: boolean): LootBagSpot => ({
   id: String(b.id),
@@ -40,6 +50,8 @@ const spotOf = (b: SpotRow, mine: boolean): LootBagSpot => ({
   buried: b.buried === true,
   leftMs: num(b.leftMs),
   ...(mine ? { mine: true } : {}),
+  // Рыба от красного динамита (30.10.2026) — слой рисует рыбу.
+  ...(b.fish === true ? { fish: true as const } : {}),
 });
 
 /**
@@ -69,11 +81,21 @@ export const getLootBagsNear = createServerFn({ method: "GET" }).handler(
   },
 );
 
+/** Поле ✦ только у зачарованного артефакта — у остального форма позиции прежняя. */
+const enchOf = (ench: Map<string, number>, stackKey: string): { enchantPct?: number } => {
+  const pct = ench.get(bagArtOf(stackKey) ?? "");
+  return pct == null ? {} : { enchantPct: pct };
+};
+
 type CellRow = {
   id: string;
   buried: boolean;
   /** Мой вход в мешочек жив (§8.23): только тогда в items есть содержимое. */
   open?: boolean | null;
+  /** Рыба от красного динамита (30.10.2026). */
+  fish?: boolean | null;
+  /** Находка лопатой (31.10.2026). */
+  dig?: boolean | null;
   leftMs: unknown;
   items: Array<{
     stackKey: string;
@@ -100,13 +122,17 @@ export const getLootBagsAt = createServerFn({ method: "GET" })
     const [rows, shovel] = await Promise.all([
       mcpExec(cellSql({ mapId: a.mapId, q: data.q, r: data.r, account: a.account }), {
         wrapJson: true,
-      }) as Promise<
-        CellRow[]
-      >,
+      }) as Promise<CellRow[]>,
       resolveBackpack(a.wallet)
         .then((bp) => (bp ? findShovel(bp.heroId) : null))
         .catch(() => null),
     ]);
+    // Артефакт в мешочке — тот же экземпляр (art:<id>): ✦ у зачарованного (§8.87), один запрос.
+    const ench = await safeEnchantPcts(
+      (rows ?? []).flatMap((b) =>
+        (Array.isArray(b.items) ? b.items : []).map((i) => bagArtOf(i.stackKey)),
+      ),
+    );
     return {
       q: data.q,
       r: data.r,
@@ -115,7 +141,10 @@ export const getLootBagsAt = createServerFn({ method: "GET" })
         id: String(b.id),
         buried: b.buried === true,
         open: b.open === true,
-        price: BAG_OPEN_PRICE,
+        ...(b.fish === true ? { fish: true } : {}),
+        ...(b.dig === true ? { dig: true } : {}),
+        // На острове вход в 10 раз дешевле (island/energy) — как спишет «Открыть».
+        price: scaleEnergy(BAG_OPEN_PRICE, energyMultOf(a.mapId)),
         leftMs: num(b.leftMs),
         items: (Array.isArray(b.items) ? b.items : []).map((i) => ({
           stackKey: String(i.stackKey),
@@ -125,6 +154,7 @@ export const getLootBagsAt = createServerFn({ method: "GET" })
           image: i.image ?? null,
           count: num(i.count),
           leftMs: num(i.leftMs),
+          ...enchOf(ench, i.stackKey),
         })),
       })),
     };

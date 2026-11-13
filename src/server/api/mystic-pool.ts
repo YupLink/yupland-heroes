@@ -1,7 +1,7 @@
 // Пул призов мистического бокса: схема тира, разбор из БД, сумма шансов.
 // Общая для конструктора (mystic.ts), открытия (mystic-open.ts) и симулятора.
 import { z } from "zod";
-import { AMOUNT_KINDS, MYSTIC_KINDS, MYSTIC_LEGACY_TOKENS } from "@/lib/mysticKinds";
+import { AMOUNT_KINDS, ITEM_RARITIES, MYSTIC_KINDS, MYSTIC_LEGACY_TOKENS } from "@/lib/mysticKinds";
 import { REWARD_RESOURCES } from "@/lib/rewardKinds";
 import { isUsdt, USDT_BANNED_MSG } from "@/lib/usdtBanned";
 
@@ -20,14 +20,18 @@ export const mysticTierSchema = z
     resource: z.enum(REWARD_RESOURCES).optional(),
     customId: z.string().max(60).optional(), // свой товар cst_…
     customName: z.string().max(150).optional(),
+    // любой товар — какой именно, решается при открытии (04.11.2026)
+    customAny: z.boolean().optional(),
     // nft (старое)
     nftTitle: z.string().max(200).optional(),
     nftContract: z.string().max(120).optional(),
     // artifact/hero — выбор из СОЗДАННЫХ (mystic_item_template)
     itemTemplateId: z.string().max(60).optional(),
     itemName: z.string().max(150).optional(),
+    // без itemTemplateId — любой артефакт / герой этой редкости (04.11.2026)
+    artifactRarity: z.enum(ITEM_RARITIES).optional(),
+    heroRarity: z.enum(ITEM_RARITIES).optional(),
     // legacy
-    artifactRarity: z.enum(["common", "rare", "epic", "legendary"]).optional(),
     heroMinLevel: z.number().min(1).max(9).optional(),
   })
   .superRefine((t, ctx) => {
@@ -39,8 +43,9 @@ export const mysticTierSchema = z
     }
     if (t.kind === "token" && !MYSTIC_LEGACY_TOKENS.includes(t.token ?? "")) bad("Выбери токен");
     if (t.kind === "resource" && !t.resource) bad("Выбери ресурс");
-    if (t.kind === "custom" && !t.customId?.startsWith("cst_")) bad("Выбери свой товар");
-    if ((t.kind === "artifact" || t.kind === "hero") && !t.itemTemplateId) bad("Выбери артефакт/героя из созданных");
+    if (t.kind === "custom" && !t.customAny && !t.customId?.startsWith("cst_")) bad("Выбери свой товар или «любой товар»");
+    if (t.kind === "artifact" && !t.itemTemplateId && !t.artifactRarity) bad("Выбери артефакт или редкость");
+    if (t.kind === "hero" && !t.itemTemplateId && !t.heroRarity) bad("Выбери героя или редкость");
   });
 
 export const mysticPoolSchema = z.array(mysticTierSchema).min(1).max(50);

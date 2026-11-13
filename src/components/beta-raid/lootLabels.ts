@@ -5,6 +5,7 @@
 
 import type { TFn } from "./effectMeta";
 import { rewardKindLabelKey } from "@/lib/rewardKinds";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 
 const KIND_KEY: Record<string, string> = {
   tickets: "braid.loot_tickets",
@@ -15,7 +16,7 @@ const KIND_KEY: Record<string, string> = {
 };
 
 const KIND_RU: Record<string, string> = {
-  tickets: "билет",
+  tickets: "золота",
   likes: "лайк",
   energy: "энергия",
   pack: "пак",
@@ -29,7 +30,7 @@ const kindWord = (kind: string, t?: TFn): string | undefined => {
 };
 
 /**
- * «1000 Darai», «пак», «3 билета».
+ * «1000 Darai», «пак», «300 золота» (награда билетами — золотом ×100, ПРАВИЛА §8.61).
  * packId нужен для kind="resource" (золото/камень/…) и kind="custom".
  */
 export function rewardLabel(
@@ -48,6 +49,7 @@ export function rewardLabel(
   const known = kindWord(reward.kind, t);
   if (reward.kind === "pack" || reward.kind === "item") return known ?? reward.kind;
   if (!known) return `${reward.amount} ${reward.kind}`; // токен: «1000 Darai»
+  if (reward.kind === "tickets") return `${goldForEarnedTickets(reward.amount)} ${known}`;
   return `${reward.amount} ${known}`;
 }
 

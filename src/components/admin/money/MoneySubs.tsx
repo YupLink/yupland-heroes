@@ -3,7 +3,7 @@
 import type { MoneySubs as Subs, SubFlow } from "@/server/api/money-subs";
 import { Card, big, exact } from "./moneyShared";
 
-const TO: Record<SubFlow["to"], string> = { map: "Пул карты", duplo: "Дупло", dev: "Разработчикам" };
+const TO: Record<SubFlow["to"], string> = { map: "Пул карты", duplo: "Дупло", dev: "Разработчикам", ref: "Рефералам" };
 const TOKEN: Record<string, string> = { Darai: "DARAI", USDT: "USDT", STARS: "⭐", GRANT: "выдано" };
 
 function Num({ v, tone }: { v: number; tone?: "danger" }) {

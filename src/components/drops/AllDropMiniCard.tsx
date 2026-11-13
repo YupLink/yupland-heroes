@@ -5,11 +5,11 @@ import {
   Gift,
   Layers,
   ChevronDown,
-  Ticket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { NftImage } from "@/components/NftImage";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { listAllActiveDrops } from "@/server/api/user-drops";
 import { TiersBreakdown } from "./shop-shared";
 import { DropExpiryTimer } from "./DropExpiryTimer";
@@ -74,7 +74,7 @@ export const AllDropMiniCard = memo(function AllDropMiniCard({
           </span>
         ) : (
           <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
-            <Ticket className="h-2.5 w-2.5" /> {t("mynfts.ticket_word")}
+            <ResourceGlyph kind="gold" className="h-2.5 w-2.5" /> {t("mynfts.ticket_word")}
           </span>
         )}
         <DropExpiryTimer expiresAt={drop.expiresAt} className="shrink-0" />

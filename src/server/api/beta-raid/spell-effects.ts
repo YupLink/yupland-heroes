@@ -132,6 +132,7 @@ export async function applySpellEffects(wallet: string, tpl: SpellTpl): Promise<
     head = t.ok ? { ok: true, rolls: [], moved: t.moved, ship: null, map: t.map } : t;
   }
   else if (tpl.kind === "create_ship") head = await createShipNearHero(wallet);
+  else if (tpl.kind === "create_big_ship") head = await createShipNearHero(wallet, "big");
   else if (tpl.kind === "repair_ship") head = await repairShipNearHero(wallet);
   if (!head.ok) return head;
 

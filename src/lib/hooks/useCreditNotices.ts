@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { pollMyCredits } from "@/server/api/credit-wait-api";
 import { ACC_BALANCES_KEY } from "./useAccountBalances";
+import { refreshBank } from "@/components/castle-live/bank/bankKeys";
 
 type Notice = {
   id: string;
@@ -57,6 +58,9 @@ export function useCreditNotices(opts?: { autoPollOnMount?: boolean }) {
         qc.invalidateQueries({ queryKey: ["acc-history"] });
         qc.invalidateQueries({ queryKey: ["my-payouts"] });
         qc.invalidateQueries({ queryKey: ["chip-inventory"] });
+        // Банк (обмен), ресурсы и метка DARAI держат свой снимок счёта — без этого
+        // пришедшие DARAI банк видел только после перезагрузки игры (владелец 26.10).
+        void refreshBank(qc);
       }
       return { fresh, waiting: res.waiting ?? 0 };
     } catch {

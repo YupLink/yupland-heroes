@@ -1,9 +1,13 @@
 // Approved warehouse presentation, connected to existing game APIs only.
-import {useRef,useState} from 'react';
+import {useCallback,useRef,useState} from 'react';
 import {useQuery,useQueryClient,useIsMutating} from '@tanstack/react-query';
-import {WarehouseScreen,type StoredItem,type MoveReceipt,type MoveUnknown} from './WarehouseScreen';
+import {WarehouseScreen,type StoredItem,type WarehouseItemDetails,type MoveReceipt,type MoveUnknown} from './WarehouseScreen';
+import {getItemInfo} from '../../../server/api/beta-raid/item-info';
+import {artifactSummary} from '../../artifactSummary';
+import {boostListText} from '../../../lib/hero/boost';
 import {warehouseItems,warehouseImage} from './warehouseItems';
 import {CellUpgrade} from './CellUpgrade';
+import {HeroItemsSection} from './HeroItemsSection';
 import type {WarehouseServices} from './warehouseServices';
 import {exact9} from './warehouseTransfer';
 
@@ -31,6 +35,19 @@ export function WarehouseController({services,lang,onShowCell,onBack}: {services
  const stacks=d?.backpack?.stacks??[];
  const details=backpack.isSuccess?backpack.data.stacks:[];
  const items=warehouseItems(d?.own??[],lang);
+ const loadInfo=useCallback(async(item:StoredItem):Promise<WarehouseItemDetails|null>=>{
+  const key=item.stackKey??'';
+  const split=key.indexOf(':');
+  if(split<0||key.slice(0,split)==='resource')return null;
+  const id=key.slice(split+1);
+  if(!id)return null;
+  const info=await getItemInfo({data:{id}});
+  if(!info)return null;
+  const properties=artifactSummary(info,lang).split('\n').filter(Boolean);
+  if(info.hp!=null)properties.push(`${lang==='ru'?'Здоровье':'Health'}: ${info.hp.toLocaleString(lang==='ru'?'ru-RU':'en-US')}`);
+  if(info.damage)properties.push(`${lang==='ru'?'Атака':'Attack'}: ${info.damage}`);
+  return {description:info.description,properties,effects:info.boost?.length?[boostListText(info.boost,lang)]:[]};
+ },[lang]);
  const locations=(world.isSuccess&&!world.isFetching?world.data.list:[]).map(w=>({id:`${w.q}:${w.r}`,name:'',q:w.q,r:w.r,items:w.items.map(s=>({id:s.stackKey,stackKey:s.stackKey,name:s.name,count:s.count,image:warehouseImage(s)}))}));
  const reconcile=async()=>{setBlocked(true);try{await refresh();setBlocked(false);return true}catch{return false}};
  const validNumber=(n:unknown)=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&Math.abs(n-exact9(n))<1e-9;
@@ -49,8 +66,7 @@ export function WarehouseController({services,lang,onShowCell,onBack}: {services
        (place==='castle'?validNumber(receipt.qty):validNumber(receipt.own)&&validNumber(receipt.shared)&&validNumber(receipt.rejected));
      const moved=valid?(place==='castle'?receipt.qty as number:exact9((receipt.own as number)+(receipt.shared as number))):NaN;
      if(!valid||moved>qty||moved<0){await reconcile();return {unknown:true,error:ru?'Ответ склада не подтверждён.':'Warehouse response was not confirmed.'}}
-     const rejected=place==='castle'?0:receipt.rejected as number;
-     let error=rejected>0?ru?`Не перенесено: ${rejected}.`:`Not moved: ${rejected}.`:undefined;
+     let error:string|undefined;
      if(!await reconcile())error=ru?'Данные не обновились. Обнови склад перед следующим переносом.':'Data did not refresh. Refresh the warehouse before another transfer.';
      return {moved,requested:qty,error};
    }finally{busy.current=false}
@@ -64,6 +80,6 @@ export function WarehouseController({services,lang,onShowCell,onBack}: {services
   potions={warehouseItems(stacks.filter(s=>s.potion),lang,details)} potionCapacity={backpack.data?.potionCapacity??d?.backpack?.potionCapacity}
   onWorldOpenChange={setWorldOpen} locations={locations} status={status} worldStatus={worldStatus} noHero={!!d&&!d.backpack} transferBlocked={blocked} onRefresh={reconcile}
   footer={d&&!state.isError?<CellUpgrade ru={ru} data={d} services={services}/>:undefined} onBack={()=>onBack?.()} onShow={onShowCell?w=>onShowCell(w.q,w.r):undefined}
-  onMove={move} onUse={use}/></div>;
+  onMove={move} onUse={use} onInfo={loadInfo}
+  extra={<HeroItemsSection lang={lang} disabled={upgradePending} onShow={onShowCell}/>}/></div>;
 }
-

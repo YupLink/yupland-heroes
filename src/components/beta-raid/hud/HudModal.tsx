@@ -27,7 +27,7 @@ export function HudModal({
   footer?: ReactNode;
   /** «centered» — окно по центру в оформлении замка (только замок, у рейда — «sheet»). */
   presentation?: "sheet" | "centered";
-  modalKind?: "gifts";
+  modalKind?: "gifts" | "harvest";
   /** Окно паков в рейде должно быть ниже порталов подтверждения и приза. */
   layer?: "default" | "pack";
 }) {
@@ -45,6 +45,7 @@ export function HudModal({
   return (
     <div
       data-hud-modal={modalKind}
+      data-hud-modal-centered={centered ? "" : undefined}
       className={cn(
         "fixed inset-0 flex justify-center bg-black/75 backdrop-blur-sm",
         layer === "pack" ? "z-40" : "z-[110]",

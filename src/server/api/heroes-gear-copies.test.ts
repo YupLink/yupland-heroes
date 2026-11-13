@@ -53,6 +53,8 @@ describe("freeCopiesSql", () => {
     expect(sql).toContain("jsonb_typeof(h.equipped::jsonb) = 'object'");
     expect(sql).toContain("x.value IS NOT NULL");
     expect(sql).toContain("f.template_id = u.template_id");
+    // Копия — той же прочности: целый не меняется на сломанный (износ, 22.10).
+    expect(sql).toContain("f.wear = u.wear");
     expect(sql).toContain("('ring', 'it_1')");
   });
 });

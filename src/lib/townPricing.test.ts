@@ -151,3 +151,47 @@ describe("конфиг города", () => {
     expect(r).toEqual({ markupPct: 50, reservePct: 5 });
   });
 });
+
+describe("своя наценка товара (ресы портала, 05.11.2026)", () => {
+  it("товар со своей наценкой продаётся игроку дороже, скупка — как у всех", () => {
+    const own = townCurve({ ...good, markupPct: 400 }, 100, rules);
+    expect(own.markupPct).toBe(400);
+    expect(c.markupPct).toBe(rules.markupPct);
+    const sellBack = quoteSell(own, own.norm, 1);
+    const buy = quoteBuy(own, own.norm, 1);
+    expect(sellBack.ok && buy.ok).toBe(true);
+    if (sellBack.ok && buy.ok) expect(buy.total).toBeGreaterThanOrEqual(sellBack.total * 4.9);
+  });
+
+  it("наценка товара переживает разбор конфига; пустая — как у города", () => {
+    const cfg = safeParseTownConfig({
+      name: "Т",
+      residents: 10,
+      rules: { markupPct: 40, reservePct: 10 },
+      goods: [
+        {
+          id: "w",
+          kind: "resource",
+          refId: "wood",
+          token: null,
+          operation: "both",
+          marketPrice: 2,
+          consumePerResident: 0,
+          producePerDay: 5,
+          markupPct: 400,
+        },
+        {
+          id: "f",
+          kind: "custom",
+          refId: "cst_x",
+          token: null,
+          operation: "both",
+          marketPrice: 2,
+          consumePerResident: 0,
+          producePerDay: 5,
+        },
+      ],
+    });
+    expect(cfg.goods.map((g) => g.markupPct)).toEqual([400, undefined]);
+  });
+});

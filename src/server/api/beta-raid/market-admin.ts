@@ -4,47 +4,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { getCurrentWallet, isAdminWallet } from "../../auth";
+import { getCurrentWallet } from "../../auth";
+import { requireGodAdmin } from "./island/island-editor-auth";
+import { assertMarketPacksRight, assertNoMarketTokens } from "./god-money";
 import { activeBetaMapId, myMapId } from "./encounter-where";
-import { godMapId } from "./god-map";
 import { publishRaid } from "../../raidLive";
-import { upsertMarketInput, assertUpsertSane } from "./market-admin-input";
-import type { MarketItem, MarketKind, MarketPriceResource, MarketSide } from "@/lib/marketItem";
+import { upsertMarketInput, assertUpsertSane, assertHeroAnyPlace } from "./market-admin-input";
+import { normalizeGiveAmount, type MarketItem } from "@/lib/marketItem";
+import { parseRecipe } from "@/lib/marketRecipe";
+import { parsePriceMore } from "@/lib/marketPrices";
+import { toItem } from "./market-row";
 
 type Row = Record<string, unknown>;
-
-function toItem(row: Row): MarketItem {
-  const races = row.buyer_races;
-  const specs = row.buyer_specs;
-  return {
-    id: String(row.id),
-    q: Number(row.q),
-    r: Number(row.r),
-    pos: Number(row.pos) || 0,
-    // Сторона витрины: buy — продаём игроку, sell — скупаем у игрока. Старые
-    // строки (до колонки side) читаются как покупка.
-    side: row.side === "sell" ? "sell" : ("buy" as MarketSide),
-    kind: String(row.kind) as MarketKind,
-    refId: row.ref_id != null ? String(row.ref_id) : null,
-    giveAmount: Number(row.give_amount) || 0,
-    giveToken: row.give_token != null ? String(row.give_token) : null,
-    name: String(row.name ?? ""),
-    image: row.image != null ? String(row.image) : null,
-    priceResource: String(row.price_resource) as MarketPriceResource,
-    priceToken: row.price_token != null ? String(row.price_token) : null,
-    priceAmount: Number(row.price_amount) || 0,
-    price2Resource:
-      row.price2_resource != null ? (String(row.price2_resource) as MarketPriceResource) : null,
-    price2Token: row.price2_token != null ? String(row.price2_token) : null,
-    price2Amount: row.price2_amount != null ? Number(row.price2_amount) : null,
-    stock: row.stock != null ? Number(row.stock) : null,
-    sold: Number(row.sold) || 0,
-    perAccountLimit: row.per_account_limit != null ? Number(row.per_account_limit) : null,
-    buyerMode: row.buyer_mode === "filter" ? "filter" : "all",
-    buyerRaces: Array.isArray(races) ? races.map(String) : [],
-    buyerSpecs: Array.isArray(specs) ? specs.map(String) : [],
-  };
-}
 
 /** Товары клетки-маркета по порядку витрины. Читают и админ, и покупатель. */
 export async function marketRows(mapId: string, q: number, r: number): Promise<MarketItem[]> {
@@ -90,10 +61,13 @@ export const getMarketItems = createServerFn({ method: "GET" })
     return marketRows(mapId, data.q, data.r);
   });
 
-function requireAdmin(): string {
-  const w = getCurrentWallet();
-  if (!w || !isAdminWallet(w)) throw new Error("Маркет настраивает только админ");
-  return w;
+/** Позиция с этим id — на этой карте (не-админ правит только свой остров). */
+async function assertItemOnMap(id: string, mapId: string): Promise<void> {
+  const rows = (await mcpExec(
+    `SELECT 1 AS ok FROM yuplink.raid_market_item WHERE id=${sqlStr(id)} AND map_id=${sqlStr(mapId)} LIMIT 1;`,
+    { wrapJson: true },
+  )) as unknown[];
+  if (!rows?.length) throw new Error("market.not_found");
 }
 
 const newId = () =>
@@ -102,12 +76,35 @@ const newId = () =>
 export const upsertMarketItem = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => upsertMarketInput.parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    const god = await requireGodAdmin();
     // Отказы формы — до похода в базу: неисполнимая позиция ломается не здесь,
     // а на выдаче игроку, когда деньги уже списаны.
     assertUpsertSane(data);
-    const mapId = await godMapId();
+    const mapId = god.mapId;
+    // Право island_god: без токенов и только позиции своего острова.
+    if (!god.money) {
+      assertNoMarketTokens(data);
+      if (data.id) await assertItemOnMap(data.id, mapId);
+    }
+    await assertMarketPacksRight(data, god.money);
+    await assertHeroAnyPlace(data, mapId);
+    // Дерево для посадки: только покупкой и только срубаемое; имя — шаблона.
+    await (await import("./tree/tree-admin")).applyTreeGood(data);
+    // Земля для мира строителей: только покупкой, местность и пачка клеток.
+    await (await import("./land/land-admin")).applyLandGood(data);
+    // Жила (золото / алмазы): только покупкой, вид из двух и пачка клеток.
+    (await import("./vein/vein-admin")).applyVeinGood(data);
+    // Постройка: только админ с деньгами (настройка постройки — грядка с наградой
+    // токеном и пр. — иначе обходила бы запрет island_god), только покупкой, только
+    // в лавке построек, шаблон живой и не из запрещённых.
+    if (data.kind === "building" && !god.money) {
+      throw new Error("Постройки на продажу заводит только админ");
+    }
+    await (await import("./building-sale/bsale-admin")).applyBuildingGood(data, god.mapId);
     const id = data.id || newId();
+    // Не-ресурс — по одной штуке: поля «Сколько» у него в форме нет, и старый
+    // клиент не прислал бы сюда невидимое 250 (lib/marketItem.normalizeGiveAmount).
+    const giveAmount = normalizeGiveAmount(data.kind, data.giveAmount);
     // Символ цены нужен и токену, и «предметным» типам: у pack/hero/art/boss/
     // custom priceToken несёт id шаблона — без него сервер не знает, ЧТО именно
     // просить у игрока в оплату. Раньше сохранялся только для kind='token', и
@@ -124,6 +121,18 @@ export const upsertMarketItem = createServerFn({ method: "POST" })
     const limitVal = data.perAccountLimit == null ? "NULL" : data.perAccountLimit;
     const p2res = data.price2Resource ? sqlStr(data.price2Resource) : "NULL";
     const p2amt = data.price2Amount == null ? "NULL" : data.price2Amount;
+    // Ещё ингредиенты цены (до трёх сверх двух) — только у покупки.
+    const more = data.side === "buy" ? parsePriceMore(data.priceMore) : [];
+    const moreSql = `${sqlStr(JSON.stringify(more))}::jsonb`;
+    // Рецепт: исходы с шансами (доли сведены к 100 % — lib/marketRecipe).
+    const outs =
+      data.kind === "recipe"
+        ? `${sqlStr(JSON.stringify(parseRecipe(data.outcomes)))}::jsonb`
+        : "NULL";
+    const bld =
+      data.kind === "building" && data.building
+        ? `${sqlStr(JSON.stringify(data.building))}::jsonb`
+        : "NULL";
     // sold в INSERT не пишем: DEFAULT 0 на создании, EXCLUDED не трогает при
     // правке — иначе редактирование товара обнулило бы продажи.
     await mcpExec(
@@ -131,14 +140,14 @@ export const upsertMarketItem = createServerFn({ method: "POST" })
          (id, map_id, q, r, pos, side, kind, ref_id, give_amount, give_token, name, image,
           price_resource, price_token, price_amount,
           price2_resource, price2_token, price2_amount, stock, per_account_limit,
-          buyer_mode, buyer_races, buyer_specs)
+          buyer_mode, buyer_races, buyer_specs, outcomes, price_more, building)
        VALUES (${sqlStr(id)}, ${sqlStr(mapId)}, ${data.q}, ${data.r}, ${data.pos}, ${sqlStr(data.side)},
-          ${sqlStr(data.kind)}, ${data.refId ? sqlStr(data.refId) : "NULL"}, ${data.giveAmount},
+          ${sqlStr(data.kind)}, ${data.refId ? sqlStr(data.refId) : "NULL"}, ${giveAmount},
           ${data.giveToken ? sqlStr(data.giveToken) : "NULL"},
           ${sqlStr(data.name)}, ${data.image ? sqlStr(data.image) : "NULL"},
           ${sqlStr(data.priceResource)}, ${token ? sqlStr(token) : "NULL"}, ${data.priceAmount},
           ${p2res}, ${token2 ? sqlStr(token2) : "NULL"}, ${p2amt}, ${stockVal}, ${limitVal},
-          ${sqlStr(data.buyerMode)}, ${sqlStr(races)}::jsonb, ${sqlStr(specs)}::jsonb)
+          ${sqlStr(data.buyerMode)}, ${sqlStr(races)}::jsonb, ${sqlStr(specs)}::jsonb, ${outs}, ${moreSql}, ${bld})
        ON CONFLICT (id) DO UPDATE SET
           pos=EXCLUDED.pos, side=EXCLUDED.side, kind=EXCLUDED.kind, ref_id=EXCLUDED.ref_id,
           give_amount=EXCLUDED.give_amount, give_token=EXCLUDED.give_token,
@@ -149,7 +158,9 @@ export const upsertMarketItem = createServerFn({ method: "POST" })
           price2_amount=EXCLUDED.price2_amount, stock=EXCLUDED.stock,
           per_account_limit=EXCLUDED.per_account_limit,
           buyer_mode=EXCLUDED.buyer_mode,
-          buyer_races=EXCLUDED.buyer_races, buyer_specs=EXCLUDED.buyer_specs;`,
+          buyer_races=EXCLUDED.buyer_races, buyer_specs=EXCLUDED.buyer_specs,
+          outcomes=EXCLUDED.outcomes, price_more=EXCLUDED.price_more,
+          building=EXCLUDED.building;`,
     );
     // Уведомляем игроков: витрина клетки поменялась — приёмник событий
     // (useRaidLiveStream) на type='built' инвалидирует beta-raid-building.
@@ -176,8 +187,7 @@ export const refillMarketStock = createServerFn({ method: "POST" })
   // только дробным шагом.
   .inputValidator((d: unknown) => z.object({ id: z.string(), add: z.number() }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     const rows = (await mcpExec(
       `UPDATE yuplink.raid_market_item
           SET stock = CASE WHEN stock IS NULL THEN NULL
@@ -214,11 +224,13 @@ export const refillMarketStock = createServerFn({ method: "POST" })
 export const deleteMarketItem = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string() }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    const god = await requireGodAdmin();
+    // Не-админ — только позиции своего острова.
+    const own = god.money ? "" : ` AND map_id=${sqlStr(god.mapId)}`;
     // Забираем q,r у RETURNING, чтобы уведомить именно ту клетку — иначе
     // событие пришлось бы гнать всей карте.
     const rows = (await mcpExec(
-      `DELETE FROM yuplink.raid_market_item WHERE id=${sqlStr(data.id)} RETURNING q, r, map_id;`,
+      `DELETE FROM yuplink.raid_market_item WHERE id=${sqlStr(data.id)}${own} RETURNING q, r, map_id;`,
       { wrapJsonCte: true },
     ).catch(() => [])) as Array<{ q: number; r: number; map_id: string }>;
     const row = rows?.[0];

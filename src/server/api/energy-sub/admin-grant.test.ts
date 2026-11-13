@@ -1,7 +1,7 @@
 // Выдача подписки админом: поиск игрока по кошельку / Telegram ID / @username,
 // подписка на аккаунт без денег (сумма 0, 'GRANT'), повтор нажатия не выдаёт
 // вторую, день 1 — сразу в подарки.
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sqls: string[] = [];
 const st = { created: "es_x" as string | null, account: true };
@@ -15,7 +15,9 @@ vi.mock("@tanstack/react-start", () => ({
       fn({ data: validate ? validate(args?.data) : args?.data });
     return {
       handler: (fn: Fn) => wrap(fn),
-      inputValidator: (validate: (d: unknown) => unknown) => ({ handler: (fn: Fn) => wrap(fn, validate) }),
+      inputValidator: (validate: (d: unknown) => unknown) => ({
+        handler: (fn: Fn) => wrap(fn, validate),
+      }),
     };
   },
 }));
@@ -23,20 +25,46 @@ vi.mock("../../db/mcpClient", () => ({
   mcpExec: vi.fn(async (sql: string) => {
     const flat = sql.replace(/\s+/g, " ").trim();
     sqls.push(flat);
-    if (flat.startsWith("SELECT a.id, COALESCE(a.active_wallet")) return st.account ? [{ id: "acc_A", wallet: "p.tg" }] : [];
+    if (flat.startsWith("SELECT a.id, COALESCE(a.active_wallet"))
+      return st.account ? [{ id: "acc_A", wallet: "p.tg" }] : [];
     if (flat.startsWith("WITH ins AS")) return [{ _row: { id: st.created } }];
     return [];
   }),
 }));
 vi.mock("../raid-shared", () => ({ sqlStr: (v: string) => `'${String(v).replace(/'/g, "''")}'` }));
-vi.mock("../../auth", () => ({ requireAdmin: () => "owner.example.tg" }));
+const money = vi.hoisted(() => ({ box: false, payouts: true }));
+vi.mock("../../auth", () => ({
+  requireAdmin: () => "owner.tg",
+  requirePayoutsAdmin: () => {
+    if (!money.payouts) throw new Error("только для владельца");
+    return "owner.tg";
+  },
+}));
+vi.mock("../mystic-money", () => ({ packPaysMoney: async () => money.box }));
 vi.mock("./tiers", () => ({
   loadTier: async (id: string) =>
     id === "esub_expert"
-      ? { id, name: "Эксперт", nameEn: "Expert", priceUsd: 45, energyPerDay: 5000, boxPackId: "cp_eu1k2rl8yG", boxesPerDay: 10, days: 30, active: true, sort: 3, boxName: "Bonus Box", boxImage: null, noDecay: true }
+      ? {
+          id,
+          name: "Эксперт",
+          nameEn: "Expert",
+          priceUsd: 45,
+          energyPerDay: 5000,
+          boxPackId: "cp_eu1k2rl8yG",
+          boxesPerDay: 10,
+          days: 30,
+          active: true,
+          sort: 3,
+          boxName: "Bonus Box",
+          boxImage: null,
+          noDecay: true,
+        }
       : null,
 }));
-vi.mock("./grant", async (orig) => ({ ...(await orig<typeof import("./grant")>()), grantDueForAccount: grantDue }));
+vi.mock("./grant", async (orig) => ({
+  ...(await orig<typeof import("./grant")>()),
+  grantDueForAccount: grantDue,
+}));
 vi.mock("../gifts-notify", () => ({ notifyGifts: notify }));
 
 const { adminGrantSubscription, targetWhere } = await import("./admin-grant");
@@ -50,14 +78,23 @@ beforeEach(() => {
 });
 
 const grant = (over: Record<string, unknown> = {}) =>
-  adminGrantSubscription({ data: { tierId: "esub_expert", days: 7, accountId: "acc_A", opId: "op_12345678", ...over } });
+  adminGrantSubscription({
+    data: { tierId: "esub_expert", days: 7, accountId: "acc_A", opId: "op_12345678", ...over },
+  });
+
+afterEach(() => {
+  money.box = false;
+  money.payouts = true;
+});
 
 describe("поиск игрока", () => {
   it("Telegram ID, @username, имя без точки, кошелёк, неявный адрес", () => {
-    expect(targetWhere("999000013")).toBe("(u.telegram_id = 999000013 OR a.telegram_id = 999000013)");
-    expect(targetWhere("@Misha_1")).toBe("lower(u.telegram_username) = lower('Misha_1')");
-    expect(targetWhere("misha_1")).toBe("lower(u.telegram_username) = lower('misha_1')");
-    expect(targetWhere("player14.tg")).toBe("lower(u.wallet) = lower('player14.tg')");
+    expect(targetWhere("987654321")).toBe(
+      "(u.telegram_id = 987654321 OR a.telegram_id = 987654321)",
+    );
+    expect(targetWhere("@Player_1")).toBe("lower(u.telegram_username) = lower('Player_1')");
+    expect(targetWhere("player_1")).toBe("lower(u.telegram_username) = lower('player_1')");
+    expect(targetWhere("i987654321.tg")).toBe("lower(u.wallet) = lower('i987654321.tg')");
     const hex = "a".repeat(64);
     expect(targetWhere(hex)).toBe(`lower(u.wallet) = lower('${hex}')`);
     expect(targetWhere("x'; DROP")).toContain("'x''; DROP'");
@@ -72,15 +109,20 @@ describe("выдача подписки", () => {
     expect(ins).toContain("'GRANT', 0, 0, NULL");
     expect(ins).toContain("5000, 'cp_eu1k2rl8yG', 10, 7");
     expect(ins).toContain("now() + 7 * interval '1 day'");
-    expect(ins).toContain("'grant:op_12345678', 'owner.example.tg', true");
+    expect(ins).toContain("'grant:op_12345678', 'owner.tg', true");
     // «Эксперт»: энергия досчитана до старта подписки без таяния
     expect(sqls.findIndex((x) => x.includes("energy_touch_acc('acc_A', 0)"))).toBeLessThan(
       sqls.findIndex((x) => x.startsWith("WITH ins AS")),
     );
     expect(ins).toContain("ON CONFLICT (pay_ref) DO NOTHING");
-    expect(sqls.some((s) => s.includes("money_bucket_move") || s.includes("darai_pool_move"))).toBe(false);
+    expect(sqls.some((s) => s.includes("money_bucket_move") || s.includes("darai_pool_move"))).toBe(
+      false,
+    );
     expect(grantDue).toHaveBeenCalledWith("acc_A", { force: true });
-    expect(notify).toHaveBeenCalledWith([{ accountId: "acc_A" }]);
+    // Письмо — «начисление по подписке» с именем тарифа (владелец 25.10.2026).
+    expect(notify).toHaveBeenCalledWith([
+      { accountId: "acc_A", esubTier: { ru: "Эксперт", en: "Expert" } },
+    ]);
   });
 
   it("повтор того же нажатия — второй подписки нет, письма нет", async () => {
@@ -96,5 +138,10 @@ describe("выдача подписки", () => {
     await expect(grant()).rejects.toThrow("Аккаунт не найден");
     await expect((async () => grant({ days: 0 }))()).rejects.toThrow();
     await expect((async () => grant({ days: 400 }))()).rejects.toThrow();
+  });
+  it("бокс тарифа с DARAI — дарит только админ выплат", async () => {
+    money.box = true;
+    money.payouts = false;
+    await expect(grant({ opId: "op_money_1" })).rejects.toThrow("владельца");
   });
 });

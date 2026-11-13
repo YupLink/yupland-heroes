@@ -1,3 +1,6 @@
+import { onTreeMapStart } from "@/components/beta-raid/tree-map/treeMapEvents";
+import { RaidMusic } from "@/components/beta-raid/RaidMusic";
+import { TradeOverlay } from "@/components/trade/TradeOverlay";
 // Общий игровой вход: замок и мир для вошедших игроков.
 // Редактор и административные действия сохраняют отдельные права.
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -21,10 +24,13 @@ import { CastleHomeDialog } from "./CastleHomeDialog";
 import { CastleProfileButton } from "./CastleProfileButton";
 import { AuctionOverlay } from "@/components/chips/auctions/AuctionOverlay";
 import { BankOverlay } from "./bank/BankOverlay";
+import { ArchitectOverlay } from "./architect/ArchitectOverlay";
 import { CastleLoadState } from "./CastleLoadState";
 import { GameLoadState } from "@/components/game/GameLoadState";
 import { useScreenSettled } from "@/components/game/useScreenSettled";
-import { subscribeCenterNavigation } from "@/components/beta-raid/centerMapBus";
+import { requestCenter, subscribeCenterNavigation } from "@/components/beta-raid/centerMapBus";
+import { useMineLink } from "./useMineLink";
+import { useTgWriteAccess } from "./useTgWriteAccess";
 import { CastleModeContext } from "@/components/beta-raid/castleMode";
 import type { MyGift } from "@/server/api/gifts";
 
@@ -81,11 +87,15 @@ export function CastleGame({ onClassic, onReady }: {
     return () => setFocalPinch(false);
   }, []);
   const toWorld = () => beginTransition("raid");
+  useMineLink(toWorld); // «Показать» письма о шахте (§8.106)
+  useTgWriteAccess(); // «Разрешить боту писать» — кому письма не доходят (§8.106)
   // Стабильная ссылка: HUD карты под memo и не должен перерисовываться зря.
   const tryRef = useRef(home.tryEnter);
   tryRef.current = home.tryEnter;
   const enter = useCallback(() => void tryRef.current(), []);
   const homeCell = home.status.data?.home;
+  const offerMainRef = useRef(home.offerMainAt);
+  offerMainRef.current = home.offerMainAt;
   // Профиль — поверх карты мира, таверна замка — у любой таверны мира.
   const [overlay, setOverlay] = useState<"profile" | "tavern" | null>(null);
   const [giftPack, setGiftPack] = useState<{ giftId: string; packId: string } | null>(null);
@@ -104,16 +114,23 @@ export function CastleGame({ onClassic, onReady }: {
     setOverlay(null);
     beginTransition("raid");
   }), [beginTransition]);
+  useEffect(() => onTreeMapStart(() => {
+    setOverlay(null);
+    beginTransition("raid");
+  }), [beginTransition]);
   const castleMode = useMemo(
     () => ({
       home: homeCell ? { q: homeCell.q, r: homeCell.r } : null,
       enter,
       enterAt: (q: number, r: number) => tryRef.current({ q, r }),
+      offerMainAt: (q: number, r: number) => offerMainRef.current(q, r),
       openProfile: () => setOverlay("profile"),
+      musicControl: () => <RaidMusic active={screen === "raid"} />,
+      musicActive: screen === "raid",
       profileButton: <CastleProfileButton onClick={() => setOverlay("profile")} />,
       openTavern: () => openTavern(),
     }),
-    [homeCell?.q, homeCell?.r, enter, openTavern],
+    [homeCell?.q, homeCell?.r, enter, openTavern, screen],
   );
   const castle = useQuery({
     queryKey: ["castle-game"],
@@ -174,12 +191,12 @@ export function CastleGame({ onClassic, onReady }: {
             <Suspense fallback={null}>
             <LazyCastleLiveView
               entry="game"
+              musicActive={!inRaid}
               cells={castle.data.cells}
               assets={castle.data.assets}
               onEdit={() => void navigate({ to: "/castle-editor", search: {} })}
-              onCity={toWorld}
+              onCity={target => target ? requestCenter({ ...target, ttlMs: 3000 }) : toWorld()}
               onSignedOut={() => void navigate({ to: "/" })}
-              onMakeMainCastle={home.status.data?.here && !home.status.data.atHome && !home.status.data.island ? home.offerMain : undefined}
               isMainCastle={Boolean(home.status.data?.here && home.status.data.atHome)}
             />
             </Suspense>
@@ -202,11 +219,13 @@ export function CastleGame({ onClassic, onReady }: {
           onClose={home.closeOffer}
         />
       )}
-      {/* Подсказки острова, пока карты нет: с ней их ведёт слой острова на карте. */}
-      {!raidMounted && home.status.data?.island && <Suspense fallback={null}><LazyIslandCastleGuide /></Suspense>}
+      {/* Подсказки замка работают и после открытия карты: скрытая карта остаётся смонтированной. */}
+      {!inRaid && home.status.data?.island && <Suspense fallback={null}><LazyIslandCastleGuide /></Suspense>}
       {/* Окно аукциона — поверх замка и мира, открывается из HUD/плашки на карте. */}
-      <AuctionOverlay />
+      <AuctionOverlay /><TradeOverlay />
       <BankOverlay />
+      <ArchitectOverlay />
     </>
   );
 }
+

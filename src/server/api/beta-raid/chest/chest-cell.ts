@@ -30,8 +30,33 @@ export const cellLockKey = (mapId: string, q: number, r: number): string =>
  * и объект не повержен. Клетки нет на карте — строки нет, и сундук не встанет.
  */
 export function cellFlagsSql(mapId: string, q: number, r: number): string {
-  const at = (a: string) => `${a}.map_id = ${sqlStr(mapId)} AND ${a}.q = ${q} AND ${a}.r = ${r}`;
-  return `SELECT ${buildingHeldSql("c")} AS building,
+  const at = cellAt(mapId, q, r);
+  return `SELECT ${cellFlagsColsSql(at)}
+       FROM yuplink.raid_map_cells c
+       LEFT JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
+      WHERE ${at("c")}
+      LIMIT 1`;
+}
+
+/** Условие «та же клетка» для алиаса: клетка числами или клетка строки c. */
+export type CellAt = (alias: string) => string;
+
+/** Клетка числами (одна клетка, как у сундука). */
+export const cellAt =
+  (mapId: string, q: number, r: number): CellAt =>
+  (a) =>
+    `${a}.map_id = ${sqlStr(mapId)} AND ${a}.q = ${q} AND ${a}.r = ${r}`;
+
+/** Клетка строки c — для пачки клеток одним запросом (кандидаты чертежа шахты). */
+export const sameCellAsC: CellAt = (a) =>
+  `${a}.map_id = c.map_id AND ${a}.q = c.q AND ${a}.r = c.r`;
+
+/**
+ * Столбцы cellFlagsSql для строки c (с местностью t): постройка, объект,
+ * вода, купол, сундук, охрана. at — как сопоставить чужие таблицы с клеткой.
+ */
+export function cellFlagsColsSql(at: CellAt): string {
+  return `${buildingHeldSql("c")} AS building,
             ((c.object_id IS NOT NULL AND ${objectKnownSql("c")}
                AND NOT ${deadHpSql("c", CELL_LAYER)})
              OR EXISTS (SELECT 1 FROM yuplink.beta_raid_runner rr
@@ -42,11 +67,7 @@ export function cellFlagsSql(mapId: string, q: number, r: number): string {
             (EXISTS (SELECT 1 FROM yuplink.raid_magic_chest mc WHERE ${at("mc")})
              OR EXISTS (SELECT 1 FROM yuplink.raid_plain_chest pc WHERE ${at("pc")})) AS chest,
             EXISTS (SELECT 1 FROM yuplink.raid_mine_guard g
-                     WHERE ${at("g")} AND g.killed_at IS NULL AND g.current_hp > 0) AS guard
-       FROM yuplink.raid_map_cells c
-       LEFT JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
-      WHERE ${at("c")}
-      LIMIT 1`;
+                     WHERE ${at("g")} AND g.killed_at IS NULL AND g.current_hp > 0) AS guard`;
 }
 
 /**
@@ -55,13 +76,17 @@ export function cellFlagsSql(mapId: string, q: number, r: number): string {
  * строкой, как cellFlagsSql; клетки нет — строки нет.
  */
 export function cellExtraSql(mapId: string, q: number, r: number): string {
-  const at = (a: string) => `${a}.map_id = ${sqlStr(mapId)} AND ${a}.q = ${q} AND ${a}.r = ${r}`;
-  return `SELECT ${decorBlocksSql("c")} AS decor,
-            EXISTS (SELECT 1 FROM yuplink.beta_raid_ship s WHERE ${at("s")}) AS ship
+  const at = cellAt(mapId, q, r);
+  return `SELECT ${cellExtraColsSql(at)}
        FROM yuplink.raid_map_cells c
       WHERE ${at("c")}
       LIMIT 1`;
 }
+
+/** Столбцы cellExtraSql для строки c: декор-преграда и судно. */
+export const cellExtraColsSql = (at: CellAt): string =>
+  `${decorBlocksSql("c")} AS decor,
+            EXISTS (SELECT 1 FROM yuplink.beta_raid_ship s WHERE ${at("s")}) AS ship`;
 
 /** Клетку держит хоть что-то: f — cellFlagsSql, ex — cellExtraSql. */
 export const CELL_HELD =

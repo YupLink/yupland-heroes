@@ -388,6 +388,7 @@ export {
   adminGrantMysticBox,
   listMyMysticPacks,
   openMysticBox,
+  openMysticBoxes,
   simulateMysticOpens,
 } from "@/server/api/mystic";
 
@@ -663,3 +664,17 @@ export {
   adminWorldGrow,
   adminWorldTerrains,
 } from "@/server/api/beta-raid/worldgen/api";
+
+// ── Рынок героев (§8.67; договор — docs/hero-market-api.md) ──
+export {
+  getHeroMarketConfig,
+  listHeroMarketLots,
+  getHeroLot,
+  listMySellableHeroes,
+  listHeroesForSale,
+  buyHeroLot,
+  withdrawHeroLot,
+} from "@/server/api/hero-market";
+
+// ── Ремонт артефактов в кузнице (§8.72) ──
+export { getArtRepairList, repairArtifacts } from "@/server/api/art-repair/art-repair";

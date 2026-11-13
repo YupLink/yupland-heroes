@@ -12,6 +12,8 @@ export const HERO_ABILITIES = [
   { id: "market_owner", ru: "Владелец рынков", en: "Market owner" },
   { id: "farmer", ru: "Фермер", en: "Farmer" },
   { id: "killer", ru: "Киллер", en: "Hitman" },
+  // Владелец 09.11.2026: «нужно добавить способность для выбора — шахтёр».
+  { id: "miner", ru: "Шахтёр", en: "Miner" },
 ] as const;
 
 export type HeroAbility = (typeof HERO_ABILITIES)[number]["id"];

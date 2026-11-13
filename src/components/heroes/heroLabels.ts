@@ -6,6 +6,7 @@ export const RARITY_COLOR: Record<string, string> = {
   rare: "#5b9bff",
   epic: "#b46bff",
   legendary: "#f5c451",
+  unique: "#ff7043",
 };
 
 export const RARITY_LABEL: Record<string, string> = {
@@ -13,4 +14,5 @@ export const RARITY_LABEL: Record<string, string> = {
   rare: "Редкий",
   epic: "Эпический",
   legendary: "Легендарный",
+  unique: "Уникальный",
 };

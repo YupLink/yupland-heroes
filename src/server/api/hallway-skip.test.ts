@@ -1,7 +1,8 @@
 // Стартовый набор новичка: владелец (аккаунт) заводится ДО выдачи и пишется
 // в строки явно — иначе триггер stamp_acc видел users.account_id = NULL, и
 // фишки оставались ничьими (120 строк / 38 аккаунтов на проде к 20.09).
-// С 06.10.2026 в наборе 10 фишек и коммон-герой (starter-kit).
+// С 06.10.2026 в наборе 10 фишек; героя с 22.10 здесь не дают — новичок
+// выбирает расу в меню входа («Начать игру», game-start).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Row = Record<string, unknown>;
@@ -14,9 +15,8 @@ const state = {
   yupikByWallet: null as Row | null,
   skipByWallets: [] as Row[],
   skipByAccount: [] as Row[],
-  heroGranted: true,
-  heroThrows: false,
-  heroCalls: [] as Array<[string, string]>,
+  heroCalls: 0,
+  islandOn: false,
 };
 
 /** Мини-билдер под `raw().select().eq()…` — запоминает фильтры, отдаёт данные по ним. */
@@ -66,12 +66,14 @@ vi.mock("../db/pg", () => ({
   },
 }));
 
+vi.mock("./beta-raid/island/island-newbie", () => ({
+  islandNewbiesOn: vi.fn(async () => state.islandOn),
+}));
+
 vi.mock("./starter-kit", () => ({
-  grantStarterHero: vi.fn(async (acc: string, wallet: string) => {
-    order.push("hero");
-    state.heroCalls.push([acc, wallet]);
-    if (state.heroThrows) throw new Error("база молчит");
-    return state.heroGranted;
+  grantStarterHero: vi.fn(async () => {
+    state.heroCalls++;
+    return true;
   }),
 }));
 
@@ -101,17 +103,15 @@ beforeEach(() => {
   state.yupikByWallet = null;
   state.skipByWallets = [];
   state.skipByAccount = [];
-  state.heroGranted = true;
-  state.heroThrows = false;
-  state.heroCalls = [];
+  state.heroCalls = 0;
+  state.islandOn = false;
 });
 
 describe("skipHallwayForNewPlayer", () => {
   it("аккаунт заводится до выдачи, юпик и фишки помечены им", async () => {
     const r = await skipHallwayForNewPlayer("tg42", 42);
     expect(SKIP_CHIP_COUNT).toBe(10);
-    expect(r).toEqual({ released: true, chips: SKIP_CHIP_COUNT, hero: true });
-    expect(state.heroCalls).toEqual([["acc_new", "tg42"]]);
+    expect(r).toEqual({ released: true, chips: SKIP_CHIP_COUNT });
     expect(order[0]).toBe("resolveAccountId");
     expect(order.indexOf("resolveAccountId")).toBeLessThan(order.indexOf("yupik.insert"));
     expect(inserted.hallway_yupiks[0].account_id).toBe("acc_new");
@@ -131,6 +131,14 @@ describe("skipHallwayForNewPlayer", () => {
     expect("account_id" in inserted.hallway_yupiks[0]).toBe(false);
   });
 
+  it("остров встречает новичков — 10 стартовых фишек не выдаём (§8.47)", async () => {
+    state.islandOn = true;
+    const r = await skipHallwayForNewPlayer("tg42", 42);
+    expect(r).toEqual({ released: true, chips: 0 });
+    expect(inserted.hallway_training_chips).toHaveLength(0);
+    expect(inserted.hallway_yupiks).toHaveLength(1);
+  });
+
   it("у аккаунта уже есть набор — второй не выдаём, даже без Telegram", async () => {
     state.skipByAccount = [{ id: "htc_old" }];
     const r = await skipHallwayForNewPlayer("wallet.near", null);
@@ -138,17 +146,9 @@ describe("skipHallwayForNewPlayer", () => {
     expect(inserted.hallway_training_chips).toHaveLength(0);
   });
 
-  it("без аккаунта героя не выдаём: владельца у него не было бы", async () => {
-    state.resolveThrows = true;
-    const r = await skipHallwayForNewPlayer("tg42", 42);
-    expect(r.hero).toBe(false);
-    expect(state.heroCalls).toHaveLength(0);
-  });
-
-  it("сбой выдачи героя фишки не отменяет", async () => {
-    state.heroThrows = true;
-    const r = await skipHallwayForNewPlayer("tg42", 42);
-    expect(r).toMatchObject({ hero: false, chips: SKIP_CHIP_COUNT });
+  it("героя при создании не выдаём: его выбирают в меню «Начать игру»", async () => {
+    await skipHallwayForNewPlayer("tg42", 42);
+    expect(state.heroCalls).toBe(0);
   });
 
   it("юпик аккаунта уже есть (сестринский кош) — второй не заводим", async () => {

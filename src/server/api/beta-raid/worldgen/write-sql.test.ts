@@ -40,7 +40,7 @@ describe("запись мира", () => {
       }),
     ]);
     expect(base).toContain(
-      "('rmap_x', 1, 2, 't_grass', NULL, NULL, NULL, 'd1', NULL, NULL, NULL, now())",
+      "('rmap_x', 1, 2, 't_grass', NULL, NULL, NULL, 'd1', NULL, NULL, NULL, NULL, NULL, now())",
     );
     expect(base).toContain("ON CONFLICT (map_id, q, r) DO NOTHING");
     expect(clear).toContain("DO UPDATE SET decoration_id = NULL");

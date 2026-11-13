@@ -12,7 +12,13 @@ import { loadVoidCells } from "./voidCells";
 import { knowsMyShip, type MySeat } from "./ship-berths-fresh";
 
 /** Одно судно клетки: вид, остаток запаса хода и кто в нём сидит. */
-export type ShipBrief = { kind: "small" | "big"; hp: number; crew: string | null };
+export type ShipBrief = {
+  kind: "small" | "big";
+  hp: number;
+  crew: string | null;
+  /** Когда подбит синим динамитом (мс, dynamite-08); null — не подбит. */
+  blastedAt?: number | null;
+};
 
 /** Сколько судов на клетке, сколько из них с экипажем и кто эти капитаны. */
 export type ShipCell = {
@@ -80,7 +86,8 @@ export async function loadShipCells(mapId: string): Promise<ShipCell[]> {
             bool_or(COALESCE(w.water, false)) AS water,
             bool_or(s.kind = 'big') AS big,
             json_agg(json_build_object(
-              'kind', COALESCE(s.kind, 'small'), 'hp', s.hp, 'crew', s.crew_account)
+              'kind', COALESCE(s.kind, 'small'), 'hp', s.hp, 'crew', s.crew_account,
+              'blasted', (extract(epoch FROM s.blasted_at) * 1000)::bigint)
               ORDER BY s.created_at, s.id) AS fleet
        FROM yuplink.beta_raid_ship s
        ${WATER_UNDER_SHIP}
@@ -110,6 +117,7 @@ export async function loadShipCells(mapId: string): Promise<ShipCell[]> {
           kind: f.kind === "big" ? ("big" as const) : ("small" as const),
           hp: Number(f.hp) || 0,
           crew: f.crew == null ? null : String(f.crew),
+          blastedAt: f.blasted == null ? null : Number(f.blasted),
         }))
       : [],
   }));

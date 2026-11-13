@@ -1,0 +1,190 @@
+.creator-dock-float {
+  position: absolute;
+  z-index: 60;
+  pointer-events: auto;
+  color: #eee8dc;
+  border: 1px solid #786747;
+  border-radius: 12px;
+  background: radial-gradient(
+    ellipse at 50% 0,
+    #1c1e1e 0,
+    #121516 50%,
+    #101213 100%
+  );
+  box-shadow: 0 3px 12px #0008;
+}
+.creator-dock-float[hidden],
+.creator-dock-tools [hidden],
+.creator-dock-catalog [hidden] {
+  display: none;
+}
+.creator-dock-float:focus-within {
+  z-index: 63;
+}
+.creator-dock-grip {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  min-height: 28px;
+  color: #ebc774;
+  border-radius: 7px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.creator-dock-grip:active {
+  cursor: grabbing;
+}
+.creator-dock-grip:focus-visible {
+  outline: 2px solid #ffdc8c;
+  outline-offset: -2px;
+}
+.creator-dock-world {
+  top: 72px;
+  left: 8px;
+  width: min(36rem, calc(100% - 68px));
+  display: flex;
+  align-items: flex-start;
+  padding-left: 2px;
+}
+.creator-dock-world > .creator-dock-grip {
+  margin-top: 10px;
+}
+.creator-dock-tools {
+  right: 8px;
+  top: min(132px, max(8px, calc(100% - 420px)));
+  z-index: 61;
+  display: grid;
+  gap: 3px;
+  padding: 4px;
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+}
+.creator-dock-tools nav {
+  display: grid;
+  gap: 3px;
+}
+.creator-dock-tools button,
+.creator-dock-catalog header button {
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  border: 1px solid #605439;
+  background: #111415;
+  color: #e9cf96;
+}
+.creator-dock-tools button {
+  width: 48px;
+  min-height: 44px;
+  align-content: center;
+  gap: 1px;
+  font-size: 10px;
+  line-height: 12px;
+}
+.creator-dock-tools button[aria-pressed="true"],
+.creator-dock-tools button[aria-expanded="true"] {
+  background: #342b1d;
+  border-color: #ebc774;
+  color: #ffdc8c;
+}
+.creator-dock-tools button:disabled {
+  color: #a9a59a;
+  background: #1a1d1d;
+}
+.creator-dock-catalog {
+  --creator-catalog-limit: min(43dvh, 340px);
+  top: 132px;
+  right: 74px;
+  z-index: 62;
+  width: min(320px, calc(100% - 82px));
+  max-height: var(--creator-catalog-limit);
+  display: flex;
+  align-items: flex-start;
+  padding: 5px;
+}
+.creator-dock-catalog.is-minimized {
+  width: max-content;
+  max-width: calc(100% - 82px);
+}
+.creator-dock-catalog-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  max-height: calc(var(--creator-catalog-limit) - 12px);
+  flex-direction: column;
+}
+.creator-dock-catalog header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.creator-dock-catalog header strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.creator-dock-catalog header button {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.creator-dock-catalog-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 5px 1px 1px;
+}
+.creator-dock-moving {
+  position: absolute;
+  bottom: 94px;
+  left: 8px;
+  right: 8px;
+  z-index: 59;
+  pointer-events: auto;
+}
+.creator-dock-active {
+  position: absolute;
+  left: 50%;
+  bottom: 94px;
+  z-index: 59;
+  transform: translateX(-50%);
+  max-width: calc(100% - 28px);
+  padding: 5px 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid #786747;
+  border-radius: 7px;
+  background: #111415;
+  color: #eee8dc;
+  font-size: 12px;
+}
+@media (max-width: 390px) {
+  .creator-dock-world section > header {
+    gap: 3px;
+    padding-inline: 3px;
+  }
+  .creator-dock-world section > header > button {
+    gap: 3px;
+    padding-inline: 5px;
+  }
+  .creator-dock-world section > header > button:first-child > svg:first-child {
+    display: none;
+  }
+  .creator-dock-world section > header > button:last-child {
+    max-width: 98px;
+    overflow-wrap: anywhere;
+    text-align: left;
+    line-height: 1.15;
+  }
+  .creator-dock-world section > header > button:last-child > svg {
+    flex-shrink: 0;
+  }
+}
+@media (max-width: 339px) {
+  .creator-dock-catalog {
+    --creator-catalog-limit: 36dvh;
+  }
+}

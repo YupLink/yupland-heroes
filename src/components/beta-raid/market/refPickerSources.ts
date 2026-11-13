@@ -5,7 +5,10 @@ import { adminListItems } from "@/server/api/items";
 import { adminListBossTemplates } from "@/server/api/raid-admin";
 import { adminListChipPacks } from "@/server/api/chips-admin";
 import { listCustomItems } from "@/server/api/beta-raid/market-custom";
+import { listPlaceableRocks, listPlantableTrees } from "@/server/api/beta-raid/tree/tree-admin";
+import { listLandTerrains } from "@/server/api/beta-raid/land/land-admin";
 import { artAnyIconSrc, artAnyRarity, heroRarityByLevel } from "./artAnyIcon";
+import { HERO_ANY_OPTIONS, heroAnyIconSrc, heroAnyRarity } from "./heroAny";
 import type { MarketKind } from "@/lib/marketItem";
 import { parseBoostEffects, type BoostEffect } from "@/lib/hero/boost";
 import { toolWearOf } from "@/lib/raid/toolWear";
@@ -40,6 +43,9 @@ export type Ref = {
   isRod?: boolean;
   /** Галочка «карта» своего товара — чтобы правка её не стирала. */
   isMap?: boolean;
+  /** Галочки «бинокль» и «лестница» — чтобы правка их не стирала. */
+  isBinocular?: boolean;
+  isLadder?: boolean;
 };
 
 function norm(row: unknown): Ref {
@@ -72,6 +78,8 @@ function norm(row: unknown): Ref {
     categoryId: r.categoryId == null ? null : String(r.categoryId),
     isRod: r.isRod === true,
     isMap: r.isMap === true,
+    isBinocular: r.isBinocular === true,
+    isLadder: r.isLadder === true,
   };
 }
 
@@ -89,14 +97,31 @@ const ART_ANY: Ref[] = (
   ] as const
 ).map((r) => ({ id: r.id, name: r.name, image: artAnyIconSrc(r.id), rarity: artAnyRarity(r.id) }));
 
+/** «Любой герой редкости X» — только товаром скупки ломбарда (heroAny.ts). */
+const HERO_ANY: Ref[] = HERO_ANY_OPTIONS.map((r) => ({
+  id: r.id,
+  name: r.name,
+  image: heroAnyIconSrc(r.id),
+  rarity: heroAnyRarity(r.id),
+}));
+
 /**
  * @param noArtAny — убрать «любой арт редкости X». Нужно там, где игрок не
  * сможет выбрать, ЧЕМ именно расплатится: пикер артефакта на витрине покрывает
  * только первую цену, и «любой арт» второй ценой снова стал бы лотереей —
  * магазин молча забрал бы самый старый свободный.
+ * @param heroAny — добавить «любой герой редкости X» первыми пунктами: только
+ * товаром витрины скупки (ломбард героев), больше нигде сервер его не примет.
  */
-export async function fetchRefs(kind: MarketKind, noArtAny = false): Promise<Ref[]> {
-  if (kind === "hero") return (await adminListItems({ data: { kind: "hero" } })).map(norm);
+export async function fetchRefs(
+  kind: MarketKind,
+  noArtAny = false,
+  heroAny = false,
+): Promise<Ref[]> {
+  if (kind === "hero") {
+    const items = (await adminListItems({ data: { kind: "hero" } })).map(norm);
+    return heroAny ? [...HERO_ANY, ...items] : items;
+  }
   if (kind === "art") {
     // Псевдо-шаблоны «по редкости» — первыми пунктами: часто нужнее, чем
     // конкретный артефакт (см. server/beta-raid/art-rarity.resolveArtByRarity).
@@ -106,5 +131,11 @@ export async function fetchRefs(kind: MarketKind, noArtAny = false): Promise<Ref
   if (kind === "boss") return (await adminListBossTemplates()).templates.map(norm);
   if (kind === "pack") return (await adminListChipPacks()).map(norm);
   if (kind === "custom") return (await listCustomItems()).map(norm);
+  // Срубаемые деревья (шаблоны декора с «Срубить») — товар для посадки.
+  if (kind === "tree") return (await listPlantableTrees()).map(norm);
+  // Камни и горы (шаблоны декора, которые бьют киркой) — товар для установки.
+  if (kind === "rock") return (await listPlaceableRocks()).map(norm);
+  // Земля для мира строителей — любая живая местность (lib/landPlace).
+  if (kind === "land") return (await listLandTerrains()).map(norm);
   return [];
 }

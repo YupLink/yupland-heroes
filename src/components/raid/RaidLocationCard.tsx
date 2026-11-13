@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Map as MapIcon, ArrowRight, Loader2 } from "lucide-react";
 import { thumb } from "@/lib/image";
+import { rewardShownAmount } from "@/lib/rewardKinds";
 import { useT, useLang } from "@/lib/i18n";
 import { localizeAssetName } from "@/lib/translations/assetNames";
 import { chooseRaidLocation } from "@/server/api/raid-nav";
@@ -62,7 +63,7 @@ export function rewardStr(
     .filter((x) => x.amount > 0)
     .map(
       (x) =>
-        `${fillerIcon(x.kind)} ${x.amount.toLocaleString()}${std.has(x.kind) ? "" : " " + x.kind}`
+        `${fillerIcon(x.kind)} ${rewardShownAmount(x.kind, x.amount).toLocaleString()}${std.has(x.kind) ? "" : " " + x.kind}`
     );
   if (reward.packs > 0) p.push(`🎴 ×${reward.packs}`);
   return p.length ? p.join(" · ") : t("raid.no_reward");
@@ -71,7 +72,7 @@ export function rewardStr(
 function fillerIcon(kind: string): string {
   switch (kind) {
     case "likes": return "❤️";
-    case "tickets": return "🎟";
+    case "tickets": return "🪙"; // золото ×100 (ПРАВИЛА §8.61)
     case "energy": return "⚡";
     default: return "🪙";
   }

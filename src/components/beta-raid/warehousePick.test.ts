@@ -4,13 +4,14 @@ import { describe, expect, it } from "vitest";
 import { buildCells, ownCellItems } from "./warehouseGrid";
 import { putPick, takeOwnPick, takeSharedPick } from "./warehousePick";
 import { commitQty, qtyBounds, stepQty } from "@/lib/qtyPick";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const stack = (count: number, stackKey = "custom:apple") => ({
   stackKey,
   name: "Яблоко",
   image: null,
   count,
-  cells: Math.ceil(count / 20),
+  cells: Math.ceil(count / CELL_SIZE),
 });
 
 /** Числа окна для выбора: как их видит QtyDialog. */
@@ -18,18 +19,18 @@ const bounds = (p: { total: number; cell: number }) =>
   qtyBounds(p.total, { presets: [p.cell, p.total] });
 
 describe("положить из рюкзака", () => {
-  const [first, second] = buildCells([stack(25)], 2);
+  const [first, second] = buildCells([stack(CELL_SIZE + 5)], 2);
 
   it("окно начинает с плитки, «Всё» — весь вид в рюкзаке", () => {
     expect(putPick(first!)).toMatchObject({
       mode: "put",
       scope: null,
       stackKey: "custom:apple",
-      total: 25,
-      cell: 20,
+      total: CELL_SIZE + 5,
+      cell: CELL_SIZE,
       busyKey: "bp:custom:apple",
     });
-    expect(putPick(second!)).toMatchObject({ total: 25, cell: 5 });
+    expect(putPick(second!)).toMatchObject({ total: CELL_SIZE + 5, cell: 5 });
   });
 
   it("одну штуку положить можно — ради этого окно и заведено", () => {
@@ -40,7 +41,7 @@ describe("положить из рюкзака", () => {
 
   it("больше, чем в рюкзаке, не выбрать", () => {
     const p = putPick(first!);
-    expect(commitQty("40", p.cell, bounds(p), "ru")).toBe(25);
+    expect(commitQty(String(2 * CELL_SIZE), p.cell, bounds(p), "ru")).toBe(CELL_SIZE + 5);
   });
 
   it("крошка меньше тысячной: окно предлагает её саму, а не «Ячейку (0)»", () => {
@@ -60,26 +61,26 @@ describe("положить из рюкзака", () => {
 
 describe("забрать со склада", () => {
   it("общая полка: плитка — «Ячейку», весь вид на полке — «Всё»", () => {
-    const [first] = buildCells([stack(33)], 8);
+    const [first] = buildCells([stack(CELL_SIZE + 13)], 8);
     expect(takeSharedPick(first!)).toMatchObject({
       mode: "take",
       scope: "shared",
-      total: 33,
-      cell: 20,
+      total: CELL_SIZE + 13,
+      cell: CELL_SIZE,
       busyKey: "shared:custom:apple",
     });
   });
 
   it("своя полка: плитка — доля вида, «Всё» — весь вид на личной полке", () => {
     const items = ownCellItems([
-      { stackKey: "custom:apple", name: "Яблоко", image: null, whole: 40, frac: 0 },
+      { stackKey: "custom:apple", name: "Яблоко", image: null, whole: 2 * CELL_SIZE, frac: 0 },
     ]);
-    const p = takeOwnPick(items[1]!, 40);
+    const p = takeOwnPick(items[1]!, 2 * CELL_SIZE);
     expect(p).toMatchObject({
       mode: "take",
       scope: "own",
-      total: 40,
-      cell: 20,
+      total: 2 * CELL_SIZE,
+      cell: CELL_SIZE,
       busyKey: "own:custom:apple#1",
     });
     expect(commitQty("3", p.cell, bounds(p), "ru")).toBe(3);

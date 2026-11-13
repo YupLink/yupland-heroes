@@ -4,6 +4,7 @@
 import { BET_OPTIONS, LINE_OPTIONS } from "./bets";
 import { startBonus, startSuper } from "./bonus";
 import { evaluateSpin } from "./evaluate";
+import { noteRiskPick, noteSpin, rebuildReels, spinWeights } from "./reelLevel";
 import { rollGrid } from "./reels";
 import { nextRisk, resolvePick, showMissed, startRisk } from "./risk";
 import { slotReducer } from "./reducer";
@@ -36,8 +37,16 @@ export function moneyKind(a: ClientAction): string {
 
 export class SlotRefused extends Error {}
 
-/** Применить ход. Баланс `state.balance` перед вызовом — настоящее золото. */
-export function serverStep(state: SlotState, a: ClientAction, rng: Rng): SlotState {
+/**
+ * Применить ход. Баланс `state.balance` перед вызовом — настоящее золото.
+ * `target` — цель отдачи динамических барабанов (холостая игра гостя — 105 %, demoSlot).
+ */
+export function serverStep(
+  state: SlotState,
+  a: ClientAction,
+  rng: Rng,
+  target?: number,
+): SlotState {
   const r = (s: SlotState, action: Parameters<typeof slotReducer>[1]) => slotReducer(s, action);
   switch (a.type) {
     case "spin": {
@@ -47,8 +56,10 @@ export function serverStep(state: SlotState, a: ClientAction, rng: Rng): SlotSta
         throw new SlotRefused("slot.bad_bet");
       if (state.phase !== "idle" && state.phase !== "won") throw new SlotRefused("slot.busy");
       if (state.balance < a.lines * a.bet) throw new SlotRefused("slot.not_enough");
-      const s = { ...state, lines: a.lines, bet: a.bet };
-      const spun = r(s, { type: "spin", result: evaluateSpin(rollGrid(rng), a.lines, a.bet) });
+      // Раз в 20 спинов — новая цель барабанов по отдаче игрока (reelLevel.ts).
+      const s = rebuildReels({ ...state, lines: a.lines, bet: a.bet }, target);
+      const result = evaluateSpin(rollGrid(rng, spinWeights(s)), a.lines, a.bet);
+      const spun = r(noteSpin(s, result), { type: "spin", result });
       if (spun.phase !== "spinning") throw new SlotRefused("slot.not_enough");
       return r(spun, { type: "stopped" });
     }
@@ -62,8 +73,12 @@ export function serverStep(state: SlotState, a: ClientAction, rng: Rng): SlotSta
       if (state.phase !== "risk" || !state.risk) return state;
       {
         const dealt = resolvePick(state.risk, a.index, rng);
-        const next = r(dealt === state.risk ? state : { ...state, risk: dealt }, a);
-        return next !== state && next.risk && next.risk.outcome === "lose"
+        const before = dealt === state.risk ? state : { ...state, risk: dealt };
+        const picked = r(before, a);
+        if (picked === before) return state;
+        // Выбор против открытой карты соперника — в оценку удвоения (reelLevel.ts).
+        const next = noteRiskPick(picked, dealt);
+        return next.risk && next.risk.outcome === "lose"
           ? { ...next, risk: showMissed(next.risk, rng) }
           : next;
       }

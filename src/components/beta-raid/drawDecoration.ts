@@ -6,6 +6,25 @@
 import { R } from "./hexGeometry";
 import type { DrawScene } from "./betaCanvasScene";
 
+type DecorationImages = Map<string, HTMLImageElement> & {
+  decorationOriginal?: (key: string) => HTMLImageElement | undefined;
+};
+
+/** A world skin changes pixels, not the original size or bottom anchor.
+ * Wait for the original dimensions rather than bake a temporary square.
+ * Both the direct renderer and chunk culling must use this geometry.
+ */
+export function decorationSprite(images: DecorationImages, id: string, width = R * 1.5) {
+  const key = "d:" + id;
+  const replacement = images.get(key);
+  const original = images.decorationOriginal?.(key) ?? replacement;
+  const ready = !!original && original.complete && original.naturalWidth > 0;
+  return {
+    image: ready ? replacement : original,
+    height: ready ? width * original.naturalHeight / original.naturalWidth : 0,
+  };
+}
+
 export function drawDecoration(
   scene: Pick<DrawScene, "g" | "images">,
   p: { x: number; y: number },
@@ -15,7 +34,7 @@ export function drawDecoration(
 ): void {
   const { g, images } = scene;
 
-  const img = images.get("d:" + decorationId);
+  const { image: img, height: h } = decorationSprite(images, decorationId, width);
   // Картинка ещё не загрузилась — зелёная точка вместо дерева/куста.
   // Точка временная: id без записи в словаре (удалённый шаблон) игроку в
   // снимок не уезжает (server dead-decor), а битый адрес ругается в консоль
@@ -28,7 +47,6 @@ export function drawDecoration(
     return;
   }
   const w = width;
-  const h = w * (img.naturalHeight / img.naturalWidth);
   // Якорь снизу — картинка «стоит» на гексе, может чуть выступать вверх.
   g.drawImage(img, p.x - w / 2, p.y + R * 0.55 - h, w, h);
 }

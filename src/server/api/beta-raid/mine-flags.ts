@@ -17,6 +17,7 @@ import { sqlStr } from "../raid-shared";
 import { requireBetaRaid } from "./gate";
 import { myMapId } from "./encounter-where";
 import { raidOwner } from "./owner";
+import { brokenSql } from "./mine-v2-sql";
 
 /**
  * `own` — зелёный флаг, `enemy` — красный.
@@ -31,7 +32,7 @@ export type MineFlag = "own" | "enemy" | "tree";
  * Шахта ли эта постройка. По названию, потому что отдельного признака у шаблона
  * нет, но `meta.effect = 'mine'` подключается автоматически — задел совместимый.
  */
-const MINE_SQL = `(t.name ILIKE '%шахт%' OR t.meta->>'effect' = 'mine')`;
+export const MINE_SQL = `(t.name ILIKE '%шахт%' OR t.meta->>'effect' = 'mine')`;
 
 export const getMineFlags = createServerFn({ method: "GET" }).handler(async () => {
   const wallet = await requireBetaRaid();
@@ -47,12 +48,14 @@ export const getMineFlags = createServerFn({ method: "GET" }).handler(async () =
   const [mineRows, fieldRows, treeRows] = (await Promise.all([
     mcpExec(
       // Шахты: моё / чужое читаем из raid_mine_state; свободные не отдаём.
+      // Сломанная v2 (§8.59) — ничья, флажка нет, даже пока обход не снял строку.
       `SELECT c.q, c.r, (s.owner_account = ${sqlStr(me)}) AS mine
          FROM yuplink.raid_map_cells c
          JOIN yuplink.mystic_item_template t ON t.id = c.building_id
          JOIN yuplink.raid_mine_state s
            ON s.map_id = c.map_id AND s.q = c.q AND s.r = c.r
-        WHERE c.map_id = ${sqlStr(mapId)} AND ${MINE_SQL};`,
+        WHERE c.map_id = ${sqlStr(mapId)} AND ${MINE_SQL}
+          AND NOT ${brokenSql("s", "c.building_config")};`,
       { wrapJson: true },
     ),
     // Грядки, где батрачит МОЙ герой: зелёный флажок, как у своей шахты.

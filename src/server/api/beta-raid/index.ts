@@ -1,6 +1,6 @@
 // Barrel — все экспорты beta-raid
 export { getBetaRaidMap, adminSetBetaRaidMap } from "./map";
-export { getBetaRaidState, moveBetaRaid } from "./move";
+export { getBetaRaidState, moveBetaRaid, moveBetaRaidSteps } from "./move";
 export { getAvailableMoves } from "./availableMoves";
 export { getBetaRaidTournament } from "./tournament";
 export { getBetaRaidPlayers } from "./players";
@@ -23,3 +23,15 @@ export { revealFromTower } from "./tower-reveal";
 export { betaRaidAttack } from "./encounter-attack";
 export { getBetaRaidEncounter } from "./encounter-peek";
 export { getEncounterTop } from "./encounter-top";
+// Погода карты: вид, температура, смена слота, коэффициенты (остров — null).
+export { getRaidWeather } from "./weather/weather-get";
+// Лавка зачарования: заклинания на артефакты (lib/enchant, ПРАВИЛА — слова владельца 28.10).
+export {
+  getEnchantShop,
+  listEnchantArtifacts,
+  listEnchantCostOptions,
+  saveEnchantSpells,
+  enchantArtifact,
+} from "./enchant/enchant-api";
+// Зачарование героев: обряды «N героев → один следующей редкости» (lib/enchant/heroRite).
+export { getHeroRiteShop, listRiteHeroes, saveHeroRites, runHeroRite } from "./hero-rite/rite-api";

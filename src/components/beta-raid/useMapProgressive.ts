@@ -14,7 +14,7 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { applyCellPatches } from "./patchMapCache";
-import { fetchMapBlob, mapFromBlob, type MapDataV } from "./mapBlob";
+import { fetchMapBlob, isCurrentBuild, mapFromBlob, type MapDataV } from "./mapBlob";
 import { readCachedMap, writeCachedMap } from "./mapCache";
 import { useAppStore } from "@/lib/store";
 import type { MapDelta } from "@/lib/raid/mapDelta";
@@ -40,13 +40,39 @@ async function fetchDelta(rev: number): Promise<(MapDelta & { mapId?: string }) 
   return (await res.json()) as MapDelta & { mapId?: string };
 }
 
-/** Снимок целиком: с сервера, в кэш устройства, в форму экрана. */
-async function loadFull(): Promise<MapDataV> {
-  const got = await fetchMapBlob(null);
+/** Пауза перед повтором за снимком: при раскатке старый рабочий успевает смениться. */
+export const STALE_BLOB_RETRY_MS = 1500;
+
+type FullBlob = { data: MapDataV; bytes: ArrayBuffer };
+
+async function fetchFull(fresh: boolean): Promise<FullBlob> {
+  const got = await fetchMapBlob(null, { fresh });
   if (got.status !== "fresh")
     throw new Error(`map blob ${got.status === "error" ? got.code : "?"}`);
   const data = mapFromBlob(got.bytes);
   if (!data) throw new Error("map blob: bad format");
+  return { data, bytes: got.bytes };
+}
+
+/**
+ * Снимок старой сборки (без списка шахт или жил — isCurrentBuild): при
+ * раскатке ответил ещё не сменённый рабочий. Разок переспрашиваем мимо
+ * HTTP-кэша; опять старый (или повтор упал) — живём им эту сессию, но в кэш
+ * устройства не кладём, иначе под ключом g4 он прожил бы до ближайшего «full»
+ * журнала. Обычный вход — без лишнего запроса.
+ */
+async function currentBuild(first: FullBlob): Promise<{ got: FullBlob; save: boolean }> {
+  if (isCurrentBuild(first.data)) return { got: first, save: true };
+  await new Promise((res) => setTimeout(res, STALE_BLOB_RETRY_MS));
+  const again = await fetchFull(true).catch(() => null);
+  if (!again) return { got: first, save: false };
+  return { got: again, save: isCurrentBuild(again.data) };
+}
+
+/** Снимок целиком: с сервера, в кэш устройства, в форму экрана. */
+export async function loadFull(): Promise<MapDataV> {
+  const { got, save } = await currentBuild(await fetchFull(false));
+  if (!save) return got.data;
   // Ключ — «последняя карта» ЭТОГО аккаунта: у игрока одна активная карта, а
   // на общем устройстве после админа входит игрок — снимок админа (с
   // содержимым под куполом) ему доставаться не должен. Без аккаунта не пишем.
@@ -55,12 +81,12 @@ async function loadFull(): Promise<MapDataV> {
     void writeCachedMap({
       mapId: "last",
       variant: who,
-      revision: data.revision,
+      revision: got.data.revision,
       bytes: got.bytes,
       at: Date.now(),
     });
   }
-  return data;
+  return got.data;
 }
 
 /** Кому принадлежит кэш устройства: кошелёк сессии; нет — кэш не используем. */
@@ -68,8 +94,12 @@ function cacheOwner(): string | null {
   return useAppStore.getState().walletAddress || null;
 }
 
-/** Снимок из кэша годится этой сессии: не админский, если сессия не админ. */
-function cacheFits(data: MapDataV, isAdmin: boolean | undefined): boolean {
+/**
+ * Снимок из кэша годится этой сессии: не админский, если сессия не админ, и
+ * нынешней сборки — без списков шахт и жил он туда попасть не должен (loadFull).
+ */
+export function cacheFits(data: MapDataV, isAdmin: boolean | undefined): boolean {
+  if (!isCurrentBuild(data)) return false;
   if (data.variant === "admin") return isAdmin === true;
   return true;
 }

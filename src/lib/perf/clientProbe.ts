@@ -10,6 +10,7 @@
 // берутся из PerformanceObserver — браузер и так их считает; отправка —
 // sendBeacon, не мешает ни кадру, ни уходу со страницы. Пока экран рейда не
 // открыт, проба выключена и probeFrame — одна проверка флага.
+import { BUILD_ID } from "@/lib/buildId";
 import {
   emptyWindow,
   summarize,
@@ -74,6 +75,7 @@ function device(): Device {
     mem: nav.deviceMemory ?? null,
     conn: nav.connection?.effectiveType ?? null,
     screen: `${window.innerWidth}x${window.innerHeight}`,
+    build: BUILD_ID.slice(0, 8),
   };
 }
 

@@ -43,15 +43,15 @@ export const registerEmbeddedWallet = createServerFn({ method: "POST" })
     const sessionWallet = getCurrentWallet();
     const tgId = getSessionTgId();
     if (!sessionWallet || !tgId) throw new Error("Нужно сначала войти через Telegram");
-    // Кошелёк к Telegram пристёгивает только вход с подписью (connectWalletSigned,
-    // 18.10.2026); здесь лишь запоминаем публичные поля уже пристёгнутого.
-    // Раньше эта ручка сама заводила кошелёк на Telegram сессии — без подписи.
-    // Админский кошелёк-менеджер (/admin/wallet) хранит только публичные поля
-    // своих кошельков — к Telegram он их не пристёгивает.
+    // К Telegram пристёгивает только вход с подписью (connectWalletSigned, 18.10.2026); здесь —
+    // публичные поля уже пристёгнутого. Админский /admin/wallet хранит публичные поля своих.
     const own = await pg.users.findOne({ wallet: data.accountId.toLowerCase() });
-    if ((!own || Number(own.telegram_id) !== tgId) && !isAdminWallet(sessionWallet)) {
-      throw new Error("Сначала подтверди кошелёк подписью");
-    }
+    const proven = !!own && Number(own.telegram_id) === tgId;
+    if (!proven && !isAdminWallet(sessionWallet)) throw new Error("Сначала подтверди кошелёк подписью");
+    // Админ без подписи — только новый или свой: чужую привязку не переписывает (аудит 11.11).
+    const prev = proven ? null : await pg.userWallets.findOne({ account_id: data.accountId });
+    if (prev && prev.linked_user !== sessionWallet && Number(prev.linked_tg_id) !== tgId)
+      throw new Error("Кошелёк привязан к другому игроку");
 
     await pg.userWallets.upsert(
       {
@@ -296,7 +296,7 @@ export const myWalletBalances = createServerFn({ method: "GET" })
 /**
  * Найти все NEAR-аккаунты, у которых этот public_key прописан как
  * full-access. Через FastNear indexer. Используется при импорте сидки,
- * чтобы автоматически предложить named-аккаунт (например `player11.near`)
+ * чтобы автоматически предложить named-аккаунт (например `player123.near`)
  * вместо implicit-hex.
  */
 export const lookupAccountsByPublicKey = createServerFn({ method: "GET" })

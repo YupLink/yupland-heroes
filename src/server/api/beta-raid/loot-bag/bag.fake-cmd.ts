@@ -21,6 +21,7 @@ import {
   type Part,
 } from "@/server/api/beta-raid/loot-bag/bag.fake";
 import { runRead } from "@/server/api/beta-raid/loot-bag/bag.fake-read";
+import { takeRes, takeResOp } from "@/server/api/beta-raid/loot-bag/bag.fake-res";
 
 type At = { key: string; mapId: string; q: number; r: number; account: string };
 const row = (v: unknown) => [{ _row: v }];
@@ -165,6 +166,10 @@ export function runCmd(c: Cmd): unknown[] {
     }
     case "take":
       return take(c);
+    case "takeRes":
+      return takeRes(c);
+    case "takeResOp":
+      return takeResOp(c);
     case "done": {
       const o = db.ops.get(String(c.op));
       if (o?.state === "taken") o.state = "done";

@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarClock, Landmark, Loader2, ShieldCheck, Zap } from "lucide-react";
+import { ArrowUpFromLine, CalendarClock, Landmark, Loader2, ShieldCheck, Zap } from "lucide-react";
 import { useLang, useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
 import { newOpId } from "@/lib/opId";
@@ -41,7 +41,9 @@ export function EnergySubSection() {
     },
     onError: (e: Error) => {
       toast.error(humanError(e));
-      if (e.message.includes("esub.price_changed")) void qc.invalidateQueries({ queryKey: ESUB_KEY });
+      if (e.message.includes("esub.price_changed") || e.message.includes("esub.one_active")) {
+        void qc.invalidateQueries({ queryKey: ESUB_KEY });
+      }
       setPick(null);
     },
   });
@@ -104,10 +106,16 @@ export function EnergySubSection() {
                 })}
               </div>
             )}
+            {x.withdrawBonus > 0 && (
+              <div className="flex items-center gap-1">
+                <ArrowUpFromLine className="h-3.5 w-3.5 text-amber-300" />
+                {t("esub.withdraw_bonus", { n: String(x.withdrawBonus / 1_000_000) })}
+              </div>
+            )}
           </div>
           <SubPriceButtons
             prices={x.prices}
-            disabled={buy.isPending}
+            disabled={buy.isPending || !!x.blockedUntil}
             onPick={(token, price) => setPick({ tier: x, token, price })}
           />
           {pick?.tier.id === x.id && (

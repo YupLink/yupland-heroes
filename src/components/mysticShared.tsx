@@ -13,7 +13,7 @@ import {
   Coins,
 } from "lucide-react";
 import { RESOURCE_LABELS_RU } from "@/lib/marketItem";
-import { amountRangeText, type MysticKind } from "@/lib/mysticKinds";
+import { amountRangeText, randomPrizeLabel, type ItemRarity, type MysticKind } from "@/lib/mysticKinds";
 
 export type { MysticKind };
 
@@ -28,13 +28,17 @@ export type MysticTier = {
   resource?: "gold" | "stone" | "wood" | "diamonds";
   customId?: string;
   customName?: string;
+  /** Любой товар — какой именно, решается при открытии. */
+  customAny?: boolean;
   nftTitle?: string;
   nftContract?: string;
   // artifact/hero — выбор из СОЗДАННЫХ (mystic_item_template)
   itemTemplateId?: string;
   itemName?: string;
+  // без itemTemplateId — любой артефакт / герой этой редкости
+  artifactRarity?: ItemRarity;
+  heroRarity?: ItemRarity;
   // legacy (демо-боксы до перехода на шаблоны)
-  artifactRarity?: "common" | "rare" | "epic" | "legendary";
   heroMinLevel?: number;
 };
 
@@ -55,6 +59,8 @@ export const KIND_META: Record<MysticKind, { label: string; icon: typeof Package
 export function tierSummary(t: MysticTier): string {
   if (t.label) return t.label;
   const n = amountRangeText(t.amountMin, t.amountMax) || "?";
+  const any = randomPrizeLabel(t);
+  if (any) return t.kind === "custom" ? `${n} × ${any.toLowerCase()}` : any;
   switch (t.kind) {
     case "pack":
       return `Пак ${t.packId || "—"}`;

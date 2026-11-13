@@ -1,8 +1,8 @@
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Zap, X } from "lucide-react";
-import { getMyTickets } from "@/server/api/user-tickets";
 import { getMyDaraiBalance } from "@/server/api/chips-craft";
 import { KitsSection } from "@/components/kits/KitsSection";
 import { AdminEnergyGrantCard } from "./AdminEnergyGrantCard";
@@ -12,17 +12,17 @@ import { EnergyLikeOfferCard } from "./EnergyLikeOfferCard";
 import { EnergyPacksSection } from "./EnergyPacksSection";
 import { EnergySubSection } from "./EnergySubSection";
 import { RecoverEnergyPurchase } from "./RecoverEnergyPurchase";
+import { useResources } from "@/lib/hooks/useResources";
 
 export function EnergyBuyModal({ onClose }: { onClose: () => void }) {
-  const tickets = useQuery({
-    queryKey: ["my-tickets"],
-    queryFn: () => getMyTickets(),
-  });
+  usePurchaseMusic(true);
+  // Игровая цена энергопака — золото (бывшие билеты ×500, §8.61).
+  const resources = useResources();
   const darai = useQuery({
     queryKey: ["my-darai-balance"],
     queryFn: () => getMyDaraiBalance(),
   });
-  const available = tickets.data?.available ?? 0;
+  const availableGold = resources.data?.gold ?? 0;
   const availableDarai = darai.data?.available ?? 0;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -34,7 +34,7 @@ export function EnergyBuyModal({ onClose }: { onClose: () => void }) {
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[70] flex flex-col bg-background/95 backdrop-blur">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-border px-4 pb-3 pt-[calc(12px+var(--app-top,0px))]">
         <Zap className="h-5 w-5 text-rose-400" />
         <span className="font-display text-lg font-bold">Купить энергию</span>
         <button
@@ -51,7 +51,7 @@ export function EnergyBuyModal({ onClose }: { onClose: () => void }) {
         <KitsSection />
         <EnergySubSection />
         <EnergyLikeOfferCard />
-        <EnergyPacksSection availableTickets={available} availableDarai={availableDarai} />
+        <EnergyPacksSection availableGold={availableGold} availableDarai={availableDarai} />
         <div className="mt-3 text-center text-xs text-muted-foreground">
           Энергия начислится сразу после подтверждения оплаты.
         </div>
@@ -61,3 +61,4 @@ export function EnergyBuyModal({ onClose }: { onClose: () => void }) {
     document.body,
   );
 }
+

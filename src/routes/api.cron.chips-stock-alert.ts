@@ -4,18 +4,14 @@
 // маршрута прежний, чтобы crontab не менять: он остаётся ради рубежа DARAI.
 
 import { createFileRoute } from "@tanstack/react-router";
+import { cronDenied } from "@/server/cronAuth";
 
 export const Route = createFileRoute("/api/cron/chips-stock-alert")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         try {
           // Раз в день: если пройден новый миллиард в казне DARAI — заметный
           // алерт владельцу.

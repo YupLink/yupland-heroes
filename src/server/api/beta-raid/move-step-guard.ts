@@ -6,29 +6,31 @@
 // применяется ровно один. Тормоз — второй рубеж: последовательный скрипт без
 // пауз шагал бы честными шагами в разы быстрее клиента.
 import { rateGate } from "@/server/rateGate";
+import { STEP_WINDOW_MS, stepRateLimit, type MountTier } from "@/lib/hero/mount";
 import { releaseShip, stepOpDone } from "@/server/api/beta-raid/ship-crew";
 import type { TollPaid } from "@/server/api/beta-raid/gate-toll";
 
-/**
- * Не чаще шага в ~0,15 с в среднем, ключ — АККАУНТ (у аккаунта бывают сёстры-
- * кошельки, и тормоз по кошельку делился бы на их число).
- *
- * Клиент шагает не чаще раза в 190 мс (useBetaMovement.STEP_MS): за 3 с это 16
- * шагов. Порог 20 за 3 с честного игрока не задевает, а скрипт упирается в
- * 6–7 шагов в секунду. Окно, а не «150 мс от прошлого шага»: запросы приходят
- * на сервер с разбросом сети, и жёсткий интервал рвал бы маршрут живому игроку
- * (аудит 06.10: в журнале очков «Шагов» ~0,7 % промежутков короче 150 мс, и
- * все — честный клиент).
- */
-export const STEP_RATE = { limit: 20, windowMs: 3_000 } as const;
+// Тормоз частоты — ключ АККАУНТ (у аккаунта бывают сёстры-кошельки, и тормоз по
+// кошельку делился бы на их число). Окно, а не «N мс от прошлого шага»: запросы
+// приходят с разбросом сети, а шаги клиент шлёт пачкой наперёд (§8.84) — жёсткий
+// интервал рвал бы маршрут живому игроку (аудит 06.10).
 
 /** Ключ словаря: клиент покажет отказ на языке игрока (serverErrorText). */
 export const STEP_TOO_FAST = "braid.step_too_fast";
 /** Шаг опоздал: позиция уже не та, с которой он шёл (повтор, вторая вкладка). */
 export const STEP_STALE = "braid.step_stale";
 
-export function stepRateGate(account: string): Promise<void> {
-  return rateGate(`step:${account}`, { ...STEP_RATE, message: STEP_TOO_FAST });
+/**
+ * Порог — по коню героя (§8.84, lib/hero/mount.stepRateLimit): без коня 23 за 3 с,
+ * обычный 28, пегас 41. Скрипт быстрее своего коня не побежит.
+ */
+export function stepRateGate(account: string, tier: MountTier = "none", pct = 0): Promise<void> {
+  return rateGate(`step:${account}`, {
+    // Зачарованный конь бежит быстрее (§8.84) — и порог выше ровно на столько же.
+    limit: stepRateLimit(tier, pct),
+    windowMs: STEP_WINDOW_MS,
+    message: STEP_TOO_FAST,
+  });
 }
 
 /**
@@ -68,5 +70,7 @@ export async function missedStep(o: {
 export function stepError(e: unknown, cost: number): Error {
   const msg = e instanceof Error ? e.message : String(e);
   if (msg.includes("not_enough_energy")) return new Error(`Недостаточно энергии (нужно ${cost})`);
+  // Золото лестницы (§8.121) списывается тем же оператором: «в минус» — не хватает его.
+  if (msg.includes("res_move: в минус")) return new Error("braid.ladder_gold");
   return e instanceof Error ? e : new Error(msg);
 }

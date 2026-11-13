@@ -1,10 +1,10 @@
 // Пакетная проверка «можно ли улучшить» — для фильтра Тренировочного лагеря.
 //
-// Один ответ на все фишки игрока: по каждой «можно» (сколько билетов и фишек
+// Один ответ на все фишки игрока: по каждой «можно» (сколько золота и фишек
 // уйдёт) или «нельзя» с причиной. Правила те же, что у кнопки «Улучшить»:
 // тот же планировщик с автоподбором (chips-upgrade-plan), те же проверки в
-// том же порядке, что buildAutoUpgradePlan, и баланс билетов. Повторять их на
-// клиенте нельзя, а запрос на каждую фишку уронил бы список.
+// том же порядке, что buildAutoUpgradePlan, баланс золота и цена по текущему
+// курсу. Повторять их на клиенте нельзя, а запрос на каждую фишку уронил бы список.
 //
 // Считаем один раз на вид «коллекция + шаблон + уровень»: фишки одного вида
 // для планировщика неотличимы, и у игрока с 5000 фишек видов — около сотни.
@@ -14,6 +14,8 @@ import { pg } from "../db/pg";
 import { requireWallet, levelKey } from "./chips-mint-helpers";
 import { CRAFT_RULES } from "./chips-craft";
 import { planUpgrade, toPlanPool, type PlanChip, type PoolRow } from "./chips-upgrade-plan";
+import { craftGoldMult } from "./craft-gold-price";
+import { accountGold } from "./craft-gold-pay";
 import type { ChipUpgradeState, UpgradeBlock, UpgradeReadiness } from "@/lib/chips/upgradeBlock";
 
 export type { ChipUpgradeState, UpgradeBlock, UpgradeReadiness };
@@ -24,7 +26,8 @@ const no = (reason: UpgradeBlock): ChipUpgradeState => ({ can: false, reason });
 
 export function upgradeReadiness(
   rows: ReadinessRow[],
-  haveTickets: number,
+  haveGold: number,
+  mult: number,
   now: number,
 ): UpgradeReadiness {
   // Пул коллекции — только «свои на руках» без отдыхающих, в общем порядке.
@@ -53,39 +56,40 @@ export function upgradeReadiness(
     const hit = memo.get(key);
     if (hit) return hit;
     const pool = (pools.get(r.collection_id) ?? []).filter((c) => c.id !== r.id);
-    const plan = planUpgrade({ id: r.id, level, template: r.template_id }, pool, haveTickets);
+    const plan = planUpgrade({ id: r.id, level, template: r.template_id }, pool, haveGold, mult);
     const state: ChipUpgradeState = !plan.feasibleChips
       ? no(
           plan.missReason?.kind === "same_type"
             ? { kind: "same_type", level: plan.missReason.level }
             : { kind: "chips", shortfall: plan.shortfall },
         )
-      : plan.ticketShortfall > 0
-        ? no({ kind: "tickets", need: plan.totalTickets, have: plan.haveTickets })
-        : { can: true, tickets: plan.totalTickets, burn: plan.burnChips.length };
+      : plan.goldShortfall > 0
+        ? no({ kind: "gold", need: plan.totalGold, have: plan.haveGold })
+        : { can: true, gold: plan.totalGold, burn: plan.burnChips.length };
     memo.set(key, state);
     return state;
   };
 
   const chips: Record<string, ChipUpgradeState> = {};
   for (const r of rows) chips[r.id] = stateOf(r);
-  return { haveTickets: Number(haveTickets.toFixed(2)), chips };
+  return { haveGold: Math.floor(haveGold), chips };
 }
 
 export const getChipUpgradeReadiness = createServerFn({ method: "GET" }).handler(
   async (): Promise<UpgradeReadiness> => {
     const wallet = requireWallet();
-    const { accountOf, computeTickets } = await import("./user");
+    const { accountOf } = await import("./user");
     const account = await accountOf(wallet);
-    const [inv, tix] = await Promise.all([
+    const [inv, haveGold, mult] = await Promise.all([
       pg.userChipInventory
         .raw()
         .select("id,level,template_id,collection_id,serial_no,status,rest_until,obtained_at")
         .eq("account_id", account)
         .in("status", ["owned", "listed", "staked"]),
-      computeTickets(wallet),
+      accountGold(account),
+      craftGoldMult(),
     ]);
     const rows = ((inv as { data: ReadinessRow[] | null }).data ?? []) as ReadinessRow[];
-    return upgradeReadiness(rows, tix.availableRaw, Date.now());
+    return upgradeReadiness(rows, haveGold, mult, Date.now());
   },
 );

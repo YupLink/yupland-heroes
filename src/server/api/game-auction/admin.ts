@@ -10,6 +10,8 @@ import { ensureAuctionSchema, AUCTION_DURATIONS } from "./schema";
 import { refundLosers } from "./settle";
 import { settlePlayerLot } from "./settle-player";
 import { activeBidsFor, lotState } from "./lots";
+import { droppable } from "../craft/crafted-sql";
+import { assertPackMoneyRight } from "../mystic-money";
 import {
   AUCTION_SPECIAL_CURRENCIES,
   PIECE_QTY_MAX,
@@ -65,6 +67,9 @@ export const adminCreateAuction = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const admin = requireAdmin();
+    // Бокс с DARAI/Stars в лоте — деньги: выставляет только админ выплат.
+    if (data.prizeKind === "box" || data.prizeKind === "pack")
+      await assertPackMoneyRight(data.prizeRef);
     await ensureAuctionSchema();
     // Валюта — только из списка: энергия/ресурс или токен из реестра.
     const special = AUCTION_SPECIAL_CURRENCIES.some((c) => c.value === data.currency);
@@ -73,6 +78,15 @@ export const adminCreateAuction = createServerFn({ method: "POST" })
     }
     if (isWholeOnlyCurrency(data.currency) && !Number.isInteger(data.startPrice)) {
       throw new Error("Энергия и ресурсы — только целым числом");
+    }
+    // Уникальный арт генератора (и арт лаборатории) на аукционы не попадает (владелец 09.11).
+    if (data.prizeKind === "artifact") {
+      const ok = (await mcpExec(
+        `SELECT 1 AS ok FROM yuplink.mystic_item_template
+          WHERE id = ${sqlStr(data.prizeRef)} AND ${droppable()};`,
+        { wrapJson: true },
+      )) as Array<{ ok: number }>;
+      if (!ok?.[0]) throw new Error("Уникальный артефакт на аукцион не выставляется");
     }
     const hours = AUCTION_DURATIONS[data.duration];
     const series = data.copies > 1 ? `gaus_${nanoid(8)}` : null;

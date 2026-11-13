@@ -87,8 +87,8 @@ export async function seatOnShip(
                      WHERE f.map_id = ${sqlStr(mapId)} AND f.q = ${q} AND f.r = ${r}
                        AND f.crew_account IS NULL
                        -- Разрушенное судно (жизни кончились) в море не выходит,
-                       -- пока его не починят досками.
-                       AND f.hp > 0
+                       -- пока его не починят досками; подбитое (dynamite-08) — никогда.
+                       AND f.hp > 0 AND f.blasted_at IS NULL
                        ${bigOnly ? "AND f.kind = 'big'" : ""}
                        ${shipId ? `AND f.id = ${sqlStr(shipId)}` : ""}
                      ORDER BY (f.kind = 'big') DESC, f.created_at, f.id

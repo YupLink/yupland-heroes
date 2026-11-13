@@ -1,0 +1,44 @@
+/* Narrow line labels leave the width of the cabinet to the five reels. */
+.slot-reels {
+  --slot-line-gutter: clamp(10px, 2.5cqw, 18px);
+  padding: 2px;
+}
+.slot-reels-layout {
+  padding-inline: var(--slot-line-gutter);
+}
+.slot-line-rail {
+  inset-block: 2px;
+  width: var(--slot-line-gutter);
+}
+.slot-line-group {
+  gap: clamp(2px, 0.5cqw, 4px);
+}
+.slot-line-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 1.15em;
+  color: #717780;
+  font-size: clamp(10px, 2.5cqw, 16px);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.slot-line-number[data-active="true"] {
+  font-weight: 800;
+}
+.slot-reels .slot-symbol {
+  inset: 4%;
+  width: 92%;
+  height: 92%;
+}
+/* Square cells grow taller as the side fields shrink. Move the existing
+   control deck by exactly that extra height, keeping artwork and targets aligned.
+   Previous padding: 2 × (8px + 24px). New padding: 2 × (2px + gutter). */
+.casino-ui .machine > .cabinet-stage {
+  --reel-growth: max(
+    0px,
+    calc(11.1cqw - 20px + (60px - 2 * clamp(10px, 2.5cqw, 18px)) * 0.6)
+  );
+}

@@ -18,6 +18,7 @@ import { buildScatter, type ScatterDraft, type GroupBuild } from "./scatter-buil
 import { assertScatterUsdt, fundCover, readFreeFunds } from "./scatter-funds";
 import { tallyResources, countKilled } from "./scatter-report";
 import { parseScatterPlan } from "./scatter-schema";
+import { buckets } from "./scatter-buckets";
 import {
   GROUP_LABEL,
   type ScatterPlan,
@@ -25,15 +26,6 @@ import {
   type ScatterGroupReport,
   type ScatterReport,
 } from "@/lib/raid/scatterPlan";
-
-/** Заявка на клетки: своя на каждую пару «группа + местность». */
-type Bucket = {
-  group: ScatterGroup;
-  drafts: ScatterDraft[];
-  terrainId: string | null;
-  /** «Только эти местности» (уровень местности); null — любая суша. */
-  terrains: string[] | null;
-};
 
 /**
  * Итог по группе до записи: кому какая клетка досталась и чего не хватило.
@@ -51,21 +43,6 @@ const emptySlot = (): Slot => ({ placements: [], drafts: [], offLand: 0, short: 
 
 const cellKey = (c: CellRef): string => `${c.q},${c.r}`;
 
-function buckets(builds: GroupBuild[]): Bucket[] {
-  const out: Bucket[] = [];
-  // Порядок групп сохраняем: подбор обслуживает заявки по очереди, и боссы с
-  // их редкими местностями должны выбирать раньше «куда угодно»-артефактов.
-  for (const b of builds) {
-    const byLand = new Map<string, ScatterDraft[]>();
-    for (const d of b.drafts)
-      byLand.set(d.terrainId ?? "", [...(byLand.get(d.terrainId ?? "") ?? []), d]);
-    for (const [land, drafts] of byLand) {
-      out.push({ group: b.group, drafts, terrainId: land || null, terrains: b.terrains ?? null });
-    }
-  }
-  return out;
-}
-
 /** Разыграть клетки ОДНИМ заходом на все группы — иначе два захода выдали бы
  *  одну и ту же клетку дважды, и второй объект затёр бы первого. */
 async function assign(
@@ -76,7 +53,8 @@ async function assign(
   const slots = new Map<ScatterGroup, Slot>();
   for (const b of builds) slots.set(b.group, emptySlot());
 
-  const list = buckets(builds);
+  // Заявки — по группе, местности и «моб ли» (scatter-buckets).
+  const list = await buckets(builds);
   // FREE_CELL смотрит на group_id (члены блоков — не свободная земля).
   await ensureGroupColumns();
   const grants = await pickCells(
@@ -87,6 +65,8 @@ async function assign(
       terrainId: b.terrainId && (!b.terrains || b.terrains.includes(b.terrainId)) ? b.terrainId : null,
       count: b.drafts.length,
       terrains: b.terrains,
+      // Боссы и убегающие существа — ни на дорогу, ни на жилу (mob-ground).
+      mob: b.mob,
     })),
     seed,
   );

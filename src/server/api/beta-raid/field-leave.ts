@@ -9,12 +9,12 @@
 // мост повторяет запрос вслепую, и повтор, увидев свой ключ, знает, что снимал
 // он сам, а не сосед.
 //
-// Дробный хвост: без него дробь <1 застревала навсегда — raid_field_take
-// забирает только floor(accrued), а settle прибавляет только тем, у кого
-// hero_id NOT NULL. Игроки жаловались «куча жёлтого/яблок висит, а сбор ноль».
-// Округляем до целого вверх (товар — на ближайший склад, ресурс — на счёт) и
-// обнуляем accrued. Максимум «переплата» — почти 1 единица; проще на игрока,
-// чем терять её насовсем. Выдаёт его только тот, кто героя действительно снял.
+// Дробный хвост <1 при снятии НЕ выдаётся (13.11.2026). С 27.09 его округляли
+// вверх до целой штуки — и «поставил героя рядом → снял» каждые ~2 с печатало по
+// штуке: за 30 дней 40 тыс. снятий рядом, ~20 тыс. легендарных рыб сверх урожая.
+// Дробь остаётся в accrued строки работника (снятие обнуляет только hero_id), а
+// raid_field_join при новой постановке строку не обнуляет — хвост копится дальше
+// и уходит целыми, как весь урожай. Честный игрок ничего не теряет.
 import { nanoid } from "nanoid";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
@@ -27,7 +27,7 @@ export type Leave = {
   mapId: string;
   q: number;
   r: number;
-  /** Конфиг поля — нужен хвосту. null: поле сломано, снимаем без хвоста. */
+  /** Конфиг поля (сейчас снятию не нужен; оставлен вызывающим). */
   cfg: FieldConfig | null;
   /** Кого снимаем. null — того, кто сейчас стоит от аккаунта (снятие рядом). */
   heroId: string | null;
@@ -122,67 +122,17 @@ async function casLeave(o: Leave, key: string): Promise<number | null> {
   return leftByKey(key);
 }
 
-/** Хвост <1 — одной единицей: товар на ближайший склад, ресурс на счёт. */
-async function giveDust(o: Leave, cfg: FieldConfig): Promise<void> {
-  try {
-    const { giveFieldReward } = await import("./field-reward");
-    const { creditItemToWarehouse, nearestWarehouse } = await import("./warehouse-store");
-    const { WAREHOUSE_RADIUS } = await import("./field-settle");
-    if (cfg.reward.kind === "item") {
-      const wh = await nearestWarehouse(o.mapId, o.q, o.r, WAREHOUSE_RADIUS);
-      if (wh) {
-        const { canonRef } = await import("./item-alias");
-        const canonId =
-          (await canonRef("custom", cfg.reward.itemId, cfg.reward.name)) ?? cfg.reward.itemId;
-        await creditItemToWarehouse({
-          mapId: o.mapId,
-          at: wh,
-          account: o.account,
-          stackKey: `custom:${canonId}`,
-          snap: { kind: "custom", refId: canonId, name: cfg.reward.name, image: cfg.reward.image },
-          units: 1,
-          // Клетка грядки в op — след раскладки в журнале сделок (ПРАВИЛА §8.13).
-          op: `flx:${o.q},${o.r}:${nanoid(12)}`,
-          origin: "field",
-        });
-      }
-    } else {
-      await giveFieldReward({
-        wallet: o.wallet,
-        account: o.account,
-        reward: cfg.reward,
-        units: 1,
-        ref: `field-leave:${o.mapId}:${o.q}:${o.r}:${o.account}:${nanoid(10)}`,
-        nonce: nanoid(12),
-      });
-    }
-    // Обнуляем accrued только если выдача не бросила: иначе игрок получит
-    // подарок, а хвост потом ещё раз догонится.
-    await mcpExec(
-      `UPDATE yuplink.raid_field_worker SET accrued=0
-        WHERE map_id=${sqlStr(o.mapId)} AND q=${o.q} AND r=${o.r}
-          AND account_id=${sqlStr(o.account)};`,
-    ).catch(() => {});
-  } catch (e) {
-    console.warn("[field-leave] выдача дроби не удалась:", e);
-  }
-}
-
 /**
  * Снять героя с грядки. removed=false — снимать было некого (сняли раньше:
  * рядом, вторым нажатием или сменой героя). Бросает, если сорвался сеттл или
  * сам оператор снятия — тогда исход надо уточнить по ключу (leftByKey).
  */
-export async function leaveFieldWork(o: Leave): Promise<{ removed: boolean; dust: number }> {
+export async function leaveFieldWork(o: Leave): Promise<{ removed: boolean }> {
   // Settle обновит accrued активному игроку до момента снятия. Сорвался — не
   // снимаем: снятый потерял бы накопленное с прошлого сеттла (ушло бы соседям).
   // Прежний raid_field_leave тоже не снимал без сеттла — они шли одной транзакцией.
   await mcpExec(`SELECT yuplink.raid_field_settle(${sqlStr(o.mapId)}, ${o.q}, ${o.r});`);
   const accrued = await casLeave(o, o.key ?? `near:${nanoid(12)}`);
-  if (accrued === null) return { removed: false, dust: 0 };
-  // Целые уже раздал settleFieldPayout (окно поля, склад) — здесь остаётся
-  // только дробь. Округляем её вверх (даём одну единицу), если она есть.
-  const dust = o.cfg && accrued > 0 && accrued < 1 ? 1 : 0;
-  if (dust > 0 && o.cfg) await giveDust(o, o.cfg);
-  return { removed: true, dust };
+  // Целые раздал settleFieldPayout (окно поля, склад); дробь остаётся в строке.
+  return { removed: accrued !== null };
 }

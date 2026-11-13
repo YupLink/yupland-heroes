@@ -1,7 +1,7 @@
 // Карточка фишки в Казарме замка (дизайн Ангелины, 07.10.2026; только админы).
 // Действия те же, что у карточки игроков (ChipDetailModal): улучшение и герой;
-// плюс «Продать» — выставление на рынок. Вывод фишки в NFT убран словом
-// владельца 17.10.2026.
+// плюс «Продать» — выставление на рынок за золото (снова с 21.10.2026). Вывод
+// фишки в NFT убран словом владельца 17.10.2026.
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useT } from "@/lib/i18n";
@@ -13,6 +13,9 @@ import { getSession } from "@/server/api/user-auth";
 import { convertRuleForChipLevel } from "@/lib/heroLevels";
 import { levelKey } from "@/components/chips/collectionsHelpers";
 import { SingleChipCraftModal } from "@/components/chips/SingleChipCraftModal";
+import { useCraftGoldPrice } from "@/components/chips/useCraftGoldPrice";
+import { goldAtMultiplier } from "@/lib/craftGold";
+import { useResources } from "@/lib/hooks/useResources";
 import { chipBusyView } from "@/components/chips/chipBusy";
 import { CastleConvertToHeroModal } from "@/components/castle-live/CastleConvertToHeroModal";
 import { MarketCreateListing } from "@/components/chips/castle-market/MarketCreateListing";
@@ -21,16 +24,22 @@ import { BarracksChipDetailView } from "./BarracksChipDetailView";
 type Template = { id: string; templateNo: number; name: string; imageUrl: string; collectionId: string; collectionName: string };
 type Chip = { id: string; level: number; obtainedAt: string; serialNo: number | null; restUntil?: string | null };
 
-export function BarracksChipDetailModal({ chipId, template, chips, stunUntil, upgradeState, onClose }: {
+export function BarracksChipDetailModal({ chipId, template, chips, stunUntil, upgradeStates, onClose }: {
   chipId: string;
   template: Template;
   chips: Chip[];
   stunUntil?: string | null;
-  upgradeState?: ChipUpgradeState;
+  upgradeStates?: Record<string, ChipUpgradeState>;
   onClose: () => void;
 }) {
   const t = useT();
-  const chip = chips.find((c) => c.id === chipId);
+  const [confirmedChip, setConfirmedChip] = useState<Chip | null>(null);
+  const activeChipId = confirmedChip?.id ?? chipId;
+  const loadedChip = chips.find((c) => c.id === activeChipId);
+  // Craft creates a new inventory row. Keep its confirmed result visible until the query refreshes.
+  const chip = loadedChip && confirmedChip && loadedChip.level < confirmedChip.level
+    ? confirmedChip
+    : loadedChip ?? confirmedChip;
   const [craftOpen, setCraftOpen] = useState(false);
   const [heroOpen, setHeroOpen] = useState(false);
   const [sellOpen, setSellOpen] = useState(false);
@@ -66,11 +75,14 @@ export function BarracksChipDetailModal({ chipId, template, chips, stunUntil, up
     const id = setInterval(() => setNowTick(Date.now()), 15000);
     return () => clearInterval(id);
   }, []);
-  const busy = chipBusyView({ restUntil: chip?.restUntil, stunUntil }, nowTick, t);
+  const busy = chipBusyView({ restUntil: chip?.restUntil, stunUntil: confirmedChip ? null : stunUntil }, nowTick, t);
   const resting = busy?.kind === "rest";
   const collectionsQ = useQuery({ queryKey: ["chip-collections-public"], queryFn: () => listChipCollectionsPublic(), staleTime: 300_000 });
   const bonusQuery = useQuery({ queryKey: ["tirage-bonus-enabled"], queryFn: () => getTirageBonusEnabled(), staleTime: 60_000 });
   const collection = collectionsQ.data?.find((c) => c.id === template.collectionId);
+  // Улучшение — за золото по текущему курсу: стандарт × множитель с сервера.
+  const goldMult = useCraftGoldPrice().data?.multiplier ?? null;
+  const goldNow = useResources().data?.gold;
   if (!chip) return null;
   const isMax = chip.level >= 5;
   const rule = CRAFT_RULES[levelKey(chip.level)];
@@ -99,12 +111,14 @@ export function BarracksChipDetailModal({ chipId, template, chips, stunUntil, up
             resting={resting}
             restLeft={busy?.left ?? ""}
             isMax={isMax}
-            upgradeCost={rule?.costTickets ?? null}
-            upgradeState={upgradeState}
+            upgradeCost={rule && goldMult != null ? goldAtMultiplier(rule.costGold, goldMult) : null}
+            goldMult={goldMult}
+            haveGold={typeof goldNow === "number" ? goldNow : null}
+            upgradeState={upgradeStates?.[chip.id]}
             heroLikes={canHero ? heroRule?.likes ?? null : null}
-            sellDisabled={Boolean(busy)}
             onCraft={() => setCraftOpen(true)}
             onHero={() => setHeroOpen(true)}
+            sellDisabled={Boolean(busy)}
             onSell={() => setSellOpen(true)}
             onClose={onClose}
           />
@@ -113,7 +127,7 @@ export function BarracksChipDetailModal({ chipId, template, chips, stunUntil, up
       {/* Карточка фишки в замке стоит на слое 110 (barracks.css), окна действий —
           на 50: без этой обёртки «Улучшить» открывало окно под карточкой. */}
       <div className="barracks-chip-nested">
-      {craftOpen && <SingleChipCraftModal chipId={chip.id} chipLevel={chip.level} template={template} onClose={() => setCraftOpen(false)} onCrafted={onClose} />}
+      {craftOpen && <SingleChipCraftModal chipId={chip.id} chipLevel={chip.level} template={template} onClose={() => setCraftOpen(false)} onCrafted={(newChipId, newLevel) => { setConfirmedChip({ ...chip, id: newChipId, level: newLevel }); setCraftOpen(false); }} />}
       {heroOpen && <CastleConvertToHeroModal chipId={chip.id} chipLevel={chip.level} chipName={template.name} chipImageUrl={template.imageUrl} onClose={() => setHeroOpen(false)} onResultClose={onClose} />}
       {sellOpen && <MarketCreateListing initialChipId={chip.id} onClose={() => setSellOpen(false)} onListed={onClose} />}
       </div>

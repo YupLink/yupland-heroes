@@ -22,6 +22,8 @@ import { accountOf } from "./user-shared";
 import { heroPowerEnabled, invalidateHeroPower } from "./beta-raid/hero-power";
 import { loadSelectedHero, loadOwnedHero, type LoadedHero } from "./beta-raid/hero-load";
 import { preferFreeCopies } from "./heroes-gear-copies";
+import { artBrokenOn } from "./art-repair/art-repair-gate";
+import { artLocked } from "@/lib/hero/artBroken";
 import {
   emptyGear,
   gearView,
@@ -55,19 +57,26 @@ export async function loadMyHeroGear(wallet: string): Promise<HeroGearView> {
   if (!(await heroPowerEnabled(wallet))) return emptyGear();
   const hero = await loadSelectedHero(wallet).catch(() => null);
   if (!hero) return emptyGear();
-  // Инвентарь тянем ВСЕГДА вместе с героем: список «что можно надеть» с
-  // разбором под этого героя считает сервер, у клиента для этого нет ни
-  // расы героя, ни таблицы статов.
+  return gearFor(wallet, hero);
+}
+
+/**
+ * Вид снаряжения героя. Инвентарь тянем ВСЕГДА вместе с героем: список «что
+ * можно надеть» с разбором под этого героя считает сервер, у клиента нет ни
+ * расы героя, ни таблицы статов. Временные бусты — тем же рейсом: карточка
+ * обязана показывать те же числа, с которыми он идёт в бой. Флаг поломки
+ * (§8.63 п.3): сломанное при запущенной механике в «лучшее» не кандидат.
+ */
+async function gearFor(wallet: string, hero: LoadedHero): Promise<HeroGearView> {
   const { loadWeakenFor } = await import("./beta-raid/hero-weaken");
-  // Временные бусты — тем же рейсом: карточка героя обязана показывать те же
-  // числа, с которыми он идёт в бой.
   const { loadBuffsFor } = await import("./beta-raid/hero-buff");
-  const [artifacts, weaken, buffs] = await Promise.all([
+  const [artifacts, weaken, buffs, brokenOn] = await Promise.all([
     loadOwnedArtifacts(wallet),
     loadWeakenFor(wallet),
     loadBuffsFor(wallet),
+    artBrokenOn(wallet),
   ]);
-  return gearView(hero, artifacts, weaken, buffs);
+  return gearView(hero, artifacts, weaken, buffs, brokenOn);
 }
 
 export const getMyHeroGear = createServerFn({ method: "GET" }).handler(
@@ -80,15 +89,7 @@ export const getOwnedHeroGear = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<HeroGearView> => {
     const wallet = requireWallet();
     if (!(await heroPowerEnabled(wallet))) throw new Error("Hero gear unavailable");
-    const hero = await loadOwnedHero(wallet, data.heroId);
-    const { loadWeakenFor } = await import("./beta-raid/hero-weaken");
-    const { loadBuffsFor } = await import("./beta-raid/hero-buff");
-    const [all, weaken, buffs] = await Promise.all([
-      loadOwnedArtifacts(wallet),
-      loadWeakenFor(wallet),
-      loadBuffsFor(wallet),
-    ]);
-    return gearView(hero, all, weaken, buffs);
+    return gearFor(wallet, await loadOwnedHero(wallet, data.heroId));
   });
 
 /**
@@ -186,6 +187,8 @@ export const equipArtifact = createServerFn({ method: "POST" })
 
     const art = await ownedArtifact(wallet, data.itemId);
     if (!art) throw new Error("Это не твой артефакт");
+    // Сломанный не надевается — сначала в кузницу (§8.63 п.3; механика за флагом).
+    if (artLocked(art.wear, await artBrokenOn(wallet))) throw new Error("artbroken.locked");
     const slot = (art.slot ?? "").trim();
     // Ключ, а не готовая фраза: серверный текст доезжает до тоста как есть, и
     // англоязычный игрок читал русское предложение. Имя предмета через ключ не

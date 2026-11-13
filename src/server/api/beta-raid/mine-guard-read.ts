@@ -18,6 +18,8 @@ export type GuardRow = {
   abilities: unknown;
   interaction_cost: number | string;
   killed_at: string | null;
+  /** Когда поставлен — ключ боя для износа артефактов (art-wear-hit). */
+  placed_at?: string | null;
 };
 
 /** Публичный вид охранника для окна шахты. */
@@ -56,7 +58,7 @@ export const abilityView = (a: AbilityCfg): MineGuardView["abilities"][number] =
 export async function loadGuardRow(mapId: string, q: number, r: number): Promise<GuardRow | null> {
   const rows = (await mcpExec(
     `SELECT boss_template_id, owner_account, name, image, background, max_hp, current_hp,
-            damage, abilities, interaction_cost, killed_at
+            damage, abilities, interaction_cost, killed_at, placed_at
        FROM yuplink.raid_mine_guard
       WHERE map_id=${sqlStr(mapId)} AND q=${q} AND r=${r} LIMIT 1;`,
     { wrapJson: true },

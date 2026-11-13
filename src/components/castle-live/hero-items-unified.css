@@ -15,6 +15,7 @@
 .hero-items-cell b{position:absolute;right:4px;bottom:4px;border-radius:5px;background:#070605d9;padding:1px 3px;font-size:11px}
 .hero-items-main-tool{position:absolute;right:4px;top:4px;border-radius:4px;background:#5c3d13;color:#ffe1a0;padding:1px 3px;font-size:9px;line-height:1.15}
 .hero-items-durability{position:absolute;left:4px;bottom:4px;color:#cfc3ae;font-size:10px}
+.hero-items-cell .hero-items-timer{position:absolute;right:4px;top:4px;border-radius:5px;background:#070605d9;padding:1px 3px;font-size:11px;pointer-events:none}
 .hero-items-grid:not(.is-backpack) .hero-items-cell:not(.is-empty) img{position:absolute;top:10px;width:58px;height:58px}
 .hero-items-grid:not(.is-backpack) .hero-items-cell-name{position:absolute;right:3px;bottom:4px;left:3px;max-width:none;text-align:center}
 .hero-items-grid:not(.is-backpack) .hero-items-cell b{top:4px;bottom:auto}

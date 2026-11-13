@@ -5,6 +5,7 @@ import type { MarketPriceResource } from "@/lib/marketItem";
 import { artAnyRarity } from "./artAnyIcon";
 import { numText } from "./num";
 import { starsForDarai } from "@/lib/starsForDarai";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 
 type Translate = (key: string, params?: Record<string, string | number>) => string;
 
@@ -27,6 +28,9 @@ export function resPriceText(
   // Звездочнику без DARAI — в звёздах (lib/starsForDarai.ts).
   const stars = resource === "token" && token === "Darai" ? starsForDarai(amount) : null;
   if (stars != null) return `${numText(stars)} ★`;
+  // То, что игрок отдаёт «в билетах», берётся золотом ×500 (§8.61).
+  if (resource === "tickets")
+    return `${numText(goldForTicketPrice(amount))} ${t("market.res.gold")}`;
   const anyArt = resource === "art" ? artAnyRarity(token) : null;
   // У ИМЕНОВАННОГО предмета (конкретный пак/герой/арт/босс/кастом) в token
   // лежит id шаблона — та же утечка, только у обычных позиций: игрок читал

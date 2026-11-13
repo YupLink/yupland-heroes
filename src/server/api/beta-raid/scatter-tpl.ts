@@ -5,8 +5,10 @@
 // ни одного.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr, parseRewardConfig, type RewardConfig } from "../raid-shared";
+import { droppable, notMount } from "../craft/crafted-sql";
 import { tplIsCoin } from "./pile-kind";
 import type { ScatterFund } from "@/lib/raid/scatterPlan";
+import { SHAMAN_TEMPLATE_ID } from "@/lib/shamanHut";
 
 /** Шаблон, из которого делается заготовка объекта. */
 export type Tpl = {
@@ -46,13 +48,14 @@ function toTpl(id: string, land: string | null, level: number, raw: unknown): Tp
   return { id, land: land || null, level, split: splitOf(raw, cfg.split), cfg };
 }
 
-/** Боссы нужного уровня. */
+/** Боссы нужного уровня. Шаман — житель хижины замка, не дикий босс: не раздаём. */
 export async function loadBossTpl(min: number, max: number): Promise<Tpl[]> {
   const rows = (await mcpExec(
     `SELECT id, land, COALESCE(level, 1) AS level, reward_tiers
        FROM yuplink.raid_boss_template
       WHERE COALESCE(level, 1)
             BETWEEN ${Math.floor(Math.min(min, max))} AND ${Math.floor(Math.max(min, max))}
+        AND id <> ${sqlStr(SHAMAN_TEMPLATE_ID)}
       ORDER BY id;`,
     { wrapJson: true },
   )) as Array<{ id: string; land: string | null; level: number; reward_tiers: unknown }>;
@@ -108,7 +111,7 @@ export async function loadArtTpl(rarities: string[], ids: string[]): Promise<Tpl
         : "";
   const rows = (await mcpExec(
     `SELECT id, land FROM yuplink.mystic_item_template
-      WHERE kind = 'artifact' AND active = true ${filter}
+      WHERE kind = 'artifact' AND active = true AND ${droppable()} AND ${notMount()} ${filter}
       ORDER BY id;`,
     { wrapJson: true },
   )) as Array<{ id: string; land: string | null }>;

@@ -18,11 +18,13 @@ import { putPick, takeOwnPick, takeSharedPick } from "./warehousePick";
 import { useWarehouseMoves } from "./useWarehouseMoves";
 import type { DepositScope } from "@/lib/warehouseCells";
 import { mapWarehouseApi, type WarehouseApi } from "./warehouseApi";
+import { UpgradeOffer } from "./upgrade/UpgradeOffer";
 
 /** Склад на клетке карты. */
 export function WarehouseAction({ q, r }: { q: number; r: number }) {
   const api = useMemo(() => mapWarehouseApi(q, r), [q, r]);
-  return <WarehouseView api={api} />;
+  // +1 личная ячейка за алмаз, один раз (lib/accountUpgrade) — только у складов карты.
+  return <WarehouseView api={api} footer={<UpgradeOffer kind="warehouse" />} />;
 }
 
 /** Окно склада: полки и рюкзак — для склада на карте и склада замка. */

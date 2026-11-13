@@ -1,0 +1,123 @@
+/* Telegram во весь экран — телефон и планшет (iOS/Android): класс tg-fs ставит
+   lib/telegram/mobileFullscreen.ts. Сверху — системная полоса и плавающие кнопки Telegram
+   («Закрыть», «⋯»): отступ = их сумма (переменные --tg-* выставляет сам telegram-web-app.js).
+   Без класса --app-top не задан, и везде действует прежний env(safe-area-inset-top): ПК,
+   браузер и старый Telegram — как были. Фоны и карта идут под полосу (в этом смысл полного
+   экрана), ниже неё опускаем только кнопки, шапки и текст. */
+html.tg-fs {
+  --tg-fs-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px));
+  --app-top: var(--tg-fs-top);
+}
+
+/* Окно замка целиком опускается под полосу Telegram — все его шапки и кнопки «← Замок»
+   разом; внутри окна отступ уже не нужен. Полоса над окном — тёмная, как фон окон. */
+html.tg-fs .castle-window {
+  top: var(--tg-fs-top);
+  --app-top: 0px;
+  box-shadow: 0 calc(-1 * var(--tg-fs-top)) 0 0 #0b0f14;
+}
+/* Полноэкранные (fixed) части окон считаются от экрана, а не от окна — опускаем и их. */
+html.tg-fs .castle-window :is(.warehouse-release, .warehouse-map-view, .trade-market) {
+  top: var(--tg-fs-top);
+}
+/* Рынок растягивал окно на 100dvh: в полном экране низ (корзина) уезжал за экран. */
+html.tg-fs section.castle-window:has(.market-approved) { height: calc(100dvh - var(--tg-fs-top)); min-height: 0; }
+html.tg-fs .castle-window :is(.market-heroes-visual, .market-heroes-visual__treasury) { height: calc(100dvh - var(--tg-fs-top)); }
+/* Банк и аукцион — fixed на весь экран со своей шапкой «‹ Замок»: опускаем окно целиком. */
+html.tg-fs .auction-window {
+  top: var(--tg-fs-top);
+  --app-top: 0px;
+  box-shadow: 0 calc(-1 * var(--tg-fs-top)) 0 0 #081321;
+}
+
+/* Прижатое к верху фиксированными px вне окон замка — сдвигаем на ту же высоту. */
+@media (min-width: 1024px) {
+  html.tg-fs .castle-desktop-toolbar { top: calc(16px + var(--app-top)); }
+}
+html.tg-fs .raid-hero-group { top: calc(8px + var(--app-top)); }
+html.tg-fs .raid-right-menu { top: calc(96px + var(--app-top)); }
+html.tg-fs .raid-hero-group ~ .raid-right-menu { top: calc(74px + var(--app-top)); }
+html.tg-fs .raid-map-nav__camera { top: calc(96px + var(--app-top)); }
+html.tg-fs .raid-world-utilities { top: calc(148px + var(--app-top)); }
+html.tg-fs .raid-admin-tools { top: calc(8px + var(--app-top)); }
+html.tg-fs .tree-placement-bar { top: calc(8px + var(--app-top)); }
+html.tg-fs .island-quest { top: calc(76px + var(--app-top)); max-height: calc(100dvh - 190px - var(--app-top)); }
+html.tg-fs .island-quest[data-guiding="true"] { max-height: calc(100dvh - 224px - var(--app-top)); }
+html.tg-fs .island-guide-tab { top: calc(100px + var(--app-top)); }
+/* Погода рейда: у игрока — вровень с полосой героя, у админа — под рядом его кнопок. */
+html.tg-fs .raid-weather { top: calc(8px + var(--app-top)); }
+html.tg-fs .raid-weather[data-admin=true] { top: calc(96px + var(--app-top)); }
+html.tg-fs .raid-hero-group ~ .raid-weather[data-admin=true] { top: calc(74px + var(--app-top)); }
+html.tg-fs .raid-weather__details { max-height: calc(100dvh - 138px - var(--app-top)); }
+html.tg-fs .casino-ui .map { top: calc(1.5% + var(--app-top)); }
+html.tg-fs .slot-music-toggle:not([data-scene="true"]) { top: calc(1.5% + var(--app-top)); }
+html.tg-fs .casino-ui .scene.dig .slot-music-toggle { top: calc(1.7% + var(--app-top)); }
+html.tg-fs .casino-ui dialog .slot-music-toggle { top: calc(12px + var(--tg-fs-top)); }
+html.tg-fs .casino-ui .rules-frame { padding-top: calc(clamp(68px, 12cqw, 110px) + var(--tg-fs-top)); }
+
+/* Тосты над HUD замка/рейда стояли под его нижним краем — HUD опустился, опускаем и их. */
+html.tg-fs body:has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: calc(112px + var(--tg-fs-top)) !important; }
+html.tg-fs body:has(.raid-map-nav) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: calc(76px + var(--tg-fs-top)) !important; }
+html.tg-fs body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: calc(112px + var(--tg-fs-top)) !important; }
+@media (max-width: 600px) {
+  html.tg-fs body:has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"],
+  html.tg-fs body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: calc(88px + var(--tg-fs-top)) !important; }
+}
+
+/* ── Окна поверх экрана ──────────────────────────────────────────────────────────────
+   Высоту они считают от всего экрана (100dvh − поле), а в полном экране верх экрана
+   занят кнопками Telegram: шапки и крестики высоких окон вставали под «Закрыть» и «⋯».
+   Окно по центру — центр ниже на полполосы и высота без полосы; шторка снизу — только
+   высота; окно на весь экран с полями — верхнее поле больше на полосу. */
+html.tg-fs .ui-dialog { top: calc(50% + var(--tg-fs-top) / 2); max-height: calc(100dvh - 24px - var(--tg-fs-top)); }
+html.tg-fs [data-tavern-item] { max-height: calc(100dvh - 32px - var(--tg-fs-top)); }
+html.tg-fs [data-tavern-dialog].artifact-compare-sheet { max-height: min(92dvh, calc(100dvh - 8px - var(--tg-fs-top))); }
+html.tg-fs body [data-tavern-dialog]:is(.market-hero-details, .hero-market-sale-dialog) { max-height: min(90dvh, calc(100dvh - 16px - var(--tg-fs-top))) !important; }
+html.tg-fs body [data-tavern-convert] { margin-top: var(--tg-fs-top); max-height: calc(100dvh - 24px - var(--tg-fs-top)); }
+/* Шторки Tailwind на телефоне (max-h-[90dvh] и т.п.) — верх ниже кнопок Telegram. */
+@media (max-width: 639px) {
+  html.tg-fs :is(.max-h-\[90dvh\], .max-h-\[90vh\]) { max-height: min(90dvh, calc(100dvh - 8px - var(--tg-fs-top))); }
+  html.tg-fs :is(.max-h-\[92dvh\], .max-h-\[92vh\]) { max-height: min(92dvh, calc(100dvh - 8px - var(--tg-fs-top))); }
+  html.tg-fs :is(.max-h-\[calc\(100dvh-80px\)\], .max-h-\[calc\(100vh-80px\)\]) { max-height: calc(100dvh - max(80px, 8px + var(--tg-fs-top))); }
+}
+html.tg-fs .mb-reveal-root { padding-top: calc(16px + var(--tg-fs-top)); }
+html.tg-fs .mb-reveal-root .max-h-\[calc\(100dvh-2rem\)\] { max-height: calc(100dvh - 2rem - var(--tg-fs-top)); }
+
+/* Окна «Добыча» и «Подарки» по центру (замок). */
+html.tg-fs [data-hud-modal-centered] { padding-top: calc(8px + var(--tg-fs-top)) !important; }
+html.tg-fs [data-hud-modal-centered] [data-hud-modal-panel] {
+  max-height: calc(100dvh - 24px - var(--tg-fs-top) - env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Метеостанция и хижина шаманов. */
+html.tg-fs :is(.weather-station, .weather-station__dialog-backdrop) { padding-top: calc(12px + var(--tg-fs-top)); }
+html.tg-fs .weather-station__shell { max-height: calc(100dvh - 24px - var(--tg-fs-top)); }
+html.tg-fs .weather-station__shaman-dialog { top: var(--tg-fs-top); max-height: calc(100dvh - 24px - var(--tg-fs-top)); }
+html.tg-fs .shaman-hut-live { padding-top: calc(18px + var(--tg-fs-top)); }
+html.tg-fs .shaman-hut-live__window { height: min(calc(100dvh - 36px - var(--tg-fs-top)), 860px); }
+@media (max-width: 420px) {
+  html.tg-fs .shaman-hut-live { padding-top: var(--tg-fs-top); }
+  html.tg-fs .shaman-hut-live__window { height: calc(100dvh - var(--tg-fs-top)); }
+}
+
+/* Казарма и рынок: улучшение фишки, карточка лота, карточка фишки, паки. */
+html.tg-fs .chip-upgrade-overlay { padding-top: calc(12px + var(--tg-fs-top)); }
+html.tg-fs .chip-upgrade { max-height: calc(100dvh - 24px - var(--tg-fs-top)); }
+html.tg-fs .market-detail { max-height: calc(100dvh - 12px - var(--tg-fs-top)); }
+html.tg-fs .barracks-chip-detail > .barracks-main-chip-modal > div { max-height: calc(100dvh - 12px - var(--tg-fs-top)); }
+html.tg-fs .barracks-chip-detail > .barracks-main-chip-modal > div.barracks-detail-panel { max-height: calc(100dvh - 24px - var(--tg-fs-top)); }
+@media (min-width: 640px) {
+  html.tg-fs .market-detail,
+  html.tg-fs .barracks-chip-detail > .barracks-main-chip-modal > div { max-height: min(680px, calc(100dvh - 32px - var(--tg-fs-top))); }
+}
+html.tg-fs :is(.pack-detail-sheet, .pack-reveal-sheet) { max-height: min(92dvh, 760px, calc(100dvh - 8px - var(--tg-fs-top))); }
+
+/* Ратуша (наборы декора, аукцион на маленьком экране), задания, рудники. */
+html.tg-fs .thg-decor-modal-overlay { padding-top: calc(16px + var(--tg-fs-top)); }
+html.tg-fs .thg-decor-modal { max-height: calc(100dvh - 32px - var(--tg-fs-top)); }
+html.tg-fs .thg-auction-sheet { max-height: min(96dvh, calc(100dvh - 8px - var(--tg-fs-top))); }
+html.tg-fs .quest-review--detail { max-height: calc(100dvh - 20px - var(--tg-fs-top)); }
+@media (max-width: 560px) {
+  html.tg-fs .quest-review--detail { max-height: calc(100dvh - 8px - var(--tg-fs-top)); }
+}
+html.tg-fs .mb-dialog { top: var(--tg-fs-top); max-height: calc(100dvh - 36px - var(--tg-fs-top)); }

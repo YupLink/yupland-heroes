@@ -8,7 +8,7 @@ describe("isWalletLinked", () => {
     expect(isWalletLinked("")).toBe(false);
   });
   it("настоящий кошелёк — есть", () => {
-    expect(isWalletLinked("owner.example.near")).toBe(true);
+    expect(isWalletLinked("owner.near")).toBe(true);
     expect(isWalletLinked("i123.tg")).toBe(true);
     expect(isWalletLinked("hot.tg")).toBe(true);
   });

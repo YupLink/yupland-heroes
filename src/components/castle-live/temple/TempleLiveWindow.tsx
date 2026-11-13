@@ -14,6 +14,8 @@ import {
 } from "@/lib/castleTemple";
 import { RES_ICON, RES_LABEL, StatGlyph, TEMPLE_KEY, statName } from "./templeUi";
 import { TempleActivePrayer, type TemplePrayerCard } from "./TempleActivePrayer";
+import { TempleNotOwned } from "./TempleNotOwned";
+import { useEntryRules } from "@/hooks/useEntryRules";
 import "./temple-live.css";
 
 const clock = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
@@ -38,6 +40,7 @@ export function TempleLiveWindow({ ru, onBack }: { ru: boolean; onBack: () => vo
   const qc = useQueryClient();
   const q = useQuery({ queryKey: TEMPLE_KEY, queryFn: () => getCastleTemple(), staleTime: 15_000 });
   const effects = useQuery({ queryKey: ["beta-raid-state"], queryFn: () => getBetaRaidState(), enabled: Boolean(q.data?.prayAt), staleTime: 0 });
+  const stars = useEntryRules().stars; // §8.127: продление за звёзды — только с Telegram
   const [now, setNow] = useState(() => Date.now());
   const [picked, setPicked] = useState<TempleStat[]>([]);
   const [extend, setExtend] = useState(false);
@@ -107,6 +110,8 @@ export function TempleLiveWindow({ ru, onBack }: { ru: boolean; onBack: () => vo
 
   if (q.isPending) return <p role="status" className="p-8 text-center">{ru ? "Загрузка…" : "Loading…"}</p>;
   if (q.isError || !t) return <div className="p-8 text-center"><p role="alert">{ru ? "Не удалось открыть храм." : "Unable to open the temple."}</p><button type="button" className="mt-3 min-h-11 rounded-xl border px-4" onClick={() => void q.refetch()}>{ru ? "Повторить" : "Retry"}</button></div>;
+  // Храм покупается в Ратуше (§8.64): нет храма — карточка покупки.
+  if (!t.owned) return <TempleNotOwned ru={ru} onBack={onBack} />;
   const cost = t.cost;
   const need = cost ? RESOURCES.filter(resource => cost[resource] > 0) : [];
   const short = !!cost && need.some(resource => (t.resources[resource] ?? 0) < cost[resource]);
@@ -135,7 +140,7 @@ export function TempleLiveWindow({ ru, onBack }: { ru: boolean; onBack: () => vo
             </button>;
           })}</div>)}
         </div>
-        {picked.length >= 2 && wait === 0 && <button type="button" className={cn("temple-live-extend", extend && "is-selected")} aria-pressed={extend} onClick={() => setExtend(!extend)}><Clock3 size={17} aria-hidden="true" />+{EXTENDED_MINUTES - PRAYER_MINUTES} {ru ? "мин" : "min"} · {t.extendStars} ★</button>}
+        {stars && picked.length >= 2 && wait === 0 && <button type="button" className={cn("temple-live-extend", extend && "is-selected")} aria-pressed={extend} onClick={() => setExtend(!extend)}><Clock3 size={17} aria-hidden="true" />+{EXTENDED_MINUTES - PRAYER_MINUTES} {ru ? "мин" : "min"} · {t.extendStars} ★</button>}
         {picked.length > 0 && !confirming && wait === 0 && <div className="temple-live-result">{plan.bonuses.map(bonus => <span className="temple-live-result-stat" key={bonus.stat}><StatGlyph stat={bonus.stat} className="h-5 w-5" />{statName(bonus.stat, ru)} <b>+{bonus.value}</b></span>)}<span className="temple-live-result-time"><Clock3 size={19} aria-hidden="true" />{clock(plan.secondsEach)}</span></div>}
         {confirming ? <div className="temple-live-confirm" role="group" aria-label={ru ? "Подтверждение молитвы" : "Confirm prayer"}>
           <h3>{ru ? "Подтвердить молитву?" : "Confirm prayer?"}</h3>

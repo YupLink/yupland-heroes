@@ -1,3 +1,4 @@
+import { TradeOverlay } from "@/components/trade/TradeOverlay";
 import { useCallback, useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -18,6 +19,9 @@ import { RaidWithBetaToggle } from "@/components/beta-raid/RaidWithBetaToggle";
 import { BetaRaidScreen } from "@/components/beta-raid/BetaRaidScreen";
 import { ChipsTab } from "@/components/chips/ChipsTab";
 import { AuctionOverlay } from "@/components/chips/auctions/AuctionOverlay";
+import { BankOverlay } from "@/components/castle-live/bank/BankOverlay";
+import { PawnDropDialog } from "@/components/beta-raid/market/PawnDropDialog";
+import { RecipeResultDialog } from "@/components/beta-raid/market/RecipeResultDialog";
 import { ChipsHeader } from "./ChipsHeader";
 import { StatsBar } from "./StatsBar";
 import { ChipsBottomNav } from "./ChipsBottomNav";
@@ -25,6 +29,7 @@ import { GuestEntry } from "@/components/auth/GuestEntry";
 import { NftInputReceipt } from "./NftInputReceipt";
 import { PlayerLetters } from "@/components/letters/PlayerLetters";
 
+// Маркет фишек снова открыт 21.10.2026 — за золото.
 const TAB_VALUES = ["home", "chips", "shop", "market", "pvp", "boss", "raid", "beta-raid"] as const;
 type Tab = (typeof TAB_VALUES)[number];
 const TAB_LS_KEY = "chips-active-tab";
@@ -178,7 +183,11 @@ export function ChipsPage() {
       )}
 
       {/* Окно аукциона поверх всего: открывается из HUD замка и плашки на карте. */}
-      <AuctionOverlay />
+      <AuctionOverlay /><TradeOverlay />
+      <BankOverlay />
+      {/* Что выпало при сдаче героя в ломбард — поверх закрывшейся лавки. */}
+      <PawnDropDialog />
+      <RecipeResultDialog />
 
       {giftPack && (tab === "raid" || tab === "beta-raid") && (
         <CastleProfileOverlay

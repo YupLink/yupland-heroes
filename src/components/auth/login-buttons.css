@@ -1,0 +1,68 @@
+/* Своя кнопка «Войти через Telegram» (lib/auth/tgOauth) — вид кнопки Telegram (крупная,
+   скругление 14). Селектор сильнее общих правил экранов входа (.game-load-state button). */
+button.tg-login-btn,
+.game-load-state button.tg-login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: auto;
+  min-width: 238px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 21px;
+  border: 0;
+  border-radius: 14px;
+  background: #54a9eb;
+  color: #fff;
+  font: 500 16px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+}
+button.tg-login-btn:hover {
+  background: #4a9ad8;
+}
+button.tg-login-btn[aria-busy="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+button.tg-login-btn svg {
+  width: 20px;
+  height: 20px;
+  margin-left: -4px;
+}
+
+/* Своя кнопка «Войти через Google» (GoogleOwnButton) — вид кнопки Google: белая «пилюля»
+   с рамкой, цветная «G» слева. Та же высота 40, что у Telegram. */
+button.google-own-btn,
+.game-load-state button.google-own-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 262px;
+  max-width: 100%;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 16px 0 44px;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  background: #fff;
+  color: #3c4043;
+  font: 500 14px/1 Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.25px;
+  cursor: pointer;
+}
+button.google-own-btn:hover {
+  background: #f8faff;
+  border-color: #d2e3fc;
+}
+button.google-own-btn[aria-busy="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+button.google-own-btn svg {
+  position: absolute;
+  left: 12px;
+  width: 18px;
+  height: 18px;
+}

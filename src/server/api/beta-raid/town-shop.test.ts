@@ -92,6 +92,21 @@ describe("лавка города", () => {
     ).toBeNull();
   });
 
+  it("голод на острове: ресурсы портала продаются, остальное — как в мире (06.11.2026)", () => {
+    const isle: CityShop = { ...shop(true), town: { mapId: "isle_t", q: 0, r: 0 } };
+    const wood = { kind: "resource", refId: "wood", giveToken: null } as const;
+    expect(cityLine(isle, { side: "buy", ...wood })).not.toBeNull();
+    expect(cityLine(isle, { side: "sell", ...wood })).toBeNull();
+    expect(
+      cityLine(isle, { side: "buy", kind: "custom", refId: "cst_bread", giveToken: null }),
+    ).toBeNull();
+    expect(
+      cityLine(isle, { side: "sell", kind: "custom", refId: "cst_bread", giveToken: null }),
+    ).not.toBeNull();
+    // Большой мир: голодный город дерево не продаёт.
+    expect(cityLine(shop(true), { side: "buy", ...wood })).toBeNull();
+  });
+
   it("витрина: цена в золоте по кривой, лишние позиции скрыты, остаток выше НЗ", () => {
     const items = cityShopView(
       [view({}), view({ id: "mkt_2", refId: "cst_milk" }), view({ id: "mkt_3", side: "sell" })],

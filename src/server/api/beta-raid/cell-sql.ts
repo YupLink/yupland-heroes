@@ -68,6 +68,12 @@ export const decorBlocksSql = (c = "c") => `(${c}.decoration_id IS NOT NULL
                 WHERE dk.id = ${c}.decoration_id
                   AND COALESCE(dk.meta->>'walkable', '') <> 'true'))`;
 
+/** Bridge water belongs to a transit channel; ships cannot park or spawn there. */
+export const bridgeCellSql = (c = "c") => `EXISTS (
+  SELECT 1 FROM yuplink.mystic_item_template bridge_decor
+   WHERE bridge_decor.id = ${c}.decoration_id
+     AND jsonb_typeof(bridge_decor.meta->'bridge') = 'object')`;
+
 /**
  * Клетка занята ЗДАНИЕМ: постройка на ней самой или клетка — часть большого
  * здания (блок клеток из режима бога, постройка стоит на одной клетке блока,

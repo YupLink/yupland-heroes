@@ -66,3 +66,54 @@ export function amountRangeText(min?: number, max?: number): string {
   const b = max ?? a;
   return a === b ? String(a) : `${a}-${b}`;
 }
+
+// ── Случайный приз (владелец, 04.11.2026): «любой арт по редкости, любого героя
+// по редкости, любой товар». Какой именно — решается при открытии бокса, один раз.
+
+/** Редкости артефакта и героя. У героя редкость — от звёзд (heroMeta.heroRarity). */
+export const ITEM_RARITIES = ["common", "rare", "epic", "legendary"] as const;
+export type ItemRarity = (typeof ITEM_RARITIES)[number];
+
+/** «Любой ___ артефакт / герой». */
+export const RARITY_RU: Record<ItemRarity, string> = {
+  common: "обычный",
+  rare: "редкий",
+  epic: "эпический",
+  legendary: "легендарный",
+};
+
+/** Звёзды героя каждой редкости — подсказка в конструкторе. */
+export const HERO_RARITY_STARS: Record<ItemRarity, string> = {
+  common: "1–2★",
+  rare: "3–3,5★",
+  epic: "4–4,5★",
+  legendary: "5★",
+};
+
+/** Редкость героя по звёздам — те же границы, что у heroMeta.heroRarity. */
+export function heroRarityOf(level: number | null | undefined): ItemRarity {
+  const lv = level ?? 0;
+  if (lv >= 5) return "legendary";
+  if (lv >= 4) return "epic";
+  if (lv >= 3) return "rare";
+  return "common";
+}
+
+type RandomTierLike = {
+  kind: MysticKind;
+  itemTemplateId?: string;
+  customId?: string;
+  artifactRarity?: ItemRarity;
+  heroRarity?: ItemRarity;
+  customAny?: boolean;
+};
+
+/** Название случайного приза («Любой эпический артефакт»); приз конкретный — null. */
+export function randomPrizeLabel(t: RandomTierLike): string | null {
+  if (t.kind === "artifact" && !t.itemTemplateId && t.artifactRarity)
+    return `Любой ${RARITY_RU[t.artifactRarity]} артефакт`;
+  if (t.kind === "hero" && !t.itemTemplateId && t.heroRarity)
+    return `Любой ${RARITY_RU[t.heroRarity]} герой (${HERO_RARITY_STARS[t.heroRarity]})`;
+  if (t.kind === "custom" && t.customAny && !t.customId) return "Любой товар";
+  return null;
+}

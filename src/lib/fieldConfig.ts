@@ -185,7 +185,9 @@ export function levelInputText(cfg: {
 
 /** Проходит ли герой по требованиям поля. */
 export function heroFitsField(cfg: FieldConfig, hero: { rarity: string; level: number }): boolean {
-  if (cfg.rarities.length > 0 && !cfg.rarities.includes(hero.rarity as FieldRarity)) return false;
+  // Уникальный — «лег+» (§8.91): на поле его пускают как легендарного.
+  const rarity = hero.rarity === "unique" ? "legendary" : hero.rarity;
+  if (cfg.rarities.length > 0 && !cfg.rarities.includes(rarity as FieldRarity)) return false;
   const lvl = Math.max(1, Math.floor(hero.level));
   if (cfg.levelMode === "from") return lvl >= cfg.levelFrom;
   if (cfg.levelMode === "to") return lvl <= cfg.levelTo;

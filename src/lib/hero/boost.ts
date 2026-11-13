@@ -23,6 +23,7 @@ import { parseRange } from "@/server/api/beta-raid/abilities";
 import { IMMUNE_KINDS, immuneText, isImmuneTarget, type ImmuneTarget } from "./boostImmune";
 import { oblivionText, parseOblivionEffect, rollOblivion } from "./boostOblivion";
 import { boostList, oblivionRollMode } from "./oblivionRule";
+import { secureRandom } from "@/lib/secureRandom";
 
 /** Что даёт эффект: боевой стат, небоевой (Торговля/Алхимия), иммунитет, забвение, сытость. */
 export type BoostStat = HeroStatKey | ExtraStatKey | "immune" | "oblivion" | "satiety";
@@ -137,7 +138,8 @@ export type BoostRoll = {
 export function rollBoostEffect(e: BoostEffect): BoostRoll {
   const [lo, hi] = parseRange(e.value);
   const [loM, hiM] = parseRange(e.minutes);
-  const roll = (a: number, b: number) => (b <= a ? a : a + Math.floor(Math.random() * (b - a + 1)));
+  const roll = (a: number, b: number) =>
+    b <= a ? a : a + Math.floor(secureRandom() * (b - a + 1));
   // Забвение: уровень 0 — без счёта; минут не задано — 0, заряды без срока.
   if (e.stat === "oblivion") return rollOblivion(e, roll);
   const minutes = Math.max(1, roll(loM, hiM) || DEFAULT_BOOST_MINUTES);

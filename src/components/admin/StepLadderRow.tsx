@@ -1,17 +1,25 @@
 // Лестница цен одной строкой: ступени «цена × раз в день» идут вбок, в конце
 // «+ шаг». Общая для энергопаков (строка на валюту) и «энергии за лайки».
+// scale — цена в поле = хранимая × scale (золото энергопака: в базе билеты, ×500).
+import type { ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import type { CurrencyStep } from "@/lib/energySteps";
 
 export function StepLadderRow({
   steps,
   onChange,
+  scale = 1,
+  priceLabel = "цена",
 }: {
   steps: CurrencyStep[];
   onChange: (next: CurrencyStep[]) => void;
+  scale?: number;
+  priceLabel?: ReactNode;
 }) {
   const patch = (j: number, p: Partial<CurrencyStep>) =>
     onChange(steps.map((x, k) => (k === j ? { ...x, ...p } : x)));
+  // Хвост деления (2.468 × 500 = 1234.0000000000002) в поле не показываем.
+  const shown = (amount: number) => (scale === 1 ? amount : Math.round(amount * scale * 1e4) / 1e4);
 
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -33,13 +41,15 @@ export function StepLadderRow({
               </button>
             )}
           </div>
-          <label className="mb-1 block text-[9px] uppercase text-muted-foreground">цена</label>
+          <label className="mb-1 flex items-center gap-1 text-[9px] uppercase text-muted-foreground">
+            {priceLabel}
+          </label>
           <input
             type="number"
             min={0}
             step="any"
-            value={st.amount}
-            onChange={(e) => patch(j, { amount: Number(e.target.value) || 0 })}
+            value={shown(st.amount)}
+            onChange={(e) => patch(j, { amount: (Number(e.target.value) || 0) / scale })}
             className="w-full rounded-md border border-border bg-background px-1.5 py-1 text-[11px] tabular-nums"
           />
           <label className="mb-1 mt-1 block text-[9px] uppercase text-muted-foreground">

@@ -2,12 +2,15 @@
 //
 // Вынесено из карточки: способов оплаты стало больше, и карточка перестала
 // помещаться в лимит файла. Здесь ровно одна мысль — те же валюты, но деньги
-// берутся из базы, а не подписью в кошельке. Тариф в $ (07.10.2026) — три
-// строки: звёзды, USDT и DARAI по курсу (lib/usdTariff.ts).
+// берутся из базы, а не подписью в кошельке. Тариф в $ (07.10.2026) — звёзды и
+// DARAI по курсу (lib/usdTariff.ts); USDT и прочие токены энергопак не берёт
+// (владелец, 20.10.2026, §8.61) — lib/energyPayAllowed.
 import { Wallet } from "lucide-react";
 import { AccountBalanceBadge } from "@/components/AccountBalanceBadge";
 import type { UsdPrices, UsdToken } from "@/lib/usdTariff";
 import { EnergyPayRow as PayRow } from "./EnergyPayRow";
+import { isEnergyPayAllowed } from "@/lib/energyPayAllowed";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
 type Offer = {
   key: string;
@@ -37,9 +40,13 @@ export function EnergyAccountRows({
   onBuy: (a: { symbol: string; payKind: "token" | "darai" }) => void;
   onBuyUsd: (a: { token: UsdToken; shown: number }) => void;
 }) {
+  // Звёзды — только аккаунту с настоящим Telegram (§8.127).
+  const stars = useEntryRules().stars;
   // Билеты и энергия сюда не попадают — они и так живут в базе.
   const rows = offers.filter(
-    (o) => (o.kind === "token" || o.kind === "darai") && o.price != null,
+    (o) =>
+      (o.kind === "darai" || (o.kind === "token" && isEnergyPayAllowed(o.symbol))) &&
+      o.price != null,
   );
   // Цена в $: вид usd — три строки; USDT-лесенка — только звёзды (сама USDT
   // — обычной строкой ниже, «если $ — от $»).
@@ -47,7 +54,9 @@ export function EnergyAccountRows({
     o.usd && (o.kind === "usd" || (o.kind === "token" && o.symbol === "USDT"))
       ? (o.kind === "usd" ? USD_ORDER : (["STARS"] as UsdToken[])).flatMap((token) => {
           const price = o.usd?.[token];
-          return price != null ? [{ key: `${o.key}:${token}`, token, price, step: o.price }] : [];
+          return price != null && isEnergyPayAllowed(token) && (stars || token !== "STARS")
+            ? [{ key: `${o.key}:${token}`, token, price, step: o.price }]
+            : [];
         })
       : [],
   );

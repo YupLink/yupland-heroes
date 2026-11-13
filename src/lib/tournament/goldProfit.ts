@@ -25,9 +25,12 @@
 //    купленное уходит первым. Улов удочкой и урожай грядки — своё добытое. Плата
 //    товаром за покупку в маркете («Хлеб» за золото + «Пшеницу») переносит
 //    цену своего купленного за золото в цену купленного (link, goldPayLink.ts);
-//  • продажа — сначала своё купленное за золото (по средней цене), потом без
-//    прибыли и чужое, потом своё добытое. Прибыль = выручка за своё
-//    купленное-за-золото и своё добытое минус цена купленного; меньше нуля — ноль.
+//  • продажа — сначала своё купленное за золото (по средней цене), потом
+//    добытое. Прибыль = выручка минус цена купленного; меньше нуля — ноль.
+// Запасы до старта — тоже в зачёт (владелец, 03.11.2026: «и что что запасы —
+// тоже нужно учитывать их — это же продажа»): купленное за золото до старта —
+// сверх своей цены, пойманное и прочее — целиком. Было (08.10): пришедшее до
+// старта прибыли не давало, и свежий улов тонул в старых запасах.
 import {
   addShare,
   fromPocket,
@@ -56,16 +59,12 @@ const round = (n: number): number => Math.round(n * 1e6) / 1e6;
 /**
  * Прибыль каждой продажи за золото с at в [since, till). rows — ВСЯ история
  * товара до till по всем игрокам и хранилищам (вложения бывают и до турнира).
- * start — старт турнира: пришедшее раньше — запасы, прибыли не даёт (по
- * умолчанию — since; подтяжка окнами передаёт настоящий старт, иначе нажитое
- * в турнире до текущего окна считалось бы запасами).
  */
 export function goldProfitFlow(
   rows: readonly FlowRow[],
   since: number,
   till: number,
   link: PayLink = {},
-  start: number = since,
 ): ProfitPoint[] {
   const sorted = byTime(rows);
   const owners = pickOwners(sorted);
@@ -83,34 +82,24 @@ export function goldProfitFlow(
     const who = r.account;
     const me = of(`acc:${who}`);
     const a = actOf(r, owners);
-    // Пришло до старта турнира — прибыли не даёт: считаем накопленное В
-    // турнире, а не распродажу старых запасов (владелец, 08.10.2026).
-    const old = r.at < start;
+    // Улов удочкой и урожай в личные ячейки ('gain') — своё добытое: на счёте
+    // оно неявное, всё сверх учтённого.
     if (a.k === "buy") {
       const paid = Math.max(0, Number(r.total) || 0) + (link.extra?.get(r.ref ?? "") ?? 0);
       // Подарок бокса и обмен — тоже прибыль: платили не золотом, вычитать
       // нечего, значит выручка целиком (владелец, 08.10.2026).
-      const got = r.cur === GOLD ? lot({ gold: qty, cost: paid }) : lot({ mined: qty });
-      addShare(me, who, old ? lot({ other: qty }) : got);
-    } else if (a.k === "gain") {
-      // Улов удочкой и урожай в личные ячейки — своё добытое (на счёте
-      // неявное); пришло до старта — запасы.
-      if (old) addShare(me, who, lot({ other: qty }));
+      addShare(me, who, r.cur === GOLD ? lot({ gold: qty, cost: paid }) : lot({ mined: qty }));
     } else if (a.k === "put") {
-      const fresh = old ? lot({ other: qty }) : lot({ mined: qty });
-      const parts = a.fresh ? [{ owner: who, lot: fresh }] : fromPocket(me, who, qty).parts;
+      const parts = a.fresh ? [{ owner: who, lot: lot({ mined: qty }) }] : fromPocket(me, who, qty).parts;
       for (const p of parts) addShare(of(a.store), p.owner, p.lot);
     } else if (a.k === "take") {
       const { parts, rest } = takeShares(of(a.store), qty, a.first ?? who, a.last ?? null);
       // Забранное — своё. Чужую цену не наследуем: подарок, добыча и чужое
       // идут целиком в прибыль, своё купленное остаётся со своей ценой.
       const mine = parts.map((p) =>
-        p.owner === who
-          ? p
-          : { owner: who, lot: lot({ [old ? "other" : "mined"]: sizeOf(p.lot) }) },
+        p.owner === who ? p : { owner: who, lot: lot({ mined: sizeOf(p.lot) }) },
       );
-      const tail = { owner: who, lot: lot({ [old ? "other" : "mined"]: rest }) };
-      toPocket(me, who, [...mine, tail]);
+      toPocket(me, who, [...mine, { owner: who, lot: lot({ mined: rest }) }]);
     } else if (a.k === "move") {
       const { parts, rest } = takeShares(of(a.from), qty, null);
       for (const p of [...parts, { owner: a.restOf, lot: lot({ mined: rest }) }])

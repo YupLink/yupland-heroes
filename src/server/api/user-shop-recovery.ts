@@ -7,6 +7,7 @@ import { getSisterWallets } from "./user-shared";
 import { invalidateTicketsCache } from "./user-tickets-shared";
 import { verifyFtTransfer } from "../near";
 import { applyDiscountCeil, fetchSubscriptionDiscount } from "./user-shop-subscription";
+import { refuseTicketPurchase } from "./tickets-shop-closed";
 
 const TOKEN_BURN_RECEIVER = "darai_gdrop.near";
 
@@ -29,6 +30,8 @@ export const adminClaimOrphanFtPurchase = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     requirePayoutsAdmin();
 
     const offer = await pg.ticketShopOffers.findFirst({
@@ -106,17 +109,6 @@ export const adminClaimOrphanFtPurchase = createServerFn({ method: "POST" })
       near_tx_hash: data.txHash,
       idempotency_key: idempotencyKey,
     });
-    // Баланс живёт в леджере; ref = ключ идемпотентности покупки,
-    // поэтому парные реализации в разных файлах не задвоят билеты.
-    {
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet: actualSender || data.senderWallet,
-        delta: totalTickets,
-        kind: "purchase",
-        ref: idempotencyKey,
-      });
-    }
     invalidateTicketsCache(allowedSenders);
     return {
       ok: true,
@@ -142,6 +134,8 @@ export const recoverMyTicketPurchase = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Кошелёк не подключён");
 
@@ -217,17 +211,6 @@ export const recoverMyTicketPurchase = createServerFn({ method: "POST" })
       near_tx_hash: data.txHash,
       idempotency_key: idempotencyKey,
     });
-    // Баланс живёт в леджере; ref = ключ идемпотентности покупки,
-    // поэтому парные реализации в разных файлах не задвоят билеты.
-    {
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet: actualSender || wallet,
-        delta: totalTickets,
-        kind: "purchase",
-        ref: idempotencyKey,
-      });
-    }
     invalidateTicketsCache(allowedSenders);
     return {
       ok: true,

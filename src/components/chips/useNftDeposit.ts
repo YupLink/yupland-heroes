@@ -4,6 +4,7 @@ import { humanError } from "@/lib/humanError";
 import { depositManyAsChip, depositManyAsPack, getNftInputInfo } from "@/server/api/chips-mint";
 import { MAX_NFT_BATCH, type DepositNft } from "./nft-input-shared";
 import { useCreditNotices } from "@/lib/hooks/useCreditNotices";
+import { armCreditWatch } from "@/lib/creditWaitBus";
 import {
   absorbChips,
   absorbFailures,
@@ -92,6 +93,8 @@ export function useNftDeposit(infoData: NftInputData | undefined) {
     // И отдельно — за новостями: обещали «в течение минуты», значит после
     // минуты игрок должен увидеть «NFT зачислена», а не гадать по инвентарю.
     timers.push(...NOTICE_STEPS_MS.map((ms) => setTimeout(() => void poll(), ms)));
+    // Окно закроют раньше — за зачислением сходит и глобальный сторож.
+    armCreditWatch();
     return () => timers.forEach(clearTimeout);
     // invalidateAll стабильна по смыслу (замыкает только qc); ключ эффекта —
     // момент ответа, чтобы новый ввод заводил новое расписание.

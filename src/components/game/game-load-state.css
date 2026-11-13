@@ -1,10 +1,10 @@
-@font-face{font-family:"Game Load Russo";src:url("../../assets/tavern/RussoOne.ttf") format("truetype");font-weight:400;font-display:swap}
-@font-face{font-family:"Game Load Golos";src:url("../../assets/tavern/GolosText.ttf") format("truetype");font-weight:400 900;font-display:swap}
+@font-face{font-family:"Game Load Russo";src:url("../../assets/tavern/RussoOne.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Game Load Golos";src:url("../../assets/tavern/GolosText.woff2") format("woff2");font-weight:400 900;font-display:swap}
 .game-load-state{display:grid;place-items:center;min-height:256px;padding:24px;background:#11151b;color:#f8edda;font-family:"Game Load Golos",sans-serif}
 .game-load-state--fullscreen{position:fixed;inset:0;z-index:40;min-height:100dvh;padding:0;overflow:hidden}
-.game-load-state__scene{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100vw;height:100dvh;overflow:hidden;background:#11151b url("../../assets/loading/yupik-scene.webp") center / 100% 100% no-repeat;box-shadow:0 12px 40px #000b}
-.game-load-state__runner{position:absolute;width:min(80vw,38dvh);height:auto;left:calc(50% - min(40vw,19dvh));bottom:22.5%;image-rendering:pixelated;filter:drop-shadow(0 7px 3px #160d0b88)}
-.game-load-state__runner--walking{display:none;will-change:transform;animation:game-load-walk-first 10s linear 0s 1 none,game-load-walk-loop 20s linear 10s infinite}
+.game-load-state__scene{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100vw;height:100vh;height:100dvh;overflow:hidden;background:#11151b url("../../assets/loading/yupik-scene.webp") center / 100% 100% no-repeat;box-shadow:0 12px 40px #000b}
+.game-load-state__runner{position:absolute;width:min(80vw,38vh);width:min(80vw,38dvh);height:auto;left:calc(50% - min(40vw,19vh));left:calc(50% - min(40vw,19dvh));bottom:22.5%;image-rendering:pixelated;filter:drop-shadow(0 7px 3px #160d0b88)}
+.game-load-state__runner--walking{display:none;will-change:transform;--walk:calc(38vw - 40%);animation:game-load-pace 5s linear infinite}
 .game-load-state__runner--still{display:block;animation:none}
 .game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--walking{display:block}
 .game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--still{display:none}
@@ -29,17 +29,22 @@
 .game-load-state button.game-load-state__retry{border-color:#f4ce74;background:linear-gradient(180deg,#f2cd77,#ca963d);color:#20170d}
 .game-load-state button:focus-visible{outline:2px solid #f4c45e;outline-offset:4px}
 @keyframes game-load-spin{to{transform:rotate(360deg)}}
-/* Путь — сдвигом (transform), а не left: left пересчитывал раскладку и заново
-   растрировал пиксельный спрайт на каждом кадре, и Юпик дёргался. Старт — left
-   (центр), % в translate — от ширины самого Юпика. Первый проход — от центра за
-   правый край, дальше круг из-за левого края за правый — одной цепочкой CSS,
-   без кода игры: на медленном канале код грузится десятки секунд, и Юпик
-   стоял. Путь круга вдвое длиннее — и время вдвое: шаг один. */
-@keyframes game-load-walk-first{from{transform:translateX(0)}to{transform:translateX(calc(50vw + 50%))}}
-@keyframes game-load-walk-loop{from{transform:translateX(calc(-50vw - 50%))}to{transform:translateX(calc(50vw + 50%))}}
+/* Юпик ходит только над шкалой загрузки, за край экрана не уходит (владелец, 22.10.2026):
+   от центра вправо до конца шкалы, разворот, влево до начала, разворот. Путь — сдвигом
+   (transform), а не left: left пересчитывал раскладку и заново растрировал пиксельный
+   спрайт, и Юпик дёргался. --walk — пол-пути от центра; % в translate — от ширины самого
+   Юпика, по бокам картинки 10 % пустоты. Рамка шкалы на картинке сцены: телефон — 12–88 %
+   ширины, ПК — 34–66 %. Отсюда --walk = край рамки − (половина Юпика − 10 % пустоты).
+   Чистый CSS, без кода игры: на медленном канале код грузится десятки секунд.
+   Размеры сцены и Юпика — с запасным vh: без dvh (Chromium < 108) Юпик терял размер
+   и место и уходил за левый край. */
+@keyframes game-load-pace{0%{transform:translateX(0) scaleX(1)}25%{transform:translateX(var(--walk)) scaleX(1)}25.01%{transform:translateX(var(--walk)) scaleX(-1)}75%{transform:translateX(calc(var(--walk) * -1)) scaleX(-1)}75.01%{transform:translateX(calc(var(--walk) * -1)) scaleX(1)}100%{transform:translateX(0) scaleX(1)}}
 @keyframes game-load-cell{0%,32%,100%{border-color:#5a4939;background:linear-gradient(145deg,#252528,#101112 70%);box-shadow:inset 0 0 2px #000,0 0 1px #d7c09a}4%,22%{border-color:#e7a735;background:repeating-linear-gradient(45deg,#fff5bf44 0 1px,transparent 1px 3px),radial-gradient(circle at 40% 35%,#fff1a0,#ffc445 52%,#b9690d);box-shadow:inset 0 0 3px #fff0aa,0 0 6px #f9af22}}
-@media(min-aspect-ratio:3/4){.game-load-state__scene{width:max(100vw,177.68dvh);height:auto;aspect-ratio:1672/941;background-image:url("../../assets/loading/yupik-scene-wide.webp")}.game-load-state__runner{width:20%;left:40%;bottom:21%}.game-load-state__runner--walking{animation:game-load-walk-first 8s linear 0s 1 none,game-load-walk-loop 16s linear 8s infinite}.game-load-state--inactive .game-load-state__runner--still{display:none}.game-load-state .game-load-state__caption{top:77%;font-size:clamp(24px,3vw,38px)}.game-load-state__cells{left:34%;right:34%;top:88%;height:4%}}
-@media(min-aspect-ratio:2/1){.game-load-state__scene{width:100vw;height:100dvh;aspect-ratio:auto}.game-load-state__runner{width:min(20vw,34dvh);left:calc(50% - min(10vw,17dvh))}.game-load-state__runner--walking{animation:game-load-walk-first 8s linear 0s 1 none,game-load-walk-loop 16s linear 8s infinite}.game-load-state .game-load-state__caption{font-size:clamp(24px,3dvh,38px)}}
+@media(min-aspect-ratio:3/4),(min-width:600px) and (min-aspect-ratio:3/5){.game-load-state__scene{width:max(100vw,177.68vh);width:max(100vw,177.68dvh);height:auto;aspect-ratio:1672/941;background-image:url("../../assets/loading/yupik-scene-wide.webp")}.game-load-state__runner{width:20%;left:40%;bottom:21%}.game-load-state__runner--walking{--walk:40%}.game-load-state--inactive .game-load-state__runner--still{display:none}.game-load-state .game-load-state__caption{top:77%;font-size:clamp(24px,3vw,38px)}.game-load-state__cells{left:34%;right:34%;top:88%;height:4%}}
+@media(min-aspect-ratio:2/1){.game-load-state__scene{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto}.game-load-state__runner{width:min(20vw,34vh);width:min(20vw,34dvh);left:calc(50% - min(10vw,17vh));left:calc(50% - min(10vw,17dvh))}.game-load-state__runner--walking{--walk:calc(16vw - 40%)}.game-load-state .game-load-state__caption{font-size:clamp(24px,3dvh,38px)}}
 @media(prefers-reduced-motion:reduce){.game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--walking{display:none}.game-load-state--loading[data-walk-ready="true"] .game-load-state__runner--still{display:block}.game-load-state__runner--still{animation:none}.game-load-state__spinner,.game-load-state__cells span{animation:none}}
 @media(max-width:350px){.game-load-state--inactive .game-load-state__runner--still{display:none}}
 @media(max-height:550px){.game-load-state__message{bottom:3%;padding:10px}.game-load-state__message h1{font-size:17px}.game-load-state__message p{font-size:12px;margin-top:6px}.game-load-state__actions{margin-top:8px}.game-load-state button{min-height:40px}}
+/* Язык на экране входа (09.11.2026): компактные «EN / RU», а не кнопки экрана во всю ширину. */
+.game-load-state .game-load-state__lang button{width:auto;min-height:0;padding:6px 14px;border:0;border-radius:999px;background:transparent;font-size:13px;line-height:1.2}
+.game-load-state .game-load-state__lang button[aria-pressed=true]{background:#f4c45e26;color:#f4ce74}

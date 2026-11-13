@@ -1,0 +1,12 @@
+/* «Отбитые» в «Управлении шахтами» (§8.106): строки в стиле окна. */
+.mb-office-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.mb-office-switch button{min-height:42px;border:1px solid #3d4242;border-radius:11px;background:#111415;color:#f0ece2;font-weight:650;font-size:14px}
+.mb-office-switch button[aria-selected=true]{border-color:#cfaa57;background:#28251a;color:#ffe4a0}
+.mb-lost-list{display:grid;gap:7px}
+.mb-lost-row{display:grid;grid-template-columns:30px minmax(0,1fr) 40px;align-items:center;gap:10px;padding:10px 12px;border:1px solid #343738;border-radius:12px;background:#111415}
+.mb-lost-row .mb-resource{width:28px;height:28px}
+.mb-lost-dot{width:10px;height:10px;margin:auto;border-radius:50%;background:#c9714f}
+.mb-lost-text{min-width:0}
+.mb-lost-text h3{font-size:14px;font-weight:650;color:#efe7da;line-height:1.25}
+.mb-lost-text p{margin-top:2px;font-size:12px;color:#bcb6a9;line-height:1.3}
+.mb-lost-map{display:grid;place-items:center;width:40px;height:40px;border:1px solid #5d5547;border-radius:11px;background:#1d2022;color:#e3c16d}

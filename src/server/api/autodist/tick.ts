@@ -1,4 +1,4 @@
-// Часы авторассылок: раз в 5 минут каждый воркер проверяет правила.
+// Часы авторассылок: раз в 5 минут каждый воркер проверяет правила (и сторож курса).
 // Два воркера разом не разошлют дважды — у каждой рассылки свой замок в базе
 // (незакрытая пачка на корзину одна; «Раздача DARAI» — не чаще раза в час).
 // Покупка подписки проверяет корзины и сама, не дожидаясь часов.
@@ -18,6 +18,9 @@ export async function autoDistPass(): Promise<void> {
     await runFreeDaraiAuto().catch((e) =>
       console.warn("[autodist] раздача DARAI:", e instanceof Error ? e.message : e),
     );
+    // Сторож курса DARAI (04.11.2026): от него считаются все цены за DARAI от $.
+    const { watchRate } = await import("../energy-sub/rate-watch");
+    await watchRate().catch((e) => console.warn("[autodist] сторож курса:", e instanceof Error ? e.message : e));
   } finally {
     running = false;
   }

@@ -1,5 +1,6 @@
 // Арифметика сети магического сундука: место, штуки с мобов, выбор грабителя.
 import { describe, expect, it } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { clampPicks, collectedUnits, netRoomFor, netUsed } from "@/lib/magicChest";
 
 const slot = (stackKey: string, count: number) => ({
@@ -11,18 +12,20 @@ const slot = (stackKey: string, count: number) => ({
 });
 
 describe("сеть сундука", () => {
-  it("занятость — ячейками по 20, дробный хвост занимает целую", () => {
-    expect(netUsed([slot("a", 20), slot("b", 0.5), slot("c", 21)])).toBe(4);
+  it(`занятость — ячейками по ${CELL_SIZE}, дробный хвост занимает целую`, () => {
+    expect(netUsed([slot("a", CELL_SIZE), slot("b", 0.5), slot("c", CELL_SIZE + 1)])).toBe(4);
   });
 
   it("место под вид = хвост своей ячейки + свободные ячейки", () => {
-    const slots = [slot("a", 15), slot("b", 40)];
-    expect(netRoomFor(slots, "a")).toBe(5 + 7 * 20);
-    expect(netRoomFor(slots, "z")).toBe(7 * 20);
+    const slots = [slot("a", CELL_SIZE - 5), slot("b", 2 * CELL_SIZE)];
+    expect(netRoomFor(slots, "a")).toBe(5 + 7 * CELL_SIZE);
+    expect(netRoomFor(slots, "z")).toBe(7 * CELL_SIZE);
   });
 
   it("полная сеть принимает только долив в свою ячейку", () => {
-    const full = Array.from({ length: 10 }, (_, i) => slot(`k${i}`, i === 0 ? 12 : 20));
+    const full = Array.from({ length: 10 }, (_, i) =>
+      slot(`k${i}`, i === 0 ? CELL_SIZE - 8 : CELL_SIZE),
+    );
     expect(netRoomFor(full, "k0")).toBe(8);
     expect(netRoomFor(full, "new")).toBe(0);
   });

@@ -22,6 +22,7 @@ type Row = {
 const KIND: Record<string, string> = {
   acc_deposit: "пополнение",
   acc_reward: "награда",
+  ref_sub: "подписка друга",
   acc_spend: "покупка",
   acc_refund: "возврат",
   acc_withdraw: "вывод",

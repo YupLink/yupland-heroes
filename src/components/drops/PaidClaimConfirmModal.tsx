@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Ticket, Loader2, X } from "lucide-react";
+import { Sparkles, Loader2, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { goldForTicketPrice } from "@/lib/ticketGold";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { TiersBreakdown, type RewardTier } from "./shop-shared";
 
 export function PaidClaimConfirmModal({
@@ -31,13 +33,10 @@ export function PaidClaimConfirmModal({
 
   const safeCount = Math.max(1, Math.min(maxCount, Math.floor(Number(count)) || 1));
   const unitLabel = isCombo ? t("mynfts.unit_combo") : t("mynfts.unit_nft");
-  const ticketsWord = (n: number) =>
-    n === 1
-      ? t("mynfts.tickets_one", { n })
-      : n > 1 && n < 5
-        ? t("mynfts.tickets_few", { n })
-        : t("mynfts.tickets_many", { n });
-  const totalTickets = safeCount * Math.max(1, ticketCost);
+  // Цена в билетах (ticketCost) платится золотом ×500 (ПРАВИЛА §8.61).
+  const goldCost = goldForTicketPrice(Math.max(1, ticketCost));
+  const goldWord = (n: number) => t("mynfts.tickets_many", { n: n.toLocaleString("ru-RU") });
+  const totalGold = safeCount * goldCost;
 
   return (
     <div
@@ -50,7 +49,7 @@ export function PaidClaimConfirmModal({
       >
         <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
           <div className="flex items-center gap-2">
-            <Ticket className="h-5 w-5 text-gold" />
+            <ResourceGlyph kind="gold" className="h-5 w-5" />
             <span className="font-display text-base font-bold">
               {t("mynfts.claim_confirm_title")}
             </span>
@@ -108,12 +107,12 @@ export function PaidClaimConfirmModal({
             <div>
               {t("mynfts.you_will_spend")}{" "}
               <b className="text-gold">
-                {ticketsWord(totalTickets)}
+                {goldWord(totalGold)}
               </b>
-              {ticketCost > 1 && (
+              {safeCount > 1 && (
                 <span className="text-muted-foreground">
                   {" "}
-                  ({ticketCost} × {safeCount})
+                  ({goldCost.toLocaleString("ru-RU")} × {safeCount})
                 </span>
               )}{" "}
               {t("mynfts.to_redeem_middle")}{" "}

@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { WEAKEN_KINDS, type WeakenKind } from "./abilities";
+import { TIMED_EFFECT_UPSERT } from "@/server/api/beta-raid/timed-effect-sql";
 
 /**
  * Повесить замедление: +value энергии за шаг на minutes минут.
@@ -127,20 +128,7 @@ export async function applyPlayerEffect(
        (id, account_id, kind, value, expires_at, created_at, source)
      VALUES (${sqlStr(`bpe_${nanoid(10)}`)}, ${sqlStr(account)}, ${sqlStr(kind)}, ${Math.floor(value)},
              now() + interval '${cap} minutes', now(), ${src})
-     ON CONFLICT (account_id, kind) WHERE kind NOT LIKE 'buff_%' DO UPDATE
-       SET value = CASE
-             WHEN yuplink.beta_raid_player_effects.value = EXCLUDED.value THEN EXCLUDED.value
-             ELSE GREATEST(1, ROUND((
-               yuplink.beta_raid_player_effects.value
-                 * GREATEST(EXTRACT(EPOCH FROM (yuplink.beta_raid_player_effects.expires_at - now())), 0)
-               + EXCLUDED.value * EXTRACT(EPOCH FROM (EXCLUDED.expires_at - now()))
-             ) / NULLIF(
-               GREATEST(EXTRACT(EPOCH FROM (yuplink.beta_raid_player_effects.expires_at - now())), 0)
-               + EXTRACT(EPOCH FROM (EXCLUDED.expires_at - now())), 0)))
-           END,
-           expires_at = GREATEST(yuplink.beta_raid_player_effects.expires_at, now())
-             + (EXCLUDED.expires_at - now()),
-           source = COALESCE(EXCLUDED.source, yuplink.beta_raid_player_effects.source);`,
+     ${TIMED_EFFECT_UPSERT};`,
   );
 }
 

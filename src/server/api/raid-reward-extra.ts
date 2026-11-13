@@ -1,4 +1,4 @@
-// Выдача НОВЫХ видов награды: ресурс — на счёт, свой товар — в рюкзак героя.
+// Выдача НОВЫХ видов награды: ресурс — на счёт, свой товар и босс — в рюкзак героя.
 //
 // Отдельный модуль от raid-helpers (лимит ≤250 строк) и потому, что своей
 // арифметики здесь нет: обе ветки стоят на готовых функциях, которыми уже
@@ -24,6 +24,10 @@ export const SOFT_GRANT_ERRORS = [
   "market.backpack_need",
   "market.potion_bag_need",
   "raid.reward_bad_ref",
+  // Клад не выдался (сбой начисления) — строка ждёт следующего «Забрать».
+  "treasure.pay_later",
+  // Доля казино не выдалась (сбой базы) — строка ждёт следующего «Забрать» (§8.124).
+  "casino.share_later",
 ] as const;
 
 /** Ссылки нет или она чужая: выдать нечего, но и терять награду нельзя. */
@@ -117,7 +121,7 @@ async function depositCustom(opts: {
  * Единая дверь для новых видов. `ref` — то, что лежит в pack_id награды.
  */
 export async function grantExtraReward(opts: {
-  kind: "resource" | "custom";
+  kind: "resource" | "custom" | "boss";
   wallet: string;
   amount: number;
   ref: string | null;
@@ -141,6 +145,21 @@ export async function grantExtraReward(opts: {
     // залог свободного пула карты.
     if (!isRewardResource(ref)) throw new Error(BAD_REF);
     await creditResource({ account, code: ref, amount, ref: opts.opRef, origin: opts.origin });
+    return;
+  }
+
+  // Босс (промокод, не влезший в рюкзак, promo-deliver): стопкой boss:<шаблон>
+  // в рюкзак выбранного героя — тем же предметом, что охрана из лавки.
+  if (opts.kind === "boss") {
+    const { depositRefStack } = await import("./beta-raid/stack-deposit");
+    await depositRefStack({
+      wallet: opts.wallet,
+      account,
+      kind: "boss",
+      ref,
+      qty: amount,
+      nonce: opts.opRef,
+    });
     return;
   }
 

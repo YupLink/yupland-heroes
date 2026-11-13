@@ -19,6 +19,7 @@ import { AdminFreeTokenBar, FREE_TOKEN_KEY } from "./AdminFreeTokenBar";
 import { AdminCasinoPoolBar } from "./AdminCasinoPoolBar";
 import { ScatterPanel } from "./scatter/ScatterPanel";
 import { toggleEconomyOpen } from "./economyOpenBus";
+import { AdminCellSearch } from "./AdminCellSearch";
 import { humanError } from "@/lib/humanError";
 
 type Target = "boss" | "chests" | "coins" | "artifacts";
@@ -133,6 +134,7 @@ export function AdminRaidRestore() {
       <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Админ
       </span>
+      <AdminCellSearch />
       {LABELS.map(({ key, label }) => (
         <button
           key={key}

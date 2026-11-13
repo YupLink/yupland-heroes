@@ -2,7 +2,6 @@
 // Вынесено из routes/api.cron.lost-payments.ts без изменения логики (§13.1).
 import { mcpExec } from "@/server/db/mcpClient";
 import { fetchAdminFtTransferHistory } from "@/server/sendler";
-import { nanoid } from "nanoid";
 import {
   TICKET_TOKEN_DECIMALS,
   TICKET_RECEIVER,
@@ -11,6 +10,9 @@ import {
 } from "./lost-payments-ticket-price";
 
 /**
+ * С 20.10.2026 (§8.61) билетов нет: найденную оплату билетов крон НЕ зачисляет,
+ * а пишет в лог — сопоставление ниже оставлено ради точной строки лога.
+ *
  * АВТО-реконсиляция тикет-сирот: юзер оплатил DARAI/GDarai/GP на приёмник, но
  * фронт не дошёл до purchaseTicketsViaToken (закрыл вкладку/потерял сессию) →
  * билеты не начислены. Сверяем входящие FT (Sendler) с ticket_purchases и
@@ -18,6 +20,9 @@ import {
  * флоу, — повторный submit с фронта не задвоит). Только чистый матч на оффер
  * (ratio 0.80–1.06, лучший фит), не pack-платёж, отправитель — реальный юзер.
  */
+/** Квитанции, о которых уже сказали в лог (оплата билетов после их отмены). */
+const warned = new Set<string>();
+
 export async function runTicketOrphanReconcile(): Promise<{
   credited: number;
   tickets: number;
@@ -89,8 +94,6 @@ export async function runTicketOrphanReconcile(): Promise<{
     limit: 200,
   });
 
-  let credCount = 0;
-  let credTickets = 0;
   for (const t of inc) {
     const sym = t.symbol ?? "";
     const dec = TICKET_TOKEN_DECIMALS[sym];
@@ -192,32 +195,15 @@ export async function runTicketOrphanReconcile(): Promise<{
       if (bestR) best = { offer: bestR.offer, qty: bestR.qty, tickets: bestR.tickets };
     }
     if (!best) continue;
-    const ins = (await mcpExec(
-      `INSERT INTO yuplink.ticket_purchases(id,wallet,offer_id,tickets_added,energy_spent,payment_token,payment_amount,near_tx_hash,idempotency_key,created_at)
-       VALUES('tp_${nanoid(10)}','${sender.replace(/'/g, "''")}','${best.offer}',${best.tickets},0,'${sym}',${human},'${tx.replace(/'/g, "''")}','ft:${tx.replace(/'/g, "''")}',now())
-       ON CONFLICT DO NOTHING RETURNING id;`,
-      { wrapJsonCte: true },
-    )) as Array<{ id: string }>;
-    if (ins.length) {
-      // Запись в ticket_purchases — это только ФАКТ покупки. Баланс живёт в
-      // леджере, и без этого движения игрок платил токенами, догон отчитывался
-      // «зачтено», а билетов не появлялось (48 билетов за сутки 23.08).
-      // ref тот же, что у штатной покупки, — повторно не начислится.
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet: sender,
-        delta: best.tickets,
-        kind: "purchase",
-        ref: `ft:${tx}`,
-      }).catch((e: unknown) => {
-        console.error(`[lost-payments] тикеты не начислены ${sender}:`, e);
-      });
-      credCount++;
-      credTickets += best.tickets;
-      console.log(
-        `[lost-payments] авто-зачёт тикет-сироты: ${sender} +${best.tickets}тк (${sym} ${human}, tx ${tx.slice(0, 12)})`,
-      );
-    }
+    // Билетов больше нет (§8.61): оплату билетов НЕ зачисляем — ни записи
+    // покупки, ни начисления, только строка в лог (разбор вручную). Квитанция
+    // остаётся несопоставленной, поэтому лог — раз на процесс, а не каждый прогон.
+    if (warned.has(txl)) continue;
+    warned.add(txl);
+    console.warn(
+      `[lost-payments] оплата билетов после их отмены — НЕ зачислено: ${sender} ${sym} ${human} ` +
+        `→ ${best.offer} ×${best.qty} (${best.tickets}тк), tx ${tx}`,
+    );
   }
-  return { credited: credCount, tickets: credTickets };
+  return { credited: 0, tickets: 0 };
 }

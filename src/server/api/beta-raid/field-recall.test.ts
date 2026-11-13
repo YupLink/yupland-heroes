@@ -31,7 +31,7 @@ const RESTED = { heroId: "hero_w", ms: FIELD_RECALL_REST_MS };
 beforeEach(resetFake);
 
 describe("recallHeroFromField: даром, с отдыхом", () => {
-  it("издалека: герой снят, отдыхает 3 часа, хвост выдан, карта оповещена", async () => {
+  it("издалека: герой снят, отдыхает 3 часа, хвоста нет (13.11), карта оповещена", async () => {
     const res = await go();
     expect(res).toMatchObject({
       repeat: false,
@@ -42,7 +42,7 @@ describe("recallHeroFromField: даром, с отдыхом", () => {
     expect(FIELD_RECALL_REST_MS).toBe(3 * 3600_000);
     expect(s.worker.heroId).toBeNull();
     expect(s.rest).toEqual(RESTED);
-    expect(s.dust).toBe(1);
+    expect(s.dust).toBe(0);
     expect(s.published).toBe(1);
   });
 
@@ -84,17 +84,17 @@ describe("recallHeroFromField: даром, с отдыхом", () => {
     expect(s.rest).toEqual(RESTED);
   });
 
-  it("повтор моста после снятия узнаёт свой ключ: хвост и отдых — по разу", async () => {
+  it("повтор моста после снятия узнаёт свой ключ: отдых — один раз", async () => {
     s.casRetryAfterCommit = true;
     await expect(go()).resolves.toMatchObject({ repeat: false, rested: true });
-    expect(s.dust).toBe(1);
+    expect(s.dust).toBe(0);
     expect(s.restWrites).toBe(1);
   });
 
   it("повтор догнал незакрытую первую попытку — ключ найден отдельным чтением", async () => {
     s.casStaleSnapshot = true;
     await expect(go()).resolves.toMatchObject({ repeat: false, rested: true });
-    expect(s.dust).toBe(1);
+    expect(s.dust).toBe(0);
     expect(s.restWrites).toBe(1);
   });
 

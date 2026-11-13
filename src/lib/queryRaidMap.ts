@@ -38,6 +38,16 @@ export const RAID_MAP_KEYS = [
  */
 export function invalidateRaidMap(qc: QueryClient, extra: readonly string[] = []): void {
   for (const key of [...RAID_MAP_KEYS, ...extra]) {
-    void qc.invalidateQueries({ queryKey: [key], refetchType: refetchTypeFor(key) });
+    // Все копии помечаем устаревшими, открытые перечитываем сразу.
+    void qc.invalidateQueries({ queryKey: [key], refetchType: "active" });
+    if (refetchTypeFor(key) === "active") continue;
+    // Закрытые будим только у ключа-одиночки (карта, раскладка, флот). Ключ с
+    // параметрами — окно «у места» (клетка, цель): его закрытые копии за сутки
+    // копятся десятками, и каждый добитый моб будил их все (06.11.2026).
+    void qc.refetchQueries({
+      queryKey: [key],
+      type: "inactive",
+      predicate: (q) => q.queryKey.length === 1,
+    });
   }
 }

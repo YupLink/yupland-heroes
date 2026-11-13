@@ -41,11 +41,11 @@ describe("удочка — галочка своего товара", () => {
     const res = await call(mod.createCustomItem, { ...base, isRod: true, toolWear: 10 });
     expect(res).toMatchObject({ isRod: true, toolWear: 10 });
     expect(s.sql[0]).toContain(
-      "boost, is_rod, is_potion, plain_chest, magic_chest, is_shovel, tool_wear)",
+      "boost, is_rod, is_potion, plain_chest, magic_chest, is_shovel, tool_wear, is_binocular, is_ladder)",
     );
     // Описание и буст пусты, дальше is_rod; износ — последним (валидатор подменён: без умолчаний).
     expect(s.sql[0]).toMatch(/NULL, NULL, true,\n/);
-    expect(s.sql[0]).toMatch(/, 10\);$/);
+    expect(s.sql[0]).toMatch(/, 10,\n\s+false, false\);$/);
   });
 
   it("правка: задана — пишется; старая вкладка без поля — колонку не трогаем", async () => {

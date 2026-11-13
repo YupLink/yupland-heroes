@@ -5,10 +5,10 @@ import { EnergyPackCard } from "./EnergyPackCard";
 import { EnergyPendingBanner } from "./EnergyPendingBanner";
 
 export function EnergyPacksSection({
-  availableTickets,
+  availableGold,
   availableDarai,
 }: {
-  availableTickets: number;
+  availableGold: number;
   availableDarai: number;
 }) {
   const q = useQuery({
@@ -45,7 +45,7 @@ export function EnergyPacksSection({
         <EnergyPackCard
           key={p.id}
           pack={p}
-          availableTickets={availableTickets}
+          availableGold={availableGold}
           availableDarai={availableDarai}
         />
       ))}

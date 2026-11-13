@@ -11,7 +11,7 @@ export type DropSortBy = "new" | "old" | "claims" | "name";
 
 export type TierDraft = {
   weight: string;
-  kind: "ft" | "nft" | "pack" | "energy";
+  kind: "ft" | "nft" | "pack" | "energy" | "custom";
   rewardMin: string;
   rewardMax: string;
   rewardToken: string;
@@ -19,6 +19,10 @@ export type TierDraft = {
   packId: string;
   /** Сколько паков выдать за клейм (kind=pack). Строка — это поле ввода. */
   packQty: string;
+  /** Товар маркета (kind=custom): id, имя и картинка; штук — rewardMin..rewardMax. */
+  itemId?: string;
+  itemName?: string;
+  itemImage?: string | null;
 };
 
 export type LikeLaunchItem = {

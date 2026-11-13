@@ -35,10 +35,10 @@ export function leftoversSql(o: UnitAt): string {
             OR EXISTS (SELECT 1 FROM yuplink.raid_market_shop x
                         WHERE x.map_id = ${sqlStr(o.mapId)} AND x.town_q = ${t.q}
                           AND x.town_r = ${t.r})) AS market,
-          (${has("raid_town")} OR ${has("raid_town_stock")}) AS town,
+          (${has("raid_town")} OR ${has("raid_town_stock")} OR ${has("raid_town_cash")}) AS town,
           ${has("raid_warehouse_slot")} AS warehouse,
           ${has("raid_field_worker")} AS field,
-          (${has("raid_mine_state")} OR ${has("raid_mine_guard")}) AS mine`;
+          (${has("raid_mine_state")} OR ${has("raid_mine_guard")} OR ${has("raid_mine_ward")}) AS mine`;
 }
 
 /** Новые клетки без земли (нет строки или местности) — цель мимо карты. */

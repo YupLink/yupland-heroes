@@ -15,6 +15,8 @@ import { pg } from "../../db/pg";
 import { requireAccountUser } from "../account-rollout";
 import { actionGate } from "../../rateGate";
 import { STARS_TOKEN, STARS_MIN, STARS_MAX } from "@/lib/stars";
+import { getSessionTgId } from "../../auth";
+import { starsAllowed } from "@/lib/auth/entryRules";
 
 /** Идентификатор заказа в payload (≤128 байт, ставит СЕРВЕР — доверенный). */
 type StarsPayload = { k: "acc_stars"; tg: number; o: number };
@@ -35,7 +37,9 @@ export const createAccountStarsInvoice = createServerFn({ method: "POST" })
     // него платить нечем: скажем прямо, а не отдадим битую ссылку.
     const row = (await pg.users.findOne({ wallet })) as { telegram_id?: number | null } | null;
     const tg = row?.telegram_id ?? null;
-    if (!tg) {
+    // Номер Google или кошелька — не Telegram (§8.127): звёзды пришли бы тому, кто
+    // заплатил в Telegram, а не этому аккаунту.
+    if (!tg || !starsAllowed(tg) || !starsAllowed(getSessionTgId())) {
       throw new Error("Пополнение звёздами доступно только при входе через Telegram");
     }
 

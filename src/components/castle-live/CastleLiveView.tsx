@@ -1,9 +1,14 @@
-import {modularBuildingDestination, modularBuildingId} from "./modularCastleActions";import {AUCTION_BUILDING_ID} from "./modularAuctionHouse";import {CASINO_BUILDING_ID} from "./modularCasino";import {BANK_BUILDING_ID} from "./modularBank";import {openBank} from "@/lib/bankBus";import {CasinoOverlay} from "@/components/beta-raid/CasinoOverlay";import {openAuction} from "@/lib/auctionBus";
+import type {CastlePurchaseDestination} from './TownHallPurchaseSuccess';
+import {NewspaperKioskOverlay} from "../newspaper/NewspaperKioskOverlay";
+import { useBuildingWindowAudio } from '@/hooks/useBuildingWindowAudio';
+import {modularBuildingDestination, modularBuildingId} from "./modularCastleActions";import {AUCTION_BUILDING_ID} from "./modularAuctionHouse";import {CASINO_BUILDING_ID} from "./modularCasino";import {BUCKWHEAT_GAME_BUILDING_ID} from "./modularBuckwheatGame";import {BuckwheatOverlay} from "@/components/buckwheat/BuckwheatOverlay";import {BANK_BUILDING_ID} from "./modularBank";import {openBank} from "@/lib/bankBus";import {ARCHITECT_BUILDING_ID} from "./modularArchitect";import {openArchitect} from "@/lib/architectBus";import {MINE_OFFICE_BUILDING_ID} from "./modularMineOffice";import {openMineOffice} from "@/lib/mineOfficeBus";import {WEATHER_STATION_BUILDING_ID} from "./modularWeatherStation";import {openWeatherStation} from "@/lib/weatherStationBus";import {SHAMAN_HUT_BUILDING_ID} from "./modularShamanHut";import {openShamanHut} from "@/lib/shamanHutBus";import {CasinoOverlay} from "@/components/beta-raid/CasinoOverlay";import {openAuction} from "@/lib/auctionBus";
 import { requestCenter } from "@/components/beta-raid/centerMapBus";
 import "./tavern-hero-cards.css";
-import { CastleProfileButton } from "./CastleProfileButton";
+import { CastleHeroButton } from "./CastleHeroButton";
+import { CastleMusic } from "./CastleMusic";
 import { CastleGateDialog } from "./CastleGateDialog";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useIsland, useIslandAck } from "@/components/beta-raid/island/useIsland";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { WindowError } from "./WindowError";
 import { useAppStore } from "@/lib/store";
 import { label, type Bindings, type Destination } from "@/lib/castleMenus";
@@ -18,7 +23,8 @@ import { TempleLiveWindow } from "./temple/TempleLiveWindow";
 import type { CastleLiveViewProps } from "./castleLiveViewProps";
 import type { MyGift } from "@/server/api/gifts";
 import { Barracks, Glory, Market, Profile, Shop, Tavern, Treasury } from "./castleLazyWindows";
-type WindowId = Exclude<Destination, "gates"> | "profile" | "profile-packs" | "unassigned";
+const Armory = lazy(() => import("./ArmoryWindow").then(m => ({ default: m.ArmoryWindow })));
+type WindowId = Exclude<Destination, "gates"> | "profile" | "profile-packs" | "unassigned" | "armory";
 export function CastleLiveView({
   cells,
   assets,
@@ -26,6 +32,7 @@ export function CastleLiveView({
   onCity,
   onSignedOut,
   entry = "editor",
+  musicActive = true,
   profileWalletStatus,
   profileWalletName,
   onPreviewWalletChange,
@@ -37,17 +44,24 @@ export function CastleLiveView({
   isMainCastle,
 }: CastleLiveViewProps) {
   const [sceneEditing,setSceneEditing]=useState(false);
+  const [purchaseDestination,setPurchaseDestination]=useState<CastlePurchaseDestination|null>(null);
   const lang = useAppStore((s) => s.lang);
   const ru = lang === "ru";
   const [tavernSection, setTavernSection] = useState<"heroes" | "artifacts">("heroes");
   const [windowId, setWindowId] = useState<WindowId | null>(null);
+  useBuildingWindowAudio(windowId !== null && ['tavern', 'barracks', 'treasury', 'hall', 'notice', 'shop', 'market', 'glory', 'warehouse', 'temple', 'armory'].includes(windowId));
+  const [newspaperOpen,setNewspaperOpen]=useState(false);
   const [casinoOpen, setCasinoOpen] = useState(false); // казино на площади (useWithCasino) → автомат
+  const [buckwheatOpen, setBuckwheatOpen] = useState(false); // «Корона гречневого королевства» (useWithBuckwheatGame)
   const [openWalletOnTreasuryEntry, setOpenWalletOnTreasuryEntry] = useState(false);
   const [barracksInitialPage, setBarracksInitialPage] = useState<"chips" | "packs">("chips");
   const [giftPack, setGiftPack] = useState<{ giftId: string; packId: string } | null>(null);
   const [focusPacksOnMount, setFocusPacksOnMount] = useState(false);
   const [accepted, setAccepted] = useState(entry === "game");
   const [gatesOpen, setGatesOpen] = useState(false);
+  const gateIsland = useIsland(gatesOpen, false).data?.island;
+  const gateDestination = gateIsland?.mapId && gateIsland.onIsland ? "island" : "world";
+  const { onAck: ackIslandStep } = useIslandAck();
   const closeButton = useRef<HTMLButtonElement>(null);
   const treasuryFromProfile = useRef(false); // Казна открыта из профиля — «назад» туда
   const lastFocus = useRef<HTMLElement | SVGElement | null>(null);
@@ -66,7 +80,7 @@ export function CastleLiveView({
     };
   }, []);
   useEffect(() => {
-    if (windowId && windowId !== "notice") closeButton.current?.focus();
+    if (windowId && windowId !== "notice" && windowId !== "armory") closeButton.current?.focus();
   }, [windowId]);
   const open = (id: WindowId | "gates", barracksPage: "chips" | "packs" = "chips", fromProfile = false) => {
     if (!windowId) lastFocus.current = document.activeElement as HTMLElement | SVGElement | null;
@@ -81,6 +95,11 @@ export function CastleLiveView({
     if (!windowId) lastFocus.current = document.activeElement as HTMLElement | SVGElement | null;
     setWindowId(id);
   };
+  useEffect(()=>{
+    const showUpgrade=()=>setWindowId('hall');
+    window.addEventListener('yuplink:mine-architect-upgrade',showUpgrade);
+    return()=>window.removeEventListener('yuplink:mine-architect-upgrade',showUpgrade);
+  },[]);
   const close = () => {
     setWindowId(null);
     setGiftPack(null);
@@ -126,7 +145,9 @@ export function CastleLiveView({
   const body = () => {
     switch (windowId) {
       case "tavern":
-        return <Tavern key={tavernSection} onClose={close} initialSection={tavernSection} allowHeroSelection />;
+        return <Tavern key={tavernSection} onClose={close} onOpenArmory={() => open("armory")} onShowBusyField={onCity ? (q, r) => onCity({ q, r }) : undefined} initialSection={tavernSection} allowHeroSelection />;
+      case "armory":
+        return <Armory onBack={close} />;
       case "barracks":
         return <Barracks onClose={close} onTavern={() => open("tavern")} initialPage={barracksInitialPage} giftPack={giftPack} onPacksBackToCamp={() => setGiftPack(null)} onViewMysticReward={onViewMysticReward} />;
       case "profile-packs":
@@ -153,10 +174,10 @@ export function CastleLiveView({
     }
   };
   return (
-    <main data-game-buttons-scope={windowId === null || windowId === "tavern" || windowId === "profile" ? "" : undefined} className="fixed inset-0 z-40 flex flex-col bg-background text-foreground">
+    <main data-game-buttons-scope={windowId === null || windowId === "tavern" || windowId === "profile" ? "" : undefined} className={`fixed inset-0 z-40 flex flex-col bg-background text-foreground ${accepted && entry === "game" ? "castle-music-scene" : ""}`}>
       <header
         inert={windowId ? true : undefined}
-        className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 p-2 pt-[max(8px,env(safe-area-inset-top))] ${accepted && entry === "game" ? "castle-desktop-toolbar" : ""} ${windowId || sceneEditing ? "invisible" : ""}`}
+        className={`pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 p-2 pt-[max(8px,var(--app-top,env(safe-area-inset-top,0px)))] ${accepted && entry === "game" ? "castle-desktop-toolbar" : ""} ${windowId || sceneEditing ? "invisible" : ""}`}
       >
         {entry === "editor" && <button data-game-button="secondary"
           className="pointer-events-auto min-h-11 rounded-lg border bg-background/90 px-3 shadow-sm"
@@ -164,10 +185,10 @@ export function CastleLiveView({
         >
           {ru ? "← Редактирование" : "← Edit"}
         </button>}
-        {accepted && entry === "game" && <CastleMainHud ru={ru} />}
+        {accepted && entry === "game" && <CastleMainHud ru={ru} music={<CastleMusic active={musicActive} suspended={casinoOpen||buckwheatOpen} />} />}
         {accepted && entry === "game" && <CastleRewardRail lang={lang} onGiftAction={onGiftAction} onBuild={()=>setSceneEditing(true)} />}
-        <div className="castle-toolbar-profile pointer-events-auto ml-auto">
-          {accepted && <CastleProfileButton onClick={() => open("profile")} showSatiety={entry === "game"} />}
+        <div className={`castle-toolbar-profile pointer-events-auto ml-auto ${accepted && entry === "game" ? "castle-toolbar-profile--music" : ""}`}>
+          {accepted && <CastleHeroButton onProfile={() => open("profile")} showSatiety={entry === "game"} />}
         </div>
       </header>
       {!accepted ? (
@@ -179,12 +200,12 @@ export function CastleLiveView({
             inert={windowId ? true : undefined}
           >
             <CastleViewport
-              modular={entry === "game"} editing={sceneEditing} onDone={()=>setSceneEditing(false)}
+              modular={entry === "game"} editing={sceneEditing} purchaseDestination={purchaseDestination} onDone={()=>{setSceneEditing(false);setPurchaseDestination(null);}}
               cells={cells}
               assets={assets}
               bindings={bindings}
               lang={lang}
-              onBuilding={(id) => id === modularBuildingId(BANK_BUILDING_ID) ? openBank() : id === modularBuildingId(CASINO_BUILDING_ID) ? setCasinoOpen(true) : id === modularBuildingId(AUCTION_BUILDING_ID) ? openAuction("player") : open(bindings[id] || modularBuildingDestination(id) as Destination || "unassigned")}
+              onBuilding={(id) => id === modularBuildingId("newspaper_kiosk") ? setNewspaperOpen(true) : id === modularBuildingId(ARCHITECT_BUILDING_ID) ? openArchitect() : id === modularBuildingId(MINE_OFFICE_BUILDING_ID) ? openMineOffice() : id === modularBuildingId(WEATHER_STATION_BUILDING_ID) ? openWeatherStation() : id === modularBuildingId(SHAMAN_HUT_BUILDING_ID) ? openShamanHut() : id === modularBuildingId(BANK_BUILDING_ID) ? openBank() : id === modularBuildingId(CASINO_BUILDING_ID) ? setCasinoOpen(true) : id === modularBuildingId(BUCKWHEAT_GAME_BUILDING_ID) ? setBuckwheatOpen(true) : id === modularBuildingId(AUCTION_BUILDING_ID) ? openAuction("player") : open(bindings[id] || modularBuildingDestination(id) as Destination || "unassigned")}
             />
             {!windowId && !sceneEditing && <CastleResourceDock ru={ru} />}
           </div>
@@ -193,20 +214,20 @@ export function CastleLiveView({
           {windowId && (
             <section
               data-trading-house-window={windowId === "shop" ? "" : undefined}
-              data-tavern-style={windowId === "tavern" ? "" : undefined}
-              className={`absolute inset-0 z-40 flex flex-col bg-background ${windowId === "profile" ? "castle-profile-window" : windowId === "notice" ? "quest-window-shell" : ""}`}
+              data-tavern-style={windowId === "tavern" || windowId === "armory" ? "" : undefined}
+              className={`castle-window absolute inset-0 z-40 flex flex-col bg-background ${windowId === "profile" ? "castle-profile-window" : windowId === "notice" ? "quest-window-shell" : ""}`}
               aria-labelledby={windowId === "notice" ? "quest-preview-title" : "castle-window-title"}
               role={windowId === "notice" ? "dialog" : undefined}
               aria-modal={windowId === "notice" ? true : undefined}
             >
               {windowId === "hall" ? (
-                <TownHallScreen ru={ru} onBack={close} backRef={closeButton} onMakeMainCastle={onMakeMainCastle} isMainCastle={isMainCastle} />
+                <TownHallScreen onOpenEditor={destination=>{setPurchaseDestination(destination);setWindowId(null);setSceneEditing(true);}} ru={ru} onBack={close} backRef={closeButton} onMakeMainCastle={onMakeMainCastle} isMainCastle={isMainCastle} />
               ) : windowId === "treasury" ? (
                 <Suspense fallback={<p role="status">{ru ? "Загрузка…" : "Loading…"}</p>}>
                   <Treasury onBack={() => { if (treasuryFromProfile.current) { treasuryFromProfile.current = false; setWindowId("profile"); } else close(); }} backRef={closeButton} walletStatus={profileWalletStatus} walletName={profileWalletName} onPreviewWalletChange={onPreviewWalletChange} openWalletConnection={openWalletOnTreasuryEntry} />
                 </Suspense>
               ) : (<>
-              <header className={`flex shrink-0 items-center gap-3 border-b p-3 pt-[max(12px,env(safe-area-inset-top))] ${windowId === "barracks" || windowId === "profile-packs" || windowId === "shop" || windowId === "notice" || windowId === "warehouse" || windowId === "temple" ? "hidden" : ""}`}>
+              <header className={`flex shrink-0 items-center gap-3 border-b p-3 pt-[max(12px,var(--app-top,env(safe-area-inset-top,0px)))] ${windowId === "barracks" || windowId === "profile-packs" || windowId === "shop" || windowId === "notice" || windowId === "warehouse" || windowId === "temple" || windowId === "armory" ? "hidden" : ""}`}>
                 <button data-game-button="secondary"
                   ref={closeButton}
                   className="min-h-11 rounded-lg border px-3"
@@ -214,7 +235,7 @@ export function CastleLiveView({
                 >
                   {ru ? "← Замок" : "← Castle"}
                 </button>
-                <h1 id={windowId === "warehouse" ? undefined : "castle-window-title"} className="font-bold">
+                <h1 id={windowId === "warehouse" || windowId === "armory" ? undefined : "castle-window-title"} className="font-bold">
                   {windowId === "unassigned"
                     ? ru
                       ? "Постройка"
@@ -225,13 +246,15 @@ export function CastleLiveView({
                       ? ru
                         ? "Профиль"
                         : "Profile"
-                      : label(windowId, lang)}
+                      : windowId === "armory" ? (ru ? "Оружейная" : "Armory") : label(windowId, lang)}
                 </h1>
               </header>
-              <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-[max(12px,env(safe-area-inset-bottom))] ${windowId === "barracks" || windowId === "profile-packs" ? "barracks-window-scroll" : windowId === "shop" ? "trading-house-window-scroll" : windowId === "notice" ? "quest-window-scroll" : windowId === "temple" ? "temple-window-scroll" : ""}`}>
-                <div className={`mx-auto ${windowId === "temple" ? "max-w-none" : "max-w-3xl"}`} onClick={event => { if (windowId === "notice" && event.target === event.currentTarget) close(); }}>
+              <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(12px,env(safe-area-inset-bottom))] ${windowId === "armory" ? "p-0" : "p-3"} ${windowId === "barracks" || windowId === "profile-packs" ? "barracks-window-scroll" : windowId === "shop" ? "trading-house-window-scroll" : windowId === "notice" ? "quest-window-scroll" : windowId === "temple" ? "temple-window-scroll" : ""}`}>
+                <div className={`mx-auto ${windowId === "temple" || windowId === "armory" ? "max-w-none" : "max-w-3xl"}`} onClick={event => { if (windowId === "notice" && event.target === event.currentTarget) close(); }}>
                   <WindowError
-                    key={windowId}
+                    key={windowId} loading={ru ? "Загрузка…" : "Loading…"}
+                    reasonLabel={windowId === "armory" ? (ru ? "Причина ошибки" : "Error details") : undefined}
+                    recovery={windowId === "armory" ? { label: ru ? "Вернуться в замок" : "Back to castle", onClick: close } : undefined}
                     retry={
                       ru ? "Не удалось открыть окно. Повторить" : "Unable to open screen. Retry"
                     }
@@ -251,13 +274,23 @@ export function CastleLiveView({
         onReturnFocus={() => lastFocus.current?.focus()}
         open={gatesOpen}
         onClose={() => setGatesOpen(false)}
-        onCity={onCity}
+        onCity={onCity ? () => {
+          if (gateDestination === "island" && gateIsland?.current === "return_island") {
+            ackIslandStep("return_island");
+          }
+          onCity();
+        } : undefined}
+        destination={gateDestination}
         ru={ru}
       />
+      {newspaperOpen&&<NewspaperKioskOverlay onClose={()=>setNewspaperOpen(false)}/>}
       <CasinoOverlay open={casinoOpen} onClose={() => setCasinoOpen(false)} />
+      <BuckwheatOverlay open={buckwheatOpen} onClose={() => setBuckwheatOpen(false)} />
     </main>
   );
 }
+
+
 
 
 

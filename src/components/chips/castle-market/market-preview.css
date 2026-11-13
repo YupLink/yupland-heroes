@@ -1,5 +1,5 @@
-@font-face{font-family:'Preview Russo';src:url('../../../assets/tavern/RussoOne.ttf') format('truetype');font-weight:400;font-display:swap}
-@font-face{font-family:'Preview Golos';src:url('../../../assets/tavern/GolosText.ttf') format('truetype');font-weight:400 900;font-display:swap}
+@font-face{font-family:'Preview Russo';src:url('../../../assets/tavern/RussoOne.woff2') format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:'Preview Golos';src:url('../../../assets/tavern/GolosText.woff2') format("woff2");font-weight:400 900;font-display:swap}
 section:has(.market-preview)>header{position:relative;min-height:86px;border:0;justify-content:center;padding:12px 10px;background:linear-gradient(#17100955,transparent);z-index:3}
 section:has(.market-preview)>header>button{position:absolute;left:10px;top:12px;min-height:44px;padding:4px 10px;border:1px solid #79715f;border-radius:3px;background:#141716ed;color:#eee5d2;font:400 12px 'Preview Russo',sans-serif;box-shadow:0 3px 7px #0008}
 section:has(.market-preview)>header>h1{min-width:140px;padding:12px 24px;margin-left:35px;text-align:center;border:3px solid #634328;border-radius:3px;background:repeating-linear-gradient(0deg,#302419,#302419 5px,#35291e 7px,#211910 9px);box-shadow:0 4px 8px #0009;font:400 32px/1 'Preview Russo',sans-serif;text-shadow:0 2px 2px #000}
@@ -79,10 +79,10 @@ section:has(.market-preview)>header>button{left:2.8%;top:1.6cqw;width:19.4%;heig
 .market-preview__sell{position:absolute;left:30.4%;top:49.8cqw;width:39.4%;max-width:none;height:8.3cqw;min-height:44px;padding:0;border:0;background:none;box-shadow:none;border-radius:0;font:400 4.2cqw/1 'Preview Russo',sans-serif}
 .market-preview__filters{max-width:calc(100% - 28px);margin:0 auto;padding:0;top:0;grid-template-columns:minmax(44px,.8fr) 38px minmax(65px,1.25fr) minmax(60px,1fr) 44px;gap:4px;min-height:44px;background:transparent;backdrop-filter:none;box-shadow:none;z-index:6}
 .market-preview__filters button,.market-preview__filters select{position:relative;isolation:isolate;background:none;border:0;border-radius:0;padding:4px 6px;min-height:44px;font-size:11px;color:#eee5d2}
-.market-preview__filters button::before{content:'';position:absolute;inset:6px 0;background:url('/design-assets/market/market-reference-filter-price.png') center/100% 100% no-repeat;z-index:-1}
-.market-preview__filters button:nth-child(2)::before{background-image:url('/design-assets/market/market-reference-filter-stars.png')}
-.market-preview__filters button:nth-child(4)::before{background-image:url('/design-assets/market/market-reference-filter-mine.png')}
-.market-preview__filters select{background:url('/design-assets/market/market-reference-filter-packs.png') center/100% calc(100% - 12px) no-repeat;color:#eee5d2;padding:5px 6px}
+.market-preview__filters button::before{content:'';position:absolute;inset:6px 0;background:url('/design-assets/market/market-reference-filter-price.webp') center/100% 100% no-repeat;z-index:-1}
+.market-preview__filters button:nth-child(2)::before{background-image:url('/design-assets/market/market-reference-filter-stars.webp')}
+.market-preview__filters button:nth-child(4)::before{background-image:url('/design-assets/market/market-reference-filter-mine.webp')}
+.market-preview__filters select{background:url('/design-assets/market/market-reference-filter-packs.webp') center/100% calc(100% - 12px) no-repeat;color:#eee5d2;padding:5px 6px}
 .market-preview__filters button[aria-pressed=true]{background:none;color:#ffe29d;border:0}
 .market-preview__filters button:nth-child(4){display:flex;justify-content:center;align-items:center;gap:3px;font-size:10px;white-space:nowrap}
 .market-preview__switch{display:inline-block;position:relative;width:21px;height:12px;border:1px solid #62696a;border-radius:8px;background:#242929;flex:none}

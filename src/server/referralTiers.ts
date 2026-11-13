@@ -1,196 +1,117 @@
-// Тиерное поощрение рефералов.
+// Вехи друзей → бонус-боксы (владелец, 22.10.2026; было: билет, с 20.10 — 100 золота).
 //
-// Юзер достиг порога N рефералов → +1 билет. Пороги:
-// [1, 3, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] — итого 13.
+// Веха — 1, 3, 5, 10, 15 засчитанных друзей, дальше каждые 15 (lib/referralRewards.ts).
+// За каждую — строка «бокс ждёт» в yuplink.ref_reward; игрок забирает её
+// кнопкой в «Друзьях», без срока (referral-rewards.ts).
 //
-// Учёт через users.referral_tier_tickets_granted (индекс последнего
-// достигнутого тиера, 0..13). Растёт только вверх — защита от
-// дублирования при пересчёте после disconnect-а или race'ов.
+// Ключ — аккаунт + веха (source_ref 'refbox:<аккаунт>:<веха>', UNIQUE): пересчёт
+// хоть сто раз, гонка двух вкладок, повтор моста — второй строки нет.
+// Вехи считают только новых друзей — связь с REF_NEW_SCHEME_SINCE (владелец,
+// 22.10.2026: «по старым пересчёт не делаем, только новым — за старых уже всё
+// получено»). Старые друзья в счёт не входят вовсе, поэтому прежняя отметка
+// users.referral_tier_tickets_granted здесь больше не нужна.
 //
-// Считаем рефералов на уровне TG: все sister-кошельки инвайтера
-// агрегируем, у friend'а — TG-dedup. Это правильно — кошельки
-// одного юзера = один реф для нас.
+// Пересчёт зовут: привязка друга (referralAttach), покупка другом пака,
+// подписки, золота (referralQualify.noteReferralPurchase), экран «Друзья» и
+// опрос наград (догон).
 //
-// Активные рефералы (клеймили) поощряются ОТДЕЛЬНО, через
-// computeTickets.earnedFromReferrals (1 актив = 1 билет). Тиеры
-// здесь — дополнительная награда за факт приглашения.
+// С 02.11.2026 (рефка золотом, §8.101): в вехи боксов идёт друг, потративший
+// больше $15 (владелец: «нигде не пиши об этом — просто начисление боксов»);
+// тем же проходом — счёт ачивки «Много друзей» (потратившие от $10, все друзья):
+// торговля героям за друзей (achievements/tracks: friends).
 //
-// С 01.09.2026 «приглашение» = приглашённый купил пак с фишками
-// (referralQualify). Пересчёт дёргается и при регистрации, и при покупке.
+// С 05.11.2026 (владелец: «условие после прохождения обучения в игре», «только
+// обучение», «кто уже в игре — не трогать»): друг со связью не раньше
+// REF_TUTORIAL_SINCE идёт в вехи боксов, когда прошёл обучение, — без порога $15.
+// Прежние друзья — как были. «Много друзей» не меняли.
+import { mcpExec } from "./db/mcpClient";
+import { sqlStr } from "./api/raid-shared";
+import { accAccountId } from "./api/currency/move";
+import {
+  REF_BOX_PACK_ID,
+  REF_NEW_SCHEME_SINCE,
+  REF_TUTORIAL_SINCE,
+  milestonesForView,
+  milestonesUpTo,
+  nextMilestone,
+} from "@/lib/referralRewards";
+import {
+  countUniqueReferrals,
+  getInviterCanonicalWallet,
+  getInviterSisters,
+} from "./referralCount";
+import { REF_BOX_MIN_USD, REF_GOLD_SINCE } from "@/lib/referralGold";
 
-import { pg } from "./db/pg";
-import { nanoid } from "nanoid";
+/** Счёт ачивки «Много друзей» — числом друзей; вниз не идёт (курс DARAI паков плавает). */
+export const friendsAchSql = (account: string, friends: number): string =>
+  `INSERT INTO yuplink.account_achievement (account_id, track, count)
+VALUES (${sqlStr(account)}, 'friends', ${Math.max(0, Math.floor(friends))})
+ON CONFLICT (account_id, track) DO UPDATE
+  SET count = GREATEST(yuplink.account_achievement.count, EXCLUDED.count), updated_at = now();`;
 
-const TIER_THRESHOLDS = [1, 3, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] as const;
+/** Ключ повтора строки-бокса: одна веха — одна строка на аккаунт. */
+export const boxRef = (account: string, milestone: number) => `refbox:${account}:${milestone}`;
 
-const REFERRAL_TIER_EVENT_ID = "__referral_tier__";
-
-/** Найти максимальный тиер, который юзер уже достиг. 0 = не достиг даже 1-го. */
-function highestReachedTier(referralCount: number): number {
-  let tier = 0;
-  for (let i = 0; i < TIER_THRESHOLDS.length; i++) {
-    if (referralCount >= TIER_THRESHOLDS[i]) tier = i + 1;
-    else break;
-  }
-  return tier;
+/** Вставка боксов за вехи; уже заведённые ключи — тихо мимо. */
+export function insertBoxesSql(
+  account: string,
+  milestones: number[],
+  packId = REF_BOX_PACK_ID,
+): string {
+  const values = milestones
+    .map((m) => {
+      const ref = sqlStr(boxRef(account, m));
+      return `('rrb_' || substr(md5(${ref}), 1, 16), ${sqlStr(account)}, 'box', ${m}, ${sqlStr(packId)}, 1, ${ref})`;
+    })
+    .join(",\n       ");
+  return `INSERT INTO yuplink.ref_reward (id, account_id, kind, milestone, pack_id, amount, source_ref)
+VALUES ${values}
+ON CONFLICT (source_ref) DO NOTHING
+RETURNING id;`;
 }
 
 /**
- * Все wallet'ы инвайтера (sister-кошельки одного TG).
- * Если у inviter нет TG — фолбэк на сам wallet.
+ * Завести боксы за достигнутые вехи. Безопасно звать сколько угодно раз.
+ * Best-effort: ошибки — в лог и null, основной поток (привязка, покупка) важнее.
  */
-async function getInviterSisters(inviterWallet: string): Promise<string[]> {
-  const me = await pg.users.findOne({ wallet: inviterWallet });
-  if (!me?.telegram_id) return [inviterWallet];
-  const sisters = await pg.users.findMany({ telegram_id: me.telegram_id });
-  return sisters.map((s) => s.wallet);
-}
-
-/** Canonical wallet инвайтера (первый по created_at среди sister-кошельков).
- *  Билеты пишутся на него — стабильный и не меняется при добавлении новых. */
-async function getInviterCanonicalWallet(inviterWallet: string): Promise<string> {
-  const me = await pg.users.findOne({ wallet: inviterWallet });
-  if (!me?.telegram_id) return inviterWallet;
-  const sisters = await pg.users.findMany(
-    { telegram_id: me.telegram_id },
-    { orderBy: { column: "created_at", ascending: true } },
-  );
-  return sisters[0]?.wallet ?? inviterWallet;
-}
-
-/**
- * TG-dedup'нутое количество УНИКАЛЬНЫХ рефералов у инвайтера.
- * Один реальный человек = один реферал даже если у него несколько кошельков.
- */
-async function countUniqueReferrals(inviterSisters: string[]): Promise<number> {
-  const refRows = (
-    await pg.referrals.raw().select("friend_wallet").in("inviter_wallet", inviterSisters)
-  ).data as Array<{ friend_wallet: string }> | null;
-  const friendWallets = (refRows ?? []).map((r) => r.friend_wallet);
-  if (friendWallets.length === 0) return 0;
-
-  const friendUsers = (
-    await pg.users.raw().select("wallet,telegram_id").in("wallet", friendWallets)
-  ).data as Array<{
-    wallet: string;
-    telegram_id: number | null;
-  }> | null;
-  const userMap = new Map((friendUsers ?? []).map((u) => [u.wallet, u]));
-
-  // Анти-абуз (правило владельца 01.09): реферал засчитывается только после
-  // покупки пака с фишками. Прежний гейт «вышел из прихожей» перестал что-то
-  // значить — прихожую теперь проходят на входе, а бесплатных tg<id>-акков
-  // можно наделать сколько угодно. Пак стоит билетов или DARAI.
-  //
-  // Кошельки инвайти берём ВСЕ по его Telegram: купил любым — засчитано.
-  const friendTgs = new Set(
-    (friendUsers ?? []).map((u) => u.telegram_id).filter((t): t is number => t != null),
-  );
-  const sisterRows =
-    friendTgs.size > 0
-      ? ((
-          await pg.users.raw().select("wallet,telegram_id").in("telegram_id", Array.from(friendTgs))
-        ).data as Array<{ wallet: string; telegram_id: number | null }> | null)
-      : [];
-  const allFriendWallets = Array.from(
-    new Set([...friendWallets, ...(sisterRows ?? []).map((r) => r.wallet)]),
-  );
-  const { walletsWithPackPurchase } = await import("./referralQualify");
-  const buyers = await walletsWithPackPurchase(allFriendWallets);
-  const tgOfWallet = new Map((sisterRows ?? []).map((r) => [r.wallet, r.telegram_id]));
-  /** Аккаунт инвайти купил пак хоть каким-то своим кошельком? */
-  const accountBought = (fw: string, tg: number | null | undefined): boolean => {
-    if (buyers.has(fw)) return true;
-    if (tg == null) return false;
-    for (const w of buyers) if (tgOfWallet.get(w) === tg) return true;
-    return false;
-  };
-
-  const dedup = new Set<string>();
-  for (const fw of friendWallets) {
-    const u = userMap.get(fw);
-    const tg = u?.telegram_id;
-    if (!accountBought(fw, tg)) continue; // пак не куплен — реф ещё не созрел
-    dedup.add(tg ? `tg:${tg}` : `w:${fw}`);
-  }
-  return dedup.size;
-}
-
-/**
- * Главная функция. Вызывается при создании нового реферала
- * (в connectWallet) и любых ручных пересчётах.
- *
- * Логика:
- *   1. Считаем уникальных рефералов у инвайтера (по TG).
- *   2. Определяем highest reached tier (0..13).
- *   3. Сравниваем с users.referral_tier_tickets_granted у canonical wallet.
- *   4. Если новый тиер выше — INSERT в ticket_claims разницу штук + UPDATE
- *      колонки. Если ниже или равен — ничего не делаем.
- *
- * Best-effort: ошибки логируются и не пробрасываются, чтобы не валить
- * основной flow (connectWallet).
- */
-export async function grantReferralTierTicketsIfDue(
+export async function grantReferralBoxesIfDue(
   inviterWallet: string,
-): Promise<{ newTier: number; ticketsGranted: number } | null> {
+): Promise<{ count: number; boxes: number; friends: number } | null> {
   try {
     const sisters = await getInviterSisters(inviterWallet);
-    const canonical = await getInviterCanonicalWallet(inviterWallet);
-
-    const refCount = await countUniqueReferrals(sisters);
-    const newTier = highestReachedTier(refCount);
-
-    const me = await pg.users.findOne({ wallet: canonical });
-    const oldTier = me?.referral_tier_tickets_granted ?? 0;
-
-    if (newTier <= oldTier) return { newTier, ticketsGranted: 0 };
-
-    const delta = newTier - oldTier;
-    const now = new Date().toISOString();
-
-    // Один ticket_claim на каждый перешагнутый тиер — так в истории видно
-    // когда и за какой тиер. tickets_awarded=1 у каждого.
-    for (let t = oldTier + 1; t <= newTier; t++) {
-      await pg.ticketClaims.insert({
-        id: nanoid(),
-        event_id: `${REFERRAL_TIER_EVENT_ID}:${t}`,
-        wallet: canonical,
-        token_ids: JSON.stringify({
-          tier: t,
-          threshold: TIER_THRESHOLDS[t - 1],
-        }),
-        tickets_awarded: 1,
-        claimed_at: now,
-      });
-      // ref включает кошелёк: уникальный индекс леджера по (kind, ref)
-      // глобальный, и без кошелька тиры разных инвайтеров столкнулись бы.
-      const { moveTickets } = await import("./api/tickets-ledger");
-      await moveTickets({
-        wallet: canonical,
-        delta: 1,
-        kind: "referral",
-        ref: `tier:${canonical}:${t}`,
-      });
-    }
-
-    await pg.users.update({ wallet: canonical }, { referral_tier_tickets_granted: newTier });
-
-    return { newTier, ticketsGranted: delta };
+    const [count, friends] = await Promise.all([
+      countUniqueReferrals(sisters, REF_NEW_SCHEME_SINCE, {
+        minUsd: REF_BOX_MIN_USD,
+        strict: true,
+        tutorialSince: REF_TUTORIAL_SINCE,
+      }),
+      // «Много друзей» — только друзья, пришедшие с 02.11.2026 (прежним не компенсируем).
+      countUniqueReferrals(sisters, REF_GOLD_SINCE),
+    ]);
+    const account = await accAccountId(await getInviterCanonicalWallet(inviterWallet));
+    if (!account) return { count, boxes: 0, friends };
+    if (friends > 0) await mcpExec(friendsAchSql(account, friends));
+    if (count <= 0) return { count, boxes: 0, friends };
+    const due = milestonesUpTo(count);
+    const rows = (await mcpExec(insertBoxesSql(account, due), { wrapJsonCte: true })) as
+      | unknown[]
+      | null;
+    return { count, boxes: rows?.length ?? 0, friends };
   } catch (err) {
-    console.warn("[referralTiers] grant failed:", err);
+    console.warn("[referralTiers] боксы за вехи не заведены:", err);
     return null;
   }
 }
 
-/** Для UI: отдать статус тиеров — текущий уровень, следующий порог, всё ли. */
-export function describeTierProgress(referralCount: number) {
-  const tier = highestReachedTier(referralCount);
-  const max = TIER_THRESHOLDS.length;
-  const next = tier < max ? TIER_THRESHOLDS[tier] : null;
+/** Для экрана: счёт новых друзей, пройденные вехи, следующая и сетка для показа. */
+export function describeTierProgress(qualifiedCount: number) {
+  const thresholds = milestonesForView(qualifiedCount);
   return {
-    currentTier: tier, // 0..13
-    nextThreshold: next, // null если максимум достигнут
-    maxTier: max, // 13
-    thresholds: TIER_THRESHOLDS as unknown as number[],
+    /** Сколько новых засчитанных друзей идёт в вехи (старые не входят). */
+    count: qualifiedCount,
+    currentTier: milestonesUpTo(qualifiedCount).length,
+    nextThreshold: nextMilestone(qualifiedCount),
+    maxTier: thresholds.length,
+    thresholds,
   };
 }

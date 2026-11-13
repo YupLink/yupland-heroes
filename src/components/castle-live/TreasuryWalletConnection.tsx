@@ -6,6 +6,8 @@ import { useLang } from "@/lib/i18n";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/store";
 import { humanError } from "@/lib/humanError";
+import { VaultGate } from "@/components/wallet/VaultGate";
+import { vaultReady } from "@/lib/appLock";
 
 const buttonClass =
   "min-h-11 rounded-xl border border-border bg-secondary/40 px-4 py-2 text-left text-sm font-semibold hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold disabled:opacity-50";
@@ -21,6 +23,7 @@ export function TreasuryWalletConnection({ wallet, status, onPreviewWalletChange
   const [error, setError] = useState<string | null>(null);
   const [locals, setLocals] = useState<string[] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [, setVaultTick] = useState(0);
   useEffect(() => {
     if (!showMethods) return;
     const onEscape = (event: KeyboardEvent) => {
@@ -120,7 +123,7 @@ export function TreasuryWalletConnection({ wallet, status, onPreviewWalletChange
             <p className="castle-wallet-choice__connector">NEAR Connector</p>
           </> : locals !== null ? <>
             <DialogTitle>{en ? "YupLink Wallet" : "Кошелёк YupLink"}</DialogTitle>
-            <div className="castle-wallet-choice__wallet-list">{locals.map(accountId => <button key={accountId} type="button" onClick={() => void connectLocal(accountId)}>{accountId}</button>)}</div>
+            {locals.length > 0 && !vaultReady() ? <VaultGate onReady={() => setVaultTick(n => n + 1)} /> : <div className="castle-wallet-choice__wallet-list">{locals.map(accountId => <button key={accountId} type="button" onClick={() => void connectLocal(accountId)}>{accountId}</button>)}</div>}
             {!locals.length && <p>{en ? "No saved wallet on this device" : "На устройстве нет сохранённого кошелька"}</p>}
             <button className="castle-wallet-choice__cancel" type="button" onClick={() => setLocals(null)}>{en ? "Back" : "Назад"}</button>
           </> : <>

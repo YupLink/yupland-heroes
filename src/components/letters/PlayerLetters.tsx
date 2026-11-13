@@ -15,6 +15,7 @@ import type { PlayerLetter } from "@/lib/letters";
 import { getMyLetters, markLetterSeen } from "@/server/api/letters/letters-player";
 import { LetterWindow } from "./LetterWindow";
 import { letterQueue, nextLetters, withDone } from "./letterQueue";
+import { useLettersHeld } from "./letterHold";
 
 /** Возврат во вкладку перечитывает письма не чаще раза в минуту. */
 const REFRESH_MS = 60_000;
@@ -62,9 +63,11 @@ export function PlayerLetters() {
     return () => document.removeEventListener("visibilitychange", onShow);
   }, [connected, wallet, load]);
 
+  // На своём острове и при окне острова письма ждут (letterHold).
+  const held = useLettersHeld();
   const queue = letterQueue(box.letters, box.done);
   const current = queue.current;
-  if (!current || typeof document === "undefined") return null;
+  if (held || !current || typeof document === "undefined") return null;
 
   const ok = () => {
     setBox((b) => ({ ...b, done: withDone(b.done, current.id) }));

@@ -8,6 +8,7 @@ import {
   type RefObject,
 } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { tgFullscreenTop } from "@/lib/telegram/mobileFullscreen";
 
 /** Keeps existing sheet layouts while sharing modal focus and dismissal behavior. */
 export function TavernDialog({
@@ -54,15 +55,17 @@ export function TavernDialog({
       const edge = 16;
       const width = window.innerWidth;
       const height = window.innerHeight;
+      // В полном экране Telegram верх занят его кнопками — карточка ниже них.
+      const topEdge = edge + tgFullscreenTop();
       // Prefer the space immediately above the clicked item; use below if needed.
       const preferredTop =
-        anchor.top >= card.height + gap + edge
+        anchor.top >= card.height + gap + topEdge
           ? anchor.top - card.height - gap
           : anchor.bottom + gap;
       setPosition({
         position: "fixed",
         left: Math.max(edge, Math.min(anchor.left, width - card.width - edge)),
-        top: Math.max(edge, Math.min(preferredTop, height - card.height - edge)),
+        top: Math.max(topEdge, Math.min(preferredTop, height - card.height - edge)),
         bottom: "auto",
         margin: 0,
       });

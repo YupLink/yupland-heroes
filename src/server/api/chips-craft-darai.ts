@@ -82,6 +82,8 @@ export const myDaraiDeposits = createServerFn({ method: "GET" }).handler(
       .raw()
       .select("id,amount,tx_hash,receiver_id,created_at")
       .in("wallet", await getSisterWallets(wallet))
+      // Нулевые строки — занятые восстановлением энергопака квитанции, не пополнения.
+      .gt("amount", 0)
       .order("created_at", { ascending: false })
       .limit(20);
     return (data ?? []) as Array<{

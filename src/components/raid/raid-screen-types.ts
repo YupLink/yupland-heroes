@@ -32,8 +32,8 @@ export function fillerIcon(kind: string): string {
   switch (kind) {
     case "likes":
       return "❤️";
-    case "tickets":
-      return "🎟";
+    case "tickets": // выдаётся золотом ×100 (ПРАВИЛА §8.61)
+      return "🪙";
     case "energy":
       return "⚡";
     default:

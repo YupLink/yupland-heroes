@@ -29,10 +29,15 @@ import {
   originTakenSql,
 } from "@/server/api/beta-raid/stack-origin";
 import { ITEM_COLS, PORTION_TTL, livePortion, num } from "@/server/api/beta-raid/loot-bag/bag-sql";
+import { FISH_BAG_SOURCE } from "@/lib/raid/dynamiteFish";
 
-/** Живой незакопанный мешочек клетки (алиас b) — кандидат «долить». */
+/** Рыба от красного динамита (30.10.2026) — не мешочек для «долить»: в неё не сыпем. */
+export const notFishSql = (b: string): string => `${b}.source <> ${sqlStr(FISH_BAG_SOURCE)}`;
+
+/** Живой незакопанный мешочек клетки (алиас b), не рыба, — кандидат «долить». */
 const aliveAt = (m: string, q: number, r: number): string =>
   `b.map_id = ${sqlStr(m)} AND b.q = ${q} AND b.r = ${r} AND b.buried_at IS NULL
+   AND ${notFishSql("b")}
    AND EXISTS (SELECT 1 FROM yuplink.raid_loot_bag_item x WHERE x.bag_id = b.id AND ${livePortion("x")})`;
 
 /** Кандидат: самый свежий живой незакопанный мешочек на клетке. */

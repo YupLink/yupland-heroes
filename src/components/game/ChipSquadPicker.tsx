@@ -15,6 +15,7 @@ import { useSlotBusy } from "./squadBusy";
 import { buildSquad } from "./squadRefill";
 import { tirageBonus } from "@/lib/tirageBonus";
 import { myChipInventory } from "@/server/api/chips-pack";
+import { invalidateChipQueries } from "@/lib/query";
 import { SquadField, FIELD_SLOTS } from "./SquadField";
 import { SquadPickerHeader } from "./SquadPickerHeader";
 import { useTrainingChips, isTrainingTemplate, trainingStrength } from "./useTrainingChips";
@@ -114,9 +115,10 @@ export function ChipSquadPicker({
     return [...ready, ...(c.chips ?? []).filter((x) => !ids.has(x.id))];
   };
 
-  // свежий инвентарь при входе (не тянуть сожжённые из persisted-кэша)
+  // Свежие фишки при входе (не тянуть сожжённые из persisted-кэша) — обе
+  // кучи: тренировочные из пака острова иначе ждали бы конца staleTime.
   useEffect(() => {
-    qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
+    invalidateChipQueries(qc, "active");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // подрезать отряд под реально доступные фишки

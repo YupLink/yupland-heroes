@@ -44,8 +44,9 @@ beforeEach(() => {
 });
 
 describe("removeHeroFromField", () => {
-  it("рядом — бесплатно: герой снят, хвост выдан, соседям событие", async () => {
-    await expect(near({ data: { q: 30, r: 90 } })).resolves.toEqual({ ok: true, dustClaimed: 1 });
+  it("рядом — бесплатно: герой снят, хвост не выдаётся (13.11), соседям событие", async () => {
+    await expect(near({ data: { q: 30, r: 90 } })).resolves.toEqual({ ok: true });
+    expect(s.dust).toBe(0);
     expect(s.worker.heroId).toBeNull();
     // Рядом — без отдыха: наказание только за снятие издалека.
     expect(s.rest).toBeNull();
@@ -62,7 +63,7 @@ describe("removeHeroFromField", () => {
     s.pos = { q: 0, r: 0 };
     await remote({ data: { heroId: "hero_w", op: "op1abc" } });
     s.pos = { q: 31, r: 90 };
-    await expect(near({ data: { q: 30, r: 90 } })).resolves.toEqual({ ok: true, dustClaimed: 0 });
-    expect(s.dust).toBe(1);
+    await expect(near({ data: { q: 30, r: 90 } })).resolves.toEqual({ ok: true });
+    expect(s.dust).toBe(0);
   });
 });

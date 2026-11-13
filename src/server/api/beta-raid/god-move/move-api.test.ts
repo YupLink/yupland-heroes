@@ -34,6 +34,12 @@ vi.mock("@/server/auth", () => ({
     return "admin.near";
   },
 }));
+vi.mock("@/server/api/beta-raid/island/island-editor-auth", () => ({
+  requireGodAdmin: async () => {
+    if (!s.admin) throw new Error("Доступ запрещён: требуется admin-кошелёк");
+    return { wallet: "admin.near", mapId: "rmap_x", money: true };
+  },
+}));
 vi.mock("@/server/raidLive", () => ({ publishRaid: (e: unknown) => s.events.push(e) }));
 vi.mock("@/server/api/beta-raid/encounter-where", () => ({
   activeBetaMapId: async () => "rmap_x",

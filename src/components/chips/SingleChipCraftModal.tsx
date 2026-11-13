@@ -5,11 +5,14 @@ import { CircleCheck } from "lucide-react";
 import { useLang, useT } from "@/lib/i18n";
 import { craftChip, CRAFT_RULES } from "@/server/api/chips-craft";
 import { myChipInventory } from "@/server/api/chips-pack";
-import { getMyTickets } from "@/server/api/user-tickets";
-import { fmtTickets, levelKey } from "@/components/chips/collectionsHelpers";
+import { levelKey } from "@/components/chips/collectionsHelpers";
+import { useResources } from "@/lib/hooks/useResources";
+import { fmtGold, goldAtMultiplier } from "@/lib/craftGold";
+import { CRAFT_GOLD_KEY, useCraftGoldPrice } from "@/components/chips/useCraftGoldPrice";
 import { AutoUpgradeModal } from "@/components/chips/AutoUpgradeModal";
 import { UpgradeChip, UpgradeCurrency, UpgradeHero, UpgradeShell, levelNumber, starLevel } from "@/components/chips/ChipUpgradeUI";
 import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
+import { GoldShortNote } from "@/components/chips/GoldPriceLine";
 import { humanError } from "@/lib/humanError";
 import { invalidateAfterCraft } from "@/lib/chipCraftInvalidate";
 
@@ -29,7 +32,9 @@ function SingleChipCraftModal({ chipId, chipLevel, template, onClose, onCrafted 
   onCloseRef.current = onClose;
   const qc = useQueryClient();
   const rule = CRAFT_RULES[levelKey(chipLevel)];
-  const tickets = useQuery({ queryKey: ["my-tickets"], queryFn: () => getMyTickets() });
+  // Улучшение платится золотом (с 20.10.2026): баланс — счёт ресурсов, цена — стандарт × множитель курса.
+  const gold = useResources();
+  const price = useCraftGoldPrice();
   const inv = useQuery({ queryKey: ["my-chip-inventory"], queryFn: () => myChipInventory() });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const selectionInitializedFor = useRef<string | null>(null);
@@ -43,7 +48,9 @@ function SingleChipCraftModal({ chipId, chipLevel, template, onClose, onCrafted 
     }
   }, [autoOpen]);
 
-  const ticketsAvailable = (tickets.data as { availableRaw?: number } | undefined)?.availableRaw ?? tickets.data?.available ?? 0;
+  const goldAvailable = gold.data?.gold ?? 0;
+  const mult = price.data?.multiplier;
+  const cost = rule && mult != null ? goldAtMultiplier(rule.costGold, mult) : null;
   const allItems = inv.data ?? [];
   const base = allItems.find(i => i.chipIds.includes(chipId));
   const candidates = useMemo(() => !rule || !base ? [] : (inv.data ?? [])
@@ -63,13 +70,14 @@ function SingleChipCraftModal({ chipId, chipLevel, template, onClose, onCrafted 
     if (firstSelection) setShowCandidates(false);
   }, [candidates, chipId, inv.data, rule?.sacrifices]);
   const craft = useMutation({
-    mutationFn: () => craftChip({ data: { baseChipId: chipId, sacrificeChipIds: selectedIds } }),
+    mutationFn: () => craftChip({ data: { baseChipId: chipId, sacrificeChipIds: selectedIds, expectGold: cost ?? 0 } }),
     onSuccess: r => {
-      toast.success(<span>{template.name}: {starLevel(r.newLevel)} · −{fmtTickets(r.costTickets)} <ResourceGlyph kind="tickets" /></span>);
+      toast.success(<span>{template.name}: {starLevel(r.newLevel)} · −{fmtGold(r.costGold, ru)} <ResourceGlyph kind="gold" /></span>);
       onCrafted(r.newChipId, r.newLevel);
       invalidateAfterCraft(qc, template.id);
     },
-    onError: (e: Error) => toast.error(humanError(e)),
+    // «Цена изменилась» / «не хватает» — перечитать цену и баланс.
+    onError: (e: Error) => { toast.error(humanError(e)); void qc.invalidateQueries({ queryKey: CRAFT_GOLD_KEY }); void gold.refetch(); },
   });
   const autoOpenRef = useRef(autoOpen);
   autoOpenRef.current = autoOpen;
@@ -92,8 +100,8 @@ function SingleChipCraftModal({ chipId, chipLevel, template, onClose, onCrafted 
   }, []);
   if (!rule) return null;
 
-  const ticketsEnough = ticketsAvailable >= rule.costTickets;
-  const canConfirm = selectedIds.length === rule.sacrifices && selectedIds.every(id => candidates.some(c => c.id === id)) && ticketsEnough && !craft.isPending && !tickets.isError && !inv.isError && !tickets.isFetching && !inv.isFetching;
+  const goldEnough = cost != null && goldAvailable >= cost;
+  const canConfirm = selectedIds.length === rule.sacrifices && selectedIds.every(id => candidates.some(c => c.id === id)) && goldEnough && !craft.isPending && !gold.isError && !price.isError && !inv.isError && !gold.isFetching && !price.isFetching && !inv.isFetching;
   const sacrLevel = rule.sacrificeLevel ?? chipLevel;
   const selected = selectedIds.map(id => candidates.find(c => c.id === id)).filter((c): c is typeof candidates[number] => !!c);
   const selectionComplete = selected.length === rule.sacrifices;
@@ -111,8 +119,8 @@ function SingleChipCraftModal({ chipId, chipLevel, template, onClose, onCrafted 
   return <>
     <UpgradeShell title={ru ? "Улучшить фишку" : "Upgrade chip"} onClose={onClose} dialogRef={dialogRef} busy={craft.isPending} inactive={autoOpen} compact={selectionComplete}>
       <UpgradeHero imageUrl={template.imageUrl} name={template.name} level={chipLevel} templateNo={template.templateNo} />
-      {(tickets.isError || inv.isError) && <div role="alert" className="chip-upgrade__state"><p>{(ru ? "Не удалось загрузить фишки и баланс." : "Could not load chips and balance.")}</p><button className="chip-upgrade__retry" type="button" onClick={() => { void tickets.refetch(); void inv.refetch(); }}>{t("chips.retry")}</button></div>}
-      {(tickets.isFetching || inv.isFetching) && <div className="chip-upgrade__state">{ru ? "Загрузка фишек…" : "Loading chips…"}</div>}
+      {(gold.isError || price.isError || inv.isError) && <div role="alert" className="chip-upgrade__state"><p>{(ru ? "Не удалось загрузить фишки и баланс." : "Could not load chips and balance.")}</p><button className="chip-upgrade__retry" type="button" onClick={() => { void gold.refetch(); void price.refetch(); void inv.refetch(); }}>{t("chips.retry")}</button></div>}
+      {(gold.isFetching || price.isFetching || inv.isFetching) && <div className="chip-upgrade__state">{ru ? "Загрузка фишек…" : "Loading chips…"}</div>}
       <div className="chip-upgrade__material">
         <div className="chip-upgrade__material-copy"><strong>{ru ? <>{rule.sacrifices === 1 ? "Нужна" : "Нужны"} {rule.sacrifices} {rule.sacrifices === 1 ? "фишка" : "фишки"} {levelNumber(sacrLevel)}<span className="chip-upgrade__star">★</span></> : <>Required: {rule.sacrifices} {levelNumber(sacrLevel)}<span className="chip-upgrade__star">★</span> chip{rule.sacrifices === 1 ? "" : "s"}</>}</strong><p>{rule.requireIdentical ? (ru ? "Того же вида" : "Same type") : (ru ? "Из этой коллекции" : "From this collection")}</p></div>
         {selected.length > 0 && <div className="chip-upgrade__tiny-list">{selected.map(c => <UpgradeChip disabled={craft.isPending} key={c.id} imageUrl={c.item.imageUrl} name={c.item.templateName} level={c.item.level} templateNo={c.item.templateNo} selected onClick={() => toggle(c.id)} />)}</div>}
@@ -125,9 +133,9 @@ function SingleChipCraftModal({ chipId, chipLevel, template, onClose, onCrafted 
       {!inv.isFetching && candidates.length < rule.sacrifices && <p className="chip-upgrade__warning">{ru ? "Готовых фишек не хватает. Автоподбор может собрать недостающие." : "Not enough ready chips. Auto select may craft the missing ones."}</p>}
       {selectionComplete && <p className="chip-upgrade__selection-state"><CircleCheck aria-hidden="true" /> {ru ? `${rule.sacrifices} ${rule.sacrifices === 1 ? "фишка выбрана" : "фишки выбраны"}` : `${rule.sacrifices} chip${rule.sacrifices === 1 ? "" : "s"} selected`}</p>}
       {!selectionComplete && <button type="button" className="chip-upgrade__auto-entry" disabled={craft.isPending} onClick={() => setAutoOpen(true)}>{ru ? "Рассчитать автоподбор →" : "Calculate auto select →"}</button>}
-      <div className="chip-upgrade__summary"><UpgradeCurrency label={ru ? "Цена" : "Cost"} value={rule.costTickets} /><UpgradeCurrency label={ru ? "Баланс" : "Balance"} value={ticketsAvailable} /></div>
-      <button data-game-button="primary" type="button" className="chip-upgrade__confirm" disabled={!canConfirm} onClick={() => craft.mutate()} aria-label={ru ? `Улучшить за ${fmtTickets(rule.costTickets)} билетов` : `Upgrade for ${fmtTickets(rule.costTickets)} tickets`}>{craft.isPending ? (ru ? "Улучшаем…" : "Upgrading…") : <>{ru ? "Улучшить за" : "Upgrade for"} {fmtTickets(rule.costTickets)} <ResourceGlyph kind="tickets" /></>}</button>
-      {!ticketsEnough && <p role="status" className="chip-upgrade__warning">{ru ? "Недостаточно билетов" : "Not enough tickets"}</p>}
+      <div className="chip-upgrade__summary"><UpgradeCurrency label={ru ? "Требуется золото" : "Gold required"} value={cost} /><UpgradeCurrency label={ru ? "Баланс" : "Balance"} value={goldAvailable} /></div>
+      <button data-game-button="primary" type="button" className="chip-upgrade__confirm" disabled={!canConfirm} onClick={() => craft.mutate()} aria-label={cost == null ? undefined : ru ? `Улучшить за ${fmtGold(cost, ru)} золота` : `Upgrade for ${fmtGold(cost, ru)} gold`}>{craft.isPending ? (ru ? "Улучшаем…" : "Upgrading…") : cost == null ? (ru ? "Улучшить" : "Upgrade") : <>{ru ? "Улучшить за" : "Upgrade for"} {fmtGold(cost, ru)} <ResourceGlyph kind="gold" /></>}</button>
+      {cost != null && gold.data && !gold.isFetching && !goldEnough && <GoldShortNote className="chip-upgrade__warning" need={cost} have={goldAvailable} />}
       {!selectionComplete && <button type="button" className="chip-upgrade__back" onClick={onClose} disabled={craft.isPending}>{t("common.cancel")}</button>}
     </UpgradeShell>
     {autoOpen && <AutoUpgradeModal chipId={chipId} chipLevel={chipLevel} template={template} onClose={() => setAutoOpen(false)} onDone={onCrafted} />}

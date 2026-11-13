@@ -41,26 +41,20 @@ export const getShopGlobalStats = createServerFn({ method: "GET" }).handler(
 export const listMyShopOffers = createServerFn({ method: "GET" }).handler(
   async () => {
     const wallet = getCurrentWallet();
-    const rows =
-      ((
-        await pg.ticketShopOffers
-          .raw()
-          .select("*")
-          .eq("active", true)
-          .order("sort_order", { ascending: true })
-          .order("price_energy", { ascending: true })
-      ).data as Array<{
-        id: string;
-        tickets: number;
-        price_energy: number;
-        payment_token: string | null;
-        price_token: number | null;
-        price_stars: number | null;
-        price_usd?: number | string | null;
-        active: boolean;
-        sort_order: number;
-        created_at: string;
-      }>) ?? [];
+    // Магазина билетов больше нет (§8.61): предложений не отдаём, в базу не ходим.
+    const rows: Array<{
+      id: string;
+      tickets: number;
+      price_energy: number;
+      payment_token: string | null;
+      price_token: number | null;
+      price_stars: number | null;
+      price_usd?: number | string | null;
+      active: boolean;
+      sort_order: number;
+      created_at: string;
+    }> = [];
+    if (rows.length === 0) return [];
     const tokens = await pg.rewardTokens.findMany();
     const tokenMap = new Map(tokens.map((t) => [t.symbol, t]));
     const sub = wallet

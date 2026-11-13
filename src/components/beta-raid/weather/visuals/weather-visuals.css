@@ -1,0 +1,74 @@
+/* Weather is a sibling above the game canvas and below the real HUD. */
+.raid-weather-visuals{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.raid-weather-visuals canvas{position:absolute;inset:0;width:100%;height:100%}
+.raid-weather-visuals .shade,.raid-weather-visuals .clouds,.raid-weather-visuals .fog,.raid-weather-visuals .frost{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.1s ease}
+.raid-weather-visuals .shade{background:#13202b}
+.raid-weather-visuals .clouds{inset:-18%;background:radial-gradient(ellipse 67% 29% at 16% 16%,#09131e66,transparent 93%),radial-gradient(ellipse 62% 26% at 79% 59%,#0a142052,transparent 90%);animation:raid-weather-cloud-drift 26s ease-in-out infinite alternate}
+.raid-weather-visuals .fog{inset:-18%;filter:var(--weather-contour);animation:raid-weather-fog-drift 7s ease-in-out infinite alternate}
+.raid-weather-visuals .fog-a{background:radial-gradient(ellipse 29% 24% at 0% 0%,#e6eae3 0%,#e0e6defa 60%,#d4ded3c0 83%,transparent 100%),radial-gradient(ellipse 36% 30% at 3% 4%,#e1e7deed 0%,#d5dfd5cc 55%,#c2d1c580 85%,transparent 100%),radial-gradient(ellipse 42% 35% at 4% 5%,#dce5dae6 0%,#d0ddce99 58%,#c1d1c252 86%,#b6cbb624 97%,transparent 100%),radial-gradient(ellipse 20% 16% at 27% 12%,#e4eae28c 0%,#cad6cd66 65%,#acbfb424 97%,transparent 100%),radial-gradient(ellipse 16% 23% at 8% 34%,#e0e7df8c 0%,#cad5cc66 67%,#b3c4b924 97%,transparent 100%)}
+.raid-weather-visuals .fog-b{background:radial-gradient(ellipse 28% 23% at 100% 100%,#e5eae3 0%,#e0e6defa 60%,#d4ded3c0 83%,transparent 100%),radial-gradient(ellipse 35% 29% at 99% 99%,#e1e7deed 0%,#d5dfd5cc 55%,#c2d1c580 85%,transparent 100%),radial-gradient(ellipse 41% 34% at 99% 98%,#dce5dae6 0%,#d0ddce99 58%,#c1d1c252 86%,#b6cbb624 97%,transparent 100%),radial-gradient(ellipse 19% 16% at 75% 92%,#e3e9e18c 0%,#cbd7ce66 65%,#acbfb424 97%,transparent 100%),radial-gradient(ellipse 16% 22% at 95% 69%,#e0e7df8c 0%,#cad5cc66 67%,#b3c4b924 97%,transparent 100%);animation-name:raid-weather-fog-drift-right;animation-duration:8.5s;animation-delay:-3s}
+.raid-weather-visuals canvas{position:absolute;inset:0;width:100%;height:100%}
+.raid-weather-visuals .frost{background:radial-gradient(ellipse 32% 46% at -8% 12%,#e8f8ffbf,transparent 92%),radial-gradient(ellipse 34% 39% at 109% 87%,#effbffbd,transparent 90%),linear-gradient(90deg,#c6e6f096,transparent 14%,transparent 86%,#c9e8ef96);box-shadow:inset 0 0 28px 5px #d8f7ff88;mix-blend-mode:screen}
+.raid-weather-visuals .lightning{position:absolute;top:-2%;width:clamp(60px,16vw,140px);height:64%;opacity:0;overflow:visible;filter:drop-shadow(0 0 4px #b9cded);pointer-events:none}
+.raid-weather-visuals .lightning path{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.raid-weather-visuals .lightning-glow{stroke:#b8d2f6;stroke-width:4;opacity:.4;filter:blur(4px)}
+.raid-weather-visuals .lightning-core{stroke:#f3f8ff;stroke-width:1.1}
+.raid-weather-visuals .lightning-left{left:0}
+.raid-weather-visuals .lightning-right{right:0;transform:scaleX(-1) translateY(12%)}
+.raid-weather-visuals .frost{display:block;width:100%;height:100%;object-fit:fill;background:none;box-shadow:none;mix-blend-mode:screen;mask-image:linear-gradient(90deg,#000 0%,#000 3%,transparent 22%,transparent 78%,#000 97%,#000 100%)}
+.raid-weather-visuals[data-weather="blizzard"] .frost{opacity:.72}
+@keyframes raid-weather-cloud-drift{to{transform:translateX(-7%) translateY(3%)}}
+@keyframes raid-weather-fog-drift{from{transform:translate(-3%,2%)}to{transform:translate(6%,-5%)}}
+@keyframes raid-weather-fog-drift-right{from{transform:translate(3%,-2%)}to{transform:translate(-5%,4%)}}
+@media(prefers-reduced-motion:reduce){.raid-weather-visuals .clouds,.raid-weather-visuals .fog{animation:none}.raid-weather-visuals *{transition:none}}
+
+.raid-weather-visuals[data-weather="overcast"] .shade{opacity:.07}
+.raid-weather-visuals[data-weather="overcast"] .clouds{opacity:0}
+@media(prefers-reduced-motion:reduce){.raid-weather-visuals[data-weather="overcast"] .clouds{animation:none}}
+.raid-weather-visuals[data-weather="fog"] .shade{opacity:.07}
+.raid-weather-visuals[data-weather="fog"] .fog{opacity:1}
+.raid-weather-visuals[data-weather="rain"] .shade,.raid-weather-visuals[data-weather="fire_rain"] .shade{opacity:.12}
+.raid-weather-visuals[data-weather="storm"] .shade{opacity:.24}
+.raid-weather-visuals[data-weather="storm"] .clouds{opacity:.53}
+.raid-weather-visuals[data-weather="thunderstorm"] .shade{opacity:.21}
+.raid-weather-visuals[data-weather="thunderstorm"] .clouds{opacity:.48}
+.raid-weather-visuals[data-weather="blizzard"] .shade{background:#c4dce9;opacity:.08}
+.raid-weather-visuals[data-weather="blizzard"] .frost{opacity:.72}
+
+
+.raid-weather-visuals .lightning-branches{stroke:#d5e7ff;stroke-width:.45;opacity:.65}
+.raid-weather-visuals .storm-flash{position:absolute;inset:0;opacity:0;pointer-events:none;background:radial-gradient(ellipse at 0 12%,#c7d9f7,transparent 65%)}
+
+
+/* Fine translucent cloud filaments are separate from the dense corner banks. */
+.raid-weather-visuals .fog-wisps{position:absolute;inset:-18%;width:136%;height:136%;pointer-events:none;opacity:0;transition:opacity 1.1s ease;animation:raid-weather-fog-wisps-drift 10s ease-in-out infinite alternate;}
+.raid-weather-visuals[data-weather="fog"] .fog-wisps{opacity:.78}
+@keyframes raid-weather-fog-wisps-drift{from{transform:translate(-5%,5%) rotate(-7deg)}to{transform:translate(7%,-6%) rotate(-3deg)}}
+@media(prefers-reduced-motion:reduce){.raid-weather-visuals .fog-wisps{animation:none}}
+
+/* Keep the mask stationary while filaments drift into the dense side banks. */
+.raid-weather-visuals .fog-wisps-region{position:absolute;inset:0;pointer-events:none;mask-image:linear-gradient(90deg,#000 0%,#000 12%,#000b 20%,transparent 33%,transparent 67%,#000b 80%,#000 88%,#000 100%)}
+
+/* The opaque corner foundation never drifts away. Independent banks overlap it. */
+.raid-weather-visuals .fog-anchor,.raid-weather-visuals .fog-middle{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity 1.1s ease}
+.raid-weather-visuals .fog-anchor{background:radial-gradient(ellipse 44% 40% at 0% 0%,#dfe6df 0%,#dfe6df 65%,#d8e2d9e6 77%,#d4dfd570 88%,transparent 100%),radial-gradient(ellipse 44% 40% at 100% 100%,#dfe6df 0%,#dfe6df 65%,#d8e2d9e6 77%,#d4dfd570 88%,transparent 100%)}
+.raid-weather-visuals .fog-middle{inset:-18%;filter:var(--weather-contour)}
+.raid-weather-visuals .fog-middle-a{background:radial-gradient(ellipse 39% 34% at 9% 10%,#e5eae3f5 0%,#d9e3d9e6 70%,#cbd9ccad 88%,#cbd9cc55 96%,transparent 100%);animation:raid-weather-fog-bank-wave 6s ease-in-out -2s infinite alternate}
+.raid-weather-visuals .fog-middle-b{background:radial-gradient(ellipse 39% 34% at 91% 90%,#e5eae3f5 0%,#d9e3d9e6 70%,#cbd9ccad 88%,#cbd9cc55 96%,transparent 100%);animation:raid-weather-fog-bank-wave-right 7.5s ease-in-out -4s infinite alternate}
+.raid-weather-visuals[data-weather="fog"] .fog-anchor,.raid-weather-visuals[data-weather="fog"] .fog-middle{opacity:1}
+@media(prefers-reduced-motion:reduce){.raid-weather-visuals .fog-middle{animation:none}}
+
+@keyframes raid-weather-fog-bank-wave{0%{transform:translate(-3%,2%) scale(.98,1.02) skewY(-2deg)}50%{transform:translate(3%,-2%) scale(1.05,.97) skewY(2deg)}100%{transform:translate(7%,-5%) scale(1,1.05) skewY(-1deg)}}
+@keyframes raid-weather-fog-bank-wave-right{0%{transform:translate(3%,-2%) scale(1.02,.98) skewY(2deg)}50%{transform:translate(-2%,3%) scale(.97,1.05) skewY(-2deg)}100%{transform:translate(-6%,5%) scale(1.05,1) skewY(1deg)}}
+
+.raid-weather-visuals:not([data-weather="fog"]) :is(.fog,.fog-middle,.fog-anchor,.fog-wisps-region){display:none}
+.raid-weather-visuals:not([data-weather="blizzard"]) .frost{display:none}
+.raid-weather-visuals[data-hidden="true"] *{animation-play-state:paused!important}
+
+/* Hero-centred fog replaces the old screen-corner banks, including their tint. */
+.raid-weather-visuals[data-hero-fog="true"] :is(.shade,.fog,.fog-middle,.fog-anchor,.fog-wisps-region){display:none}
+
+/* Inactive effects do not keep invisible animation/filter layers alive. */
+.raid-weather-visuals:not([data-weather="thunderstorm"]) :is(.lightning,.storm-flash){display:none}
+.raid-weather-visuals:not([data-weather="storm"]):not([data-weather="thunderstorm"]) .clouds{display:none;animation:none}
+.raid-weather-visuals[data-weather="clear"] canvas{display:none}

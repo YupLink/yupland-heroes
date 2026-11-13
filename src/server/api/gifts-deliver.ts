@@ -27,10 +27,17 @@ export type GiftKind =
   // «Добычи»: нет героя или места — подарок ждёт (бросок, строка остаётся).
   | "custom";
 
+/**
+ * Вид строки подарка: всё, что раздают админ и турниры (GiftKind), плюс
+ * системный «босс» — охрана, снятая с DARAI-шахты (minebag-02): стопкой
+ * boss:<шаблон> в рюкзак выбранного героя (gifts-deliver-boss.ts).
+ */
+export type GiftRowKind = GiftKind | "boss";
+
 export type GiftRow = {
   id: string;
   account_id: string;
-  kind: GiftKind;
+  kind: GiftRowKind;
   amount: number;
   ref_id: string | null;
   title: string | null;
@@ -80,8 +87,10 @@ export async function deliverGift(wallet: string, gift: GiftRow): Promise<void> 
   }
 
   if (gift.kind === "tickets") {
-    const { moveTickets } = await import("./tickets-ledger");
-    await moveTickets({ wallet, delta: amount, kind: "admin_grant", ref });
+    // Билетов нет (§8.61): подарок/приз турнира в билетах — золотом, 100 за
+    // билет, тем же видом 'gift' и ключом, что подарок-ресурс.
+    const { creditGoldForTickets } = await import("./gold-earn");
+    await creditGoldForTickets({ account: gift.account_id, tickets: amount, kind: "gift", ref });
     return;
   }
 
@@ -104,6 +113,12 @@ export async function deliverGift(wallet: string, gift: GiftRow): Promise<void> 
     if (!token) throw new Error("У подарка не указан токен");
     const { accMove } = await import("./currency/move");
     await accMove({ wallet, token, delta: amount, kind: "acc_reward", ref });
+    return;
+  }
+
+  if (gift.kind === "boss") {
+    const { deliverBossGift } = await import("./gifts-deliver-boss");
+    await deliverBossGift(wallet, gift);
     return;
   }
 
@@ -146,6 +161,20 @@ export async function deliverGift(wallet: string, gift: GiftRow): Promise<void> 
   // Одна метка на всю пачку: предметы уходят ОДНОЙ вставкой, значит либо все,
   // либо ни одного — делить по штукам нечего.
   if (!(await claimDeliverOnce(ref, gift.id))) return;
+  // Артефакт с аукциона — с износом продавца (gifts-art-wear); новый — 0.
+  let wear = 0;
+  // …и с зачарованием продавца (§8.87, 31.10.2026), если лот был зачарованный.
+  let enchants: Awaited<ReturnType<typeof import("./gifts-art-wear").giftEnchantsForDelivery>> = [];
+  if (gift.kind === "art") {
+    const { giftWearForDelivery, giftEnchantsForDelivery } = await import("./gifts-art-wear");
+    [wear, enchants] = await Promise.all([
+      giftWearForDelivery(gift.id),
+      giftEnchantsForDelivery(gift.id),
+    ]).catch(async (e) => {
+      await releaseDeliverOnce(ref);
+      throw e;
+    });
+  }
   const rows = Array.from({ length: qty }, () => ({
     id: `ugi_${nanoid(12)}`,
     account_id: account,
@@ -154,11 +183,21 @@ export async function deliverGift(wallet: string, gift: GiftRow): Promise<void> 
     kind: (tpl as { kind?: string }).kind ?? gift.kind,
     source: "gift",
     obtained_at: now,
+    ...(wear > 0 ? { wear } : {}),
   }));
   try {
     await pg.userGameItems.insert(rows);
   } catch (e) {
     await releaseDeliverOnce(ref);
     throw e;
+  }
+  if (enchants.length) {
+    const { applyGiftEnchants } = await import("./gifts-art-wear");
+    await applyGiftEnchants(
+      rows.map((r) => r.id),
+      account,
+      gift.id,
+      enchants,
+    ).catch((e) => console.error(`[gift] зачарование подарка ${gift.id} не легло:`, e));
   }
 }

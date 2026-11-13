@@ -1,6 +1,6 @@
 // Доступные ходы бета-рейда: любая соседняя клетка с местностью, без
-// декора-преграды (cell-sql.decorBlocksSql) и без живого объекта. Пути
-// (routes) больше не участвуют.
+// декора-преграды (cell-sql.decorBlocksSql), без шахты (mine-cell-sql) и без
+// живого объекта. Пути (routes) больше не участвуют.
 import { createServerFn } from "@tanstack/react-start";
 import { mcpExec } from "../../db/mcpClient";
 import { requireBetaRaid } from "./gate";
@@ -11,7 +11,9 @@ import { VOID_SQL } from "./voidCells";
 import { canIgnoreVoid } from "./voidGate";
 import { objectKnownSql } from "./boss-snapshot";
 import { WATER_SQL, decorBlocksSql } from "./cell-sql";
-import { stepEnergyCost } from "@/lib/shipRules";
+import { mineCellSql } from "./mine-cell-sql";
+import { moveMultOf, stepEnergyCost } from "@/lib/shipRules";
+import { mapWeatherCoefs } from "./weather/weather-read";
 
 export const getAvailableMoves = createServerFn({ method: "GET" }).handler(async () => {
   const wallet = await requireBetaRaid();
@@ -59,6 +61,8 @@ export const getAvailableMoves = createServerFn({ method: "GET" }).handler(async
     // `decoration_id` держал кружок и там, куда сервер после удаления
     // шаблона уже пускал, и у проходимой таблички («две мёртвые клетки»).
     if (cell.decoration_blocks) continue;
+    // Шахта — стена (§8.59 п. 9), то же правило, что у шага (step-facts).
+    if (cell.mine) continue;
     // Объект держит клетку, только пока жив И пока его вообще есть чем
     // показать: у шага (step-facts.stepBlockedReason) правило то же, и без
     // проверки шаблона кружок хода пропадал там, куда сервер пускает.
@@ -84,12 +88,15 @@ export const getAvailableMoves = createServerFn({ method: "GET" }).handler(async
     import("./hero-power"),
     import("./ship-crew"),
   ]);
-  const [slowExtra, hero, ship] = await Promise.all([
+  const [slowExtra, hero, ship, weather] = await Promise.all([
     slowExtraCost(account),
     loadHeroPower(wallet).catch(() => null),
     myShip(wallet, mapId).catch(() => null),
+    mapWeatherCoefs(mapId),
   ]);
   const heroStepDiscountPct = hero?.field.stepDiscountPct;
+  // Погода карты (26.10.2026): ход героя × step, посадка и гребок × ship — как шаг.
+  const mult = moveMultOf(1, weather);
 
   return {
     moves: Array.from(moveSet.entries()).map(([key, { cellCost, water }]) => {
@@ -100,8 +107,9 @@ export const getAvailableMoves = createServerFn({ method: "GET" }).handler(async
             sailing: !!ship,
             bigShip: ship?.kind === "big",
             slowExtra,
+            mult,
           })
-        : stepEnergyCost({ cellCost, slowExtra, heroStepDiscountPct });
+        : stepEnergyCost({ cellCost, slowExtra, heroStepDiscountPct, mult });
       return { q, r, cost, terrainName: "" };
     }),
     slowExtra,
@@ -120,11 +128,12 @@ async function getCellInfo(
   void_fog: boolean | null;
   object_known: boolean | null;
   water: boolean | null;
+  mine: boolean | null;
 } | null> {
   const rows = (await mcpExec(
     `SELECT c.terrain_id, c.object_id, c.road_id, ${VOID_SQL} AS void_fog,
             ${decorBlocksSql("c")} AS decoration_blocks,
-            ${objectKnownSql("c")} AS object_known,
+            ${objectKnownSql("c")} AS object_known, ${mineCellSql("c")} AS mine,
             EXISTS (SELECT 1 FROM yuplink.mystic_item_template t
                      WHERE t.id = c.terrain_id AND ${WATER_SQL}) AS water
        FROM yuplink.raid_map_cells c
@@ -138,6 +147,7 @@ async function getCellInfo(
     void_fog: boolean | null;
     object_known: boolean | null;
     water: boolean | null;
+    mine: boolean | null;
   }>;
   return rows?.[0] ?? null;
 }

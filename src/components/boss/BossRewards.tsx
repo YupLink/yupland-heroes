@@ -18,7 +18,7 @@ export function BossRewards({ myRewardsCount }: { myRewardsCount: number }) {
       qc.invalidateQueries({ queryKey: ["my-energy"] });
       qc.invalidateQueries({ queryKey: ["my-yupland-status"] });
       qc.invalidateQueries({ queryKey: ["yupland-status"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       qc.invalidateQueries({ queryKey: ["my-like-balance"] });
       qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
     },

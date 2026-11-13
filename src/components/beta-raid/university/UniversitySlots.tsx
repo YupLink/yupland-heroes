@@ -3,11 +3,12 @@
 // Три состояния ячейки, и все три узнаваемы с первого взгляда:
 //   • занятая — картинка фишки и её доход; нажатие забирает её домой;
 //   • открытая пустая — плюс на неоне; нажатие открывает выбор фишки;
-//   • закрытая — замок и цена в билетах; нажатие открывает место.
+//   • закрытая — замок и цена в золоте (§8.61); нажатие открывает место.
 //
 // Так же, как на экране майнинга: игрок уже знает этот интерфейс, и объяснять
 // ему заново, что такое «место», не нужно.
-import { Lock, Plus, Ticket, Loader2 } from "lucide-react";
+import { Lock, Plus, Loader2 } from "lucide-react";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { ChipImage } from "@/components/ChipImage";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -110,8 +111,8 @@ export function UniversitySlots({
             )}
             {isNext && slotPrice !== null ? (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-gold">
-                <Ticket className="h-3 w-3" />
-                {slotPrice}
+                <ResourceGlyph kind="gold" className="h-3 w-3" />
+                {slotPrice.toLocaleString("ru-RU")}
               </span>
             ) : (
               <span className="text-[9px] text-muted-foreground">{t("braid.uni_slot_locked")}</span>

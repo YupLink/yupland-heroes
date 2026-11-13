@@ -1,6 +1,6 @@
 // Вход в замок (владелец, 07.10.2026): у любого замка или ратуши на карте мира;
 // своим делать не обязательно — «Сделать основным» отдельной кнопкой (первый
-// раз бесплатно, дальше 5 билетов). Не у замка — «Герой не в замке».
+// раз бесплатно, дальше 2 500 золота, §8.61). Не у замка — «Герой не в замке».
 // Статус спрашиваем свежим в момент нажатия: герой мог уйти.
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { getHomeCastle, setHomeCastle, type HomeCastleStatus } from "@/server/api/beta-raid/home-castle";
 import { humanError } from "@/lib/humanError";
 import { newOpId } from "@/lib/opId";
-import { TICKETS_KEY } from "@/lib/hooks/useTickets";
+import { RESOURCES_KEY } from "@/lib/hooks/useResources";
 
 export const HOME_CASTLE_KEY = ["home-castle"] as const;
 
@@ -50,24 +50,46 @@ export function useHomeCastle(ru: boolean, onEnter: () => void) {
   };
 
   const relocate = useMutation({
-    mutationFn: () => setHomeCastle({ data: { opId: newOpId() } }),
+    mutationFn: async () => {
+      const target = offer?.here;
+      if (!target) throw new Error(ru ? "Выбери ратушу заново" : "Select the town hall again");
+      const result = await status.refetch();
+      if (result.isError) throw result.error;
+      const fresh = result.data;
+      if (!fresh || fresh.island || fresh.away || !fresh.here ||
+          fresh.here.kind !== target.kind || fresh.here.q !== target.q || fresh.here.r !== target.r)
+        throw new Error(ru ? "Герой уже не у выбранной ратуши" : "Your hero is no longer at the selected town hall");
+      return setHomeCastle({ data: { opId: newOpId() } });
+    },
     onSuccess: (res) => {
       setOffer(null);
       toast.success(
         ru
-          ? `${res.home.name} — теперь твой основной замок${res.cost ? ` · −${res.cost} билетов` : ""}`
-          : `${res.home.name} is now your main castle${res.cost ? ` · −${res.cost} tickets` : ""}`,
+          ? `${res.home.name} — теперь твой основной замок${res.cost ? ` · −${res.cost.toLocaleString("ru-RU")} золота` : ""}`
+          : `${res.home.name} is now your main castle${res.cost ? ` · −${res.cost.toLocaleString("en-US")} gold` : ""}`,
       );
       void qc.invalidateQueries({ queryKey: HOME_CASTLE_KEY });
-      void qc.invalidateQueries({ queryKey: TICKETS_KEY, refetchType: "all" });
+      void qc.invalidateQueries({ queryKey: RESOURCES_KEY, refetchType: "all" });
     },
     onError: (e: Error) => toast.error(humanError(e)),
   });
 
-  /** Предложить сделать основным замок, у которого стоит герой. */
-  const offerMain = () => {
-    if (status.data?.here && !status.data.atHome) setOffer(status.data);
+  /** Open the existing confirmation only for the town hall selected in the map card. */
+  const offerMainAt = async (q: number, r: number) => {
+    try {
+      const result = await status.refetch();
+      if (result.isError) throw result.error;
+      const fresh = result.data;
+      if (!fresh) throw new Error(ru ? "Не удалось проверить, где герой" : "Could not check where your hero is");
+      // The server moves home to the hero's current place, not to a client-supplied cell.
+      if (fresh.island || fresh.away || !fresh.here || fresh.here.kind !== "town" ||
+          fresh.here.q !== q || fresh.here.r !== r ||
+          (fresh.home.kind === "town" && fresh.home.q === q && fresh.home.r === r)) return;
+      setOffer(fresh);
+    } catch (e) {
+      toast.error(humanError(e as Error));
+    }
   };
 
-  return { status, tryEnter, checking, offer, offerMain, closeOffer: () => setOffer(null), relocate };
+  return { status, tryEnter, checking, offer, offerMainAt, closeOffer: () => setOffer(null), relocate };
 }

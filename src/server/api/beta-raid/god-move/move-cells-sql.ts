@@ -92,6 +92,16 @@ const staleSql = (d: string, c: string): string =>
          OR (${c}.object_id IS NOT NULL AND ${c}.object_id IS DISTINCT FROM ${d}.object_id))`;
 
 /**
+ * На клетке до переноса стоит посаженное игроком дерево (decor-05): ожидание под
+ * ним — декор карты, срубленный до посадки. Едет посаженное — ожидание остаётся
+ * на клетке и будится (таймер «Респавн, мин» — с переноса), а не снимается.
+ */
+const plantedOn = (m: string, c: GodCell): string =>
+  `EXISTS (SELECT 1 FROM yuplink.raid_map_cells pc
+            WHERE ${atCell("pc", m, c)} AND pc.decoration_id IS NOT NULL
+              AND pc.planted_decor = pc.decoration_id)`;
+
+/**
  * Отрастание — только ждущие строки (placed_at IS NULL; вставшие разошлёт и
  * снимет сборщик). Едет декор — живая строка его клетки едет на новую (снимок —
  * клетка после переноса; своя строка цели заменяется: декор туда встаёт, и её
@@ -147,7 +157,12 @@ export function regrowCtes(o: UnitAt): string[] {
      )`,
     `regrow_del AS (
        DELETE FROM yuplink.raid_decor_respawn d USING go
-        WHERE ${atCell("d", m, c)} AND ${pending}
+        WHERE ${atCell("d", m, c)} AND ${pending} AND NOT ${plantedOn(m, c)}
+       RETURNING 1
+     )`,
+    `regrow_wake AS (
+       UPDATE yuplink.raid_decor_respawn d SET due_at = now() FROM go
+        WHERE ${atCell("d", m, c)} AND ${pending} AND d.held_at IS NOT NULL AND ${plantedOn(m, c)}
        RETURNING 1
      )`,
   ];
@@ -157,5 +172,5 @@ export function regrowCtes(o: UnitAt): string[] {
 export function cellWriteNames(o: UnitAt): string[] {
   const p = unitParts(o);
   if (!p.decor) return ["cells", "regrow_keep", "regrow_drop"];
-  return decorCell(o) ? ["cells", "regrow_put", "regrow_del"] : ["cells"];
+  return decorCell(o) ? ["cells", "regrow_put", "regrow_del", "regrow_wake"] : ["cells"];
 }

@@ -41,6 +41,9 @@ export function useAdjacentShip(
       const mark = ships.get(`${q},${r}`);
       if (!mark) continue;
       if (mark.free > 0) return { q, r, mark, aboard: false };
+      // Одни подбитые (dynamite-08) — делать с ними нечего: ни сесть, ни починить.
+      const blasted = mark.blasted ?? 0;
+      if (blasted > 0 && mark.busy <= 0 && mark.broken <= blasted) continue;
       if (mark.broken > 0 && mark.busy <= 0) wrecked ??= { q, r, mark, aboard: false };
       else busy ??= { q, r, mark, aboard: false };
     }

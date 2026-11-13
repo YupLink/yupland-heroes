@@ -1,5 +1,5 @@
 // Выпечка одного куска: все клетки, чей рисунок задевает его прямоугольник
-// (chunkRect), сверху вниз — местность → дорога → декор, неразведанные —
+// (chunkRect), сверху вниз — местность → жила → дорога → декор, неразведанные —
 // чёрным; лишнее срезает clip по прямоугольнику. Вынесено из chunkLayer.ts
 // (§13.1).
 //
@@ -16,15 +16,17 @@ import { R, hexPath2D } from "./hexGeometry";
 import { TILE_DRAW_H, TILE_DRAW_W } from "./hexTileCache";
 import { RIBBON_DRAW_H, RIBBON_DRAW_W } from "./roadRibbonCache";
 import { COLOR } from "./betaCanvasScene";
-import { drawDecoration } from "./drawDecoration";
+import { drawDecoration, decorationSprite } from "./drawDecoration";
 import { blocksOf } from "./mergeBlocks";
 import { REACH } from "./chunkIndex";
 import type { BakeInput } from "./chunkLayer";
+import { veinKey, veinsOf } from "./veinStore";
+import { drawVein } from "./veinDraw";
 
 export const imgReady = (img: HTMLImageElement | undefined): boolean =>
   !!img && img.complete && img.naturalWidth > 0;
 
-/** Клетки, чей рисунок задевает rect: местность → дорога → декор, или чёрный туман. */
+/** Клетки, чей рисунок задевает rect: местность → жила → дорога → декор, или чёрный туман. */
 export function bakeCells(
   g: CanvasRenderingContext2D,
   rect: WorldView,
@@ -35,6 +37,7 @@ export function bakeCells(
   const hex = hexPath2D();
   const missing: string[] = [];
   const blocks = blocksOf(input.index.store);
+  const veins = veinsOf(input.index.store.packed);
   g.save();
   g.beginPath();
   g.rect(rect.minX, rect.minY, rect.maxX - rect.minX, rect.maxY - rect.minY);
@@ -60,13 +63,17 @@ export function bakeCells(
       }
       if (c.cell.terrainId) {
         const img = images.get(c.tileKey);
-        const tile = tiles.get(c.tileKey, img);
+        const tile = tiles.get(c.tileKey, img, c.q, c.r);
         if (tile) g.drawImage(tile, -TILE_DRAW_W / 2, -TILE_DRAW_H / 2, TILE_DRAW_W, TILE_DRAW_H);
         else {
           if (!imgReady(img)) missing.push(c.tileKey);
           g.fillStyle = COLOR.grass;
           g.fill(hex);
         }
+        // Жила — сразу поверх местности, под дорогой и декором (veinDraw).
+        const vein = veins.size ? veins.get(veinKey(c.q, c.r)) : undefined;
+        const wait = vein ? drawVein(g, images, vein) : null;
+        if (wait) missing.push(wait);
       } else {
         g.fillStyle = COLOR.emptyTile;
         g.fill(hex);
@@ -86,7 +93,7 @@ export function bakeCells(
     // Декор клетки объединённого блока печём не здесь: его рисует кадр одной
     // картинкой на весь блок (drawMergedBlocks), иначе он лежал бы дважды.
     if ((blocks.groupOf[c.i] ?? -1) >= 0) return;
-    const img = images.get("d:" + dec);
+    const { image: img, height } = decorationSprite(images, dec);
     // Не загрузилась — помечаем и для дерева ниже квадрата: подъедет — кусок
     // перепечётся уже с его верхушкой.
     const ready = imgReady(img);
@@ -95,10 +102,11 @@ export function bakeCells(
     // зелёной точки: не достаёт до куска — не тратим drawImage за краем.
     const top =
       ready && img
-        ? c.y + R * 0.55 - R * 1.5 * (img.naturalHeight / img.naturalWidth)
+        ? c.y + R * 0.55 - height
         : c.y - R * 0.25;
     if (top < rect.maxY) drawDecoration(scene, c, dec);
   });
   g.restore();
   return missing;
 }
+

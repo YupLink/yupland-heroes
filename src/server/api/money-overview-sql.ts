@@ -10,7 +10,10 @@
 //    «approved» без хэшей (тогдашний код не ставил «done»), но по цепи все
 //    ушли — поэтому «approved» старше часа считаем разосланной;
 //  · оборот карты: darai_pool_move по видам и префиксу ref.
-export const MONEY_SQL = `
+// Кошельки владельца и партнёра — из env (server/team), в SQL только через sqlStr.
+import { sqlStr } from "./raid-shared";
+
+export const moneySql = (owner: string, partner: string) => `
 WITH acc AS (
   SELECT
     COALESCE(sum(delta) FILTER (WHERE kind = 'acc_deposit'), 0)                AS dep,
@@ -25,12 +28,14 @@ WITH acc AS (
     COALESCE(sum(amount) FILTER (WHERE kind = 'collection_deposit'), 0)                       AS treasury,
     COALESCE(sum(amount) FILTER (WHERE kind = 'adjust'
                                    AND (ref LIKE 'swap:%' OR ref LIKE 'batch:%')), 0)          AS swaps,
-    -- подписки, наборы и комиссия аукционного дома: делятся так же, как подписка (kit:…:map, gauc:…:map)
+    -- подписки, наборы, комиссия аукционного дома и покупка золота (§8.66): делятся так же,
+    -- как подписка (kit:…:map, gauc:…:map, gshop:…:map)
     COALESCE(sum(amount) FILTER (WHERE kind = 'player_spend' AND (ref LIKE 'esub:%'
-                                   OR ref LIKE 'kit:%' OR ref LIKE 'gauc:%')), 0)               AS subs,
+                                   OR ref LIKE 'kit:%' OR ref LIKE 'gauc:%'
+                                   OR ref LIKE 'gshop:%')), 0)                                  AS subs,
     COALESCE(sum(amount) FILTER (WHERE kind = 'player_spend' AND ref NOT LIKE 'esub:%'
                                    AND ref NOT LIKE 'kit:%' AND ref NOT LIKE 'gauc:%'
-                                   AND amount > 0), 0)                                          AS spend,
+                                   AND ref NOT LIKE 'gshop:%' AND amount > 0), 0)               AS spend,
     COALESCE(-sum(amount) FILTER (WHERE kind = 'player_spend' AND amount < 0), 0)              AS buyback,
     COALESCE(-sum(amount) FILTER (WHERE kind IN ('map_reserve', 'map_release')), 0)            AS placed,
     COALESCE(-sum(amount) FILTER (WHERE kind = 'adjust' AND ref LIKE 'mine:%'), 0)             AS mines,
@@ -67,8 +72,8 @@ SELECT row_to_json(_t.*) AS _row FROM (SELECT
   (SELECT count(DISTINCT id) FROM dist)::int AS dist_count,
   (SELECT COALESCE(sum(amt), 0) FROM dist)::text AS dist_total,
   (SELECT COALESCE(sum(amt) FILTER (WHERE r = 'darai_duplo.near' AND tag NOT LIKE 'legendary%'), 0) FROM dist)::text AS dist_duplo,
-  (SELECT COALESCE(sum(amt) FILTER (WHERE r = 'owner.example.tg' AND tag NOT LIKE 'legendary%'), 0) FROM dist)::text AS dist_miplix,
-  (SELECT COALESCE(sum(amt) FILTER (WHERE r = 'admin2.example.tg' AND tag NOT LIKE 'legendary%'), 0) FROM dist)::text AS dist_yarsib,
+  (SELECT COALESCE(sum(amt) FILTER (WHERE r = ${sqlStr(owner)} AND tag NOT LIKE 'legendary%'), 0) FROM dist)::text AS dist_owner,
+  (SELECT COALESCE(sum(amt) FILTER (WHERE r = ${sqlStr(partner)} AND tag NOT LIKE 'legendary%'), 0) FROM dist)::text AS dist_partner,
   (SELECT COALESCE(sum(amt) FILTER (WHERE tag LIKE 'legendary%'), 0) FROM dist)::text AS dist_legendary,
   (SELECT count(*) FROM yuplink.admin_batch_payouts_pending
     WHERE upper(reward_symbol) = 'DARAI' AND status = 'failed')::int AS dist_failed,

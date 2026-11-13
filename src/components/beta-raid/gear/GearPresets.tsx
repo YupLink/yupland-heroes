@@ -74,6 +74,8 @@ export function GearPresets({ disabled = false, inactiveHero = false, beforeActi
           ? t("braid.preset_applied_partial", { name: res.name, n: res.equipped, lost })
           : t("braid.preset_applied", { name: res.name, n: res.equipped }),
       );
+      // Сломанные не надеваются (§8.63 п.3) — говорим, куда с ними идти.
+      if (res.broken > 0) toast.warning(t("artbroken.preset_skipped", { n: res.broken }));
       // Свежие слоты+статы кладём в кэш СРАЗУ — числа героя меняются в тот же
       // кадр, не дожидаясь сетевого рефетча (жалоба: «хар-ки не меняются быстро
       // после смены комплекта»). Инвалидация ниже добьёт остальные ключи
@@ -144,7 +146,7 @@ export function GearPresets({ disabled = false, inactiveHero = false, beforeActi
         <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {t("braid.presets_title")}
         </span>
-        <button data-game-button="legacy"
+        <button data-game-button="legacy" data-save-gear-set
           type="button"
           onClick={() => setEdit("new")}
           disabled={disabled || busy}

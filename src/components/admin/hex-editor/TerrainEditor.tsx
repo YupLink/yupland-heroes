@@ -8,6 +8,13 @@ import { TerrainBattleBgPicker } from "@/components/admin/hex-editor/TerrainBatt
 import type { TerrainDef } from "@/components/admin/hex-editor/hexShared";
 import { AdminTagChecks } from "@/components/beta-raid/AdminTagChecks";
 import { AdminDecorInteract } from "@/components/beta-raid/AdminDecorInteract";
+import { bridgeAxes, type BridgeAxes } from "@/lib/raid/bridgeTransit";
+
+const BRIDGE_DIRECTIONS: Array<{ axis: BridgeAxes["deckAxis"]; label: string; name: string }> = [
+  { axis: 0, label: "← →", name: "горизонталь" },
+  { axis: 1, label: "↖ ↘", name: "диагональ 1" },
+  { axis: 2, label: "↙ ↗", name: "диагональ 2" },
+];
 
 /** jsonb приезжает как unknown: копию делаем только из настоящего объекта. */
 function metaRecord(meta: unknown): Record<string, unknown> {
@@ -40,6 +47,11 @@ export function TerrainEditor({
   onSaved: () => void;
 }) {
   const qc = useQueryClient();
+  const existingMeta = terrain?.id
+    ? qc.getQueryData<Array<{ id: string; meta?: unknown }>>(["hex-editor-items", kind])
+        ?.find((item) => item.id === terrain.id)?.meta ?? terrain.meta
+    : terrain?.meta;
+  const currentBridge = bridgeAxes(metaRecord(existingMeta).bridge);
   const [label, setLabel] = useState(terrain?.label ?? "");
   const [cost, setCost] = useState(terrain?.cost ?? 1);
   const [costStr, setCostStr] = useState(String(terrain?.cost ?? 1));
@@ -49,6 +61,13 @@ export function TerrainEditor({
   const [battleBg, setBattleBg] = useState<string | null>(battleBgOf(terrain?.meta));
   // Уровень местности: автораздача может ставить мобов только на уровни n–n.
   const [level, setLevel] = useState(levelOf(terrain?.meta));
+  const [bridgeEnabled, setBridgeEnabled] = useState(!!currentBridge);
+  const [deckAxis, setDeckAxis] = useState<BridgeAxes["deckAxis"]>(
+    currentBridge?.deckAxis ?? 1,
+  );
+  const [channelAxis, setChannelAxis] = useState<BridgeAxes["channelAxis"]>(
+    currentBridge?.channelAxis ?? 0,
+  );
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -79,10 +98,16 @@ export function TerrainEditor({
         if (Number.isFinite(lv) && lv >= 0) baseMeta.level = Math.min(1000, lv);
         else delete baseMeta.level;
       }
+      if (kind === "decoration") {
+        if (bridgeEnabled) baseMeta.bridge = { deckAxis, channelAxis };
+        else delete baseMeta.bridge;
+      }
       // Для местности meta шлём ВСЕГДА, даже пустую: adminUpdateItem трогает
       // её только когда поле пришло, и снятый фон иначе остался бы в базе.
       const metaToSend =
-        kind === "terrain" || Object.keys(baseMeta).length > 0 ? baseMeta : undefined;
+        kind === "terrain" || kind === "decoration" || Object.keys(baseMeta).length > 0
+          ? baseMeta
+          : undefined;
       const statAmount = kind === "decoration" ? undefined : cost;
       if (terrain?.id) {
         // Редактирование существующего.
@@ -182,6 +207,63 @@ export function TerrainEditor({
             </div>
           )}
           <TerrainImagePicker initialUrl={originalUrl} onUploaded={setUploadedUrl} />
+          {kind === "decoration" && (
+            <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+              <label className="flex min-h-10 items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={bridgeEnabled}
+                  onChange={(e) => setBridgeEnabled(e.target.checked)}
+                  className="h-4 w-4 accent-amber-400"
+                />
+                Судоходный мост
+              </label>
+              {bridgeEnabled && (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Ставь этот декор на воду: герой идёт по настилу, корабль проходит поперёк него.
+                  </p>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Направление настила</span>
+                    <div className="flex gap-1">
+                      {BRIDGE_DIRECTIONS.map(({ axis, label, name }) => (
+                        <button
+                          key={axis}
+                          type="button"
+                          aria-label={`Настил: ${name}`}
+                          aria-pressed={deckAxis === axis}
+                          onClick={() => {
+                            setDeckAxis(axis);
+                            if (channelAxis === axis) setChannelAxis(((axis + 1) % 3) as BridgeAxes["channelAxis"]);
+                          }}
+                          className={`min-h-10 min-w-0 flex-1 rounded-md border text-sm ${deckAxis === axis ? "border-amber-400 bg-amber-400/20 text-amber-200" : "border-border text-foreground"}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-xs text-muted-foreground">Направление прохода корабля</span>
+                    <div className="flex gap-1">
+                      {BRIDGE_DIRECTIONS.filter(({ axis }) => axis !== deckAxis).map(({ axis, label, name }) => (
+                        <button
+                          key={axis}
+                          type="button"
+                          aria-label={`Канал: ${name}`}
+                          aria-pressed={channelAxis === axis}
+                          onClick={() => setChannelAxis(axis)}
+                          className={`min-h-10 min-w-0 flex-1 rounded-md border text-sm ${channelAxis === axis ? "border-amber-400 bg-amber-400/20 text-amber-200" : "border-border text-foreground"}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           {kind === "terrain" && (
             <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
               <span className="text-xs text-muted-foreground">Уровень</span>

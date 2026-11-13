@@ -61,15 +61,23 @@ export async function attachReferral(opts: {
 }): Promise<string | null> {
   try {
     const inviter = await resolveInviter(opts.ref);
-    if (!inviter || inviter === opts.friendWallet) return null;
+    // Ссылка была, а связи не будет — в лог с причиной (проверка привязок, 02.11.2026).
+    const skip = (why: string) => {
+      if (opts.ref) console.log(`[referralAttach] ${opts.ref} → ${opts.friendWallet}: ${why}`);
+      return null;
+    };
+    if (!inviter) return skip("пригласивший не найден");
+    if (inviter === opts.friendWallet) return skip("сам себя");
 
     // Свой же Telegram по ссылке самому себе — не реферал.
     if (opts.friendTgId != null) {
       const inv = await pg.users.findOne({ wallet: inviter });
-      if (inv?.telegram_id != null && inv.telegram_id === opts.friendTgId) return null;
-      if (!(await isNewTelegram(opts.friendTgId, opts.friendWallet))) return null;
+      if (inv?.telegram_id != null && inv.telegram_id === opts.friendTgId)
+        return skip("свой Telegram");
+      if (!(await isNewTelegram(opts.friendTgId, opts.friendWallet)))
+        return skip("Telegram не новый");
     }
-    if (await alreadyReferred(opts.friendTgId, opts.friendWallet)) return null;
+    if (await alreadyReferred(opts.friendTgId, opts.friendWallet)) return skip("уже чей-то друг");
 
     await pg.referrals.upsert(
       {
@@ -83,10 +91,11 @@ export async function attachReferral(opts: {
     // users.referred_by держим синхронно: по нему видно происхождение игрока
     // даже там, где referrals почищены дедупом.
     await pg.users.update({ wallet: opts.friendWallet }, { referred_by: inviter });
+    console.log(`[referralAttach] ${opts.ref} → ${opts.friendWallet}: привязан к ${inviter}`);
 
     try {
-      const { grantReferralTierTicketsIfDue } = await import("./referralTiers");
-      await grantReferralTierTicketsIfDue(inviter);
+      const { grantReferralBoxesIfDue } = await import("./referralTiers");
+      await grantReferralBoxesIfDue(inviter);
     } catch (err) {
       console.warn("[referralAttach] тир не начислен:", err);
     }

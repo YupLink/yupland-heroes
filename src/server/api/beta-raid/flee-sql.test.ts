@@ -1,7 +1,8 @@
 // Правила побега (владелец, 21.09): под живой объект и постройку МОЖНО — там
-// беглец прячется (ТЗ); под судно и к другому беглецу — нет; СКВОЗЬ живой
-// объект, скалу или воду на промежуточной клетке — нельзя. Условия утверждаем
-// по экспортированным константам, а не по подстрокам в собранном запросе:
+// беглец прячется (ТЗ); под судно, к другому беглецу и на шахту (20.10, §8.59
+// п. 9) — нет; СКВОЗЬ живой объект, шахту, скалу или воду на промежуточной
+// клетке — нельзя. Условия утверждаем по экспортированным константам, а не по
+// подстрокам в собранном запросе:
 // «не содержит object_id» иначе давал бы ложный проход, когда та же строка
 // появляется в проверке via.
 import { describe, expect, it, vi } from "vitest";
@@ -22,11 +23,17 @@ import {
 import { fleeMovesSql } from "./flee-sql-moves";
 import { RUNNER_LAYER, CELL_LAYER } from "./runners";
 import { hexDist, pickFleeCell, type Hex } from "./flee-rules";
+import { mineCellSql } from "./mine-cell-sql";
+
+/** Условие без проверки шахты — чтобы судить об остальных постройках. */
+const noMine = (sql: string) => sql.replace(mineCellSql("c"), "");
 
 describe("flee-sql: посадка и проход", () => {
-  it("посадка: под объект и постройку можно, под судно и к беглецу — нет", () => {
-    expect(CAN_STAND_DRY).not.toContain("object_id");
-    expect(CAN_STAND_DRY).not.toContain("building_id");
+  it("посадка: под объект и постройку можно, под судно, к беглецу и на шахту — нет", () => {
+    expect(noMine(CAN_STAND_DRY)).not.toContain("object_id");
+    expect(noMine(CAN_STAND_DRY)).not.toContain("building_id");
+    // Шахта — тем же признаком, что держит игрока (step-facts).
+    expect(CAN_STAND_DRY).toContain(`AND NOT ${mineCellSql("c")}`);
     expect(CAN_STAND_DRY).toContain("yuplink.beta_raid_ship");
     expect(CAN_STAND_DRY).toContain("yuplink.beta_raid_runner");
     // Физика: земля есть, декора нет, купола нет.
@@ -35,18 +42,29 @@ describe("flee-sql: посадка и проход", () => {
     expect(CAN_STAND_DRY).toContain("c.void_fog IS NOT TRUE");
   });
 
-  it("проход: строже посадки ровно на живой объект; постройка не держит", () => {
+  it("проход: строже посадки ровно на живой объект; постройка не держит, шахта держит", () => {
     expect(CAN_PASS_DRY.startsWith(CAN_STAND_DRY)).toBe(true);
     expect(CAN_PASS_DRY).toContain("c.object_id IS NULL OR");
     // Поверженный, но ещё не убранный объект проход не закрывает (как игроку).
     expect(CAN_PASS_DRY).toContain("h.killed_at IS NOT NULL OR h.current_hp <= 0");
-    expect(CAN_PASS_DRY).not.toContain("building_id");
+    expect(noMine(CAN_PASS_DRY)).not.toContain("building_id");
+    expect(CAN_PASS_DRY).toContain(`AND NOT ${mineCellSql("c")}`);
+  });
+
+  it("шахта закрыта и в разведке, и в записи переезда (цель и via)", () => {
+    const grid = fleeGridSql("rmap_x", [{ q: 0, r: 0 }]);
+    expect(grid).toContain(`COALESCE(${CAN_STAND_DRY}, false) AS free`);
+    for (const swims of [false, true]) {
+      expect(LANDING("rmap_x", { q: 1, r: 0 }, swims)).toContain(mineCellSql("c"));
+      expect(PASSAGE("rmap_x", { q: 1, r: 0 }, swims)).toContain(mineCellSql("c"));
+    }
   });
 
   it("вода — преграда сухопутному и в посадке, и в проходе; пловцу — нет", () => {
     for (const rule of [canStandSql, canPassSql]) {
       expect(rule(false)).toContain("AND NOT EXISTS (SELECT 1 FROM yuplink.mystic_item_template");
-      expect(rule(true)).not.toContain("mystic_item_template");
+      // Шаблон в условии пловца — только у признака шахты, воды там нет.
+      expect(noMine(rule(true))).not.toContain("mystic_item_template");
     }
   });
 

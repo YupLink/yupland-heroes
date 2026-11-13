@@ -116,12 +116,16 @@ export const learnSpell = createServerFn({ method: "POST" })
 
     // Ключ нажатия занимаем ДО всего: повтор того же `op` ничего не платит и
     // ничего не пишет, а читает уже случившееся.
+    const islandProgress = gate.mapId.startsWith("isle_") ? await import("./island/island-spell-progress") : null;
+    const islandSource = islandProgress ? await islandProgress.islandPillarSource(wallet, {
+      mapId: gate.mapId, q: data.q, r: data.r, spellId: tpl.id, prices: gate.cfg.learnPrices,
+    }) : null;
     const fresh = await claimBoostOp({
       op: data.op,
       heroId: hero.heroId,
       stat: "int",
       amount: 0,
-      source: `spell_learn:${tpl.id}`,
+      source: islandSource ?? `spell_learn:${tpl.id}`,
     });
     if (!fresh) {
       return { ok: true, repeat: true, spellId: tpl.id, slots: { total, used: known.length } };
@@ -138,12 +142,18 @@ export const learnSpell = createServerFn({ method: "POST" })
     }
 
     try {
-      await payResources(wallet, gate.cfg.learnPrices, `spell_learn:${data.op}`);
+      await payResources(wallet, gate.cfg.learnPrices, `spell_learn:${data.op}`, islandSource ? { keyed: true } : undefined);
       void noteEnergyInPrices(wallet, gate.cfg.learnPrices, "spell");
     } catch (e) {
       await deleteSpellRow(hero.heroId, tpl.id);
       await releaseBoostOp(data.op);
       return payFailed(e);
+    }
+    if (gate.mapId.startsWith("isle_")) {
+      // A guide failure must never turn a completed purchase into a failed one.
+      await import("./island/island-spell-progress")
+        .then(({ noteIslandPillarLearn }) => noteIslandPillarLearn(wallet, gate.mapId, data.q, data.r, hero.heroId, tpl.id, data.op))
+        .catch((e) => console.warn("[island] pillar progress:", e));
     }
     return {
       ok: true,
@@ -161,3 +171,4 @@ export const learnSpell = createServerFn({ method: "POST" })
 export const forgetSpell = createServerFn({ method: "POST" })
   .inputValidator(forgetInput)
   .handler(async ({ data }): Promise<LearnResult> => forgetSpellFor(await requireBetaRaid(), data));
+

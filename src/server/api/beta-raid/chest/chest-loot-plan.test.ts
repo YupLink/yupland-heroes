@@ -1,6 +1,7 @@
 // Раскладка добычи по рюкзаку: по очереди выбора, долив в свою ячейку, зелья
 // только в сумку (правило владельца 29.09), не влезшее — пропадает.
 import { describe, expect, it } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import {
   bagRoom,
   chestFirst,
@@ -29,26 +30,31 @@ describe("floor3", () => {
 
 describe("bagRoom", () => {
   it("хвост своей ячейки плюс свободные ячейки целиком", () => {
-    expect(bagRoom([st("a", 15)], "a", false, caps)).toBe(5 + 2 * 20);
-    expect(bagRoom([st("a", 15)], "b", false, caps)).toBe(2 * 20);
+    expect(bagRoom([st("a", CELL_SIZE - 5)], "a", false, caps)).toBe(5 + 2 * CELL_SIZE);
+    expect(bagRoom([st("a", CELL_SIZE - 5)], "b", false, caps)).toBe(2 * CELL_SIZE);
   });
 
   it("переполненный рюкзак не берёт новых ячеек, но доливает свою", () => {
-    const over = [st("a", 12), st("b", 20), st("c", 20), st("d", 20)];
+    const over = [
+      st("a", CELL_SIZE - 8),
+      st("b", CELL_SIZE),
+      st("c", CELL_SIZE),
+      st("d", CELL_SIZE),
+    ];
     expect(bagRoom(over, "a", false, caps)).toBe(8);
     expect(bagRoom(over, "z", false, caps)).toBe(0);
   });
 
   it("зелью — только сумка, свободный рюкзак не в счёт", () => {
-    expect(bagRoom([], "p", true, caps)).toBe(20);
-    expect(bagRoom([st("q", 20, true)], "p", true, caps)).toBe(0);
+    expect(bagRoom([], "p", true, caps)).toBe(CELL_SIZE);
+    expect(bagRoom([st("q", CELL_SIZE, true)], "p", true, caps)).toBe(0);
   });
 
   it("переполненная сумка не берёт даже долив своей ячейки", () => {
-    const over = [st("p", 12, true), st("q", 20, true)];
+    const over = [st("p", CELL_SIZE - 8, true), st("q", CELL_SIZE, true)];
     expect(bagRoom(over, "p", true, caps)).toBe(0);
     // Товару перебор сумки не мешает: рюкзак пуст на три ячейки.
-    expect(bagRoom(over, "a", false, caps)).toBe(3 * 20);
+    expect(bagRoom(over, "a", false, caps)).toBe(3 * CELL_SIZE);
   });
 });
 
@@ -56,57 +62,63 @@ describe("planLoot", () => {
   it("кладёт по очереди: второй позиции достаётся то, что осталось", () => {
     const got = planLoot(
       [
-        { stackKey: "a", qty: 35 },
-        { stackKey: "b", qty: 30 },
+        { stackKey: "a", qty: 2 * CELL_SIZE - 5 },
+        { stackKey: "b", qty: CELL_SIZE + 10 },
         { stackKey: "c", qty: 1 },
       ],
       [],
       caps,
       new Set(),
     );
-    // a — две ячейки (35 из 40), b — последняя ячейка, c — места нет.
+    // a — две ячейки (без 5 до полных), b — последняя ячейка, c — места нет.
     expect(got).toEqual([
-      { stackKey: "a", qty: 35 },
-      { stackKey: "b", qty: 20 },
+      { stackKey: "a", qty: 2 * CELL_SIZE - 5 },
+      { stackKey: "b", qty: CELL_SIZE },
     ]);
   });
 
   it("полный рюкзак — ничего не уезжает", () => {
-    const full = [st("x", 20), st("y", 20), st("z", 20)];
+    const full = [st("x", CELL_SIZE), st("y", CELL_SIZE), st("z", CELL_SIZE)];
     expect(planLoot([{ stackKey: "a", qty: 5 }], full, caps, new Set())).toEqual([]);
   });
 
   it("новое зелье — только в сумку, в рюкзак не переливается", () => {
-    const got = planLoot([{ stackKey: "p", qty: 100 }], [st("x", 20)], caps, new Set(["p"]));
-    expect(got).toEqual([{ stackKey: "p", qty: 20 }]);
+    const got = planLoot(
+      [{ stackKey: "p", qty: 5 * CELL_SIZE }],
+      [st("x", CELL_SIZE)],
+      caps,
+      new Set(["p"]),
+    );
+    expect(got).toEqual([{ stackKey: "p", qty: CELL_SIZE }]);
   });
 
   it("зелье и товар по очереди: каждый в своё хранилище", () => {
     const got = planLoot(
       [
-        { stackKey: "p", qty: 30 },
+        { stackKey: "p", qty: CELL_SIZE + 10 },
         { stackKey: "q", qty: 5 },
-        { stackKey: "a", qty: 70 },
+        { stackKey: "a", qty: 3 * CELL_SIZE + 10 },
       ],
       [],
       caps,
       new Set(["p", "q"]),
     );
-    // Сумка на одну ячейку: 20 зелья p, зелью q места нет; товару — рюкзак на три.
+    // Сумка на одну ячейку: ячейка зелья p, зелью q места нет; товару — рюкзак на три.
     expect(got).toEqual([
-      { stackKey: "p", qty: 20 },
-      { stackKey: "a", qty: 60 },
+      { stackKey: "p", qty: CELL_SIZE },
+      { stackKey: "a", qty: 3 * CELL_SIZE },
     ]);
   });
 
   it("дробный хвост в рюкзаке не обещает лишней тысячной", () => {
     const got = planLoot(
-      [{ stackKey: "a", qty: 20 }],
+      [{ stackKey: "a", qty: CELL_SIZE }],
       [st("a", 0.0235)],
       { capacity: 1, potionCapacity: 0 },
       new Set(),
     );
-    expect(got).toEqual([{ stackKey: "a", qty: 19.976 }]);
+    // Место — ячейка без 0,0235; вниз до тысячных — без 0,024.
+    expect(got).toEqual([{ stackKey: "a", qty: CELL_SIZE - 0.024 }]);
   });
 });
 
@@ -147,12 +159,12 @@ describe("chestFirst / chestFits", () => {
     expect(chestFirst([{ stackKey: "a", qty: 5 }], null)).toEqual([{ stackKey: "a", qty: 5 }]);
   });
   it("полный рюкзак: сундук в план не лёг — забор не начинается", () => {
-    const full = [st("x", 20), st("y", 20), st("z", 20)];
+    const full = [st("x", CELL_SIZE), st("y", CELL_SIZE), st("z", CELL_SIZE)];
     const plan = planLoot(chestFirst([{ stackKey: "a", qty: 5 }], chest), full, caps, new Set());
     expect(chestFits(plan, chest)).toBe(false);
   });
   it("есть ячейка: сундук ложится первым, сети — что осталось", () => {
-    const bag = [st("x", 20), st("y", 20)];
+    const bag = [st("x", CELL_SIZE), st("y", CELL_SIZE)];
     const plan = planLoot(chestFirst([{ stackKey: "a", qty: 5 }], chest), bag, caps, new Set());
     expect(plan).toEqual([chest]);
     expect(chestFits(plan, chest)).toBe(true);

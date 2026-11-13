@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./lib/telegram/tg-fullscreen.css";
 
 @custom-variant dark (&:is(.dark *));
 

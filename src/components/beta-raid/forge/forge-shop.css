@@ -1,0 +1,55 @@
+/* Forge-only surfaces. The repair list and action buttons retain their layout. */
+[data-forge-tabs] > [role="tablist"] {
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid #484940;
+  border-radius: 9px;
+  background: #111415;
+}
+
+[data-forge-tabs] > [role="tablist"] > button {
+  min-height: 34px;
+  border-radius: 6px;
+  color: #b8b6af;
+}
+
+[data-forge-tabs] > [role="tablist"] > button[aria-selected="true"] {
+  background: #b88b3026;
+  color: #f4d27f;
+  box-shadow: inset 0 -2px #d6b15c;
+}
+
+[data-forge-repair] { color: #eee8dc; }
+.forge-repair-heading { margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.forge-repair-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px 12px;
+  border: 1px solid #414440;
+  border-radius: 9px;
+  background: #111415;
+  text-align: center;
+}
+.forge-repair-empty-card > svg { color: #d9bd7e; }
+.forge-repair-empty-card > strong { font-size: 16px; font-weight: 600; }
+.forge-repair-empty-card > p,
+.forge-repair-hint { margin: 0; color: #bcb6a9; font-size: 12px; line-height: 1.45; }
+.forge-repair-rates {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #414440;
+  border-radius: 8px;
+  background: #111415;
+  font-size: 12px;
+}
+.forge-repair-rates > summary { cursor: pointer; }
+.forge-repair-rates > ul { margin: 8px 0 0; padding: 0; list-style: none; }
+.forge-repair-rates li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; }
+.forge-repair-rates li > span:last-child { color: #e4c379; }
+.forge-repair-hint { margin-top: 12px; }
+[data-forge-repair-list] { scrollbar-width: thin; }
+[data-forge-repair-row] { border-radius: 9px; background: linear-gradient(145deg, #171a1b, #101314); }
+[data-forge-repair-row][aria-checked="true"] { background: #29281e; }
+[data-forge-repair-summary] { border-color: #414440; }

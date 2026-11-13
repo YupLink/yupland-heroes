@@ -10,6 +10,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { nanoid } from "nanoid";
 import { pg } from "@/server/db/pg";
+import { safeReturnUrl } from "@/lib/walletReturnUrl";
+
+// Пределы (аудит 11.11.2026): раньше без входа и лимитов сюда писали строки
+// любого размера, и они не удалялись никогда.
+const MAX_BODY = 8 * 1024;
+const cap = (v: unknown, n: number): string | null =>
+  typeof v === "string" && v.length > 0 ? v.slice(0, n) : null;
 
 const RELAY_TTL_MS = 10 * 60 * 1000;
 
@@ -79,7 +86,10 @@ export const Route = createFileRoute("/api/wallet-relay")({
       POST: async ({ request }) => {
         let body: Record<string, unknown>;
         try {
-          body = (await request.json()) as Record<string, unknown>;
+          const { readCapped } = await import("@/server/perf/bearer");
+          const text = await readCapped(request, MAX_BODY);
+          if (text === null) return err("слишком большой запрос", 413);
+          body = JSON.parse(text) as Record<string, unknown>;
         } catch {
           return err("body должен быть JSON");
         }
@@ -88,23 +98,41 @@ export const Route = createFileRoute("/api/wallet-relay")({
         // ─── create: dApp создаёт запрос ───
         if (action === "create") {
           const publicKey = String(body.publicKey ?? "");
-          if (!publicKey || !/^ed25519:/.test(publicKey)) {
+          if (!/^ed25519:[1-9A-HJ-NP-Za-km-z]{32,60}$/.test(publicKey)) {
             return err("publicKey должен начинаться с ed25519:");
           }
+          const { getRequestHeader } = await import("@tanstack/react-start/server");
+          const ip = getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() || "-";
+          const { rateGate } = await import("@/server/rateGate");
+          try {
+            await rateGate(`relay:${ip}`, { limit: 10, windowMs: 60_000 });
+          } catch {
+            return err("слишком часто", 429);
+          }
+          // Истёкшие запросы — прочь (живут 10 минут).
+          const { mcpExec } = await import("@/server/db/mcpClient");
+          void mcpExec(
+            `DELETE FROM yuplink.settings WHERE key LIKE 'relay:%'
+               AND value ~ '"expiresAt":[0-9]+'
+               AND substring(value from '"expiresAt":([0-9]+)')::bigint < ${Date.now() - 3_600_000};`,
+          ).catch(() => {});
+          const successUrl = cap(body.successUrl, 500);
           const id = nanoid(16);
           const now = Date.now();
           const req: RelayRequest = {
             publicKey,
-            contractId: (body.contractId as string | null) ?? null,
+            contractId: cap(body.contractId, 100),
             methods: Array.isArray(body.methods)
-              ? (body.methods as string[]).filter(
-                  (s) => typeof s === "string"
-                )
+              ? (body.methods as unknown[])
+                  .filter((x): x is string => typeof x === "string")
+                  .slice(0, 50)
+                  .map((x) => x.slice(0, 100))
               : [],
-            allowanceYocto: (body.allowanceYocto as string | null) ?? null,
+            allowanceYocto: cap(body.allowanceYocto, 40),
             appName: String(body.appName ?? "Внешний dApp").slice(0, 200),
-            appIcon: (body.appIcon as string | null) ?? null,
-            successUrl: (body.successUrl as string | null) ?? null,
+            appIcon: cap(body.appIcon, 500),
+            // Только https-адрес возврата — как в окне кошелька (walletReturnUrl).
+            successUrl: successUrl && safeReturnUrl(successUrl) ? successUrl : null,
             status: "pending",
             response: null,
             createdAt: now,

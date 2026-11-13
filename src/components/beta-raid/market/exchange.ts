@@ -14,9 +14,15 @@
 // плитка обязана пережить это, а не остаться с пустой подписью.
 import type { MarketItemView } from "@/lib/buildingEffect";
 import { starsForDarai } from "@/lib/starsForDarai";
-import type { MarketPriceResource } from "@/lib/marketItem";
+import { goldForEarnedTickets, goldForTicketPrice } from "@/lib/ticketGold";
+import { isPlantKind, type MarketPriceResource } from "@/lib/marketItem";
 import { marketResourceIconSrc } from "@/lib/resourceIcons";
 import { artAnyIconSrc, artAnyRarity } from "./artAnyIcon";
+import { heroAnyIconSrc, heroAnyRarity } from "./heroAny";
+import { localizeAssetName } from "@/lib/translations/assetNames";
+import type { Lang } from "@/lib/store";
+import { veinNameOr, veinStackKey, isVeinKind } from "@/lib/veinPlace";
+import { recipeCover } from "@/lib/marketRecipe";
 
 type Translate = (key: string, params?: Record<string, string | number>) => string;
 
@@ -63,27 +69,46 @@ function priceEntry(
   return { amount, label: name || t(`market.res.${resource}`), image: image ?? null, pixel: false };
 }
 
-/** Цена позиции: первая всегда, вторая — если админ задал «алхимию». */
+/**
+ * Цена позиции: первая всегда, вторая — если админ задал «алхимию». Билетов нет
+ * (§8.61): цена «в билетах» — золото ×500, а выплата скупки «в билетах» — ×100.
+ */
 export function priceEntries(t: Translate, it: MarketItemView): ExchangeEntry[] {
+  const entry = (
+    amount: number,
+    res: MarketPriceResource,
+    token: string | null,
+    name?: string | null,
+    image?: string | null,
+  ) =>
+    res === "tickets"
+      ? priceEntry(
+          t,
+          it.side === "sell" ? goldForEarnedTickets(amount) : goldForTicketPrice(amount),
+          "gold",
+          null,
+          null,
+          null,
+        )
+      : priceEntry(t, amount, res, token, name, image);
   const list = [
-    priceEntry(t, it.priceAmount, it.priceResource, it.priceToken, it.priceName, it.priceImage),
+    entry(it.priceAmount, it.priceResource, it.priceToken, it.priceName, it.priceImage),
   ];
   if (it.price2Resource && it.price2Amount)
     list.push(
-      priceEntry(
-        t,
-        it.price2Amount,
-        it.price2Resource,
-        it.price2Token,
-        it.price2Name,
-        it.price2Image,
-      ),
+      entry(it.price2Amount, it.price2Resource, it.price2Token, it.price2Name, it.price2Image),
     );
+  // Ещё ингредиенты (до трёх; §8.104 п. 1а) — теми же строками обмена.
+  for (const l of it.priceMore ?? []) {
+    if (l.amount > 0) list.push(entry(l.amount, l.resource, l.token, l.name, l.image));
+  }
   return list;
 }
 
-/** Сам товар позиции строкой обмена — то, ради чего плитка стоит на витрине. */
-export function goodEntry(it: MarketItemView): ExchangeEntry {
+/** Сам товар позиции строкой обмена — то, ради чего плитка стоит на витрине.
+ *  t — подпись «любого героя» на языке игрока (без него — имя позиции);
+ *  lang — имя дерева для посадки (имя шаблона декора) и жилы на языке игрока. */
+export function goodEntry(it: MarketItemView, t?: Translate, lang?: Lang): ExchangeEntry {
   if (it.kind === "resource") {
     const icon = marketResourceIconSrc(it.refId);
     // У токен-товара админ пишет имя своими словами, а символ игрок узнаёт
@@ -99,10 +124,22 @@ export function goodEntry(it: MarketItemView): ExchangeEntry {
       pixel: !it.image && icon != null,
     };
   }
+  const anyHero = it.kind === "hero" ? heroAnyRarity(it.refId) : null;
+  const name =
+    it.kind === "vein" && lang && isVeinKind(it.refId)
+      ? veinNameOr(veinStackKey(it.refId), it.name, lang)
+      : isPlantKind(it.kind) && lang
+        ? localizeAssetName(it.name, lang)
+        : it.name;
   return {
     amount: it.giveAmount,
-    label: it.name,
-    image: it.image ?? artAnyIconSrc(it.refId),
+    label: anyHero && t ? t(`market.hero_any.${anyHero}`) : name,
+    // Рецепт без своей картинки — картинка самого вероятного приза.
+    image:
+      heroAnyIconSrc(it.refId) ??
+      it.image ??
+      artAnyIconSrc(it.refId) ??
+      (it.kind === "recipe" ? recipeCover(it.outcomes) : null),
     pixel: false,
   };
 }

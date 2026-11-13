@@ -1,6 +1,7 @@
 // Общее для модулей энергопаков: константы, гейты доступа, скидка подписки.
 import { getCurrentWallet, isAdminWallet } from "../auth";
 import { pg } from "../db/pg";
+import { ENERGY_PAY_ONLY } from "@/lib/energyPayAllowed";
 
 export { getCurrentWallet, isAdminWallet };
 
@@ -39,7 +40,13 @@ export async function energyShopEnabled(): Promise<boolean> {
 export function mapEnergyErr(msg: string, dailyLimit: number): string {
   if (msg.includes("pack_not_found")) return "Пак не найден";
   if (msg.includes("pack_inactive")) return "Пак неактивен";
-  if (msg.includes("no_tickets_price")) return "Этот пак нельзя купить за билеты";
+  if (msg.includes("no_tickets_price")) return "Этот пак нельзя купить за золото";
+  // §8.61: золото вместо билетов; токены, кроме DARAI и звёзд, не принимаются.
+  const gold = msg.match(/not_enough_gold:([\d.]+):([\d.]+)/);
+  if (gold)
+    return `Не хватает золота: нужно ${Number(gold[2])}, у тебя ${Math.floor(Number(gold[1]))}`;
+  if (/res_move: в минус/.test(msg)) return "Не хватает золота";
+  if (msg.includes("pay_not_allowed") || msg.includes("bad_usd_token")) return ENERGY_PAY_ONLY;
   if (msg.includes("no_darai_price")) return "Этот пак нельзя купить за $DARAI";
   if (msg.includes("no_token_price")) return "Этот пак нельзя купить за токен";
   if (msg.includes("daily_limit")) {

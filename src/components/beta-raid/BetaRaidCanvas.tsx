@@ -1,3 +1,8 @@
+import { isWaterName } from "@/lib/shipRules";
+import newspaperSprite from "../newspaper/newspaper-map.webp";
+import { mountTier } from "@/lib/hero/mount";
+import { useRaidMovementAudio } from "@/hooks/useRaidMovementAudio";
+import { MapWaterLayers } from "./MapWaterLayers";
 // Canvas бета-рейда: рендер карты, пан/зум, клики.
 // Тяжёлая часть (кадры, камера, герой) живёт в useMapRenderer — здесь только
 // сборка сцены, жесты и слои поверх карты.
@@ -5,17 +10,21 @@ import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useLang, tFor } from "@/lib/i18n";
 import { useRaidCastle } from "./useRaidCastle";
+import { axialToPixel, hexRound, R, SQRT3 } from "./hexGeometry";
 import { cellAtPoint } from "./canvasHitTest";
 import type { FlashMark } from "./drawFlash";
 import { buildMapIndex } from "./mapIndex";
 import { useFogView } from "./useFogView";
 import { useCanvasViewport } from "./useCanvasViewport";
+import { useWorldArt } from "./world-art/useWorldArt";
+import { worldTerrainArt } from "./world-art/worldArt";
 import { useImageCache } from "./useImageCache";
 import { useMapRenderer } from "./useMapRenderer";
 import { useFleeArrows } from "./useFleeArrows";
 import { subscribeCenter } from "./centerMapBus";
 import { IslandLayer } from "./island/IslandLayer";
 import { BetaRaidHud } from "./BetaRaidHud";
+import { RaidWeatherHud } from "./weather/RaidWeatherHud";
 import { BetaEffectHud } from "./BetaEffectHud";
 import { useCastleMode } from "./castleMode";
 import { BetaRaidPathBadge } from "./BetaRaidPathBadge";
@@ -23,8 +32,20 @@ import { usePathBadgeTarget } from "./usePathBadgeTarget";
 import { BetaRaidResourceBar } from "./BetaRaidResourceBar";
 import type { CanvasProps } from "./betaCanvasProps";
 import { buildObjectRings } from "./objectRing";
-import { buildFogZones } from "./fogZones";
+import { useFogZones } from "./sight/useFogZones";
+import { fogTapKind } from "./sight/fogReach";
 import { objectKindsOf } from "./objectKind";
+import { useCanvasResizeWheel } from "./useCanvasResizeWheel";
+import { useMapToolGestures } from "./hand/useHandBrush";
+import { MineBuildLayer } from "./mine-build/MineBuildLayer";
+import { TreePlacementBar } from "./tree-map/TreePlacementBar";
+import { LadderBar } from "./sight/LadderBar";
+import { treePlacement, type TreeItem } from "./tree-map/treePlacement";
+import { handTakesAt } from "./hand/handTap";
+import { isIslandMapId } from "@/lib/raid/island/ids";
+
+/** Один объект на «тиров нет»: новый {} на каждый рендер будил бы кадр зря. */
+const NO_TIERS: Record<string, number> = {};
 export function BetaRaidCanvas({
   onOpenGiftPack,
   map,
@@ -41,6 +62,7 @@ export function BetaRaidCanvas({
   mineGuards,
   magicChests,
   lootBags,
+  newspapers,
   ground,
   fieldSlots,
   warehouseBadges,
@@ -55,6 +77,7 @@ export function BetaRaidCanvas({
   walking,
   onStop,
   heroSprite,
+  heroMount,
   heroAvatarUrl,
   onPickHero,
   hero,
@@ -77,10 +100,25 @@ export function BetaRaidCanvas({
   // (usePathBadgeTarget). Язык, а не `t`: ссылка на объект дёргала бы
   // перерисовку кадра.
   const castleMode = useCastleMode();
+  const [snowStage,setSnowStage]=useState(0);
+  const [puddles,setPuddles]=useState(false);
+  // Dictionary of terrain types only: never enumerate the world's cells.
+  const waterTerrainIds = useMemo(() => new Set(Object.entries(terrains)
+    .filter(([, item]) => isWaterName((item as { name?: string }).name))
+    .map(([id]) => id)), [terrains]);
+  const snowTerrainKeys=useMemo(()=>new Set(Object.entries(terrains).flatMap(([id,item])=>{
+    const name=(item as {name?:string}).name;
+    return name&&!isWaterName(name)?[`t:${id}`]:[];
+  })),[terrains]);
   const lang = useLang();
+  const audioCell = playerPos ? `${playerPos.q},${playerPos.r}` : null;
+  const onHeroMotion = useRaidMovementAudio(!editActive && !!playerPos,
+    audioCell, !!audioCell && !!ships.get(audioCell)?.mine,
+    !!audioCell && !!cells[audioCell]?.roadId, mountTier(heroMount) === "none");
   const pendingPathTarget = usePathBadgeTarget(
     { pendingPath, pendingAction, cells, buildings, buildingTiers, doorTolls },
     lang,
+    energy,
   );
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -105,7 +143,17 @@ export function BetaRaidCanvas({
     buildings,
     mineGuards,
     magicChests,
+    heroMount,
   );
+
+  const worldArt = useWorldArt(map.id, imgCache, true, map.name);
+
+  useEffect(()=>{
+    if(!newspapers?.length||imgCache.current.has('newspaper'))return;
+    const image=new Image();image.onload=requestRedraw;image.src=newspaperSprite;
+    imgCache.current.set('newspaper',image);
+    return()=>{image.onload=null;};
+  },[!!newspapers?.length,imgCache,requestRedraw]);
 
   // Ободки объектов — раз на словарь, а не на кадр: редкость не меняется.
   const objectRings = useMemo(() => buildObjectRings(objects), [objects]);
@@ -113,25 +161,7 @@ export function BetaRaidCanvas({
   // Кэш типов объектов — раз на словарь.
   const objectKinds = useMemo(() => objectKindsOf(objects), [objects]);
 
-  // Зоны тумана номерами клеток — кэшируются, чтобы не пересчитывать каждый
-  // кадр. Только герой и mineFlags 'own': fieldSlots и warehouseBadges зоны
-  // НЕ дают (см. fogZones.ts) — чужие поля и соседи складов стояли без плёнки.
-  const heroQ0 = playerPos?.q ?? null;
-  const heroR0 = playerPos?.r ?? null;
-  // Мои бугорки строкой: слой мешочков перечитывается часто, а зоны тумана
-  // пересчитываем, только когда сменился сам набор бугорков.
-  const moundsKey = ground?.mounds.join(";") ?? "";
-  const fogZones = useMemo(
-    () =>
-      buildFogZones({
-        index: (q, r) => store.index(q, r),
-        heroQ: heroQ0,
-        heroR: heroR0,
-        mineFlags,
-        mounds: moundsKey ? moundsKey.split(";") : [],
-      }),
-    [heroQ0, heroR0, mineFlags, moundsKey, store],
-  );
+  const fogZones = useFogZones({ store, playerPos, mineFlags, ground, buff: buffEffects, mapId: map.id });
 
   // Точка отсчёта гекс-сетки — один раз, уходит в memo-пропсы HUD.
   const grid = useMemo(() => {
@@ -141,12 +171,27 @@ export function BetaRaidCanvas({
   const { castle, castleShown, castleArt } = useRaidCastle(map, store, castleCell);
 
   // Кадр ходит по колонкам и сетке карты (mapIndex поверх mapStore).
-  const overviewLandscape = useMemo(() => ({ cells, terrains }), [cells, terrains]);
+  const visualTerrains = useMemo(() => worldTerrainArt(terrains, worldArt.art), [terrains, worldArt.art]);
+  const overviewLandscape = useMemo(() => ({ mapId: map.id, mapName: map.name, artVersion: worldArt.art?.version, cells, terrains: visualTerrains }), [map.id, map.name, cells, visualTerrains, worldArt.art]);
   const index = useMemo(() => buildMapIndex(store), [store]);
 
   // Радиус обзора один на всех (VISION_RADIUS).
   const fog = useFogView({ mapId: map.id, playerPos, store, voidCells, editActive: !!editActive });
-  const [externalTarget, setExternalTarget] = useState<{ q: number; r: number; mapId: string } | null>(null);
+  // Read current visibility without restarting the weather animation on hero movement.
+  const rainMapRef = useRef({ store, fog, grid });
+  rainMapRef.current = { store, fog, grid };
+  const rainPoint = useCallback((x: number, y: number) => {
+    const { store, fog, grid } = rainMapRef.current;
+    if (!store) return null;
+    const r = y / (R * 1.5) + grid.c0q;
+    const q = x / (R * SQRT3) + grid.centerQ - (r - grid.c0q) / 2;
+    const cell = hexRound(q, r), key = `${cell.q},${cell.r}`;
+    if (store.index(cell.q, cell.r) < 0 || fog.voidCells.has(key) ||
+        (!fog.revealAll && !fog.seen.has(key) && !fog.visible.has(key))) return null;
+    const center = axialToPixel(cell.q, cell.r, grid.centerQ, grid.c0q);
+    return { x: center.x + (x - center.x) * .55, y: center.y + (y - center.y) * .55 };
+  }, []);
+  const [externalTarget, setExternalTarget] = useState<{ q: number; r: number; mapId: string; preservePan?: boolean } | null>(null);
   const targetOnMap = externalTarget?.mapId === map.id ? externalTarget : null;
   // Навигация к своему сундуку не должна обрезаться временными границами
   // тумана, пока разведанное ещё загружается. Сам туман этим не раскрывается.
@@ -182,21 +227,24 @@ export function BetaRaidCanvas({
   const flashRef = useRef<FlashMark | null>(null);
 
   const renderer = useMapRenderer({
+    waterTerrainIds: editActive ? undefined : waterTerrainIds,
+    snowStage: editActive ? 0 : snowStage, snowTerrainKeys, puddles: !editActive && puddles,
     canvasRef,
     wrapRef,
     badgeRef,
     index,
     mapId: map.id,
-    buildingTiers: buildingTiers ?? {},
+    buildingTiers: buildingTiers ?? NO_TIERS,
     mineFlags,
     mineGuards,
     magicChests,
     lootBags,
+    newspapers,
     ground,
     fieldSlots,
     warehouseBadges,
     runnerArrows: fleeArrows,
-    images: imgCache,
+    images: worldArt.images,
     objectRings,
     objects,
     objectKinds,
@@ -212,7 +260,9 @@ export function BetaRaidCanvas({
     castle,
     castleShown: castleArt,
     playerPos,
+    heroMount,
     availableMoves,
+    onHeroMotion,
     pendingPathTarget,
     pendingPath,
     ships,
@@ -223,10 +273,10 @@ export function BetaRaidCanvas({
     offsetRef,
     scaleRef,
     stepCamera,
-  });
+  }, worldArt.revision);
   redrawRef.current = renderer.requestRedraw;
   // Сундук поставили или разграбили, мешочек выпал или ушёл — кадр сразу.
-  useEffect(() => requestRedraw(), [magicChests, lootBags, ground, requestRedraw]);
+  useEffect(() => requestRedraw(), [magicChests, lootBags, newspapers, ground, requestRedraw]);
 
   /**
    * Показать клетку: везём камеру и зажигаем метку. Зовут из окна «Добыча» —
@@ -235,13 +285,16 @@ export function BetaRaidCanvas({
    */
   const showCell = useCallback(
     (q: number, r: number) => {
-      setExternalTarget(null);
+      // A mine can be outside the temporarily loaded fog bounds. Keep the
+      // requested cell as an explicit target so cameraBounds expands first and
+      // the follow-up effect recenters on the actual q/r instead of the clamp.
+      setExternalTarget({ q, r, mapId: map.id });
       park();
       centerOn(q, r, false);
       flashRef.current = { q, r, start: performance.now() };
       requestRedraw();
     },
-    [centerOn, park, requestRedraw],
+    [centerOn, map.id, park, requestRedraw],
   );
 
   /** Явный прицел (замок, миникарта): камера стоит там, пока герой не пойдёт новым маршрутом. */
@@ -265,6 +318,22 @@ export function BetaRaidCanvas({
     [centerOn, setFollowTarget, unpark],
   );
 
+  // Entering planting shows the hero's real neighbourhood, even if the camera
+  // was parked elsewhere. This moves only the camera, never the hero.
+  const centeredTree = useRef<TreeItem | null>(null);
+  useEffect(() => {
+    const center = () => {
+      const item = treePlacement.get()?.item ?? null;
+      if (!item) centeredTree.current = null;
+      else if (item !== centeredTree.current && playerPos) {
+        centeredTree.current = item;
+        goToHero(playerPos.q, playerPos.r);
+      }
+    };
+    center();
+    return treePlacement.subscribe(center);
+  }, [goToHero, playerPos?.q, playerPos?.r]);
+
   // Новый маршрут — игрок снова смотрит на героя: парковка снимается.
   useEffect(() => {
     if (walking) {
@@ -278,8 +347,8 @@ export function BetaRaidCanvas({
   // встроенные вызовы (Добыча) не задают и получают дефолт drawFlash.
   useEffect(
     () =>
-      subscribeCenter(({ q, r, ttlMs }) => {
-        setExternalTarget({ q, r, mapId: map.id });
+      subscribeCenter(({ q, r, ttlMs, preservePan }) => {
+        setExternalTarget({ q, r, mapId: map.id, preservePan });
         park();
         centerOn(q, r, false);
         flashRef.current = { q, r, start: performance.now(), ttl: ttlMs };
@@ -298,29 +367,9 @@ export function BetaRaidCanvas({
     requestRedraw();
   }, [cameraBounds, targetOnMap, map.id, centerOn, parked, requestRedraw]);
 
-  // Размер холста: канвас читает его прямо в кадре, нам нужен лишь сигнал.
-  // Debounce 100мс: при drag-resize observer стреляет на каждый пиксель сдвига;
-  // reclamp + redraw на каждый — трата CPU. Fullscreen-toggle одиночный, debounce
-  // его не задержит (одно событие = один таймер).
-  useEffect(() => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
-    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
-    const ro = new ResizeObserver(() => {
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        reclamp();
-        requestRedraw();
-        resizeTimer = null;
-      }, 100);
-    });
-    ro.observe(wrap);
-    requestRedraw();
-    return () => {
-      ro.disconnect();
-      if (resizeTimer) clearTimeout(resizeTimer);
-    };
-  }, [requestRedraw, reclamp]);
+  useCanvasResizeWheel({ wrapRef, canvasRef, reclamp, requestRedraw, zoomBy });
+  // Стройка шахты водит заготовку, земля в руке — кисть долгим нажатием, иначе — карта.
+  const gestures = useMapToolGestures(handlers, { canvasRef, offsetRef, scaleRef, grid });
 
   // Первое появление героя — камеру сразу, без проезда. Координаты числами:
   // объект playerPos приходит новым на каждый ответ, камера дёргалась бы.
@@ -357,18 +406,6 @@ export function BetaRaidCanvas({
     setFollowTarget(heroQ, heroR);
   }, [map.id, heroQ, heroR, centerOn, setFollowTarget, stopFollow, parked, unpark, targetOnMap]);
 
-  // Колесо вешаем сами: React слушает wheel пассивно, preventDefault не работает.
-  useEffect(() => {
-    const cv = canvasRef.current;
-    if (!cv) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      zoomBy(e.deltaY > 0 ? 0.9 : 1.1);
-    };
-    cv.addEventListener("wheel", onWheel, { passive: false });
-    return () => cv.removeEventListener("wheel", onWheel);
-  }, [zoomBy]);
-
   // Клик
   const handleClick = (e: React.MouseEvent) => {
     if (dragMoved.current) return;
@@ -383,17 +420,10 @@ export function BetaRaidCanvas({
       centerQ: grid.centerQ,
       c0q: grid.c0q,
     });
-    // В туман не ходим вслепую (в режиме раскрытия его для админа нет). В режиме
-    // бога тап по туману РАЗРЕШЁН: иначе кистью не налить территорию в пустоту
-    // на краю карты — приходилось «прислоняться» к уже разведанному.
-    if (
-      !editActive &&
-      !fog.revealAll &&
-      !fog.seen.has(`${q},${r}`) &&
-      !fog.visible.has(`${q},${r}`)
-    )
-      return;
-    onCellClick(q, r);
+    // Туман: обычный тап, «только маршрут» (досягаемость) или мимо — fogTapKind.
+    const free = !!editActive || handTakesAt(q, r) || fog.revealAll || isIslandMapId(map.id);
+    const kind = fogTapKind({ q, r, free, seen: fog.seen, visible: fog.visible, reach: fogZones.reach, store });
+    if (kind) onCellClick(q, r, kind === "blind");
   };
 
   return (
@@ -412,16 +442,19 @@ export function BetaRaidCanvas({
       <canvas
         ref={canvasRef}
         className="block h-full w-full cursor-grab active:cursor-grabbing"
-        onPointerDown={(e) => { setExternalTarget(null); handlers.onPointerDown(e); }}
-        onPointerMove={handlers.onPointerMove}
-        onPointerUp={handlers.onPointerUp}
-        onPointerCancel={handlers.onPointerUp}
-        onTouchStart={(e) => { setExternalTarget(null); handlers.onTouchStart(e); }}
-        onTouchMove={handlers.onTouchMove}
-        onTouchEnd={handlers.onTouchEnd}
-        onTouchCancel={handlers.onTouchEnd}
+        onPointerDown={(e) => { if (!targetOnMap?.preservePan) setExternalTarget(null); gestures.onPointerDown(e); }}
+        onPointerMove={gestures.onPointerMove}
+        onPointerUp={gestures.onPointerUp}
+        onPointerCancel={gestures.onPointerUp}
+        onTouchStart={(e) => { if (!targetOnMap?.preservePan) setExternalTarget(null); gestures.onTouchStart(e); }}
+        onTouchMove={gestures.onTouchMove}
+        onTouchEnd={gestures.onTouchEnd}
+        onTouchCancel={gestures.onTouchEnd}
         onClick={handleClick}
       />
+      <MapWaterLayers bind={renderer.bindWater} />
+
+      <RaidWeatherHud key={map.id} mapId={map.id} ru={lang === "ru"} isAdmin={isAdmin} visualsEnabled={!editActive} camera={{ offsetRef, scaleRef, heroRef: renderer.heroRef, rainPoint, onSnowStage: setSnowStage, onPuddles: setPuddles }} />
 
       <BetaRaidHud
         onOpenGiftPack={onOpenGiftPack}
@@ -443,7 +476,10 @@ export function BetaRaidCanvas({
         onPickHero={onPickHero}
         hero={hero}
       />
-      <IslandLayer mapId={map.id} />
+      <IslandLayer mapId={map.id} playerPos={playerPos} store={store} seen={fog.seen} visible={fog.visible} />
+      <MineBuildLayer />
+      <TreePlacementBar />
+      <LadderBar />
       {!castleMode && <BetaEffectHud
         chips={chipEffects ?? []}
         slow={slow ?? null}
@@ -475,4 +511,9 @@ export function BetaRaidCanvas({
     </div>
   );
 }
+
+
+
+
+
 

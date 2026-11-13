@@ -1,5 +1,5 @@
 /* Player buttons: approved Friends CTA is the shared visual reference. */
-@font-face { font-family: "YupLink Button Russo"; src: url(../../../assets/tavern/RussoOne.ttf); font-display: swap; }
+@font-face { font-family: "YupLink Button Russo"; src: url(../../../assets/tavern/RussoOne.woff2); font-display: swap; }
 .warehouse-page {
   --game-button-gold: linear-gradient(180deg, #edc976, #bd913e);
   --game-button-gold-border: #efd081;

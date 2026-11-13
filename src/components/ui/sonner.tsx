@@ -10,7 +10,7 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
 // край «Wallet», крестика окна на весь экран и мини-карты остаётся под пальцем.
 // Запас на вырез (safe-area) сейчас 0: без viewport-fit=cover страница и так
 // ниже выреза и шапки Telegram.
-const TOP = "calc(env(safe-area-inset-top, 0px) + 8px)";
+const TOP = "calc(var(--app-top,env(safe-area-inset-top,0px)) + 8px)";
 const SIDE = 48;
 // В свёрнутой стопке задние тосты лежат под передним почти целиком. Будь они
 // кликабельны, сквозной тост (gameInfoToast) спереди отдавал бы тап не карте,

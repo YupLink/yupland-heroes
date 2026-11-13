@@ -9,11 +9,11 @@
 // поля — для них узнаём эффект по названию, чтобы «Верфь» и «Обзорная вышка»
 // заработали без переделки.
 //
-// Типы (BuildingEffect/ServicePrice/BuildingExtra/MarketItemView/MineResource)
-// живут в ./buildingEffect.types и ре-экспортятся отсюда — внешние импорты
-// `@/lib/buildingEffect` менять не нужно.
+// Типы — в ./buildingEffect.types, ре-экспорт отсюда: импорты `@/lib/buildingEffect` те же.
 import type { BuildingEffect, ServicePrice, PriceLabel } from "./buildingEffect.types";
 import { starsForDarai } from "./starsForDarai";
+import { goldForTicketPrice } from "./ticketGold";
+import { ONLY_EXPLICIT } from "./buildingEffectExplicit";
 
 export type {
   BuildingEffect,
@@ -74,9 +74,8 @@ export function cellTreePrices(cellConfig: unknown, meta: unknown): ServicePrice
 }
 
 /**
- * Человеческое имя ресурса — одинаковое в редакторе и в окне игрока.
- * Возвращает ключ перевода, а не готовую строку: раньше здесь была зашита
- * русская фраза, и английский игрок читал «100 билетов» посреди своего UI.
+ * Цена словами — одна в редакторе и в окне игрока; ключ перевода, не фраза.
+ * Вид tickets с 20.10.2026 платится золотом ×500 (§8.61) — так и пишем.
  */
 export function priceLabel(p: ServicePrice): PriceLabel {
   if (p.kind === "likes") return { key: "braid.price_likes", params: { n: p.amount } };
@@ -89,7 +88,7 @@ export function priceLabel(p: ServicePrice): PriceLabel {
       ? { key: "braid.price_tokens", params: { n: p.amount, token: p.token } }
       : { key: "braid.price_tokens_any", params: { n: p.amount } };
   }
-  return { key: "braid.price_tickets", params: { n: p.amount } };
+  return { key: "braid.price_tickets", params: { n: goldForTicketPrice(p.amount) } };
 }
 
 const BY_NAME: Array<{ re: RegExp; effect: Exclude<BuildingEffect, null> }> = [
@@ -100,6 +99,8 @@ const BY_NAME: Array<{ re: RegExp; effect: Exclude<BuildingEffect, null> }> = [
   { re: /шахт|рудник|mine/i, effect: "mine" },
   { re: /грядк|огород|поле|field/i, effect: "field" },
   { re: /склад|амбар|хранилищ|warehouse/i, effect: "warehouse" },
+  { re: /зачаров\S*\s+геро|hero.?enchant/i, effect: "hero_enchant" }, // раньше «зачаров»
+  { re: /зачаров|enchant/i, effect: "enchant" }, // раньше «лавк»: «Лавка зачарования»
   { re: /маркет|рынок|базар|лавк|market/i, effect: "market" },
   { re: /портал|телепорт|врат|portal/i, effect: "portal" },
   { re: /университ|институт|академ|university/i, effect: "university" },
@@ -110,7 +111,6 @@ const BY_NAME: Array<{ re: RegExp; effect: Exclude<BuildingEffect, null> }> = [
 /**
  * Эффект КЛЕТКИ: сначала то, что назначили этой постройке на карте (режим
  * бога пишет `effect` в building_config), потом — шаблон.
- *
  * Так одна и та же «Площадка» на одной клетке может быть грядкой, а на другой
  * складом: раньше поведение задавалось только у шаблона и применялось сразу ко
  * всем его копиям.
@@ -144,30 +144,26 @@ export function buildingEffect(meta: unknown, name: string | null): BuildingEffe
     raw === "portal" ||
     raw === "university" ||
     raw === "museum" ||
-    // Таверны в BY_NAME нет намеренно: на карте уже стоят постройки с именем
-    // «Таверна», и угадывание молча выдало бы им платную смену героя.
+    // Таверну по имени не угадываем: «Таверна» на карте не должна молча менять героев.
     raw === "tavern" ||
     // Алтарь-буст тоже НЕ угадываем по имени: «Алтарь» на карте уже стоит как
     // украшение, и молча раздавать с него бонусы никто не просил.
     raw === "boost" ||
-    // Столб заклинаний по имени НЕ угадываем: «Столб»/«Обелиск» на карте —
-    // это украшение, и молча включённая на нём платная школа магии была бы
-    // сюрпризом и для админа, и для игрока.
+    // Столб заклинаний по имени НЕ угадываем: «Столб»/«Обелиск» на карте — украшение,
+    // и молча включённая на нём платная школа магии была бы сюрпризом всем.
     raw === "spellbook" ||
     // Ратушу тоже НЕ угадываем по имени: постройка с любым названием получит
     // роль ратуши ТОЛЬКО когда админ выбрал её эффектом. Иначе на карте могла
     // бы завестись «ратуша» из старого шаблона и молча забрать себе зону.
     raw === "town_hall" ||
-    // Покои по имени НЕ угадываем: «спальня»/«домик»/«отель» — украшения на
-    // карте, и молча включённый на них платный съём эффектов был бы сюрпризом.
+    // Покои по имени НЕ угадываем: «спальня»/«домик»/«отель» — украшения на карте.
     raw === "chambers" ||
     // «Забвение» тоже только явным выбором: «Храм» на карте — украшение.
     raw === "oblivion" ||
-    // Турнир по имени НЕ угадываем: админ сам ставит его на любую постройку.
-    raw === "tournament" ||
-    raw === "casino"
+    // Турнир, казино, зачарование, продажа построек, генератор — по имени НЕ угадываем.
+    (typeof raw === "string" && ONLY_EXPLICIT.has(raw))
   ) {
-    return raw;
+    return raw as BuildingEffect;
   }
   // Поле есть, но пустое — админ сознательно выбрал «ничего», имя не смотрим.
   if (obj && "effect" in obj) return null;

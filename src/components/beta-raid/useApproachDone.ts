@@ -29,11 +29,17 @@ export function useApproachDone(opts: {
   pendingPath: Array<{ q: number; r: number; cost: number }> | null;
   pendingAction: PendingAction | null;
   /** Возвращает true, только если дошли до конца маршрута. */
-  moveAlongPath: (path: Array<{ q: number; r: number; cost: number }>) => Promise<boolean>;
+  /** limit — пройти только первые N шагов пути (лоцман судна видит весь путь). */
+  moveAlongPath: (
+    path: Array<{ q: number; r: number; cost: number }>,
+    limit?: number,
+  ) => Promise<boolean>;
   openBuilding: (cell: { q: number; r: number }) => void;
   interact: (obj: { id: string; meta: unknown; kind: string | null; q: number; r: number }) => void;
   /** Дошли до декора со взаимодействием (useDecorInteract.arrive). */
   onDecor?: (q: number, r: number) => void;
+  /** Дошли до своего чертежа шахты — окно «Разместить» (useMineBuild.arrive). */
+  onMinePlan?: () => void;
   /** Причалы и окно корабля: дошли до разбитого — открываем его с починкой. */
   ships?: ReadonlyMap<string, ShipMark>;
   openShip?: (ship: { q: number; r: number; mark: ShipMark }) => void;
@@ -48,8 +54,11 @@ export function useApproachDone(opts: {
     lifetime.mount();
     return () => lifetime.unmount();
   }, [lifetime]);
-  return async () => {
+  /** reach — пройти только первые N шагов (энергии до цели нет): без дела в конце. */
+  return async (reach?: number | null) => {
     if (!pendingPath) return;
+    const part = reach != null && reach < pendingPath.length;
+    if (part && reach <= 0) return;
     const token = lifetime.begin();
     if (token === null) return;
     try {
@@ -57,8 +66,8 @@ export function useApproachDone(opts: {
       // Маршрут мог оборваться на полпути (сервер отказал, кончилась энергия).
       // Тогда герой стоит не у цели, и бить по ней всё равно — это удар из-за
       // угла: сервер откажет, а игрок увидит ошибку на ровном месте.
-      const arrived = await moveAlongPath(pendingPath);
-      if (!arrived || !action || !lifetime.valid(token)) return;
+      const arrived = await moveAlongPath(pendingPath, part ? reach : undefined);
+      if (!arrived || part || !action || !lifetime.valid(token)) return;
       // Постройка — единственный случай окна; бой и сбор идут через interact.
       if (action.kind === "build") {
         openBuilding({ q: action.q, r: action.r });
@@ -66,6 +75,10 @@ export function useApproachDone(opts: {
       }
       if (action.kind === "decor") {
         opts.onDecor?.(action.q, action.r);
+        return;
+      }
+      if (action.kind === "mineplan") {
+        opts.onMinePlan?.();
         return;
       }
       // «Копать / Закопать / Выкопать · N шагов» (§8.24): дело лопаты по приходу.

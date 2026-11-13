@@ -1,7 +1,7 @@
 // Подтверждение, пополнение звёзд и «готово» окна энергии (дизайн Ангелины).
 // Перед оплатой всегда видно, что получишь, чем платишь, сколько есть и
-// сколько не хватает; не хватает звёзд — пополнение тут же, билетов — окно
-// билетов.
+// сколько не хватает; не хватает звёзд — пополнение тут же. Золото (вместо
+// билетов, §8.61) не покупается — тогда кнопка «Недостаточно средств».
 import type { ReactNode } from "react";
 import { StarsTopUp } from "@/components/account/StarsTopUp";
 import { gameSpent, type PayOpt } from "./energyOffers";
@@ -15,12 +15,12 @@ function BalanceLine({ ru, opt, balance }: { ru: boolean; opt: PayOpt; balance: 
   // Копейки округляем по-человечески: 2,07 не превращаем в 2,06 из-за дробей.
   const short = Math.max(0, Math.ceil((opt.price - balance) * 100 - 1e-6) / 100);
   const have = Math.round(balance * 100) / 100;
-  const unit = opt.method === "stars" ? "★" : opt.method === "tickets" || opt.method === "likes" ? "" : tokenName(opt.token);
+  const unit = opt.method === "stars" ? "★" : opt.method === "gold" || opt.method === "likes" ? "" : tokenName(opt.token);
   const label =
     opt.method === "stars"
       ? ru ? "В Казне" : "In Treasury"
-      : opt.method === "tickets"
-        ? ru ? "Билетов" : "Tickets"
+      : opt.method === "gold"
+        ? ru ? "Золота" : "Gold"
         : opt.method === "likes"
           ? ru ? "Лайков" : "Likes"
           : ru ? "На счёте" : "On balance";
@@ -41,7 +41,6 @@ export function EnergyConfirm({
   pending,
   onPay,
   onTopUp,
-  onNeedTickets,
 }: {
   ru: boolean;
   reward: Reward;
@@ -51,11 +50,10 @@ export function EnergyConfirm({
   pending: boolean;
   onPay: () => void;
   onTopUp: () => void;
-  onNeedTickets?: () => void;
 }) {
   const short = balance != null && balance < opt.price;
   const action =
-    pending || gameSpent(opt) ? null : !short ? onPay : opt.method === "stars" ? onTopUp : opt.method === "tickets" ? onNeedTickets : null;
+    pending || gameSpent(opt) ? null : !short ? onPay : opt.method === "stars" ? onTopUp : null;
   const label = gameSpent(opt)
     ? ru ? "Лимит на сегодня" : "Today’s limit reached"
     : pending
@@ -63,9 +61,7 @@ export function EnergyConfirm({
     : short
       ? opt.method === "stars"
         ? ru ? "Пополнить Stars" : "Top up Stars"
-        : opt.method === "tickets" && onNeedTickets
-          ? ru ? "Купить билеты" : "Buy tickets"
-          : ru ? "Недостаточно средств" : "Insufficient balance"
+        : ru ? "Недостаточно средств" : "Insufficient balance"
       : opt.method === "stars"
         ? ru ? "Оплатить Stars" : "Pay with Stars"
         : ru ? "Подтвердить покупку" : "Confirm purchase";

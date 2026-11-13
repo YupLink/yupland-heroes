@@ -59,6 +59,7 @@ export type PrizeUiKind = "darai" | "art_rarity" | TourPrizeKind;
 /** Что предлагает меню. «Предмет» (item) не предлагается: в инвентаре живут
  *  только артефакты и герои, у них свои кнопки; пришедший с сервера item
  *  меню всё равно покажет. */
+// «Билеты» не предлагаются: билетов нет (§8.61), старый приз tickets выдаётся золотом ×100.
 export const PRIZE_UI_KINDS: readonly PrizeUiKind[] = [
   "token",
   "resource",
@@ -69,7 +70,6 @@ export const PRIZE_UI_KINDS: readonly PrizeUiKind[] = [
   "hero",
   "energy",
   "likes",
-  "tickets",
 ];
 
 /** Штучные виды: пол-бокса и треть лайка не выдают. */

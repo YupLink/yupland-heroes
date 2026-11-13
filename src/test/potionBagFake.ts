@@ -8,6 +8,7 @@
 // под advisory-локом героя, взятым ОТДЕЛЬНЫМ оператором (его место в строке
 // запроса проверяет тест: снимок Postgres этим фейком не воспроизвести).
 // Чужой запрос — ошибка теста, а не тихий ноль.
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { dec, decNum } from "@/test/numeric";
 import { evalSql } from "@/test/sqlExpr";
 
@@ -35,7 +36,7 @@ export function resetBag(): void {
   bag.garble = false;
 }
 
-const cells = (n: number): number => Math.ceil(Math.max(0, n) / 20);
+const cells = (n: number): number => Math.ceil(Math.max(0, n) / CELL_SIZE);
 const idOf = (key: string): string => key.slice(key.indexOf(":") + 1);
 
 /** Зелье ли стек — как POTION_JOIN: свой товар с галочкой. */

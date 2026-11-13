@@ -25,12 +25,15 @@ export function MarketRefPicker({
   value,
   onPick,
   noArtAny,
+  heroAny,
 }: {
   kind: MarketKind;
   value: string | null;
   onPick: (ref: Ref) => void;
   /** Скрыть «любой арт редкости X» — там, где игрок не выберет, чем платит. */
   noArtAny?: boolean;
+  /** Показать «любой герой редкости X» — только товаром скупки (ломбард). */
+  heroAny?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // Выбор храним целым объектом, а не id: «Выбрать» применяет именно выделенную
@@ -45,8 +48,10 @@ export function MarketRefPicker({
   const q = useQuery({
     // Ключ помнит про фильтр: без него список без «любых артов» лёг бы в кэш
     // и подменил бы полный в соседнем пикере.
-    queryKey: ["market-ref", kind, noArtAny ? "no-any" : "all"],
-    queryFn: () => fetchRefs(kind, noArtAny),
+    // «Любой герой» — хвостом ключа и только когда он есть: без него ключ прежний,
+    // общий с соседями (AdminDecorTools, useTownRefs).
+    queryKey: ["market-ref", kind, noArtAny ? "no-any" : "all", ...(heroAny ? ["hero-any"] : [])],
+    queryFn: () => fetchRefs(kind, noArtAny, heroAny),
     staleTime: 60_000,
     // Держим список дольше в памяти — повторное открытие пикера мгновенно.
     gcTime: 10 * 60_000,

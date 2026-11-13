@@ -3,7 +3,7 @@
 // (перебор до 29.09, кончился бафф Алхимии) ничего не теряет, но и новых зелий
 // не берёт — даже долив в неполную ячейку.
 import { describe, it, expect } from "vitest";
-import { backpackRoomFor } from "./backpackCells";
+import { backpackRoomFor, CELL_SIZE } from "./backpackCells";
 import { bagCellsOf, bagsOccupancy, potionBagCapacity, potionBagFit, roomFor } from "./potionBag";
 
 /** Сколько штук вида влезет: та же связка, что у склада, сундука и «Макс». */
@@ -43,7 +43,7 @@ describe("roomFor + backpackRoomFor", () => {
 
   it("зелью — только свободное в сумке; свободный рюкзак не в счёт", () => {
     // Рюкзак 5 (занято 2 — свободно 3), сумка 3 (занято 1): новых ячеек 2.
-    expect(room(cells, { potion: true, capacity: 5, potionCapacity: 3 })).toBe(40);
+    expect(room(cells, { potion: true, capacity: 5, potionCapacity: 3 })).toBe(2 * CELL_SIZE);
   });
 
   it("сумка полна, рюкзак пуст — зелью ноль", () => {
@@ -53,21 +53,25 @@ describe("roomFor + backpackRoomFor", () => {
 
   it("обычному товару — только рюкзак; зелья сверх сумки его места не занимают", () => {
     const over = { itemCells: 2, potionCells: 7 };
-    expect(room(over, { potion: false, capacity: 3, potionCapacity: 3 })).toBe(20);
+    expect(room(over, { potion: false, capacity: 3, potionCapacity: 3 })).toBe(CELL_SIZE);
   });
 
   it("рюкзак над ёмкостью доливает свою ячейку, а новых не берёт — как раньше", () => {
     const over = { itemCells: 4, potionCells: 0 };
-    expect(room(over, { potion: false, capacity: 3, potionCapacity: 3, cur: 15 })).toBe(5);
+    expect(room(over, { potion: false, capacity: 3, potionCapacity: 3, cur: CELL_SIZE - 5 })).toBe(
+      5,
+    );
     expect(room(over, { potion: false, capacity: 3, potionCapacity: 3 })).toBe(0);
   });
 
   it("сумка ровно полна: долив в неполную ячейку своего вида — до края ячейки", () => {
     const atCap = { itemCells: 0, potionCells: 3 };
-    expect(room(atCap, { potion: true, capacity: 0, potionCapacity: 3, cur: 14 })).toBe(6);
-    // Дробная крошка (0,4 зелья) — тоже занятая ячейка: долив до 20.
+    expect(room(atCap, { potion: true, capacity: 0, potionCapacity: 3, cur: CELL_SIZE - 6 })).toBe(
+      6,
+    );
+    // Дробная крошка (0,4 зелья) — тоже занятая ячейка: долив до целой ячейки.
     expect(room(atCap, { potion: true, capacity: 0, potionCapacity: 3, cur: 0.4 })).toBeCloseTo(
-      19.6,
+      CELL_SIZE - 0.4,
     );
   });
 
@@ -91,7 +95,7 @@ describe("бафф Алхимии: временная ёмкость сумки"
   it("с баффом четвёртая ячейка принимает зелья", () => {
     expect(withBuff).toBe(4);
     const bag = { itemCells: 0, potionCells: 3 };
-    expect(room(bag, { potion: true, capacity: 1, potionCapacity: withBuff })).toBe(20);
+    expect(room(bag, { potion: true, capacity: 1, potionCapacity: withBuff })).toBe(CELL_SIZE);
   });
 
   it("бафф кончился: зелья остаются в сумке (4/3), новых — ни штуки", () => {
@@ -103,7 +107,9 @@ describe("бафф Алхимии: временная ёмкость сумки"
     expect(room(bag, { potion: true, capacity: 5, potionCapacity: noBuff, cur: 3 })).toBe(0);
     // Выпил одну ячейку — снова ровно по ёмкости, долив своей ячейки открыт.
     const drank = { itemCells: 0, potionCells: 3 };
-    expect(room(drank, { potion: true, capacity: 5, potionCapacity: noBuff, cur: 3 })).toBe(17);
+    expect(room(drank, { potion: true, capacity: 5, potionCapacity: noBuff, cur: 3 })).toBe(
+      CELL_SIZE - 3,
+    );
   });
 });
 

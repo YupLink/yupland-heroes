@@ -13,6 +13,7 @@ import { godText } from "./adminCellText";
 import { Row, btn } from "./AdminCellRow";
 import { AdminTagChecks } from "./AdminTagChecks";
 import { AdminDecorInteract } from "./AdminDecorInteract";
+import { AdminTerrainFinds } from "./AdminTerrainFinds";
 import { AdminCellShipRow } from "./AdminCellShipRow";
 import { AdminBuildingRow, AdminBuildingSettings } from "@/components/beta-raid/AdminCellBuilding";
 import { GodMoveButton } from "@/components/beta-raid/god-move/GodMoveButton";
@@ -82,6 +83,8 @@ export function AdminCellState({
             {t.notPublished}
           </span>
         )}
+        {/* Находки лопатой у этой местности (§8.24 п. 6б, 31.10). */}
+        {cell.terrain && <AdminTerrainFinds terrainId={cell.terrain.id} name={cell.terrain.name} />}
       </Row>
       {/* Дорога снимается так же, как декор: она лежит ПОВЕРХ местности, и
           снятие возвращает клетке цену шага её собственной земли. */}

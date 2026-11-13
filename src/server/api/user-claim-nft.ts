@@ -5,6 +5,7 @@ import { pg } from "../db/pg";
 import { getCurrentWallet } from "../auth";
 import { assertNotMaintenance } from "../maintenance";
 import { normalizeTitle } from "@/lib/normalizeTitle";
+import { secureRandom } from "@/lib/secureRandom";
 import { fetchSendlerNftsByOwner, fetchSendlerNftsByTitle } from "../sendler";
 import { requireLinkedTelegram } from "./user-claims-inventory";
 import { getSisterWallets } from "./user-claims-core";
@@ -110,7 +111,7 @@ export const claimNftDrop = createServerFn({ method: "POST" })
       throw new Error("В пуле не осталось NFT для выдачи");
 
     const totalWeight = candidates.reduce((s, c) => s + c.weight, 0);
-    let pick = Math.random() * totalWeight;
+    let pick = secureRandom() * totalWeight;
     let chosen = candidates[0].tokenId;
     for (const c of candidates) {
       pick -= c.weight;

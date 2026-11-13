@@ -24,6 +24,7 @@ import {
   discardToBagSql,
   type DiscardRow,
 } from "@/server/api/beta-raid/loot-bag/bag-discard-sql";
+import { isDaraiMineKey } from "@/lib/daraiMine";
 
 const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -56,6 +57,10 @@ export async function discardToBag(o: {
   qty?: number;
   clientOp?: string;
 }): Promise<DiscardResult> {
+  // DARAI-шахту только размещают: выброс и подъём сбрасывали бы её час
+  // (lib/daraiMine). Мешочка с ней нет вовсе: через час она встаёт сама
+  // (dmine-autoplace).
+  if (isDaraiMineKey(o.stackKey)) throw new Error("dmine.stays");
   const account = await raidOwner(o.wallet);
   const op = `bagdrop:${account}:${o.clientOp ?? nanoid(16)}`;
   const pos = await ownCell(o.wallet);

@@ -19,8 +19,8 @@ const st = {
       auc_usd: { mode: "auto" as "auto" | "manual", threshold: 100 },
     },
     devWallets: [
-      { wallet: "owner.example.tg", share: 0.5 },
-      { wallet: "admin2.example.tg", share: 0.5 },
+      { wallet: "owner.tg", share: 0.5 },
+      { wallet: "partner.tg", share: 0.5 },
     ],
   },
   active: 0,
@@ -48,6 +48,11 @@ vi.mock("../../db/mcpClient", () => ({
       return null;
     }
     if (flat.startsWith("SELECT id, bucket, amount, steps")) return st.batch ? [st.batch] : [];
+    const pool = /'sub_burn', 'Darai', ([\d.]+), 'income', '([^']+)'/.exec(flat);
+    if (pool) {
+      ev.push(`burnpool:${Number(pool[1])}:${pool[2]}`);
+      return null;
+    }
     if (flat.startsWith("WITH bal AS")) {
       ev.push(`open:${/WHERE bucket = '(\w+)'/.exec(flat)?.[1]}`);
       return [{ _row: { id: st.openId } }];
@@ -146,6 +151,15 @@ describe("доли разработчиков", () => {
     expect(items[0].amountHuman).toBe(16.666666);
     expect(items[1].amountHuman).toBe(16.666667);
   });
+
+  it("кошелёк не задан (пустой env команды) — перевод не собирается", () => {
+    const wallets = [
+      { wallet: "a", share: 0.5 },
+      { wallet: "", share: 0.5 },
+    ];
+    expect(() => devItems(wallets, 10)).toThrow(/не задан/);
+    expect(() => devItems([], 10)).toThrow(/не задан/);
+  });
 });
 
 describe("пачка $", () => {
@@ -162,7 +176,7 @@ describe("пачка $", () => {
     ]);
   });
 
-  it("корзина $: обмен 20 из 70 — весь в дупло, 50 из 70 — разработчикам в USDT", async () => {
+  it("корзина $: обмен 20 из 70 — в пул сжигания (без перевода), 50 из 70 — разработчикам в USDT", async () => {
     st.batch = { id: "mb_1", bucket: "sub_usd", amount: 70, steps: [] };
     await runBatch("mb_1");
     // «sending» каждого шага — уже с хэшем, nonce и подписанными байтами.
@@ -170,11 +184,10 @@ describe("пачка $", () => {
       "step:swap:sending:HASH_S/7/TX_S",
       "swap:20",
       `step:swap:done:${st.received}`,
-      "step:burn:sending:HASH_T/8/TX_T",
-      `batch:darai.tkn.near:darai_duplo.near=${st.received}`,
-      "step:burn:done",
+      "burnpool:1000000.12345678:batch:mb_1:burnpool",
+      "step:burnpool:done",
       "step:dev:sending:HASH_T/8/TX_T",
-      "batch:usdt.tether-token.near:owner.example.tg=25,admin2.example.tg=25",
+      "batch:usdt.tether-token.near:owner.tg=25,partner.tg=25",
       "step:dev:done",
       "status:done",
     ]);
@@ -218,7 +231,7 @@ describe("пачка $", () => {
     await runBatch("mb_4");
     expect(ev).toEqual([
       "step:dev:sending:HASH_T/8/TX_T",
-      "batch:usdt.tether-token.near:owner.example.tg=25,admin2.example.tg=25",
+      "batch:usdt.tether-token.near:owner.tg=25,partner.tg=25",
       "step:dev:done",
       "status:done",
     ]);
@@ -248,7 +261,31 @@ describe("что пора разослать", () => {
     ev.length = 0;
     st.bal = { ...st.bal, sub_usd: 0, sub_burn: 150_000_000, sub_dev: 250_000_001 };
     await runDueBatches("auto");
-    expect(ev).toEqual(["open:sub_burn", "open:sub_dev"]);
+    // Разработчикам — по оплатам; пул сжигания (150 млн) ещё не набрал 250 млн.
+    expect(ev).toEqual(["open:sub_dev"]);
+  });
+
+  it("пул сжигания уходит сам одной пачкой от 250 млн, независимо от разработчиков", async () => {
+    st.bal = { ...st.bal, sub_burn: 249_999_999.99, sub_dev: 0 };
+    await runDueBatches("auto");
+    expect(ev).toEqual([]);
+    st.bal = { ...st.bal, sub_burn: 250_000_000 };
+    await runDueBatches("auto");
+    expect(ev).toEqual(["open:sub_burn"]);
+  });
+
+  it("пачка $, начатая до пула (перевод в дупло уже был), — в пул второй раз не кладётся", async () => {
+    st.batch = {
+      id: "mb_old",
+      bucket: "sub_usd",
+      amount: 70,
+      steps: [
+        { name: "swap", state: "done", received: 1000, amount: 20 },
+        { name: "burn", state: "sending", amount: 1000, hash: "H", nonce: "1", tx: "T" },
+      ],
+    };
+    await expect(runBatch("mb_old")).rejects.toThrow(/исход перевода неизвестен/);
+    expect(ev.some((e) => e.startsWith("burnpool:"))).toBe(false);
   });
 
   it("режим «вручную» — сам ничего не шлёт, кнопка шлёт только свою корзину", async () => {
@@ -292,7 +329,7 @@ describe("что пора разослать", () => {
     st.batch = { id: "mb_a", bucket: "auc_usd", amount: 120, steps: [] };
     await runBatch("mb_a");
     expect(ev.some((e) => e.startsWith("swap:"))).toBe(false);
-    expect(ev.find((e) => e.startsWith("batch:"))).toBe("batch:usdt.tether-token.near:owner.example.tg=60,admin2.example.tg=60");
+    expect(ev.find((e) => e.startsWith("batch:"))).toBe("batch:usdt.tether-token.near:owner.tg=60,partner.tg=60");
     expect(ev).toContain("status:done");
   });
 

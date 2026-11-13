@@ -10,6 +10,8 @@ const state = vi.hoisted(() => ({
   pos: { q: 5, r: 5 } as { q: number; r: number } | null,
   voidHere: false,
   water: { q: 6, r: 5 } as { q: number; r: number } | null,
+  /** Вода для большого (океан тоже); undefined — та же, что для малого. */
+  bigWater: undefined as { q: number; r: number } | null | undefined,
   insertOk: true,
   insertThrows: false,
   exists: false,
@@ -38,7 +40,10 @@ vi.mock("./encounter-where", () => ({
   myMapId: async () => "map_1",
   ownCell: async () => state.pos,
 }));
-vi.mock("./ships", () => ({ freeWaterAround: async () => state.water }));
+vi.mock("./ships", () => ({
+  freeWaterAround: async (_m: string, _q: number, _r: number, _b: boolean, kind?: string) =>
+    kind === "big" ? (state.bigWater === undefined ? state.water : state.bigWater) : state.water,
+}));
 vi.mock("./voidGate", () => ({
   canIgnoreVoid: () => false,
   isVoidCellLive: async () => state.voidHere,
@@ -52,6 +57,7 @@ beforeEach(() => {
   state.pos = { q: 5, r: 5 };
   state.voidHere = false;
   state.water = { q: 6, r: 5 };
+  state.bigWater = undefined;
   state.insertOk = true;
   state.insertThrows = false;
   state.exists = false;
@@ -82,6 +88,22 @@ describe("createShipNearHero", () => {
     const sql = inserts()[0];
     expect(sql).not.toContain("NOT EXISTS");
     expect(sql).toContain("ON CONFLICT (id) DO NOTHING");
+  });
+
+  it("рядом только океан — малый не спускается и говорит про океан", async () => {
+    state.water = null;
+    state.bigWater = { q: 4, r: 5 };
+    const res = await createShipNearHero("w.near");
+    expect(res).toEqual({ ok: false, reasonKey: "spell.ocean_small" });
+    expect(inserts()).toHaveLength(0);
+  });
+
+  it("большой корабль (create_big_ship) — на любую воду, океан тоже, вид big", async () => {
+    state.water = null;
+    state.bigWater = { q: 4, r: 5 };
+    const res = await createShipNearHero("w.near", "big");
+    expect(res).toMatchObject({ ok: true, ship: { q: 4, r: 5 } });
+    expect(inserts()[0]).toMatch(/'big', \d+\)/);
   });
 
   it("нет воды рядом — отказ, ничего не вставлено", async () => {

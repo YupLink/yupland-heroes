@@ -1,4 +1,4 @@
-// Стейкинг банка (пока только админ, ПРАВИЛА §8.51): выбор срока (% годовых),
+// Стейкинг банка (открыт игрокам 20.10.2026, ПРАВИЛА §8.51): выбор срока (% годовых),
 // сумма DARAI, сколько золота в сутки и за срок; ниже — вклады и DARAI холдеров.
 // Числа — lib/bankStake.ts (та же формула пишется во вклад на сервере).
 import { useState } from "react";
@@ -7,12 +7,9 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { getBankStake, openBankStake } from "@/server/api/bank/bank-stake";
 import { STAKE_PLANS, goldPerDay, stakePlan, type StakePlanId } from "@/lib/bankStake";
-import { ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
 import { fmtNum } from "./bankUi";
-import { BANK_LICENSE_KEY } from "./BankLicenses";
+import { BANK_STAKE_KEY, refreshBank } from "./bankKeys";
 import { BankStakeList } from "./BankStakeList";
-
-export const BANK_STAKE_KEY = ["bank-stake"] as const;
 
 export function BankStake({ ru }: { ru: boolean }) {
   const qc = useQueryClient();
@@ -26,9 +23,7 @@ export function BankStake({ ru }: { ru: boolean }) {
       setAmount("");
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
-    onSettled: () => {
-      for (const key of [BANK_STAKE_KEY, BANK_LICENSE_KEY, ACC_BALANCES_KEY]) void qc.invalidateQueries({ queryKey: key });
-    },
+    onSettled: () => void refreshBank(qc),
   });
 
   const p = stakePlan(plan)!;
@@ -38,55 +33,30 @@ export function BankStake({ ru }: { ru: boolean }) {
   const day = ok ? goldPerDay(value, p.pct) : 0;
 
   return (
-    <section className="auction-ledger space-y-3" aria-labelledby="bank-stake-title">
-      <h2 id="bank-stake-title" className="font-['Auction_Russo'] text-lg text-[#fff0c7]">
-        {ru ? "Стейкинг" : "Staking"}
-      </h2>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" role="radiogroup" aria-label={ru ? "Срок" : "Term"}>
-        {STAKE_PLANS.map((x) => (
-          <button
-            key={x.id}
-            type="button"
-            role="radio"
-            aria-checked={plan === x.id}
-            onClick={() => setPlan(x.id)}
-            className={`rounded-xl border px-2 py-2 text-center ${plan === x.id ? "border-[#edc36b] bg-[#2a2414] text-[#fff0c7]" : "border-[#ffffff1f] bg-[#0d1b2b] text-[#cdb791]"}`}
-          >
-            <span className="block text-xs">{ru ? x.ru : x.en}</span>
-            <b className="block text-base">{x.pct} %</b>
-          </button>
-        ))}
+    <section className="bank-player__panel bank-player__stakes" aria-labelledby="bank-stake-title">
+      <h2 id="bank-stake-title">{ru ? "Новый вклад" : "New deposit"}</h2>
+      <label className="bank-player__field-label" htmlFor="bank-stake-amount">{ru ? "Сумма DARAI" : "DARAI amount"}</label>
+      <div className="bank-player__field">
+        <span className="bank-player__stake-input-icon bank-player__money-icon bank-player__money-icon--darai" aria-hidden="true" />
+        <input id="bank-stake-amount" inputMode="decimal" placeholder={ru ? "Введите сумму" : "Enter amount"} value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <button type="button" onClick={() => setAmount(String(darai))}>{ru ? "Макс" : "Max"}</button>
       </div>
-      <div className="flex items-center gap-2">
-        <input
-          className="auction-field flex-1"
-          inputMode="decimal"
-          placeholder="0"
-          aria-label={ru ? "Сколько DARAI" : "DARAI amount"}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-        <b className="w-16 shrink-0 text-right text-[#fff0c7]">DARAI</b>
+      <p className="bank-player__balance">{ru ? "В наличии" : "Available"}: {fmtNum(darai, ru)} DARAI</p>
+      {Number.isFinite(value) && value > darai && <p className="bank-player__error" role="alert">{ru ? "Недостаточно DARAI" : "Insufficient DARAI"}</p>}
+      <div className="bank-player__section-head"><h3>{ru ? "Срок и ставка" : "Term and rate"}</h3><small>{ru ? "Годовых" : "Annual"}</small></div>
+      <div className="bank-player__plans" role="group" aria-label={ru ? "Срок вклада" : "Deposit term"}>
+        {STAKE_PLANS.map((x) => <button key={x.id} type="button" aria-pressed={plan === x.id} onClick={() => setPlan(x.id)}>
+          <span>{ru ? x.ru : x.en}</span><strong>{x.pct}%</strong><i aria-hidden="true">{plan === x.id ? "✓" : ""}</i>
+        </button>)}
       </div>
-      <button type="button" className="text-xs text-[#a59c8c] underline" onClick={() => setAmount(String(Math.floor(darai)))}>
-        {ru ? "есть" : "have"} {fmtNum(darai, ru)}
-      </button>
-      {ok && (
-        <p className="rounded-xl border border-[#ffffff1f] bg-[#0d1b2b] p-3 text-sm text-[#d8ccb5]">
-          {ru ? "Золота в сутки" : "Gold a day"}: <b className="text-[#ffd773]">{fmtNum(day, ru)}</b>
-          {" · "}
-          {p.days > 0 ? (ru ? "за срок" : "per term") : ru ? "в месяц" : "a month"}:{" "}
-          <b className="text-[#ffd773]">{fmtNum(Math.round(day * (p.days || 30) * 100) / 100, ru)}</b>
-        </p>
-      )}
-      <button
-        type="button"
-        className="auction-primary w-full"
-        disabled={!ok || open.isPending}
-        onClick={() => open.mutate({ amount: value, plan })}
-      >
-        {open.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        {ru ? "Вложить" : "Stake"}
+      <div className="bank-player__yield">
+        <h3>{ru ? "Доход золотом" : "Gold earnings"}</h3>
+        <dl><dt>{ru ? "В сутки" : "Per day"}</dt><dd>{ok ? fmtNum(day, ru) : "—"}</dd>
+        {p.days > 0 && <><dt>{ru ? "Оценка за срок" : "Estimated term"}</dt>
+        <dd>{ok ? fmtNum(Math.round(day * p.days * 100) / 100, ru) : "—"}</dd></>}</dl>
+      </div>
+      <button type="button" className="bank-player__primary" disabled={!ok || open.isPending} onClick={() => open.mutate({ amount: value, plan })}>
+        {open.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{ru ? "Вложить" : "Deposit"}
       </button>
       {q.data && <BankStakeList ru={ru} data={q.data} />}
       {q.isError && <p role="alert">{q.error instanceof Error ? q.error.message : String(q.error)}</p>}

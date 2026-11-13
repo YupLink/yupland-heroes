@@ -118,8 +118,8 @@ export function useCellTap(opts: {
         openShip({ q, r, mark });
         return;
       }
-      // Разбитый борт не взять на борт — к нему подходят вплотную, с берега
-      // тоже, и по приходу открывается окно с починкой (жалоба 12.10.2026).
+      // Разбитый: подбитый динамитом — окно издалека (таймер), прочий — подойти и чинить (12.10).
+      if (isWreckOnly(mark) && (mark.blasted ?? 0) >= mark.broken) return openShip({ q, r, mark });
       if (isWreckOnly(mark)) {
         approachCell(q, r, { kind: "ship", q, r, extraCost: 0 }, farShipRefusalKey(mark), true);
         return;
@@ -155,8 +155,11 @@ export function useCellTap(opts: {
     // что на клетке уже есть, и под постройкой прятался безнаказанно: тап
     // открывал стройку, а до гриба добраться было нечем («мухоморы если
     // прячутся в постройку, то их не забрать»). Разобрался с грибом — постройка
-    // снова открывается обычным нажатием.
-    if (cell?.buildingId && objectHere() && playerPos) {
+    // снова открывается обычным нажатием. Стоишь на самой постройке — окно
+    // постройки (вход в портал): иначе тап уводил с клетки к беглецу, а у
+    // портала среди воды отходить некуда — «Туда не пройти» (жалоба 21.10).
+    const onIt = playerPos?.q === q && playerPos?.r === r;
+    if (cell?.buildingId && objectHere() && playerPos && !onIt) {
       const adjacent = DIRS.some((d) => playerPos.q + d.q === q && playerPos.r + d.r === r);
       const obj = objectHere()!;
       if (adjacent) {

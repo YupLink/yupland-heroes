@@ -1,6 +1,7 @@
 // Кнопка «Открыть · N⚡» (ПРАВИЛА §8.23): цена — от сервера, та же, что он
 // спишет: мешочек 1, сундук — занятые ячейки, но не меньше 1 (lib/openPass;
-// ответ прошлой версии с нулём — тоже 1). Каждое новое открытие платит.
+// ответ прошлой версии с нулём — тоже 1; на острове — в 10 раз, 0,1). Каждое
+// новое открытие платит.
 // Показанную цену кнопка отдаёт в onOpen: сервер не спишет больше неё (сундук
 // наполнили под рукой — отказ «Цена изменилась», окно покажет новую). Энергии
 // меньше цены — кнопка неактивна и говорит, сколько нужно: сервер всё равно
@@ -8,7 +9,6 @@
 import { Loader2, LockOpen } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useEnergy } from "@/lib/hooks/useEnergy";
-import { chestOpenPrice } from "@/lib/openPass";
 
 export function OpenButton({
   price,
@@ -22,7 +22,9 @@ export function OpenButton({
 }) {
   const t = useT();
   const energy = useEnergy().data?.energy;
-  const n = chestOpenPrice(price);
+  // Цена с сервера уже готовая — не округляем: на острове она дробная (0,1),
+  // и прежний ceil показал бы 1. Ноль (ответ прошлой версии) — всё равно 1.
+  const n = Number.isFinite(price) && price > 0 ? price : 1;
   const short = energy != null && energy < n;
   return (
     <button

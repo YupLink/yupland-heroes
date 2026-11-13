@@ -29,6 +29,8 @@ export type AbilityTotals = {
   weak_arm: number;
   weak_luck: number;
   weak_int: number;
+  /** На сколько минут сняты иммунитеты героя этим боем (сумма продлений). */
+  strip_immune: number;
 };
 
 /**
@@ -54,6 +56,7 @@ export function abilityTotals(
     weak_arm: 0,
     weak_luck: 0,
     weak_int: 0,
+    strip_immune: 0,
   };
   for (const e of log) {
     // «poison_applied» — то же отравление, просто вид в логе назван подробнее.
@@ -79,5 +82,7 @@ export function abilityTotals(
   for (const kind of WEAKEN_KINDS) {
     totals[kind] = Math.max(0, side.weaken[kind]?.value ?? 0);
   }
+  // Снятие иммунитетов — тоже то, что повиснет на аккаунте: минуты из side.
+  totals.strip_immune = Math.max(0, side.strip?.minutes ?? 0);
   return totals;
 }

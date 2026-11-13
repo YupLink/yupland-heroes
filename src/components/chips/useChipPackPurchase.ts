@@ -1,4 +1,4 @@
-// Покупка пака фишек: билеты, перевод $DARAI и списание с ресурсного счёта.
+// Покупка пака фишек: золото (бывшие билеты, ПРАВИЛА §8.61), перевод $DARAI и списание с ресурсного счёта.
 //
 // Вынесено из ChipPackCard, чтобы карточка осталась разметкой (≤250 строк) —
 // тем же приёмом, что и у энергопаков.
@@ -61,7 +61,7 @@ export function useChipPackPurchase(pack: { id: string; priceDarai: number | nul
   const qc = useQueryClient();
 
   const buy = useMutation({
-    mutationFn: async ({ payWith, count }: { payWith: "tickets" | "darai"; count: number }) => {
+    mutationFn: async ({ payWith, count }: { payWith: "gold" | "darai"; count: number }) => {
       for (let i = 0; i < count; i++) {
         await buyChipPack({ data: { packId: pack.id, payWith } });
       }
@@ -69,7 +69,7 @@ export function useChipPackPurchase(pack: { id: string; priceDarai: number | nul
     onSuccess: () => {
       toast.success(t("chips.pack_bought"));
       qc.invalidateQueries({ queryKey: ["my-chip-packs"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       qc.invalidateQueries({ queryKey: ["my-darai-balance"] });
       qc.invalidateQueries({ queryKey: ["my-darai-deposits"] });
       qc.invalidateQueries({ queryKey: ["chip-packs-public"] });

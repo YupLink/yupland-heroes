@@ -18,7 +18,8 @@ const RESOURCE_LABELS: Record<MineResource, string> = {
   token: "Токен (NEAR-FT)",
 };
 
-const RESOURCES = Object.keys(RESOURCE_LABELS) as MineResource[];
+// «Билеты» не предлагаются: билетов нет (§8.61), старая шахта tickets платит золотом ×100.
+const RESOURCES = (Object.keys(RESOURCE_LABELS) as MineResource[]).filter((r) => r !== "tickets");
 
 export function MineConfigEditor({
   config,

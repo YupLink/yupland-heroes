@@ -41,6 +41,11 @@ describe("occupiedSql", () => {
     );
   });
 
+  it("шахта — постройка: клетка занята, генератор её не перекрашивает (§8.59 п. 9)", () => {
+    // Признак постройки шире признака шахты — отдельной проверки шахте не нужно.
+    expect(sql).toContain("c.object_id IS NOT NULL OR c.building_id IS NOT NULL");
+  });
+
   it("дорога и декор занятостью не считаются — их генератор трогает сам", () => {
     expect(sql).not.toContain("road_id");
     expect(sql).not.toContain("decoration_id");

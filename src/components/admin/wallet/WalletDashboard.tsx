@@ -462,7 +462,7 @@ function WalletHero({
         {/* Маскот-котик: выглядывает из-за правого края, мягко покачивается.
             Декоративный — за контентом, не перехватывает клики. */}
         <img
-          src="/yuplink-logo.png"
+          src="/yuplink-logo.webp"
           alt=""
           aria-hidden="true"
           draggable={false}

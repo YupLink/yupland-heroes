@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { humanError } from "@/lib/humanError";
 import { adminGetHeroSwapPrice, adminSetHeroSwapPrice } from "@/server/api/beta-raid/tavern-admin";
 import { AdminRaids } from "./admin/raids/RaidsDashboard";
+import { WeatherAdminCard } from "@/components/admin/WeatherAdminCard";
+import { WeatherOddsCard } from "@/components/admin/WeatherOddsCard";
 import { FishingAdminCard } from "@/components/admin/fishing/FishingAdminCard";
 
 export const Route = createFileRoute("/admin/raids")({ component: RaidsAdminPage });
@@ -20,6 +22,8 @@ function RaidsAdminPage() {
     <div className="space-y-4">
       <HeroSwapPriceCard />
       <FishingAdminCard />
+      <WeatherAdminCard />
+      <WeatherOddsCard />
       <AdminRaids />
     </div>
   );

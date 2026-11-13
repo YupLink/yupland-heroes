@@ -45,7 +45,7 @@ vi.mock("./harvest-fields", () => ({
   myHarvestFields: async (mapId: string) =>
     mapId === "maze" ? [{ mapId, q: 1, r: 1, perHour: 1 }] : [],
 }));
-vi.mock("./mine-capture-log", () => ({ unseenMineCaptures: async () => [] }));
+vi.mock("./mine-capture-log", () => ({ lostMineRows: async () => [] }));
 vi.mock("../raid-rewards-pending", () => ({
   pendingRaidRewardsFor: async () => ({ sources: [], total: 0 }),
 }));

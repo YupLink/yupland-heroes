@@ -156,13 +156,15 @@ export function noteChipMarketSale(opts: {
   seller: string;
   price: number;
   sellerGot: number;
+  /** Маркет фишек за золото с 21.10.2026; прежние сделки — билеты. */
+  priceCur?: "gold" | "tickets";
 }): Promise<void> {
   const base = {
     source: "chip_market" as const,
     itemKey: `chip:${opts.chipId}`,
     qty: 1,
     priceUnit: opts.price,
-    priceCur: "tickets",
+    priceCur: opts.priceCur ?? "tickets",
   };
   return noteTrades([
     {

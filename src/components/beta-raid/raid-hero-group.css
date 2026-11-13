@@ -1,17 +1,17 @@
 /* Raid hero HUD: compact glass energy bar with the satiety portrait overlapping its edge. */
 .raid-hero-group {
   position: absolute;
-  right: 24px;
+  right: 21px;
   top: 8px;
   z-index: 35;
   display: flex;
   align-items: center;
   width: max-content;
-  max-width: calc(100vw - 32px);
-  height: 58px;
-  padding: 6px 62px 6px 8px;
+  max-width: calc(100vw - 26px);
+  height: 48px;
+  padding: 2px 44px 2px 6px;
   border: 1px solid #c6aa6c;
-  border-radius: 18px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #302e26bf, #171d1bd4);
   box-shadow: 0 4px 14px #0009, inset 0 1px #fff3;
   -webkit-backdrop-filter: blur(12px) saturate(.8);
@@ -29,13 +29,13 @@
 .raid-hero-group__energy > div { width: max-content; }
 .raid-hero-group .raid-energy {
   display: grid;
-  grid-template-columns: 17px max-content 30px;
+  grid-template-columns: 14px max-content 30px;
   width: max-content;
   max-width: none;
   min-height: 44px;
   height: 44px;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -44,18 +44,19 @@
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
-.raid-hero-group .raid-energy > img { width: 17px; height: 22px; margin: 0; }
+.raid-hero-group .raid-energy > img { width: 14px; height: 19px; margin: 0; }
 .raid-hero-group .raid-energy__value { flex: none; gap: 3px; min-width: 0; padding: 0; }
 .raid-hero-group .raid-energy__buy { width: 30px; height: 44px; margin: 0; }
-.raid-hero-group .raid-energy__buy::before { inset: 0 -7px; }
-.raid-hero-group .raid-energy__buy svg { width: 26px; height: 26px; padding: 4px; border-radius: 8px; }
-.raid-hero-group .raid-energy .castle-main-hud__recovery { margin-top: 0; font-size: 10px; }
-.raid-hero-group__portrait { position: absolute; top: -7px; right: -16px; width: 72px; height: 72px; }
+.raid-hero-group .raid-energy__buy::before { inset: -6px -13px; }
+.raid-hero-group .raid-energy__buy svg { width: 24px; height: 24px; padding: 4px; border-radius: 8px; }
+.raid-hero-group .raid-energy__value strong { font-size: 14px; }
+.raid-hero-group .raid-energy .castle-main-hud__recovery { margin-top: 0; font-size: 9px; }
+.raid-hero-group__portrait { position: absolute; z-index: 21; top: -6px; right: -13px; width: 60px; height: 60px; }
 .raid-hero-group .raid-hero-group__portrait-button {
   position: absolute;
   inset: 0;
-  width: 72px;
-  height: 72px;
+  width: 60px;
+  height: 60px;
   overflow: visible;
   border: 0;
   background: transparent;
@@ -63,8 +64,8 @@
 }
 .raid-hero-group__portrait-button img,
 .raid-hero-group__portrait-button > svg {
-  width: 58px;
-  height: 58px;
+  width: 48px;
+  height: 48px;
   border: 2px solid #d3b36a;
   border-radius: 50%;
   background: #0b1110;
@@ -82,3 +83,11 @@
 }
 .raid-hero-group__portrait-button:focus-visible { outline: 2px solid #fff4d8; outline-offset: 2px; }
 .raid-hero-group ~ .raid-right-menu { top: 74px; }
+
+/* Gold shares the approved raid top frame with energy; the hero portrait stays in place. */
+.raid-hero-group__gold{display:flex;align-items:center;gap:2px;height:44px;margin-right:3px;padding-right:3px;border-right:1px solid #c6aa6c77;color:#fff4d8;font-family:"Raid HUD Golos",sans-serif;white-space:nowrap}
+.raid-hero-group__gold>img{width:15px;height:15px;flex:none;object-fit:contain}
+.raid-hero-group__gold>strong{font-size:13px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.raid-hero-group__gold .raid-energy__buy{width:30px;height:44px}
+.raid-hero-group__gold .raid-energy__buy svg{width:24px;height:24px;padding:4px;border-radius:8px}
+@media(max-width:360px){.raid-hero-group{right:18px;padding-right:44px;padding-left:6px}.raid-hero-group__gold{gap:2px;margin-right:3px;padding-right:3px}.raid-hero-group__gold>strong{font-size:13px}.raid-hero-group .raid-energy{gap:2px}.raid-hero-group .raid-energy__value strong{font-size:14px}}

@@ -4,42 +4,80 @@ import { nanoid } from "nanoid";
 import { mcpExec } from "@/server/db/mcpClient";
 import { ISLAND_PREFIX } from "@/lib/raid/island/ids";
 import { generateIsland, type IslandPrizes } from "@/lib/raid/island/generate";
-import { ISLAND_ARTIFACT, ISLAND_TRAINING_PACK } from "@/lib/raid/island/catalog";
+import { islandFromMaster, type MasterIsland } from "@/lib/raid/island/master";
+import { loadMaster, masterMapId } from "./island-master";
+import { ISLAND_BUILDINGS, ISLAND_OBJECTS } from "@/lib/raid/island/catalog";
+import { fitShortLesson, masterPillar, sailCells } from "@/lib/raid/island/shortLessonFit";
+import { pickShortYard } from "@/lib/raid/island/shortYard";
 import { sqlStr } from "@/server/api/raid-shared";
 import { liveRewardSql } from "@/server/api/raid-reward-live";
 import { islandBase } from "./island-base";
 import { dropIslandSql, dropMapSql, islandSql } from "./island-write";
 import { loadIsland, type LiveIslandRow } from "./island-row";
+import { claimIslandMines } from "./island-mine-claim";
+import { isKeptMap } from "./island-keep";
+import { isIslandTutorialPilot } from "@/server/islandTester";
+import { getSessionTgId } from "@/server/auth";
+import { activeTemplates } from "./town-template-store";
+import { islandSpellPlan } from "./island-spell-plan";
 
 const SEED_MAX = 2_000_000_000;
 
 /**
- * Подарочные артефакт и пак — один раз на аккаунт (владелец, 17.10.2026:
- * «только по одному экземпляру — чтобы не было ферм»): получал с прошлого
- * острова (в «Добыче» или уже забрал) — новому острову призов не кладём.
+ * Подарок острова в первом сундуке — раз на аккаунт (владелец, 17.10.2026:
+ * «чтобы не было ферм»; 20.10: «всё, что дарится, — в первом сундуке»).
+ * Получал: открыл первый сундук прежнего острова (строки «Добычи» с него) или
+ * взял подарок прежним путём — через «Подарки» (до 20.10).
  */
-async function prizesLeft(account: string): Promise<IslandPrizes> {
+async function giftLeft(account: string): Promise<IslandPrizes> {
   const acc = sqlStr(account);
-  const art = sqlStr(ISLAND_ARTIFACT);
-  const pack = sqlStr(ISLAND_TRAINING_PACK);
+  const chest = sqlStr(ISLAND_OBJECTS.chest.replace(/^chest:/, ""));
   const rows = (await mcpExec(
     `SELECT
-       (EXISTS (SELECT 1 FROM yuplink.user_game_item WHERE account_id = ${acc} AND template_id = ${art})
-        OR EXISTS (SELECT 1 FROM yuplink.raid_reward WHERE account_id = ${acc}
-                    AND reward_kind = 'item' AND pack_id = ${art} AND ${liveRewardSql()})) AS art,
-       (EXISTS (SELECT 1 FROM yuplink.chip_pack_grants WHERE account_id = ${acc} AND chip_pack_id = ${pack})
-        OR EXISTS (SELECT 1 FROM yuplink.raid_reward WHERE account_id = ${acc}
-                    AND reward_kind = 'pack' AND pack_id = ${pack} AND ${liveRewardSql()})) AS pack;`,
+       (EXISTS (SELECT 1 FROM yuplink.raid_reward
+                 WHERE account_id = ${acc} AND boss_id = ${chest}
+                   AND left(location_id, ${ISLAND_PREFIX.length}) = ${sqlStr(ISLAND_PREFIX)}
+                   AND reward_kind IN ('likes', 'energy', 'resource', 'pack') AND ${liveRewardSql()})
+        OR EXISTS (SELECT 1 FROM yuplink.player_gift
+                    WHERE source_ref LIKE ${sqlStr(`island:gift:${account}:%`)}
+                      AND source_ref <> ${sqlStr(`island:gift:${account}:hero`)})) AS got;`,
     { wrapJson: true },
-  )) as Array<{ art: boolean; pack: boolean }>;
-  const r = rows?.[0];
-  return { artifact: r?.art !== true, pack: r?.pack !== true };
+  )) as Array<{ got: boolean }>;
+  return { gift: rows?.[0]?.got !== true };
+}
+
+/** Образец, если включён и читается; сбой — null (остров строит генератор). */
+async function masterIsland(): Promise<MasterIsland | null> {
+  const id = await masterMapId().catch(() => null);
+  return id ? await loadMaster(id).catch(() => null) : null;
 }
 
 export async function createIsland(account: string, by: string): Promise<LiveIslandRow> {
   const base = await islandBase();
   const seed = 1 + Math.floor(Math.random() * SEED_MAX);
-  const island = generateIsland(base.spec, base.catalog, seed, await prizesLeft(account));
+  // Города — по шаблонам Ангелины, если есть включённые (сбой чтения — выращенные).
+  const templates = await activeTemplates().catch(() => []);
+  // Короткое обучение: пилот Кай — всегда, остальным — выключателем island_short (11.11).
+  const { islandSwitchOn, ISLAND_SHORT_KEY } = await import("./island-newbie");
+  const short = isIslandTutorialPilot(getSessionTgId()) || (await islandSwitchOn(ISLAND_SHORT_KEY));
+  // Остров-образец включён (settings.island_master) — копия образца, иначе генератор.
+  const master = await masterIsland();
+  // Столб урока: у копии — столб самого образца (её заклинание и цена), иначе — из мира.
+  const pillar = !short
+    ? undefined
+    : (master && masterPillar(master.cells, master.places.lesson?.pillar)) || (await islandSpellPlan(base.catalog));
+  const prizes = { ...(await giftLeft(account)), short, pillar };
+  const island = master
+    ? islandFromMaster(master, seed, prizes)
+    : generateIsland(base.spec, base.catalog, seed, prizes, templates);
+  // Озеро урока на образце перерисовано — цель переправы по нынешней воде (shortLessonFit).
+  if (master && island.places.lesson) {
+    const water = base.spec.water.shallow;
+    island.places.lesson = fitShortLesson(island.cells, island.places.lesson, (t) => t === water, ISLAND_BUILDINGS.shipyard);
+    // Верфь шага «лодка» — до которой дойти пешком и от которой доплыть (shortYard).
+    const yard = pickShortYard(island.cells, island.places.spawn, base.spec.water, ISLAND_BUILDINGS.shipyard, sailCells(island.places.lesson));
+    if (yard) island.places.shipyard = yard;
+  }
   const mapId = `${ISLAND_PREFIX}${nanoid(10)}`;
   const statements = islandSql({
     mapId,
@@ -48,6 +86,9 @@ export async function createIsland(account: string, by: string): Promise<LiveIsl
     seed,
     island,
     by,
+    copyShopsFrom: master?.mapId,
+    // Админ на острове тестирует, а доходы мира у него идут — потолки только «новичкам».
+    capped: !(await import("@/server/auth")).isAdminWallet(by),
   });
   try {
     for (const s of statements) await mcpExec(s, { wrapJson: false });
@@ -65,6 +106,12 @@ export async function createIsland(account: string, by: string): Promise<LiveIsl
 
 /** Снести остров (игрок с него уже ушёл): карта — обязательно, уборка — по возможности. */
 export async function dropIsland(mapId: string): Promise<void> {
+  // Сохранённый остров (raid_map_keep) не сносится никогда — ни шахты, ни уборка.
+  if (await isKeptMap(mapId)) return;
+  // Выход порталом и «Новый остров»: добыча шахт — хозяевам, пока клетки целы.
+  await claimIslandMines(mapId).catch((e) =>
+    console.warn("[island] шахты:", mapId, e instanceof Error ? e.message : e),
+  );
   await mcpExec(dropMapSql(mapId), { wrapJson: false });
   for (const s of dropIslandSql(mapId)) {
     await mcpExec(s, { wrapJson: false }).catch((e) =>

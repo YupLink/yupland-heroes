@@ -1,12 +1,20 @@
 // SQL чтения мешочков и сборщика: мешочки во «втором обзоре», мешочки одной
 // клетки для окна, лопата в рюкзаке героя, уборка сгоревшего и опустевшего.
 // Запись — bag-sql.ts и соседи, здесь — чтение.
+import { sightRadiusSql } from "@/server/api/beta-raid/sight/sight-sql";
 import { sqlStr } from "@/server/api/raid-shared";
-import { LOOT_BAG_SEE } from "@/lib/lootBag";
 import { CHEST_MOUND_LEFT_MS } from "@/lib/plainChest";
 import { voidSql } from "@/server/api/beta-raid/voidCells";
 import { livePortion } from "@/server/api/beta-raid/loot-bag/bag-sql";
 import { passAliveSql } from "@/server/api/beta-raid/open-pass/pass-sql";
+import { FISH_BAG_SOURCE, FISH_BOOT_KEY } from "@/lib/raid/dynamiteFish";
+import { DIG_EMPTY_KEY } from "@/lib/digHole";
+
+/** Мешочек `b` — рыба от красного динамита (30.10.2026): слой и окно рисуют рыбу. */
+const fishSql = (b: string): string => `(${b}.source = ${sqlStr(FISH_BAG_SOURCE)}) AS fish`;
+
+/** Мешочек `b` — находка лопатой (31.10.2026): «Открыть» говорит «Выкопано: …». */
+const digSql = (b: string): string => `(${b}.source = 'dig') AS dig`;
 
 /** Миллисекунд до момента t — на часах сервера. */
 export const msLeftSql = (t: string): string =>
@@ -53,11 +61,13 @@ export const hiddenSql = (a: string, o: Near): string =>
  * Не сгорают — срок заведомо дальше любой сессии.
  */
 function moundsNearSql(o: Near): string {
-  const d = LOOT_BAG_SEE;
+  // Радиус — 20, под биноклем 40 (lib/raid/sight.ts).
+  const d = sightRadiusSql(sqlStr(o.account));
   const pick = (table: string) =>
     `SELECT 'cm_' || x.q || '_' || x.r AS id, x.map_id, x.q, x.r, x.buried_at
        FROM ${table} x WHERE x.buried_at IS NOT NULL`;
-  return `SELECT m.id, m.q, m.r, true AS buried, ${CHEST_MOUND_LEFT_MS}::bigint AS "leftMs"
+  return `SELECT m.id, m.q, m.r, true AS buried, ${CHEST_MOUND_LEFT_MS}::bigint AS "leftMs",
+            false AS fish
        FROM yuplink.beta_raid_positions p
        JOIN (${pick("yuplink.raid_plain_chest")}
              UNION ALL ${pick("yuplink.raid_magic_chest")}) m
@@ -80,12 +90,13 @@ export function nearSql(o: Near): string {
 }
 
 function bagsNearSql(o: Near): string {
-  const d = LOOT_BAG_SEE;
+  // Радиус — 20, под биноклем 40 (lib/raid/sight.ts).
+  const d = sightRadiusSql(sqlStr(o.account));
   const acc = sqlStr(o.account);
   const dist = distSql("b");
   const hidden = hiddenSql("b", o);
   return `SELECT b.id, b.q, b.r, (b.buried_at IS NOT NULL) AS buried,
-            ${msLeftSql("life.last")} AS "leftMs"
+            ${msLeftSql("life.last")} AS "leftMs", ${fishSql("b")}
        FROM yuplink.beta_raid_positions p
        JOIN yuplink.raid_loot_bag b
          ON b.map_id = COALESCE(p.map_id, ${sqlStr(o.activeMapId)})
@@ -115,7 +126,8 @@ export function cellSql(o: Cell): string {
     `${a}.map_id = ${sqlStr(o.mapId)} AND ${a}.q = ${Math.floor(o.q)} AND ${a}.r = ${Math.floor(o.r)}`;
   const mound = (table: string) =>
     `SELECT 'cm_' || x.q || '_' || x.r AS id, true AS buried,
-            ${CHEST_MOUND_LEFT_MS}::bigint AS "leftMs", '[]'::json AS items, false AS open
+            ${CHEST_MOUND_LEFT_MS}::bigint AS "leftMs", false AS fish, false AS dig,
+            '[]'::json AS items, false AS open
        FROM ${table} x WHERE ${at("x")} AND x.buried_at IS NOT NULL`;
   return `(${bagsCellSql(o)})
      UNION ALL (${mound("yuplink.raid_plain_chest")})
@@ -125,6 +137,7 @@ export function cellSql(o: Cell): string {
 function bagsCellSql(o: Cell): string {
   const open = passAliveSql(o.account, "'lb:' || b.id");
   return `SELECT b.id, (b.buried_at IS NOT NULL) AS buried, ${msLeftSql("life.last")} AS "leftMs",
+            ${fishSql("b")}, ${digSql("b")},
             CASE WHEN b.buried_at IS NOT NULL OR NOT ${open} THEN '[]'::json ELSE COALESCE((
               SELECT json_agg(json_build_object(
                        'stackKey', s.stack_key, 'kind', s.kind, 'refId', s.ref_id, 'name', s.name,
@@ -135,6 +148,7 @@ function bagsCellSql(o: Cell): string {
                              min(x.expires_at) AS soon
                         FROM yuplink.raid_loot_bag_item x
                        WHERE x.bag_id = b.id AND ${livePortion("x")}
+                         AND x.stack_key NOT IN (${sqlStr(FISH_BOOT_KEY)}, ${sqlStr(DIG_EMPTY_KEY)})
                        GROUP BY x.stack_key) s), '[]'::json) END AS items,
             (b.buried_at IS NULL AND ${open}) AS open
        FROM yuplink.raid_loot_bag b

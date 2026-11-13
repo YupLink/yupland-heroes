@@ -58,7 +58,7 @@ export type BagStack = {
 };
 
 /** Откуда мешочек: объект карты, босс, срубленный декор или улов рыбалки (§8.35). */
-export type BagSource = "object" | "boss" | "decor" | "fish";
+export type BagSource = "object" | "boss" | "decor" | "fish" | "dig";
 
 export type DropPlace = {
   /** Ключ выпадения: id мешочка = 'lb_' || md5(ключа). Один ключ — один мешочек. */

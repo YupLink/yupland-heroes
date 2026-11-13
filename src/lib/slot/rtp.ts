@@ -11,14 +11,15 @@ import {
   SUPER_ATTEMPTS,
   SUPER_PRIZE,
 } from "./bonus";
-import { REEL_WEIGHTS } from "./reels";
+import { REEL_WEIGHTS, type Weights } from "./reels";
 import { BONUS, BONUS_MIN, SYMBOLS } from "./symbols";
 import type { Grid, SymbolId } from "./types";
 
-type Probs = Array<Map<SymbolId, number>>;
+export type Probs = Array<Map<SymbolId, number>>;
 
-function reelProbs(): Probs {
-  return REEL_WEIGHTS.map((w) => {
+/** Вероятности символов по барабанам для набора весов (ступени — reelLevel.ts). */
+export function reelProbs(weights: Weights[] = REEL_WEIGHTS): Probs {
+  return weights.map((w) => {
     const total = Object.values(w).reduce((a, b) => a + b, 0);
     return new Map(Object.entries(w).map(([k, v]) => [k as SymbolId, v / total]));
   });

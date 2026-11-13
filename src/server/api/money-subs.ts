@@ -1,18 +1,22 @@
 // «Счета» → «Подписки»: сколько внесли подписками и куда это ушло. Только чтение.
-// Наборы платят так же, как подписка, и делят те же корзины (kits/kit-grant-sql.ts),
-// поэтому «внесли» и доля карты считают и выданные наборы — иначе сверка не сойдётся.
+// Наборы и покупка золота (§8.66) платят так же, как подписка, и делят те же корзины
+// (kits/kit-grant-sql.ts, gold_shop_buy), поэтому «внесли» и доля карты считают и их —
+// иначе сверка не сойдётся.
 //
 // По каждой доле (карта / дупло / разработчики × DARAI / USDT):
 //  · ушло — сделанные шаги пачек (обмен, перевод) и зачёт в пул карты при покупке;
 //  · ждёт — лежит в корзине до порога;
 //  · встало — в незакрытой пачке и ещё не ушло (сбой сети, ждёт сверки).
 // Сверено с таблицами 03.10: 9 DARAI-подписок на 491,7 млн и 4 USDT на 142.
+// С 22.10 у USDT-подписки друга 10 % — пригласившему (ref_reward), корзинам 90 %:
+// строка «рефералам» — забрано (ушло) и ждёт клейма, иначе сверка не сойдётся.
 import { mcpExec } from "../db/mcpClient";
 import { SPLIT, USD_BUCKET_DEV_SHARE, usdBatchPlan, type Bucket } from "@/lib/energySub";
+import { REF_SUB_SHARE } from "@/lib/referralRewards";
 import { stepOf, type Step } from "./energy-sub/batch-steps";
 
 export type SubFlow = {
-  to: "map" | "duplo" | "dev";
+  to: "map" | "duplo" | "dev" | "ref";
   token: "DARAI" | "USDT";
   /** Доля оплаты, % */
   share: number;
@@ -58,11 +62,18 @@ const SQL = `SELECT row_to_json(_t.*) AS _row FROM (SELECT
              -- комиссия аукционного дома (DARAI/USDT) делится как подписка
              SELECT currency, seller_fee FROM yuplink.auction
               WHERE source = 'player' AND seller_paid AND fee_booked
-                AND currency IN ('Darai', 'USDT') AND seller_fee > 0) x
+                AND currency IN ('Darai', 'USDT') AND seller_fee > 0
+             UNION ALL
+             -- покупка золота (§8.66) — те же корзины
+             SELECT token, amount FROM yuplink.gold_shop_purchase) x
       GROUP BY token ORDER BY token) p) AS paid,
   (SELECT COALESCE(sum(amount), 0) FROM yuplink.darai_pool_move
     WHERE pool = 'map' AND kind = 'player_spend'
-      AND (ref LIKE 'esub:%' OR ref LIKE 'kit:%' OR ref LIKE 'gauc:%'))::text AS map_darai,
+      AND (ref LIKE 'esub:%' OR ref LIKE 'kit:%' OR ref LIKE 'gauc:%' OR ref LIKE 'gshop:%'))::text AS map_darai,
+  (SELECT json_build_object(
+     'claimed', COALESCE(sum(amount) FILTER (WHERE status = 'claimed'), 0)::text,
+     'pending', COALESCE(sum(amount) FILTER (WHERE status = 'pending'), 0)::text)
+     FROM yuplink.ref_reward WHERE kind = 'usdt') AS ref_usdt,
   (SELECT COALESCE(json_agg(b ORDER BY b.updated_at), '[]') FROM (
      SELECT id, bucket, status, amount::text, steps, error, updated_at::text,
             (status = 'running' AND updated_at < now() - interval '15 minutes') AS stale
@@ -87,7 +98,9 @@ export async function moneySubs(bal: Record<Bucket, number>): Promise<MoneySubs>
   const flow = (to: SubFlow["to"], token: SubFlow["token"]): SubFlow => ({
     to,
     token,
-    share: Math.round((token === "DARAI" ? SPLIT.Darai : SPLIT.USDT)[to === "duplo" ? "burn" : to] * 100),
+    share: Math.round(
+      (to === "ref" ? REF_SUB_SHARE : (token === "DARAI" ? SPLIT.Darai : SPLIT.USDT)[to === "duplo" ? "burn" : to]) * 100,
+    ),
     sent: 0,
     waiting: 0,
     stuck: 0,
@@ -100,7 +113,11 @@ export async function moneySubs(bal: Record<Bucket, number>): Promise<MoneySubs>
     duploU: flow("duplo", "USDT"),
     devD: flow("dev", "DARAI"),
     devU: flow("dev", "USDT"),
+    refU: flow("ref", "USDT"),
   };
+  const refUsdt = (r.ref_usdt as { claimed?: string; pending?: string } | null) ?? {};
+  f.refU.sent = Number(refUsdt.claimed) || 0;
+  f.refU.waiting = Number(refUsdt.pending) || 0;
   f.mapD.sent = Number(r.map_darai) || 0;
   f.mapU.waiting = bal.sub_usd_map;
   f.duploU.waiting = bal.sub_usd * (1 - USD_BUCKET_DEV_SHARE);
@@ -157,7 +174,7 @@ export async function moneySubs(bal: Record<Bucket, number>): Promise<MoneySubs>
   return {
     paid,
     stars: bal.sub_stars,
-    flows: [f.mapD, f.mapU, f.duploD, f.duploU, f.devD, f.devU],
+    flows: [f.mapD, f.mapU, f.duploD, f.duploU, f.devD, f.devU, f.refU],
     stuck,
   };
 }

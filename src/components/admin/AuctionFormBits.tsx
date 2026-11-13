@@ -2,6 +2,8 @@
 // осталась ≤250 строк.
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { ArtWearBar } from "@/components/ArtWearBar";
+import { EnchantMark } from "@/components/EnchantMark";
 
 export type PrizeKind = "pack" | "hero" | "artifact" | "resource";
 
@@ -29,7 +31,19 @@ export const RESOURCES = [
   { ref: "diamonds", label: "Алмазы", image: "/resources/crystal.webp" },
 ];
 
-export type PrizeOption = { ref: string; label: string; image?: string | null };
+export type PrizeOption = {
+  ref: string;
+  label: string;
+  image?: string | null;
+  /** Задана — это артефакт: полоса прочности под картинкой (artWear). */
+  durability?: number | null;
+  /** Зачарованные в группе артефактов (§8.87): ✦ с «N из M». */
+  enchant?: { pct: number; n: number; total: number };
+};
+
+/** ✦ на картинке варианта: группа — шаблон и износ, поэтому «N из M». */
+const PrizeEnchant = ({ o }: { o?: PrizeOption }) =>
+  o?.enchant ? <EnchantMark pct={o.enchant.pct} corner of={o.enchant} /> : null;
 
 /** Целое из поля в границах; пусто/мусор — минимум. */
 export function clampInt(v: string, min: number, max: number): number {
@@ -112,8 +126,10 @@ export function PrizePicker({
   return (
     <div className="auction-picker" ref={box}>
       <button type="button" className="auction-picker__btn" onClick={() => setOpen((v) => !v)}>
-        <span className="auction-picker__thumb">
+        <span className="auction-picker__thumb relative">
           {selected?.image ? <img src={selected.image} alt="" /> : null}
+          {selected?.durability != null && <ArtWearBar durability={selected.durability} />}
+          <PrizeEnchant o={selected} />
         </span>
         <span className={`auction-picker__name${selected ? "" : " auction-picker__ph"}`}>
           {selected ? selected.label : placeholder}
@@ -133,8 +149,10 @@ export function PrizePicker({
                 setOpen(false);
               }}
             >
-              <span className="auction-picker__thumb">
+              <span className="auction-picker__thumb relative">
                 {o.image ? <img src={o.image} alt="" /> : null}
+                {o.durability != null && <ArtWearBar durability={o.durability} />}
+                <PrizeEnchant o={o} />
               </span>
               <span className="auction-picker__name">{o.label}</span>
             </button>

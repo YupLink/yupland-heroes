@@ -6,8 +6,10 @@
 export const ASSET_WORD_EN_B: Record<string, string> = {
   // ресурсы, ярлыки, прочее
   алмазная: "Diamond",
+  алмазный: "Diamond",
   бездушье: "Soullessness",
   золотая: "Gold",
+  золотой: "Gold",
   золото: "Gold",
   золота: "Gold",
   каменная: "Stone",

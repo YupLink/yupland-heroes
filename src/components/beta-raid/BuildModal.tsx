@@ -9,18 +9,23 @@ import { invalidateRaidMap, invalidateBackpack } from "@/lib/query";
 import { useT, useLang } from "@/lib/i18n";
 import { localizeAssetName } from "@/lib/translations/assetNames";
 import { metaLabel } from "@/components/heroMeta";
-import { BuildingExtraActions } from "./BuildingExtraActions";
+import { BuildingExtraBlock } from "./BuildingExtraBlock";
 import { BuildingTravelAction } from "./BuildingTravelAction";
+import { ForgeTabs } from "./forge/ForgeTabs";
 import { useCastleMode } from "./castleMode";
 import { getHomeCastle } from "@/server/api/beta-raid/home-castle";
-import { TownExtra } from "./town/TownExtra";
-import { isTownExtra, type TownHallExtra } from "@/lib/townHallView";
 import { priceLabel, type BuildingExtra, type ServicePrice } from "@/lib/buildingEffect";
 import { RESOURCES_KEY } from "@/lib/hooks/useResources";
 import { ENERGY_KEY } from "@/lib/hooks/useEnergy";
 import type { MapData } from "./useBetaRaidData";
 import { priceText as resourceListText } from "./portalPriceText";
 import type { PortalPrice } from "@/lib/portal";
+import { stampMineV2 } from "@/lib/mineV2Clock";
+import { isTownExtra } from "@/lib/townHallView";
+import { MarketSecondaryAction } from "./market/MarketSecondaryAction";
+import { raidShopHeader } from "./raid-shop-window/header";
+import "./raid-townhall-modal.css";
+import "./raid-shop-window/header.css";
 
 export function BuildModal({
   q,
@@ -32,10 +37,9 @@ export function BuildModal({
   r: number;
   onClose: () => void;
   /**
-   * Пойти сюда: закрывает окно и просит внешнюю систему проложить путь.
-   * Владелец 14.09: «нажимая на табличку можно только причитать — сделай
-   * ещё функцию Идти, стать на эту клетку». Полезно для многих проходимых
-   * построек: sign, коврик, пустой алтарь.
+   * Пойти сюда: закрывает окно и просит внешнюю систему проложить путь. Владелец 14.09:
+   * «нажимая на табличку можно только причитать — сделай ещё функцию Идти, стать на эту
+   * клетку». Полезно для многих проходимых построек: sign, коврик, пустой алтарь.
    */
   onGoTo?: (q: number, r: number) => void;
 }) {
@@ -57,7 +61,12 @@ export function BuildModal({
 
   const offer = useQuery({
     queryKey: ["beta-raid-building", q, r],
-    queryFn: () => getBuildingOffer({ data: { q, r } }),
+    // Метка получения — для часов окна шахты v2 (сдвиг часов телефона, lib/mineV2Clock).
+    queryFn: async () => {
+      const sentAt = Date.now();
+      const reply = await getBuildingOffer({ data: { q, r } });
+      return stampMineV2(reply, sentAt, Date.now());
+    },
     staleTime: 5_000,
     retry: false,
   });
@@ -90,17 +99,45 @@ export function BuildModal({
   });
 
   const data = offer.data;
+  const extra = (data?.extra ?? null) as BuildingExtra;
+  const isTownHall = isTownExtra(extra);
+  const shopHeader = data && (extra?.kind === "market" || extra?.kind === "enchant" || !!data.repair)
+    ? raidShopHeader(data.imageUrl, {name: data.name, kind: extra?.kind, repair: !!data.repair})
+    : null;
+  const shopWindow = !!data && (extra?.kind === "market" || extra?.kind === "enchant" || !!data.repair);
+  const compactMarket = extra?.kind === "market" && !!data?.final;
+  const travelAction = onGoTo || castleMode?.enterAt ? <BuildingTravelAction q={q} r={r} ru={lang === "ru"} onClose={onClose} onGoTo={onGoTo} enter={castleMode?.enterAt} loadStatus={getHomeCastle}/> : null;
 
   return (
     <div
+      data-raid-shop-overlay={shopWindow ? "" : undefined}
       className="fixed inset-0 z-[110] flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center"
       onClick={onClose}
     >
       <div
+        data-raid-townhall={isTownHall ? "" : undefined}
+        data-raid-shop-window={shopWindow ? "" : undefined}
+        data-raid-shop-market={compactMarket ? "" : undefined}
+        onScroll={compactMarket ? e => {
+          const root=e.currentTarget, header=root.firstElementChild;
+          const hidden=!!header&&header.getBoundingClientRect().bottom<=root.getBoundingClientRect().top+6;
+          if(root.hasAttribute('data-shop-scrolled')!==hidden)root.toggleAttribute('data-shop-scrolled',hidden);
+        } : undefined}
         className="flex max-h-[85dvh] w-full max-w-sm flex-col overflow-y-auto overscroll-contain rounded-t-3xl border border-border bg-background p-4 pb-[calc(env(safe-area-inset-bottom)+84px)] sm:max-h-[88vh] sm:rounded-3xl sm:pb-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-3 flex items-start justify-between gap-2">
+        <div data-townhall-header={isTownHall ? "" : undefined} data-raid-shop-header={shopHeader ? "" : undefined} className="mb-3 flex items-start justify-between gap-2">
+          {shopHeader && (
+            <img
+              data-raid-shop-panorama=""
+              src={shopHeader.src}
+              width={480}
+              height={160}
+              decoding="async"
+              alt=""
+              style={{ objectPosition: shopHeader.position }}
+            />
+          )}
           <div className="min-w-0">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               {t("braid.building")}
@@ -143,8 +180,8 @@ export function BuildModal({
             <Loader2 className="h-6 w-6 animate-spin text-gold" />
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-center gap-3">
+          <div data-townhall-content={isTownHall ? "" : undefined} data-raid-shop-content={shopWindow ? "" : undefined} className="space-y-3">
+            {!(shopWindow && data.final) && <div data-townhall-art={isTownHall ? "" : undefined} className="flex items-center justify-center gap-3">
               {data.imageUrl && (
                 <img
                   src={thumb(data.imageUrl, 160, "black")}
@@ -162,9 +199,9 @@ export function BuildModal({
                   />
                 </>
               )}
-            </div>
+            </div>}
 
-            <p className="text-center text-sm">
+            {!(shopWindow && data.final) && <p data-townhall-status={isTownHall ? "" : undefined} className="text-center text-sm">
               {data.final ? (
                 <span className="text-muted-foreground">
                   {data.tier === 0 ? t("braid.build_done") : t("braid.build_maxed")}
@@ -177,7 +214,20 @@ export function BuildModal({
                   })}
                 </b>
               )}
-            </p>
+            </p>}
+
+            {isTownHall && (
+              <BuildingTravelAction
+                q={q}
+                r={r}
+                ru={lang === "ru"}
+                onClose={onClose}
+                onGoTo={onGoTo}
+                enter={castleMode?.enterAt}
+                loadStatus={getHomeCastle}
+                prominent
+              />
+            )}
 
             {data.requires && (
               <p className="text-center text-[11px] text-muted-foreground">
@@ -193,18 +243,16 @@ export function BuildModal({
               <p className="text-center text-[11px] text-destructive">{data.blockReason}</p>
             )}
 
-            {/* Достроенная верфь/вышка умеет больше, чем менять облик. Ратуша и
-                постройки голодающего города — своим блоком (town/TownExtra). */}
-            {isTownExtra((data.extra ?? null) as BuildingExtra) ? (
-              <TownExtra q={q} r={r} extra={data.extra as TownHallExtra} />
+            {/* Достроенная верфь/вышка умеет больше, чем менять облик (BuildingExtraBlock).
+                Кузница с открытым ремонтом — вкладки «Лавка | Ремонт» (§8.72). */}
+            <MarketSecondaryAction.Provider value={compactMarket ? travelAction : null}>
+            {data.repair ? (
+              <ForgeTabs q={q} r={r} extra={extra} onDone={onClose} />
             ) : (
-              <BuildingExtraActions
-                q={q}
-                r={r}
-                extra={(data.extra ?? null) as BuildingExtra}
-                onDone={onClose}
-              />
+              <BuildingExtraBlock q={q} r={r} extra={extra} own={data.own} onDone={onClose} />
             )}
+
+            </MarketSecondaryAction.Provider>
 
             {!data.final && (
               <button
@@ -221,11 +269,26 @@ export function BuildModal({
               </button>
             )}
 
-            <BuildingTravelAction q={q} r={r} ru={lang === "ru"} onClose={onClose}
-              onGoTo={onGoTo} enter={castleMode?.enterAt} loadStatus={getHomeCastle} />
+            {/* Шахта — стена (§8.59 п. 9), окно открывается только вплотную:
+                «Идти сюда» закрывало бы окно и не делало ничего. Входом в замок
+                шахта тоже не бывает. */}
+            {!isTownHall && !compactMarket && extra?.kind !== "mine" && (
+              <BuildingTravelAction
+                q={q}
+                r={r}
+                ru={lang === "ru"}
+                onClose={onClose}
+                onGoTo={onGoTo}
+                enter={castleMode?.enterAt}
+                loadStatus={getHomeCastle}
+              />
+            )}
           </div>
         )}
       </div>
     </div>
   );
 }
+
+
+

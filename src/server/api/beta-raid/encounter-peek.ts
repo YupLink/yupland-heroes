@@ -6,12 +6,13 @@ import { requireBetaRaid } from "./gate";
 import { requireNotVoid } from "./voidGate";
 import { parseRewardConfig } from "../raid-shared";
 import { loadEncounterTarget } from "./encounter-target";
-import { applyCellOverride, loadCellObject, requireCellObject } from "./cell-override";
+import { applyCellOverride, loadCellObject, priceOnMap, requireCellObject } from "./cell-override";
 import { targetFromSnapshot } from "./boss-snapshot";
 import { peekObjectHp } from "./encounter-hp";
 import { myMapId } from "./encounter-where";
 import { decorateRewardConfig } from "./encounter-reward-view";
 import { targetDamageRange } from "./encounter-sim";
+import { isIslandMapId } from "@/lib/raid/island/ids";
 
 export const getBetaRaidEncounter = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) =>
@@ -35,8 +36,10 @@ export const getBetaRaidEncounter = createServerFn({ method: "GET" })
       (await loadEncounterTarget(data.objectId)) ??
       targetFromSnapshot(data.objectId, cell.snapshot);
     if (!tpl) throw new Error("Объект не найден");
-    const target = applyCellOverride(tpl, cell.override, cell.terrainBg);
+    // Цена входа — по карте игрока: на острове в 10 раз (priceOnMap).
+    const target = priceOnMap(applyCellOverride(tpl, cell.override, cell.terrainBg), mapId);
     const hp = await peekObjectHp({ mapId, q: data.q, r: data.r, layer: cell.layer });
+    const islandBoss = target.kind === "boss" && isIslandMapId(mapId);
 
     return {
       kind: target.kind,
@@ -58,7 +61,9 @@ export const getBetaRaidEncounter = createServerFn({ method: "GET" })
         value: a.value,
         duration: a.duration,
       })),
+      // Босс острова обучения — канон (IslandBossDrops), мировую таблицу мест не показываем.
+      islandDrops: islandBoss,
       // С названиями паков/предметов: иначе в окне видно техническое id.
-      rewardConfig: await decorateRewardConfig(parseRewardConfig(target.rewardConfig)),
+      rewardConfig: islandBoss ? null : await decorateRewardConfig(parseRewardConfig(target.rewardConfig)),
     };
   });

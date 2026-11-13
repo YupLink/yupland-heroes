@@ -2,13 +2,13 @@
    фон, золото, карточка-леджер с обводкой и золотые кнопки — как в Казне. */
 @font-face {
   font-family: "Auction Russo";
-  src: url("../../../assets/tavern/RussoOne.ttf") format("truetype");
+  src: url("../../../assets/tavern/RussoOne.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: "Auction Golos";
-  src: url("../../../assets/tavern/GolosText.ttf") format("truetype");
+  src: url("../../../assets/tavern/GolosText.woff2") format("woff2");
   font-weight: 400 900;
   font-display: swap;
 }
@@ -31,7 +31,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+  padding: max(8px, var(--app-top,env(safe-area-inset-top,0px))) 12px 8px;
   background: #081521;
   box-shadow: 0 3px 12px #0006;
 }

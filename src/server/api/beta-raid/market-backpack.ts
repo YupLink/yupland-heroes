@@ -19,8 +19,11 @@ import { sqlStr } from "../raid-shared";
 import { loadSelectedHero, type LoadedHero } from "./hero-load";
 import { normalizeHeroRarity, type HeroRarity } from "@/lib/hero/heroSlots";
 import { heroAlchemy, heroTrade } from "@/lib/hero/heroExtraStats";
-import { backpackCapacity, occupiedCells, stackCells } from "@/lib/hero/backpackCells";
-import { potionBagCapacity, potionBagFit } from "@/lib/hero/potionBag";
+import { backpackCapacity } from "@/lib/hero/backpackCells";
+import { potionBagCapacity } from "@/lib/hero/potionBag";
+import { backpackPaid, tradeRoomError, type KeyQty, type PayLine } from "@/lib/hero/backpackTrade";
+import { canonStackKey } from "./item-alias";
+import { paysFromInventory } from "./market-inv-pay";
 import type { BoostConfig, HeroBoosts } from "@/lib/hero/boost";
 import { loadBuffsFor } from "./hero-buff";
 import { IS_POTION_SQL, POTION_JOIN, potionKeysOf } from "./potion-bag";
@@ -68,6 +71,10 @@ export type BackpackStack = {
   rod?: boolean;
   /** Карта (галочка у товара, §8.32): целая штука открывает карту мира. */
   map?: boolean;
+  /** Бинокль (08.11): «Применить» — обзор 40 клеток на 3 минуты за штуку. */
+  binocular?: boolean;
+  /** Лестница (08.11): «Применить» — перелезть через непроходимую клетку. */
+  ladder?: boolean;
   /**
    * Прочность текущей штуки инструмента, % (lib/raid/toolWear). null/нет —
    * не инструмент с износом (старый ответ поля не знает — значка нет).
@@ -140,8 +147,8 @@ export function backpackHeroOf(hero: LoadedHero, buffs?: HeroBoosts): BackpackHe
 
 /**
  * Хватит ли места ещё под qty единиц вида stackKey: зелью — в сумке, прочему —
- * в рюкзаке. Полно → бросок ДО денег (market-buy зовёт это предпроверкой) и
- * ещё раз при выдаче (гонка).
+ * в рюкзаке. Полно → бросок; при выдаче (market-deliver) — страховка от гонки
+ * уже после списания. Предпроверка ДО денег с ценой — assertTradeRoom.
  */
 export async function assertBackpackRoom(
   bp: BagCaps,
@@ -156,20 +163,22 @@ export async function assertBackpackRoom(
  * железа и золота), и раздельные проверки обе проходили: каждая мерила место
  * так, будто соседней выплаты нет.
  *
- * Считаем ПРИРОСТ ячеек по каждому виду. Хранилищ два, и судит каждое своё:
- * зелья — сумка (строго, potionBagFit), обычные товары — рюкзак. Бросок
- * содержит числа: игроку надо знать, сколько освободить.
+ * `pay` — что ЭТА ЖЕ сделка снимет со стопок этого героя ДО выдачи (оплата
+ * товаром из рюкзака). Рюкзак судим после списания: стопка, ушедшая в ноль,
+ * освобождает ячейку (правило владельца 23.10, lib/hero/backpackTrade). Звать
+ * с pay — только ДО списания: после него стопки уже честные, и pay посчитал бы
+ * оплату дважды.
+ *
+ * Хранилищ два, и судит каждое своё: зелья — сумка (строго), обычные товары —
+ * рюкзак. Бросок содержит числа: игроку надо знать, сколько освободить.
  */
 export async function assertBackpackRoomFor(
   bp: BagCaps,
-  want: Array<{ stackKey: string; qty: number }>,
+  want: KeyQty[],
+  pay: KeyQty[] = [],
 ): Promise<void> {
-  const need = new Map<string, number>();
-  for (const w of want) {
-    if (!(w.qty > 0)) continue;
-    need.set(w.stackKey, (need.get(w.stackKey) ?? 0) + w.qty);
-  }
-  if (need.size === 0) return;
+  const keys = new Set(want.filter((w) => w.qty > 0).map((w) => w.stackKey));
+  if (keys.size === 0) return;
 
   // Берём ВЕСЬ рюкзак, а не только нужные виды: занятое считается по всем
   // стекам. Пустой ответ базы не глотаем: «не смогли спросить» и «рюкзак пуст»
@@ -182,41 +191,38 @@ export async function assertBackpackRoomFor(
     { wrapJson: true },
   )) as Array<{ stackKey: string; count: number | string; potion: boolean }>;
 
-  const have = new Map<string, { count: number; potion: boolean }>();
-  for (const r of rows ?? [])
-    have.set(r.stackKey, { count: num(r.count), potion: r.potion === true });
-  const fresh = await potionKeysOf([...need.keys()].filter((k) => !have.has(k)));
-  const isPotion = (key: string) => have.get(key)?.potion ?? fresh.has(key);
+  const stacks = (rows ?? []).map((r) => ({
+    stackKey: r.stackKey,
+    count: num(r.count),
+    potion: r.potion === true,
+  }));
+  const fresh = await potionKeysOf([...keys].filter((k) => !stacks.some((s) => s.stackKey === k)));
+  const why = tradeRoomError({
+    stacks,
+    want,
+    pay,
+    capacity: bp.capacity,
+    potionCapacity: bp.potionCapacity,
+    isPotion: (k) => fresh.has(k),
+  });
+  if (why) throw new Error(why);
+}
 
-  const cellsNow = (potion: boolean) =>
-    occupiedCells([...have.values()].filter((h) => h.potion === potion).map((h) => h.count));
-  const before = { itemCells: cellsNow(false), potionCells: cellsNow(true) };
-  const after = { ...before };
-  let withPotion = false;
-  for (const [key, qty] of need) {
-    const cur = have.get(key)?.count ?? 0;
-    const grow = stackCells(cur + qty) - stackCells(cur);
-    if (isPotion(key)) {
-      after.potionCells += grow;
-      withPotion = true;
-    } else after.itemCells += grow;
-  }
-
-  // Сумка зелий — строго: зелья в рюкзак не переливаются, и переполненная сумка
-  // (старый перебор, кончился бафф Алхимии) не берёт даже долив.
-  if (withPotion) {
-    const bag = potionBagFit({
-      before: before.potionCells,
-      after: after.potionCells,
-      capacity: bp.potionCapacity,
-    });
-    if (!bag.fits) throw new Error(`market.potion_bag_need:${bag.need}:${bag.free}`);
-  }
-  // Рюкзак — только обычные товары. Потолок — не голая ёмкость, а «не больше,
-  // чем уже занято»: рюкзак бывает НАД ёмкостью (склад отдаёт вещи без
-  // проверки, снятый артефакт роняет ёмкость). Запрещено ровно одно: занимать
-  // НОВЫЕ ячейки сверх него.
-  if (after.itemCells <= Math.max(bp.capacity, before.itemCells)) return;
-  const backpackFree = Math.max(0, bp.capacity - before.itemCells);
-  throw new Error(`market.backpack_need:${after.itemCells - before.itemCells}:${backpackFree}`);
+/**
+ * Предпроверка сделки, которая платит товаром из рюкзака: lines — ВСЕ строки
+ * оплаты (не рюкзачные отсеются сами), ключи — к канону, как их снимет
+ * market-money.spend. Только ДО списания (см. assertBackpackRoomFor).
+ */
+export async function assertTradeRoom(
+  bp: BagCaps,
+  want: KeyQty[],
+  lines: readonly PayLine[],
+): Promise<void> {
+  const pay = await Promise.all(
+    backpackPaid(lines, paysFromInventory).map(async (l) => ({
+      stackKey: await canonStackKey(l.res, l.token),
+      qty: l.amount,
+    })),
+  );
+  await assertBackpackRoomFor(bp, want, pay);
 }

@@ -15,10 +15,8 @@
 // занятые корабли → «нужен корабль»), правило «сначала деньги, потом товар»
 // и все три формулы цены — их считает тот же stepEnergyCost по тем же числам.
 //
-// Что изменилось: на борту игрок по ЗАПИСИ об экипаже, а не потому, что под
-// ногами что-то плавает (ship-crew.ts). Отсюда же и посадка: она занимает
-// конкретное судно, и занимает его до списания энергии — иначе двое читали
-// «свободно» и садились на один борт.
+// На борту игрок по ЗАПИСИ об экипаже (ship-crew.ts); посадка занимает судно до
+// списания энергии — иначе двое читали «свободно» и садились на один борт.
 //
 // Один переход — одно очко и одно списание (аудит турниров 06.10): позиция
 // пишется по CAS клетки «откуда», энергия списывается тем же оператором и
@@ -26,31 +24,33 @@
 // аккаунту (move-step-guard). Раньше пачка одинаковых запросов давала пачку
 // очков «Шагов» за один шаг.
 import { nanoid } from "nanoid";
-import { sb } from "../../db/pg";
 import { stepEnergyCost } from "@/lib/shipRules";
+import { stepMultOf } from "./move-weather";
 import { mapSizeOf } from "./castle";
 import { playerMapId } from "./encounter-where";
 import { slowExtraCost } from "./encounter-effects";
-import { areNeighbors } from "./helpers";
+import { gatedMount, jumpCost, jumpRefusal, stepJump } from "./move-step-mount";
 import { fleeAroundStep } from "./flee-move";
-import { invalidateHeroPower, loadHeroPower } from "./hero-power";
-import { satietyNow, stepSatietyCost, type Satiety } from "@/lib/hero/satiety";
+import { loadHeroPower } from "./hero-power";
+import { stepSatietyCost } from "@/lib/hero/satiety";
+import { satietyMultOf, scaleSatiety } from "@/lib/raid/island/satiety";
 import { loadRide } from "./ship-move";
 import { applyStep, releaseShip, seatOnShip, seatRefusal } from "./ship-crew";
 import { loadStepFacts, stepBlockedReason } from "./step-facts";
 import { chargeGateOnStep, type TollPaid } from "@/server/api/beta-raid/gate-toll";
 import { afterStep } from "@/server/api/beta-raid/move-step-after";
-import {
-  missedStep,
-  stepError,
-  stepRateGate,
-  undoStep,
-} from "@/server/api/beta-raid/move-step-guard";
+import { missedStep, stepError, undoStep } from "@/server/api/beta-raid/move-step-guard";
+import { sailRefusal } from "@/server/api/beta-raid/ship-blasted";
 import { noteEnergySpend } from "./econ/energy-note";
 import { stopwatch } from "../../perf/trace";
 import { objectInfoOf } from "./step-object";
 import { raidOwner } from "./owner";
+import { canWalkBridgeEdge, edgeAxis } from "@/lib/raid/bridgeTransit";
+import { bridgePassage } from "./bridge-step";
+import { SHIP_STEP_HP_OCEAN, SHIP_STEP_HP_WATER } from "@/lib/shipHealth";
 import type { StepResult, StepTo } from "./move-step-types";
+import { checkLadder, ladderLandRefusal } from "./move-step-ladder";
+import { energyNow, stepSatiety } from "./move-step-tail";
 
 export type { StepResult, StepTo } from "./move-step-types";
 
@@ -59,7 +59,7 @@ export async function performStep(wallet: string, to: StepTo): Promise<StepResul
   // просела — чтение фактов, списание энергии, запись или побег.
   const sw = stopwatch("рейд: шаг");
   try {
-    return await runStep(wallet, to.q, to.r, sw, to.big === true);
+    return await runStep(wallet, to.q, to.r, sw, to.big === true, to.ladder ?? null);
   } finally {
     sw.done();
   }
@@ -72,6 +72,8 @@ async function runStep(
   sw: ReturnType<typeof stopwatch>,
   /** Посадка только в большой: дальше маршрут идёт океаном (StepTo.big). */
   bigOnly: boolean,
+  /** Лестница из рюкзака героя (§8.121, move-step-ladder). */
+  ladder: StepTo["ladder"] | null,
 ): Promise<StepResult> {
   // Волна 1. Оба ответа обычно из памяти: сёстры живут минуту, активная
   // карта — сорок пять секунд (и сбрасывается, когда админ её меняет).
@@ -81,18 +83,18 @@ async function runStep(
   sw.lap("кто и карта");
 
   // Волна 2. Независимые вопросы разом. Цель спрашиваем ОДНИМ запросом
-  // (step-facts): проходимость, вода, цена и причал — про одну и ту же клетку,
-  // и ходить за ними по очереди было дороже всего остального шага. Тормоз
-  // частоты едет в той же волне: шаг он не задерживает, а отказ — до денег.
-  const [ride, slowExtra, facts, heroPower] = await Promise.all([
+  // (step-facts): проходимость, вода, цена и причал — про одну и ту же клетку.
+  // Тормоз частоты — по коню героя (§8.84, hero-mount, кэш 2 с): шаг он не
+  // задерживает, а отказ — до денег.
+  const [ride, slowExtra, facts, heroPower, mount] = await Promise.all([
     loadRide(wallet, mapId),
     slowExtraCost(account),
     loadStepFacts(mapId, q, r),
     loadHeroPower(wallet).catch(() => null),
+    gatedMount(account),
     // Нужен только на первый выход игрока на карту, но из кэша и бесплатен —
     // зато сохраняет прежний отказ «Карта не найдена» на битой настройке.
     mapSizeOf(mapId),
-    stepRateGate(account),
   ]);
 
   sw.lap("факты клетки");
@@ -112,22 +114,35 @@ async function runStep(
   }
   const ship = desynced ? null : ride.ship;
 
-  if (!areNeighbors(currentPos.q, currentPos.r, q, r)) {
-    throw new Error("Можно ходить только на соседние клетки");
-  }
+  // Соседняя клетка — шаг; через одну по прямой — прыжок пегаса (§8.84) или лестница (§8.121).
+  if (ladder) await checkLadder(mapId, currentPos, { q, r }, !!ship);
+  const passage = !ladder && ship && edgeAxis(currentPos, { q, r }) === null && facts
+    ? await bridgePassage(mapId, currentPos, { q, r }, facts, ship.kind === "big")
+    : null;
+  const jump = passage || ladder ? false : stepJump(currentPos, { q, r }, mount, !!ship);
   // Второе условие для типов: без клетки stepBlockedReason уже отказал бы.
-  const blocked = stepBlockedReason(facts, wallet);
+  const blocked = stepBlockedReason(facts, wallet) ?? (jump && facts ? jumpRefusal(facts) : null) ??
+    (ladder && facts ? ladderLandRefusal(facts) : null);
   if (blocked || !facts) throw new Error(blocked ?? "Здесь нет местности — пройти нельзя");
   const target = facts;
+  if (ship && target.bridge) throw new Error("braid.bridge_ship_stop");
+  if (!ship && (ride.bridge || target.bridge) &&
+      !canWalkBridgeEdge(currentPos, { q, r }, ride.bridge, target.bridge)) {
+    throw new Error("braid.bridge_deck_only");
+  }
+  if (!ship && ride.bridge && target.water && !target.bridge) {
+    throw new Error("braid.bridge_deck_only");
+  }
 
   // Игрок на корабле управляет судном: по воде плывём за фиксированную цену
   // и тащим корабль за собой, на сушу — сходим по цене самой клетки, и судно
   // остаётся на последней водной клетке.
   const big = !!ship && ship.kind === "big";
   const sailing = !!ship && target.water;
-  // Океан — глубокая вода: обычному кораблю туда хода нет, идёт только большой.
-  // Ключ словаря, а не русская строка: игрок прочтёт на своём языке.
-  if (sailing && target.ocean && !big) throw new Error("braid.ship_too_small");
+  // Океан — глубокая вода: обычному кораблю туда хода нет, идёт только большой; на
+  // клетку подбитого корабля (dynamite-08) — никому. Ключи словаря (ship-blasted).
+  const noSail = sailing ? sailRefusal(target, big) : null;
+  if (noSail) throw new Error(noSail);
 
   // Шаг на свободное судно и есть посадка — но ТОЛЬКО на воде. Раньше воду не
   // спрашивали, и клетка суши с обмелевшим кораблём работала причалом: шаг на
@@ -136,7 +151,7 @@ async function runStep(
   const berth = target.berth;
   const free = berth ? berth.ships - berth.busy : 0;
   let boarding = false;
-  if (target.water && !ship) {
+  if (target.water && !ship && !target.bridge) {
     // Вплавь не ходят: на воду только на своём судне или на свободное чужое.
     if (!berth) throw new Error("Нужен корабль");
     if (free <= 0) throw new Error("Все корабли здесь заняты");
@@ -148,7 +163,10 @@ async function runStep(
   // правило владельца 27.09. Кнопки в окне корабля (ship-action.stepTo) зовут
   // её же. Скидка героя — только собственным ногам: посадку и гребок она не
   // трогает, а без героя цена остаётся прежней.
-  const moveCost = stepEnergyCost({
+  // Остров — в 10 раз дешевле; погода — из кэша процесса. Прыжок пегаса (§8.84) — 10
+  // энергии ровно плюс эта же цена клетки приземления (на воду и с корабля не прыгают).
+  const mult = await stepMultOf(mapId);
+  const stepCost = stepEnergyCost({
     boarding,
     sailing,
     // Большой корабль гребёт дешевле; на посадку и сушу вид судна не влияет.
@@ -156,7 +174,11 @@ async function runStep(
     cellCost: boarding || sailing ? undefined : target.cost,
     slowExtra,
     heroStepDiscountPct: heroPower?.field.stepDiscountPct,
+    mult,
   });
+  const moveCost = passage
+    ? Math.round(stepCost * (passage.crossed.length + 1) * 100) / 100
+    : jump ? jumpCost(stepCost) : stepCost;
 
   // Волна 3. Посадка занимает борт ДО денег — как место у верфи (createShip):
   // читать «свободно» и записываться секундой позже значит пустить на одно
@@ -193,10 +215,23 @@ async function runStep(
     ? {
         heroId: heroPower.heroId,
         max: heroPower.satiety.max,
-        cost: stepSatietyCost({ water: target.water, ocean: target.ocean }),
+        // На острове — в 10 раз меньше (lib/raid/island/satiety).
+        cost: scaleSatiety(
+          (passage?.crossed.reduce((sum, cell) =>
+            sum + stepSatietyCost({ water: cell.water, ocean: cell.ocean }), 0) ?? 0) +
+          stepSatietyCost({ water: target.water && !target.bridge, ocean: target.ocean && !target.bridge }),
+          satietyMultOf(mapId),
+        ),
       }
     : undefined;
-  const guard = { from: currentPos, wallet, cost: moveCost, op: nanoid(16), satiety };
+  const sailHpCost = passage
+    ? (passage.crossed.length + 1 - passage.oceanCount) * SHIP_STEP_HP_WATER +
+      passage.oceanCount * SHIP_STEP_HP_OCEAN
+    : undefined;
+  const guard = {
+    from: currentPos, wallet, cost: moveCost, op: nanoid(16), satiety, sailHpCost,
+    ...(ladder ? { ladder } : {}),
+  };
   const [applied, objectInfo] = await Promise.all([
     applyStep(wallet, mapId, q, r, mode, guard).catch(async (e: unknown) => {
       // Дверь пропустила, а шаг не записался — плату возвращаем: игрок остался
@@ -251,27 +286,4 @@ async function runStep(
     satiety: stepSatiety(wallet, heroPower, applied.satiety),
     object: objectInfo,
   };
-}
-
-/** Остаток энергии, если оператор шага его не вернул (запасной путь). */
-async function energyNow(wallet: string): Promise<number> {
-  const { data } = await sb.rpc("compute_energy", { p_wallet: wallet });
-  return Number((data as Array<{ energy_now: number }> | null)?.[0]?.energy_now ?? 0);
-}
-
-/**
- * Шкала сытости после шага — для ответа клиенту. Перешли через ноль — голод
- * начался или кончился: кэш силы героя сбрасываем, иначе — правим шкалу в нём.
- */
-function stepSatiety(
-  wallet: string,
-  hero: Awaited<ReturnType<typeof loadHeroPower>>,
-  raw: number | null,
-): Satiety | null {
-  if (!hero || raw == null) return null;
-  const now = satietyNow(raw, hero.satiety.max);
-  const next = { now, max: hero.satiety.max, hungry: now <= 0 };
-  if (next.hungry !== hero.satiety.hungry) invalidateHeroPower(wallet);
-  else hero.satiety = next;
-  return next;
 }

@@ -1,3 +1,6 @@
+import { useRaidCueAudio } from "@/hooks/useRaidActionAudio";
+import { setFishingHold, startHeroAction } from "../heroActionVisual";
+import { useRaidMapCache, waterFacingAt } from "./shoreAt";
 // Рыбалка глазами кнопки (ПРАВИЛА §8.35): состояние с сервера (getFishing — он
 // же досчитывает созревший заброс), «Забросить» и «Хватит».
 //
@@ -34,6 +37,8 @@ type At = { q: number; r: number };
  */
 export function useFishing(pos: At | null, enabled: boolean, inHand: string | null) {
   const qc = useQueryClient();
+  const map = useRaidMapCache();
+  const playCue = useRaidCueAudio();
   const t = useT();
   const going = qc.getQueryData<FishView>(FISH_KEY)?.fishing === true;
   const q = useQuery({
@@ -74,6 +79,11 @@ export function useFishing(pos: At | null, enabled: boolean, inHand: string | nu
   const [pq, pr] = [pos?.q, pos?.r];
   const away = view.fishing && (pq !== view.q || pr !== view.r);
   useEffect(() => {
+    const here = view.fishing && !away;
+    setFishingHold(here, here && pos ? waterFacingAt(map, pos.q, pos.r) : null);
+  }, [view.fishing, away, map, pq, pr]);
+  useEffect(() => () => setFishingHold(false), []);
+  useEffect(() => {
     if (!away) return;
     const id = setTimeout(reload, STEP_MS);
     return () => clearTimeout(id);
@@ -85,6 +95,8 @@ export function useFishing(pos: At | null, enabled: boolean, inHand: string | nu
   useEffect(() => {
     if (lastHand.current === inHand) return;
     lastHand.current = inHand;
+    playCue(null);
+    setFishingHold(false);
     if (view.fishing) reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inHand]);
@@ -99,13 +111,23 @@ export function useFishing(pos: At | null, enabled: boolean, inHand: string | nu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [energy]);
 
+  useEffect(() => {
+    if (!view.fishing || away) playCue(null);
+  }, [view.fishing, away, playCue]);
+
   const put = (res: FishView) => {
     qc.setQueryData(FISH_KEY, res);
     invalidateBackpack(qc);
   };
   const start = useMutation({
     mutationFn: (minutes: number) => startFishing({ data: { op: newOpId(), minutes } }),
-    onSuccess: put,
+    onSuccess: (res) => {
+      put(res);
+      if (res.fishing) {
+        setFishingHold(true, pos ? waterFacingAt(map, pos.q, pos.r) : null);
+        startHeroAction("fish", undefined, () => playCue("cast"), () => playCue(null));
+      }
+    },
     onError: (e: Error) => {
       toast.error(humanError(e));
       reload();
@@ -115,7 +137,10 @@ export function useFishing(pos: At | null, enabled: boolean, inHand: string | nu
   const stop = useMutation({
     mutationFn: () => stopFishing(),
     onSuccess: put,
-    onError: (e: Error) => toast.error(humanError(e)),
+    onError: (e: Error) => {
+      toast.error(humanError(e));
+      if (view.fishing && !away) setFishingHold(true, pos ? waterFacingAt(map, pos.q, pos.r) : null);
+    },
   });
 
   return {
@@ -126,7 +151,8 @@ export function useFishing(pos: At | null, enabled: boolean, inHand: string | nu
     dueAt: view.fishing && view.nextInMs !== null ? at + view.nextInMs : null,
     /** Забросить на столько минут (по умолчанию — одна попытка). */
     start: (minutes = 1) => start.mutate(minutes),
-    stop: () => stop.mutate(),
+    stop: () => { playCue(null); setFishingHold(false); stop.mutate(); },
     busy: start.isPending || stop.isPending,
   };
 }
+

@@ -27,6 +27,8 @@ export function ChipHistoryModal({ onClose }: { onClose: () => void }) {
         : ` · ${t("chips.hist_st_active")}`;
   const line = (e: (typeof rows)[number]) => {
     const n = fmtN(e.tickets ?? 0);
+    // Маркет за золото (с 21.10.2026): у новых сделок сумма в gold, прежние — в билетах.
+    const g = e.gold != null ? fmtN(e.gold) : null;
     switch (e.type) {
       case "pack":
         return {
@@ -38,25 +40,28 @@ export function ChipHistoryModal({ onClose }: { onClose: () => void }) {
         return {
           ic: "🏷",
           cls: "text-amber-300 border-amber-400/25 bg-amber-400/5",
-          txt: t("chips.hist_listed", { n }) + st(e.status),
+          txt: (g != null ? t("market.hist_listed_gold", { n: g }) : t("chips.hist_listed", { n })) + st(e.status),
         };
       case "sold":
         return {
           ic: "💰",
           cls: "text-success border-success/25 bg-success/5",
-          txt: t("chips.hist_sold", { n, who: e.who ?? "" }),
+          txt: g != null ? t("market.hist_sold_gold", { n: g, who: e.who ?? "" }) : t("chips.hist_sold", { n, who: e.who ?? "" }),
         };
       case "bought":
         return {
           ic: "🛒",
           cls: "text-gold border-gold/25 bg-gold/5",
-          txt: t("chips.hist_bought", { n, who: e.who ?? "" }),
+          txt: g != null ? t("market.hist_bought_gold", { n: g, who: e.who ?? "" }) : t("chips.hist_bought", { n, who: e.who ?? "" }),
         };
       case "craft":
         return {
           ic: "⚒️",
           cls: "text-violet-300 border-violet-400/25 bg-violet-400/5",
-          txt: t("chips.hist_craft", { n }),
+          txt:
+            e.gold != null
+              ? t("chips.hist_craft_gold", { n: fmtN(e.gold) })
+              : t("chips.hist_craft", { n }),
         };
     }
   };

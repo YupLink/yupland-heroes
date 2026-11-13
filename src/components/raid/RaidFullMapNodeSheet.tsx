@@ -4,6 +4,7 @@ import { localizeAssetName } from "@/lib/translations/assetNames";
 import { cn } from "@/lib/utils";
 import { thumb } from "@/lib/image";
 import { fillerIcon } from "./raid-screen-types";
+import { rewardShownAmount } from "@/lib/rewardKinds";
 import type { getRaidFullMap } from "@/server/api/raid-map";
 
 type FullMapT = Awaited<ReturnType<typeof getRaidFullMap>>;
@@ -83,7 +84,7 @@ export function FullMapNodeSheet({
                   .filter((x) => x.amount > 0)
                   .map(
                     (x) =>
-                      `${fillerIcon(x.kind)} ${x.amount.toLocaleString()}${
+                      `${fillerIcon(x.kind)} ${rewardShownAmount(x.kind, x.amount).toLocaleString()}${
                         ["likes", "tickets", "energy"].includes(x.kind) ? "" : " " + x.kind
                       }`
                   )

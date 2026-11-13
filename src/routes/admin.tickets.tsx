@@ -16,7 +16,7 @@ import {
   Plus,
   Power,
   Loader2,
-  Ticket,
+  Coins,
   X,
   ChevronDown,
   Users,
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { humanError } from "@/lib/humanError";
+import { TICKET_EARN_GOLD, goldForEarnedTickets } from "@/lib/ticketGold";
 
 export const Route = createFileRoute("/admin/tickets")({
   component: AdminTickets,
@@ -46,7 +47,8 @@ function AdminTickets() {
   const formRef = useRef<HTMLDivElement>(null);
 
   const [reqs, setReqs] = useState<Requirement[]>([]);
-  const [reward, setReward] = useState("1");
+  // Награда — ЗОЛОТО за набор в сутки; в базу идёт прежнее reward_tickets = золото / 100 (§8.61).
+  const [reward, setReward] = useState(String(TICKET_EARN_GOLD));
   // Аккордеон «Новое правило». По умолчанию свёрнут — при входе на
   // первом плане список существующих правил, а не большая форма.
   const [createOpen, setCreateOpen] = useState(false);
@@ -84,7 +86,7 @@ function AdminTickets() {
     onSuccess: () => {
       toast.success("Правило создано");
       setReqs([]);
-      setReward("1");
+      setReward(String(TICKET_EARN_GOLD));
       setCreateOpen(false);
       qc.invalidateQueries({ queryKey: ["admin", "ticket-events"] });
     },
@@ -100,7 +102,7 @@ function AdminTickets() {
     onError: (e: Error) => toast.error(humanError(e)),
   });
 
-  const rewardNum = Number(reward.replace(",", "."));
+  const rewardNum = Math.floor(Number(reward.replace(",", ".")));
   const validReqs = reqs.filter((r) => Number(r.count) > 0);
   const canSubmit =
     validReqs.length > 0 &&
@@ -114,7 +116,7 @@ function AdminTickets() {
       return;
     }
     if (!Number.isFinite(rewardNum) || rewardNum <= 0) {
-      toast.error("Награда должна быть положительным числом");
+      toast.error("Награда — целое число золота, от 1");
       return;
     }
     create.mutate({
@@ -123,7 +125,7 @@ function AdminTickets() {
           title: r.title,
           count: Math.max(1, Math.floor(Number(r.count))),
         })),
-        rewardTickets: rewardNum,
+        rewardTickets: rewardNum / TICKET_EARN_GOLD,
         holdDurationSec: COOLDOWN_HOURS * 3600,
       },
     });
@@ -134,14 +136,14 @@ function AdminTickets() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gold/10 text-gold ring-1 ring-gold/20">
-            <Ticket className="h-5 w-5" />
+            <Coins className="h-5 w-5" />
           </span>
           <div>
             <h1 className="font-display text-3xl font-bold leading-tight">
-              Билеты за NFT
+              Золото за NFT
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Держишь набор — забираешь билеты
+              Держишь набор — забираешь золото
             </p>
           </div>
         </div>
@@ -246,21 +248,18 @@ function AdminTickets() {
 
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <Ticket className="h-3.5 w-3.5" />
-                Сколько билетов
+                <Coins className="h-3.5 w-3.5" />
+                Сколько золота
               </label>
               <input
                 value={reward}
                 onChange={(e) => setReward(e.target.value)}
-                placeholder="1"
-                inputMode="decimal"
+                placeholder={String(TICKET_EARN_GOLD)}
+                inputMode="numeric"
                 className="w-full rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-sm outline-none focus:border-gold/50"
               />
-              <div
-                className="mt-1 text-[11px] text-muted-foreground"
-                title={`Можно дробное, например 0.01. Повтор через ${COOLDOWN_HOURS}ч.`}
-              >
-                Можно дробное · cooldown {COOLDOWN_HOURS}ч
+              <div className="mt-1 text-[11px] text-muted-foreground">
+                За набор в сутки, целое · cooldown {COOLDOWN_HOURS}ч
               </div>
             </div>
 
@@ -339,11 +338,11 @@ function TicketEventCard({
           {/* Бейджи: награда · получений · cooldown */}
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
             <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 font-medium text-gold">
-              <Ticket className="h-3 w-3" />+{e.rewardTickets} билетов
+              <Coins className="h-3 w-3" />+{goldForEarnedTickets(e.rewardTickets)} золота
             </span>
             <span
               className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-secondary px-2 py-0.5 text-muted-foreground"
-              title={`Получений · выдано ${e.ticketsTotalAwarded.toFixed(4)} билетов`}
+              title={`Получений · выдано ${goldForEarnedTickets(e.ticketsTotalAwarded)} золота`}
             >
               <Users className="h-3 w-3" />
               {e.claimsCount}
@@ -419,7 +418,7 @@ function TicketEventCard({
                           Получений
                         </th>
                         <th className="py-1.5 pl-2 text-right font-normal">
-                          Выдано
+                          Выдано, золото
                         </th>
                       </tr>
                     </thead>
@@ -436,7 +435,7 @@ function TicketEventCard({
                             ×{c.claimsCount}
                           </td>
                           <td className="py-1.5 pl-2 text-right font-mono text-gold">
-                            {c.ticketsTotal.toFixed(4)}
+                            {goldForEarnedTickets(c.ticketsTotal)}
                           </td>
                         </tr>
                       ))}

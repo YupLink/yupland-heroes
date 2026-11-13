@@ -9,6 +9,7 @@ import { humanError } from "@/lib/humanError";
 import { deleteMarketItem } from "@/server/api/beta-raid/market-admin";
 import { RESOURCE_LABELS_RU, type MarketItem } from "@/lib/marketItem";
 import { marketResourceIconSrc } from "@/lib/resourceIcons";
+import { recipeCover } from "@/lib/marketRecipe";
 import { MarketItemForm } from "./MarketItemForm";
 import { MarketStockRefill } from "./MarketStockRefill";
 import { numTextRu } from "./num";
@@ -43,7 +44,8 @@ export function MarketEditorRow({
 
   // У ресурсов своей картинки нет — берём иконку ресурса по refId.
   const isRes = !it.image && it.kind === "resource";
-  const icon = it.image ?? (isRes ? marketResourceIconSrc(it.refId) : null);
+  const icon =
+    it.image ?? (isRes ? marketResourceIconSrc(it.refId) : it.kind === "recipe" ? recipeCover(it.outcomes) : null);
 
   return (
     <div>

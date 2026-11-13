@@ -4,6 +4,7 @@ import { getCurrentWallet, requireAdmin } from "../auth";
 import { tgBroadcast, tgBroadcastPhoto } from "../tg";
 import { normalizeTitle } from "@/lib/normalizeTitle";
 import { pg } from "../db/pg";
+import { teamOwnerWallet } from "../team";
 
 export const SENDLER_DEFAULT_CONTRACT = "yuplandshop.mintbase1.near";
 
@@ -44,10 +45,10 @@ export async function findNftImageForTitle(
 }
 
 /**
- * Админы для которых рассылка о НОВОМ дропе подавляется.
+ * Админы для которых рассылка о НОВОМ дропе подавляется (по умолчанию — владелец).
  */
 const SILENT_DROP_BROADCAST_WALLETS = new Set(
-  (process.env.SILENT_DROP_BROADCAST_WALLETS ?? "owner.example.tg")
+  (process.env.SILENT_DROP_BROADCAST_WALLETS ?? teamOwnerWallet())
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)

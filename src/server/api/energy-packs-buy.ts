@@ -1,4 +1,4 @@
-// Энергопаки: покупка за билеты, $DARAI и токены.
+// Энергопаки: покупка за золото (бывшие билеты, §8.61) и $DARAI.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { nanoid } from "nanoid";
@@ -7,6 +7,8 @@ import { mcpExec } from "../db/mcpClient";
 import { assertNotMaintenance } from "../maintenance";
 import { requireFreshClient } from "../buildGate";
 import { accountOf } from "./user-shared";
+import { goldOf } from "./gold-move";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import {
   DARAI_FT_CONTRACT,
   DARAI_DECIMALS,
@@ -22,19 +24,26 @@ import {
   mapEnergyErr,
 } from "./energy-packs-shared";
 
-// ──────── ПОКУПКА за билеты ────────
+// ──────── ПОКУПКА за золото (бывшие билеты, §8.61) ────────
+// Цена ступени — по-прежнему «в билетах» (лестница kind tickets, скидка
+// подписки), платится золотом ×500. Списание золота и выдача энергии — одна
+// SQL-транзакция (ветка 'gold' в buy_energy_pack_atomic, tix-gold-02-sinks.sql):
+// не хватило — не выдано ничего, возвращать нечего.
 export const buyEnergyPackViaTickets = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ packId: z.string().min(1) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z.object({ packId: z.string().min(1), gold: z.literal(true).optional() }).parse(d),
+  )
   .handler(async ({ data }) => {
+    // Старая вкладка показывает цену в билетах — молча брать золото ×500 нельзя.
+    if (!data.gold) throw new Error("Обнови страницу — цены теперь в золоте");
     const wallet = requireWallet();
     const pack = await pg.energyPacks.findOne({ id: data.packId });
     if (!pack || !pack.active) throw new Error("Пак не найден");
     if (pack.price_tickets == null && !pack.price_steps) {
-      throw new Error("Этот пак нельзя купить за билеты");
+      throw new Error("Этот пак нельзя купить за золото");
     }
 
-    const { computeTickets, invalidateTicketsCache, getSisterWallets, fetchSubscriptionDiscount } =
-      await import("./user");
+    const { getSisterWallets, fetchSubscriptionDiscount } = await import("./user");
     const disc = (await fetchSubscriptionDiscount(wallet)).discountPct ?? 0;
     // Если у пака задана лестница — цена берётся из текущей ступени
     // (каждая следующая покупка за день дороже, кончились ступени — стоп).
@@ -45,69 +54,42 @@ export const buyEnergyPackViaTickets = createServerFn({ method: "POST" })
       ? await requireCurrencyPrice(pack, stepAccount, { kind: "tickets" })
       : (pack.price_tickets ?? 0);
     const price = applyDiscountCeil(basePrice, disc);
+    const gold = goldForTicketPrice(price);
+    const have = await goldOf(stepAccount);
+    if (have < gold)
+      throw new Error(`Не хватает золота: нужно ${gold}, у тебя ${Math.floor(have)}`);
     const sisters = await getSisterWallets(wallet);
-    // Atomic: блокировка пака + per-account advisory-lock + дневной лимит (по
-    // закоммиченным строкам) + запись расхода + начисление энергии — всё в одной
-    // транзакции. idk уникален на покупку.
+    // idk уникален на покупку: он же ключ списания золота (epack:{idk}).
     const idk = `ep:${nanoid(12)}`;
-    // Сначала ДЕНЬГИ, потом товар. Раньше энергию выдавали, а списывали после —
-    // при отказе списания игрок получал пак бесплатно, и два параллельных
-    // запроса внутри 5-секундного кэша баланса проходили проверку оба.
-    // moveTickets блокирует строку баланса и не пускает в минус, поэтому
-    // «проверка» тут не нужна — сам факт списания и есть проверка.
-    const { moveTickets } = await import("./tickets-ledger");
-    try {
-      await moveTickets({ wallet, delta: -price, kind: "energy_pack", ref: idk });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("not_enough_tickets") || msg.includes("Не хватает")) {
-        const have = (await computeTickets(wallet)).availableRaw;
-        throw new Error(`Не хватает билетов (есть ${have.toFixed(2)}, нужно ${price})`);
-      }
-      throw e;
-    }
     const { data: rows, error } = await sb.rpc("buy_energy_pack_atomic", {
       p_wallet: wallet,
       p_pack_id: pack.id,
-      p_pay_with: "tickets",
+      p_pay_with: "gold",
       p_sisters: sisters,
       p_tickets_price: price,
       p_idk: idk,
     });
     if (error) {
-      // Возвращаем, только если пака ДЕЙСТВИТЕЛЬНО нет. mcpExec повторяет
-      // запрос по таймауту: покупка могла закоммититься, а ошибка прилететь —
-      // слепой возврат в этом случае отдаёт энергию бесплатно.
+      // mcpExec повторяет запрос по таймауту: покупка могла закоммититься, а
+      // ошибка прилететь. Квитанция есть — отвечаем успехом.
       const done = await pg.energyPackPurchases
         .findFirst({ idempotency_key: idk })
         .catch(() => null);
-      if (!done) {
-        await moveTickets({
-          wallet,
-          delta: price,
-          kind: "refund",
-          ref: `ep-undo:${idk}`,
-        }).catch((e: unknown) => console.error(`[energy-pack] возврат не прошёл ${wallet}:`, e));
-      }
-      invalidateTicketsCache(sisters);
       if (done) {
-        // Пак всё-таки выдан — отвечаем успехом, а не ошибкой с возвратом.
         return {
           ok: true as const,
           energyAdded: Number(done.amount ?? pack.amount),
-          ticketsSpent: price,
+          goldSpent: gold,
         };
       }
       throw new Error(mapEnergyErr(error.message || String(error), pack.daily_limit));
     }
-    invalidateTicketsCache(sisters);
-    const row = (rows as Array<{ energy_added: number; tickets_spent: number }>)[0];
-    return {
-      ok: true as const,
-      energyAdded: row?.energy_added ?? pack.amount,
-      ticketsSpent: price,
-    };
+    const row = (rows as Array<{ energy_added: number }>)[0];
+    return { ok: true as const, energyAdded: row?.energy_added ?? pack.amount, goldSpent: gold };
   });
+
+/** Новое имя той же ручки: билетов нет, платится золотом. */
+export const buyEnergyPackViaGold = buyEnergyPackViaTickets;
 
 // Маппинг ошибок atomic-функции в человекочитаемые сообщения.
 

@@ -9,9 +9,8 @@
 // в уплату за покупку проданного (пшеница за хлеб), тоже грузится: его цена
 // едет в цену покупки (goldPayLink).
 // Прибыль каждой продажи ложится очком с ref 'sale:<id сделки>' — повтор
-// подтяжки ту же продажу второй раз не засчитает. «Запасы до старта» — по
-// старту турнира, а не по началу окна (12.10.2026: иначе нажитое в турнире
-// раньше текущего окна шло бы как запасы и продажа его прибыли не давала).
+// подтяжки ту же продажу второй раз не засчитает. Запасы до старта — тоже
+// в зачёт (03.11.2026).
 // Окно, строки истории и очки — общие со штучным учётом (tour-own.ts).
 import { mcpExec } from "@/server/db/mcpClient";
 import { sqlStr } from "@/server/api/raid-shared";
@@ -157,6 +156,6 @@ export async function syncGoldProfit(id: string): Promise<void> {
   const w = await loadTourWindow(id);
   if (!w || !(w.till > w.since)) return;
   const rows = ((await mcpExec(historySql(w.since, w.till), { wrapJson: true })) ?? []) as Hist[];
-  const points = linkedGoldProfit(flowsByItem(rows).values(), w.since, w.till, w.start);
+  const points = linkedGoldProfit(flowsByItem(rows).values(), w.since, w.till);
   await mcpExec(profitSql(id, w.till, points));
 }

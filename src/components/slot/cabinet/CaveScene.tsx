@@ -4,12 +4,14 @@ import { FindArt, Finds } from "./Finds";
 import { YupikSprite, type Motion } from "./YupikSprite";
 import { num, text, useTimeline, vars, type SceneProps } from "./shared";
 import { useFindFlight } from "./useFindFlight";
+import { CaveBackdrop } from "./CaveBackdrop";
 
 export function CaveScene({ state, act, ru, acting }: SceneProps) {
   const game = state.superGame!,
     timeline = useTimeline(),
     lock = useRef(false),
     mounted = useRef(true);
+  const [artReady, setArtReady] = useState(false);
   const [busy, setBusy] = useState(false),
     [motion, setMotion] = useState<Motion>("idle"),
     [inside, setInside] = useState(false);
@@ -44,11 +46,11 @@ export function CaveScene({ state, act, ru, acting }: SceneProps) {
     };
   }, []);
   useEffect(() => {
-    if (!busy && !game.lastPick)
+    if (artReady && !busy && !game.lastPick)
       scene.current
         ?.querySelector<HTMLButtonElement>(".cave-choice:not(:disabled)")
         ?.focus({ preventScroll: true });
-  }, [busy, game.lastPick]);
+  }, [artReady, busy, game.lastPick]);
   useEffect(() => {
     if (busy || transitionError || !game.lastPick) return;
     let active = true;
@@ -74,7 +76,8 @@ export function CaveScene({ state, act, ru, acting }: SceneProps) {
     };
   }, [game.lastPick, game.step, game.done, busy, transitionError]);
   const pick = async (side: 0 | 1) => {
-    if (lock.current || acting || game.lastPick || game.done) return;
+    if (!artReady || lock.current || acting || game.lastPick || game.done)
+      return;
     lock.current = true;
     setBusy(true);
     setReveal(null);
@@ -152,12 +155,15 @@ export function CaveScene({ state, act, ru, acting }: SceneProps) {
             )}
       </div>
       <div className="cave-choices">
+        <CaveBackdrop ru={ru} onReady={setArtReady} />
         {([0, 1] as const).map((side) => (
           <button
             key={side}
             className={"cave-choice" + (busy ? " is-entering" : "")}
             data-cave={side}
-            disabled={busy || acting || !!game.lastPick || game.done}
+            disabled={
+              !artReady || busy || acting || !!game.lastPick || game.done
+            }
             onClick={() => void pick(side)}
           >
             <span>

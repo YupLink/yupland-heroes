@@ -51,6 +51,9 @@ async function sendPart(cells: CellPatch[], mapId: string | null) {
   }
 }
 
+/** Итог выгрузки: сколько легло, сколько сервер не взял (нет земли), был ли сбой. */
+export type PublishResult = { applied: number; stuck: number; failed: boolean };
+
 export function useAdminPublish(
   /** Права админа: без них выгружать нечего и незачем. */
   enabled: boolean,
@@ -64,11 +67,13 @@ export function useAdminPublish(
   /** Клетки уехавшего пакета: отменять их поздно, пока сервер не ответил. */
   const inFlight = useRef<Set<string>>(new Set());
 
-  const publish = useCallback(async () => {
-    if (!enabled) return;
+  // quiet — автосохранение мира креатора (creator/useCreatorAutosave): без тоста «выложено».
+  const publish = useCallback(async (opts?: { quiet?: boolean }): Promise<PublishResult> => {
+    const none: PublishResult = { applied: 0, stuck: 0, failed: false };
+    if (!enabled) return none;
     const sent = readDraft().queue;
     const keys = Object.keys(sent);
-    if (keys.length === 0) return;
+    if (keys.length === 0) return none;
     const mapId = draftMapId(qc);
     // Пока пакеты едут, «в пути» считается вся очередь: отменять ластиком
     // клетку из ещё не уехавшей пачки поздно — она всё равно отправится.
@@ -76,6 +81,7 @@ export function useAdminPublish(
     setSending(true);
     const stuck: string[] = [];
     let applied = 0;
+    let failed = false;
     try {
       for (const part of chunkKeys(keys, ADMIN_PATCH_MAX_CELLS)) {
         const res = await sendPart(
@@ -92,14 +98,16 @@ export function useAdminPublish(
       }
     } catch (e) {
       // Чужая карта, оборванная сеть — очередь при этом НЕ чистится.
+      failed = true;
       toast.error(humanError(e as Error));
     } finally {
       inFlight.current = new Set();
       setSending(false);
     }
-    if (applied > 0) toast.success(text.current.published(applied));
+    if (applied > 0 && opts?.quiet !== true) toast.success(text.current.published(applied));
     if (stuck.length > 0) toast.error(text.current.skipped(stuck));
-    if (applied === 0) return;
+    const result: PublishResult = { applied, stuck: stuck.length, failed };
+    if (applied === 0) return result;
     // Карта, admin-cell, beta-raid-players и корабли — всё с refetchType:
     // "all". Без него неактивные запросы (у самого админа окно клетки могло
     // быть закрыто, вкладка admin-cell в кэше — persist сутки) не
@@ -111,6 +119,7 @@ export function useAdminPublish(
     // Разложенные монеты меняют и остаток свободных USDT — иначе после
     // правки карты полоска показывала бы прежнее число до перезагрузки.
     qc.invalidateQueries({ queryKey: FREE_TOKEN_KEY });
+    return result;
   }, [enabled, commit, qc, text]);
 
   return { publish, sending, inFlight };

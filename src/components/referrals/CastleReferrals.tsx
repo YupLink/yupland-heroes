@@ -1,20 +1,26 @@
 // Друзья и задания — страница игроков /referrals в прежнем виде. В профиле
 // замка (только админы, 07.10.2026) — версия Ангелины, castle-live/CastleReferrals;
 // эта уйдёт, когда замок откроется всем.
+import { RefShareButton } from "./RefShareButton";
 import { copyText } from "@/lib/copyText";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getSession } from "@/server/api/user-auth";
 import { getMyTickets } from "@/server/api/user-tickets";
+import { useResources } from "@/lib/hooks/useResources";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import { getReferralStats } from "@/server/api/user-referrals";
 import { listMyTasks, verifyTaskCompletion } from "@/server/api/user-tasks";
 import { TelegramVerify } from "@/components/TelegramVerify";
-import { Copy, Check, Users, Ticket, ListChecks } from "lucide-react";
+import { Copy, Check, Users, Coins, ListChecks } from "lucide-react";
 import { useT, useLang } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
 import { ReferralDetails } from "./ReferralDetails";
 import { TaskCard } from "./ReferralTaskCard";
+import { ReferralRewards } from "./ReferralRewards";
+import { REF_REWARDS_KEY } from "./useReferralRewards";
+import { RefGoldCard } from "@/components/referrals/RefGoldCard";
 
 export function CastleReferrals() {
   const t = useT();
@@ -30,10 +36,13 @@ export function CastleReferrals() {
   });
   const needsTg = !!sessionQ.data?.wallet && !sessionQ.data.telegramLinked;
 
+  // Билетов нет (ПРАВИЛА §8.61): показываем золото; прежние билеты «от
+  // рефералов / заданий» — золотом ×100, как их теперь и начисляют.
   const tickets = useQuery({
     queryKey: ["my-tickets"],
     queryFn: () => getMyTickets(),
   });
+  const resources = useResources();
 
   const myTasks = useQuery({
     queryKey: ["my-tasks"],
@@ -41,6 +50,10 @@ export function CastleReferrals() {
   });
 
   const qc = useQueryClient();
+  // Статистика может засчитать новый этап — он заводит бонус-бокс (22.10.2026).
+  useEffect(() => {
+    if (stats.dataUpdatedAt) void qc.invalidateQueries({ queryKey: REF_REWARDS_KEY });
+  }, [qc, stats.dataUpdatedAt]);
   const verify = useMutation({
     mutationFn: (taskId: string) => verifyTaskCompletion({ data: { taskId } }),
     onSuccess: (res) => {
@@ -50,7 +63,7 @@ export function CastleReferrals() {
         toast.success(t("ref.task_done_ticket"));
       }
       qc.invalidateQueries({ queryKey: ["my-tasks"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
     },
     onError: (e: Error) => toast.error(humanError(e)),
   });
@@ -72,7 +85,7 @@ export function CastleReferrals() {
     });
   };
 
-  const queries = [stats, sessionQ, tickets, myTasks];
+  const queries = [stats, sessionQ, tickets, myTasks, resources];
   if (queries.some((q) => q.isError))
     return (
       <div role="alert" className="space-y-3">
@@ -110,16 +123,19 @@ export function CastleReferrals() {
           <span className="text-gradient-gold">{t("ref.earn_tickets")}</span>
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          +1 {t("ref.per_active_friend_pre")} <b>{t("ref.active_word")}</b>{" "}
-          {t("ref.per_active_friend_post")}
+          {ru
+            ? "Bonus Box за этапы приглашений и 10–20 % золотом с покупок друзей."
+            : "A Bonus Box for each invitation milestone and 10–20% in gold of friends' purchases."}
         </p>
       </div>
 
-      {/* Claim tickets */}
+      <RefGoldCard ru={ru} />
+
+      {/* Золото (бывшие билеты на клейм) */}
       <div className="mb-4 rounded-2xl border border-gold/30 bg-gold/5 p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-gold shadow-gold">
-            <Ticket className="h-6 w-6 text-gold-foreground" />
+            <Coins className="h-6 w-6 text-gold-foreground" />
           </div>
           <div className="flex-1">
             <div className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -127,7 +143,7 @@ export function CastleReferrals() {
             </div>
             <div className="mt-0.5 flex items-baseline gap-2">
               <span className="font-display text-3xl font-bold text-gradient-gold">
-                {tickets.data?.available ?? 0}
+                {Math.floor(resources.data?.gold ?? 0).toLocaleString("ru-RU")}
               </span>
             </div>
           </div>
@@ -135,13 +151,14 @@ export function CastleReferrals() {
         <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
           {tickets.data?.earnedFromReferrals ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-success">
-              <Check className="h-3 w-3" />+{tickets.data.earnedFromReferrals}{" "}
+              <Check className="h-3 w-3" />+{goldForEarnedTickets(tickets.data.earnedFromReferrals)}{" "}
               {t("ref.from_referrals")}
             </span>
           ) : null}
           {tickets.data && "earnedFromTasks" in tickets.data && tickets.data.earnedFromTasks ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-success">
-              <Check className="h-3 w-3" />+{tickets.data.earnedFromTasks} {t("ref.from_tasks")}
+              <Check className="h-3 w-3" />+{goldForEarnedTickets(tickets.data.earnedFromTasks)}{" "}
+              {t("ref.from_tasks")}
             </span>
           ) : null}
         </div>
@@ -174,11 +191,12 @@ export function CastleReferrals() {
           {t("ref.your_links")}
         </div>
 
-        {/* TG-бот ссылка — большая кнопка (клик копирует) */}
+        {/* «Поделиться» — главная кнопка (RefShareButton); ссылки ниже копируются. */}
+        <RefShareButton tgLink={tgLink} webLink={webLink} />
         {tgLink && (
           <button
             onClick={() => copy("tg", tgLink)}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl gradient-gold px-4 py-4 text-base font-bold text-gold-foreground shadow-gold transition hover:scale-[1.02]"
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-gold/40 bg-gold/10 px-4 py-4 text-base font-bold text-gold transition hover:bg-gold/20"
           >
             {copiedKind === "tg" ? (
               <>
@@ -216,6 +234,7 @@ export function CastleReferrals() {
         </button>
       </div>
 
+      <ReferralRewards />
       <ReferralDetails data={data} />
     </div>
   );

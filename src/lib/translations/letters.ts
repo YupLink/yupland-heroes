@@ -17,7 +17,8 @@ export const dict: Record<string, Entry> = {
   "letter.adm.close": { ru: "Закрыть", en: "Close" },
   "letter.adm.f_title": { ru: "Заголовок", en: "Title" },
   "letter.adm.f_body": { ru: "Текст", en: "Text" },
-  "letter.adm.f_image": { ru: "Картинка (ссылка)", en: "Image (link)" },
+  "letter.adm.f_image": { ru: "Картинка", en: "Image" },
+  "letter.adm.f_image_drop": { ru: "Нажми или перетащи картинку", en: "Tap or drop an image" },
   "letter.adm.f_to": { ru: "Кому", en: "To" },
   "letter.adm.f_accounts": {
     ru: "Аккаунты через запятую: acc_…, Telegram-id или кошелёк",

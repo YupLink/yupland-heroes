@@ -9,6 +9,7 @@ import { z } from "zod";
 import { pg } from "../db/pg";
 import { fetchSendlerNftById } from "../sendler";
 import { getCurrentWallet } from "../auth";
+import { googleOnlyWallet } from "@/lib/auth/entryRules";
 import {
   getPackInputMap,
   packInputKey,
@@ -42,6 +43,8 @@ export const depositNftAsPack = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Нужно подключить кошелёк");
+    // «Только Google» (§8.127): «Ввести NFT» нет — кошелька у аккаунта нет и не будет.
+    if (googleOnlyWallet(wallet)) throw new Error("google.noNft");
     const receiverId = process.env.NEAR_SIGNER_ACCOUNT_ID;
     if (!receiverId) throw new Error("Системный кошелёк не настроен");
 

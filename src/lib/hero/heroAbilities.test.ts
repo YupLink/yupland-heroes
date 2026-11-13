@@ -7,7 +7,7 @@ import {
 } from "./heroAbilities";
 
 describe("способность героя", () => {
-  it("восемь способностей из списка владельца, ru и en", () => {
+  it("девять способностей из списка владельца, ru и en", () => {
     expect(HERO_ABILITIES.map((a) => a.ru)).toEqual([
       "Животновод",
       "Рыбак",
@@ -17,6 +17,7 @@ describe("способность героя", () => {
       "Владелец рынков",
       "Фермер",
       "Киллер",
+      "Шахтёр",
     ]);
     expect(HERO_ABILITIES.every((a) => a.en.length > 0)).toBe(true);
   });

@@ -4,16 +4,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { auditCurrencyLedger } from "@/server/api/ledger-audit";
 import { sendTgMessageToAdmins } from "@/server/tg";
+import { cronDenied } from "@/server/cronAuth";
 
 export const Route = createFileRoute("/api/cron/ledger-audit")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         try {
           const result = await auditCurrencyLedger();
           if (!result.ok) {

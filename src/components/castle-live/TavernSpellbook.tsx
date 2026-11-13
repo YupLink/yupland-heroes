@@ -12,6 +12,7 @@ import { SpellForgetConfirm } from "@/components/beta-raid/spellbook/SpellForget
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import "./tavern-spellbook.css";
 
+import { thumb } from "@/lib/image";
 export function TavernSpellbook({
   heroId,
   readOnly = false,
@@ -25,10 +26,10 @@ export function TavernSpellbook({
   // только пока висит «Забвение». В этой книге кнопки не было вовсе, и зелье
   // забвения тратилось впустую (жалоба игроков 09.10.2026).
   const oblivion = useOblivion();
-  const [ask, setAsk] = useState<SpellBookEntry | null>(null);
+  const [ask, setAsk] = useState<{ spell: SpellBookEntry; owner: string } | null>(null);
   useEffect(() => {
-    if (!oblivion.active) setAsk(null);
-  }, [oblivion.active]);
+    setAsk(null);
+  }, [oblivion.active, book.isFetching, book.isError, book.data?.hero?.heroId]);
   const canForget = !readOnly && !heroId && oblivion.active;
   const t = useT();
   const lang = useLang() === "en" ? "en" : "ru";
@@ -52,7 +53,7 @@ export function TavernSpellbook({
     { length: Math.min(4, Math.max(0, total - group)) },
     (_, i) => group + i,
   );
-  if (book.isError)
+  if (book.isError && !data)
     return (
       <div role="alert">
         <p>{ru ? "Не удалось загрузить книгу заклинаний" : "Unable to load spellbook"}</p>
@@ -61,14 +62,14 @@ export function TavernSpellbook({
         </button>
       </div>
     );
-  if (!data || book.isFetching)
+  if (!data)
     return <p role="status">{ru ? "Проверяем книгу заклинаний…" : "Checking spellbook…"}</p>;
   if (!data?.hero)
     return <p>{ru ? "У этого героя пока нет книги" : "No spellbook for this hero"}</p>;
   const icon = (index: number) => {
     const s = spells[index];
     return s?.image && !failedImages.includes(s.id) ? (
-      <img src={s.image} alt="" onError={() => setFailedImages((a) => [...a, s.id])} />
+      <img src={thumb(s.image, 128)} alt="" onError={() => setFailedImages((a) => [...a, s.id])} />
     ) : s ? (
       <svg className="wind" viewBox="0 0 100 100" aria-hidden="true">
         <path d="M12 32h60c18 0 18-20 4-20-8 0-11 5-12 9M8 50h83M18 68h51c17 0 17 20 3 20-8 0-11-5-12-9" />
@@ -79,7 +80,8 @@ export function TavernSpellbook({
     );
   };
   return (
-    <div data-book-preview>
+    <div data-book-preview aria-busy={book.isFetching}>
+      {book.isError && <p role="alert">{ru ? "Не удалось обновить книгу." : "Could not refresh the book."} <button type="button" data-game-button="secondary" onClick={() => void book.refetch()}>{ru ? "Повторить" : "Retry"}</button></p>}
       <div className="stats">
         <span>
           {ru ? `Занято ${data.slots.used} из ${total}` : `${data.slots.used} of ${total} filled`}
@@ -147,8 +149,8 @@ export function TavernSpellbook({
                   <div className="known">
                     <h3 className="spell-name">{entry.name}</h3>
                     <p className="effect">{spellGiftLines(entry, lang, t).join(" · ")}</p>
-                    <p className={`availability ${block ? "blocked" : ""}`}>
-                      {block?.text ?? (ru ? "Готово к использованию" : "Ready to use")}
+                    <p role={book.isFetching ? "status" : undefined} className={`availability ${block ? "blocked" : ""}`}>
+                      {book.isFetching ? (ru ? "Обновляем книгу…" : "Updating book…") : book.isError ? (ru ? "Книга не обновлена" : "Book not refreshed") : block?.text ?? (ru ? "Готово к использованию" : "Ready to use")}
                     </p>
                     <p className="spell-meta">
                       {ru ? "После применения: откат" : "After use: cooldown"}{" "}
@@ -160,7 +162,7 @@ export function TavernSpellbook({
                       data-game-button="primary"
                       type="button"
                       className="book-action"
-                      disabled={!!block || cast.isPending || energyUnavailable}
+                      disabled={!!block || cast.isPending || energyUnavailable || book.isFetching || book.isError}
                       aria-label={
                         block
                           ? `${block.text}. ${entry.energyCost}`
@@ -184,8 +186,8 @@ export function TavernSpellbook({
                       data-game-button="secondary"
                       type="button"
                       className="book-action book-forget"
-                      disabled={forget.isPending}
-                      onClick={() => setAsk(entry)}
+                      disabled={forget.isPending || book.isFetching || book.isError}
+                      onClick={() => setAsk({ spell: entry, owner: data.hero!.heroId })}
                     >
                       <span>{ru ? "Забыть" : "Forget"}</span>
                     </button>
@@ -225,17 +227,18 @@ export function TavernSpellbook({
       ) : (
         <p>{ru ? "В книге пока нет ячеек" : "No spellbook slots yet"}</p>
       )}
-      {ask && canForget && (
+      {ask && canForget && !book.isFetching && !book.isError && ask.owner === data.hero.heroId && (
         <SpellForgetConfirm
-          name={ask.name}
-          image={ask.image}
+          name={ask.spell.name}
+          image={ask.spell.image}
           busy={forget.isPending}
           onCancel={() => setAsk(null)}
           onConfirm={() =>
-            forget.mutate({ spellId: ask.id, name: ask.name }, { onSettled: () => setAsk(null) })
+            forget.mutate({ spellId: ask.spell.id, name: ask.spell.name }, { onSettled: () => setAsk(null) })
           }
         />
       )}
     </div>
   );
 }
+

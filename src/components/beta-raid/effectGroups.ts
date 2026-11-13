@@ -9,6 +9,7 @@ import {
   OBLIVION_TIME_KIND,
   oblivionStateOf,
 } from "@/lib/hero/boostOblivion";
+import { SIGHT_KIND } from "@/lib/raid/sight";
 
 export type HudChipEffect = {
   chipId: string;
@@ -117,7 +118,8 @@ export function buildEffectGroups(input: {
     if (value <= 0 || Date.parse(w.expiresAt) <= now) continue;
     out.push({
       key: w.kind,
-      badge: `−${value}`,
+      // Снятие иммунитетов едет этим же списком, но силы у него нет — только таймер.
+      badge: w.kind === "strip_immune" ? null : `−${value}`,
       until: w.expiresAt,
       items: [],
       source: str(w.source),
@@ -130,8 +132,8 @@ export function buildEffectGroups(input: {
     if (value <= 0 || Date.parse(b.expiresAt) <= now) continue;
     out.push({
       key: b.kind,
-      // У иммунитета «силы» нет — только таймер, без «+1».
-      badge: b.kind.startsWith("immune_") ? null : `+${value}`,
+      // У иммунитета и бинокля «силы» нет — только таймер, без «+1».
+      badge: b.kind.startsWith("immune_") || b.kind === SIGHT_KIND ? null : `+${value}`,
       until: b.expiresAt,
       items: [],
       source: str(b.source),

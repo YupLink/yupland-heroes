@@ -60,6 +60,11 @@ describe("groupOfKind: res_ledger и билеты", () => {
     // Запись на турнир и её откат — сток, сальдо по группе честное.
     expect(groupOfKind("res", "tour_fee", "tour:t:a:n:0:gold")).toBe("sink");
     expect(groupOfKind("res", "tour_fee_refund", "tour:t:a:n:0:gold:back")).toBe("sink");
+    // Золото за улучшение фишки и его возврат при сорванном крафте.
+    expect(groupOfKind("res", "craft", "craft-op:abc")).toBe("sink");
+    expect(groupOfKind("res", "craft_undo", "craft-op:abc")).toBe("sink");
+    // Починка шахты v2 (§8.59) — ресурсы сгорают.
+    expect(groupOfKind("res", "mine_repair", "mrep:rep:acc:op1:gold")).toBe("sink");
     expect(groupOfKind("res", "gift", null)).toBe("gift");
     expect(groupOfKind("res", "mine", null)).toBe("mine");
   });

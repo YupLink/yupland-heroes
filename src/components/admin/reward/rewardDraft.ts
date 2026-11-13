@@ -169,7 +169,8 @@ export function fillerMeta(fl: Filler): { icon: string; label: string } {
     case "likes":
       return { icon: "❤️", label: "лайки" };
     case "tickets":
-      return { icon: "🎟", label: "билеты" };
+      // Билетов нет (ПРАВИЛА §8.61): наполнитель «билеты» выдаётся золотом ×100.
+      return { icon: "🪙", label: "золото" };
     case "energy":
       return { icon: "⚡", label: "энергия" };
     case "resource":

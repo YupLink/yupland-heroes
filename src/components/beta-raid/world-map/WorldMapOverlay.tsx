@@ -83,7 +83,7 @@ export function WorldMapOverlay({
     <div
       role="dialog"
       aria-label={t("wmap.title")}
-      className="fixed inset-0 z-[120] flex touch-none select-none flex-col bg-[#10141c] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[max(8px,env(safe-area-inset-top))]"
+      className="fixed inset-0 z-[120] flex touch-none select-none flex-col bg-[#10141c] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[max(8px,var(--app-top,env(safe-area-inset-top,0px)))]"
     >
       <header className="flex shrink-0 items-center gap-2 px-3 pb-2">
         <h2 className="hidden font-display text-lg font-bold text-foreground sm:block">

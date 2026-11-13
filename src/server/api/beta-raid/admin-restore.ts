@@ -23,6 +23,7 @@ export type { RestorePreview, PreviewKind, ResourceGroup } from "./admin-restore
 import { BOSS_TEMPLATE_JOIN, resourceFilterSql } from "./restore-reward-sql";
 import { returnRunnersHome } from "./runner-home";
 import { assertRestoreUsdt } from "./restore-usdt";
+import { droppable } from "../craft/crafted-sql";
 
 /** Что восстанавливаем — галочки в админ-блоке на экране рейда. */
 const inputSchema = z.object({
@@ -53,7 +54,7 @@ const KIND_SQL = {
   boss: `c.object_id LIKE 'boss:%' AND h.killed_at IS NOT NULL`,
   chests: `t.kind = 'chest' AND COALESCE((t.meta->>'maxHp')::numeric, 10000) > 1`,
   coins: `t.kind = 'chest' AND COALESCE((t.meta->>'maxHp')::numeric, 10000) <= 1`,
-  artifacts: `t.kind = 'artifact'`,
+  artifacts: `t.kind = 'artifact' AND ${droppable("t")}`,
 } as const;
 
 export const adminRestoreRaidObjects = createServerFn({ method: "POST" })

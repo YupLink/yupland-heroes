@@ -1,5 +1,6 @@
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { signCookieValue, readSignedCookieValue } from "./sessionCookie";
+import { teamDesignerTgUsername } from "./team";
 
 const COOKIE = "gd_wallet";
 const ACC_COOKIE = "gd_acc";
@@ -9,16 +10,30 @@ const ACC_COOKIE = "gd_acc";
 // В подписанной cookie лежит `wallet#tgId`: tgId попадает туда только из
 // проверенного входа (initData мини-аппа, виджет Telegram) или из прошлой такой
 // сессии. Старый формат без tgId (сессии «просто кошельком») недействителен.
-type Session = { wallet: string; tgId: number };
+// Префикс `wl:` — вход кошельком без подписи (walletOnlySession.ts): он внутри
+// подписи, поэтому снять ограничение, не потеряв саму сессию, нельзя.
+type Session = { wallet: string; tgId: number; walletOnly: boolean };
+const WL = "wl:";
 
 function readSession(): Session | null {
-  const v = readSignedCookieValue(getCookie(COOKIE) ?? null);
-  if (!v) return null;
+  const raw = readSignedCookieValue(getCookie(COOKIE) ?? null);
+  if (!raw) return null;
+  const walletOnly = raw.startsWith(WL);
+  const v = walletOnly ? raw.slice(WL.length) : raw;
   const at = v.lastIndexOf("#");
   if (at <= 0) return null;
   const tgId = Number(v.slice(at + 1));
   if (!Number.isSafeInteger(tgId) || tgId <= 0) return null;
-  return { wallet: v.slice(0, at), tgId };
+  return { wallet: v.slice(0, at), tgId, walletOnly };
+}
+
+/** Сессия открыта кошельком, привязанным без подписи, и Telegram с тех пор не входил. */
+export function isWalletOnlySessionCookie(): boolean {
+  try {
+    return readSession()?.walletOnly === true;
+  } catch {
+    return false;
+  }
 }
 
 /** Проверенный Telegram текущей сессии; вне запроса или без сессии — null. */
@@ -51,14 +66,30 @@ export function getCurrentWallet(): string | null {
   return null;
 }
 
-/** Сессия ставится только вместе с проверенным Telegram (см. readSession). */
-export function setCurrentWallet(wallet: string, tgId: number) {
+/**
+ * Сессия ставится только вместе с проверенным Telegram (см. readSession).
+ * proven — вход с доказательством Telegram: снимает метку «вход кошельком без
+ * подписи»; без него пересадка на другой кошелёк того же Telegram метку сохраняет.
+ */
+export function setCurrentWallet(
+  wallet: string,
+  tgId: number,
+  opts: { proven?: boolean; walletOnly?: boolean } = {},
+) {
   if (!Number.isSafeInteger(tgId) || tgId <= 0) throw new Error("Вход только через Telegram");
+  let prev: Session | null = null;
+  try {
+    prev = readSession();
+  } catch {
+    prev = null;
+  }
+  const walletOnly =
+    opts.walletOnly ?? (!opts.proven && !!prev?.walletOnly && prev.tgId === tgId);
   // httpOnly: клиентский код эту cookie не читает (проверено грепом по src/),
   // поэтому закрываем её от JS — украсть сессию через XSS больше нельзя.
   // secure: сайт только по https; в dev (http://localhost) не ставим, иначе
   // браузер отбросит cookie и локальный превью не залогинится.
-  setCookie(COOKIE, signCookieValue(`${wallet}#${tgId}`), {
+  setCookie(COOKIE, signCookieValue(`${walletOnly ? WL : ""}${wallet}#${tgId}`), {
     path: "/",
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -115,11 +146,20 @@ export function setCurrentAccountId(accountId: string) {
  */
 export async function currentAccount(): Promise<string | null> {
   const fromCookie = getCurrentAccountId();
-  if (fromCookie) return fromCookie;
+  if (fromCookie) {
+    // Аккаунт ушёл в архив (один аккаунт на ключ, 06.11.2026) — дальше основной.
+    const into = await import("./accountArchive").then((m) => m.archivedInto(fromCookie));
+    if (!into) return fromCookie;
+    setCurrentAccountId(into);
+    return into;
+  }
   const wallet = getCurrentWallet();
   if (!wallet) return null;
   const { accountOf } = await import("./api/user-shared");
-  const acc = await accountOf(wallet).catch(() => null);
+  const found = await accountOf(wallet).catch(() => null);
+  const acc = found
+    ? ((await import("./accountArchive").then((m) => m.archivedInto(found))) ?? found)
+    : null;
   if (acc) setCurrentAccountId(acc);
   return acc;
 }
@@ -141,10 +181,7 @@ const ADMIN_ALLOWLIST = (process.env.ADMIN_WALLETS ?? "")
 // Telegram, — админский. Сессия садится только на кошелёк, привязанный к тому же
 // Telegram (вход, переключение, добавление с подписью), а getSession сбрасывает
 // сессию, если кошелёк от Telegram отвязали. Выплаты — по своему списку, не здесь.
-const ADMIN_TG_ALLOWLIST = (process.env.ADMIN_TG_ACCOUNTS ?? "")
-  .split(",")
-  .map((s) => Number(s.trim()))
-  .filter((n) => Number.isSafeInteger(n) && n > 0);
+import { ADMIN_TG_ALLOWLIST } from "./adminTg";
 
 export function isAdminWallet(wallet: string | null): boolean {
   if (!wallet) return false;
@@ -233,15 +270,15 @@ export function isTreasuryWallet(wallet: string | null): boolean {
 
 /**
  * Внутрянка замка: отдельный простой редактор для оформления интерьера.
- * Полные права у админа; также разрешён дизайнер интерьера — @designer_example
+ * Полные права у админа; также разрешён дизайнер интерьера
  * (правила проекта: доступ по вайтлисту, без ролей в БД).
  *
- * Проверка по ДВУМ признакам: wallet и Telegram username. Изначально сунул
- * "designer.example.tg" в список wallet'ов — но её кошелёк называется иначе, и
- * блок ей просто не показывался. Реально её опознаёт TG-юзернейм.
+ * Проверка по ДВУМ признакам: wallet и Telegram username. Кошелёк дизайнера
+ * называется не по юзернейму, поэтому реально её опознаёт TG-юзернейм —
+ * TEAM_DESIGNER_TG_USERNAME из env (server/team); пусто — никого, кроме админов.
  */
 const CASTLE_EDITOR_WALLETS: string[] = [];
-const CASTLE_EDITOR_TG_USERNAMES: string[] = ["player62"];
+const castleEditorTgUsernames = (): string[] => [teamDesignerTgUsername()].filter(Boolean);
 
 function eqCi(a: string | null | undefined, b: string): boolean {
   return typeof a === "string" && a.toLowerCase() === b.toLowerCase();
@@ -250,7 +287,7 @@ function eqCi(a: string | null | undefined, b: string): boolean {
 export function isCastleEditor(wallet: string | null, tgUsername: string | null): boolean {
   if (isAdminWallet(wallet)) return true;
   if (wallet && CASTLE_EDITOR_WALLETS.some((w) => eqCi(wallet, w))) return true;
-  if (tgUsername && CASTLE_EDITOR_TG_USERNAMES.some((u) => eqCi(tgUsername, u))) {
+  if (tgUsername && castleEditorTgUsernames().some((u) => eqCi(tgUsername, u))) {
     return true;
   }
   return false;

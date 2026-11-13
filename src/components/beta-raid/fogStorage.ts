@@ -35,9 +35,21 @@ export function signature(store: MapStore): string {
   return `${store.n}:${g.minQ}:${g.minR}:${g.cols}:${g.rows}:${orderOf(store)}`;
 }
 
-/** Подпись порядка клеток — та же, что считает сервер для снимка. */
+/**
+ * Подпись порядка клеток — та же, что считает сервер для снимка.
+ * Запоминается на колонку q: колонки не правятся на месте (PackedEdit
+ * клонирует), а хэш 82 тыс. клеток считался на КАЖДЫЙ рендер карты
+ * (useFogSync) — до 10 мс на шаг героя на телефоне (замер 23.10.2026).
+ */
+const orders = new WeakMap<object, { r: object; n: number; hash: string }>();
 export function orderOf(store: MapStore): string {
-  return cellOrderHash(store.packed.q, store.packed.r, store.n);
+  const q = store.packed.q as unknown as object;
+  const r = store.packed.r as unknown as object;
+  const hit = orders.get(q);
+  if (hit && hit.r === r && hit.n === store.n) return hit.hash;
+  const hash = cellOrderHash(store.packed.q, store.packed.r, store.n);
+  orders.set(q, { r, n: store.n, hash });
+  return hash;
 }
 
 export function fromBase64(s: string): Uint8Array {

@@ -1,6 +1,7 @@
 // Команды фейка обычного сундука — операторы по смыслу SQL (pchest-*-sql):
 // каждый целиком, как под локом. Ответ — строки так, как их отдаёт база
 // (`[{ _row: … }]`, row_to_json).
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import {
   DUST,
   NO,
@@ -67,7 +68,8 @@ function put(o: O) {
   const fits =
     mv == null
       ? null
-      : Math.ceil(round(same + mv) / 20) - Math.ceil(same / 20) <= Math.max(10, used) - used;
+      : Math.ceil(round(same + mv) / CELL_SIZE) - Math.ceil(same / CELL_SIZE) <=
+        Math.max(10, used) - used;
   let moved = false;
   if (!prior && here && src && mv != null && mv > 0 && fits && !worn) {
     if (src.count > mv) {
@@ -118,7 +120,7 @@ function take(o: O) {
     [...pack].filter(([k]) => f.potions.has(k) === potion).map(([, s]) => s.count);
   const [items, potions] = [cellsOf(counts(false)), cellsOf(counts(true))];
   const mv = slot ? (slot.count - qty < DUST ? Math.min(slot.count, Math.max(qty, cap)) : qty) : null;
-  const d = mv == null ? 0 : Math.ceil(round(cur + mv) / 20) - Math.ceil(cur / 20);
+  const d = mv == null ? 0 : Math.ceil(round(cur + mv) / CELL_SIZE) - Math.ceil(cur / CELL_SIZE);
   const fit = o.potion
     ? potions + d <= N(o.potionCapacity)
     : items + d <= Math.max(N(o.capacity), items);

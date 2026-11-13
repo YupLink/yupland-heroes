@@ -1,0 +1,12 @@
+Opening and closing: Door, Front, Opening, A.wav by InspectorJ
+https://freesound.org/people/InspectorJ/sounds/431117/
+License: CC BY 4.0 https://creativecommons.org/licenses/by/4.0/
+Approved softened sample 08, 2026-10-24.
+Modified: highpass 85Hz, lowpass 3800Hz, compression 4:1, initial 25ms fade and gain 0.85.
+Trimmed 0.37–1.20s to remove leading/trailing silence; 5ms/30ms edge fades.
+Both actions use the same recording. Export gains 0.3125 (open) and 0.125 (close)
+compensate existing game gains 3.2 and 8, preserving equal perceived level.
+
+2026-10-24: both clips attenuated by 2/3 (-3.52 dB), as requested and approved by owner.
+
+Further owner-approved reduction: another 2/3 of current level; total 4/9 of sample level (-7.04 dB). Exported from trimmed source to avoid cumulative encoding.

@@ -4,8 +4,7 @@
 // человек видит, ЧТО ему дали и за что; раньше админское начисление выглядело
 // как внезапно изменившийся баланс без объяснений.
 //
-// Подарок ждёт 48 часов: в карточке — «сгорит через N ч», сгоревший исчезает
-// из списка сам, без перезапроса (минутный тик).
+// Срок (48 ч или бессрочно) — в карточке; сгоревший исчезает сам (минутный тик).
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,11 +13,12 @@ import { toast } from "sonner";
 import { useLang, useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
 import { giftHoursLeft, isLiveGift } from "@/lib/giftExpiry";
-import { rewardKindImage, rewardKindLabelKey } from "@/lib/rewardKinds";
+import { rewardKindLabelKey, rewardShownAmount } from "@/lib/rewardKinds";
 import { claimAllGifts, claimGift, type MyGift } from "@/server/api/gifts";
 import { ENERGY_KEY } from "@/lib/hooks/useEnergy";
 import { RESOURCES_KEY } from "@/lib/hooks/useResources";
 import { HudModal } from "./HudModal";
+import { GiftIcon } from "./GiftIcon";
 import { GIFTS_KEY } from "./useHarvest";
 
 /** Имя подарка: своё, иначе ресурс по коду («Дерево», а не безликое «Ресурс»), иначе вид. */
@@ -30,18 +30,14 @@ function giftName(g: MyGift, t: (key: string) => string): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-/** Картинка подарка: своя, иначе значок ресурса. */
-const giftImage = (g: MyGift): string | null => g.image ?? rewardKindImage(g.kind, g.refId);
-
 /** Штучное считаем «×N», меру (энергию, лайки, монеты) пишем числом. */
-const COUNTABLE = new Set(["pack", "hero", "art", "item"]);
+const COUNTABLE = new Set(["pack", "hero", "art", "item", "boss"]);
 
 /** Что обновлять после выдачи: подарком бывает что угодно, трогаем всё. */
 const TOUCHED: string[][] = [
   [...GIFTS_KEY],
   [...ENERGY_KEY],
   [...RESOURCES_KEY],
-  ["my-tickets"],
   ["my-like-balance"],
   ["my-chip-packs"],
   ["my-chip-inventory"],
@@ -51,6 +47,7 @@ const TOUCHED: string[][] = [
   // Боксы подписки ложатся в инвентарь мистических паков, счёт — в кошелёк.
   ["my-mystic-packs"],
   ["acc-balances"],
+  ["my-hero-backpack"], // босс (охрана DARAI-шахты) — в рюкзак героя
 ];
 
 /** Заметка «esub:Эксперт|Expert» (подписка) или «kit:Имя|Name» (купленный
@@ -60,6 +57,8 @@ function noteText(
   lang: string,
   t: (k: string, p?: Record<string, string>) => string,
 ) {
+  if (note === "island:") return t("island.gift_note");
+  if (note === "dmine-guard:") return t("dmine.guard_gift_note");
   const m = /^(esub|kit):(.*)$/.exec(note ?? "");
   if (!m) return note;
   const [ru, en] = m[2].split("|");
@@ -110,6 +109,7 @@ export function GiftsModal({
   const expiryLabel = (g: MyGift): string | null => {
     const h = giftHoursLeft(g.expiresAt, now);
     if (h == null) return null;
+    if (g.note?.startsWith("esub:")) return t("esub.gift_today"); // подписка — день в день
     return h > 0 ? t("gifts.expires_in", { n: h }) : t("gifts.expires_soon");
   };
 
@@ -178,7 +178,7 @@ export function GiftsModal({
       {claimedGift ? (
         <div role="status" className="space-y-4 py-3 text-center">
           <div className="text-sm font-semibold">{t("gifts.claimed_toast")}</div>
-          <p className="text-sm text-gold">{giftName(claimedGift, t)} {COUNTABLE.has(claimedGift.kind) ? `×${claimedGift.amount}` : claimedGift.amount}</p>
+          <p className="text-sm text-gold">{giftName(claimedGift, t)} {COUNTABLE.has(claimedGift.kind) ? `×${claimedGift.amount}` : rewardShownAmount(claimedGift.kind, claimedGift.amount)}</p>
           <div className="flex flex-wrap justify-center gap-2">
             {canOpenPack && <button ref={successAction} data-gift-next-action data-game-button="primary" type="button" className="min-h-11 px-4 text-sm" onClick={() => onOpenPacks?.(claimedGift)}>{t("gifts.open_pack")}</button>}
             {canViewGift && <button ref={successAction} data-gift-next-action data-game-button="primary" type="button" className="min-h-11 px-4 text-sm" onClick={() => onViewGift?.(claimedGift)}>{t(claimedGift.kind === "hero" ? "gifts.view_hero" : "gifts.view_artifact")}</button>}
@@ -197,13 +197,9 @@ export function GiftsModal({
             >
               <div
                 data-gift-icon
-                className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-secondary/40"
+                className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-secondary/40"
               >
-                {giftImage(g) ? (
-                  <img src={giftImage(g)!} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <Gift className="h-5 w-5 text-pink-300" />
-                )}
+                <GiftIcon g={g} />
               </div>
               <div data-gift-details className="min-w-0 flex-1">
                 {/* Количество пишем ВСЕГДА: «Энергия» без числа не отвечает на
@@ -212,7 +208,7 @@ export function GiftsModal({
                 <div data-gift-title className="truncate text-sm font-semibold">
                   {giftName(g, t)}{" "}
                   <span data-gift-amount className="text-gold">
-                    {COUNTABLE.has(g.kind) ? `×${g.amount}` : g.amount}
+                    {COUNTABLE.has(g.kind) ? `×${g.amount}` : rewardShownAmount(g.kind, g.amount)}
                   </span>
                 </div>
                 <div data-gift-note className="truncate text-[11px] text-muted-foreground">

@@ -1,4 +1,4 @@
-import { Check, Users, ShoppingBag, User, ArrowLeft, Search } from "lucide-react";
+import { Check, Users, UserCheck, User, ArrowLeft, Search } from "lucide-react";
 import { useState } from "react";
 import { useT, useLang } from "@/lib/i18n";
 import type { getReferralStats } from "@/server/api/user-referrals";
@@ -15,15 +15,16 @@ export function ReferralDetails({
   const totalFriends = data?.totalFriends ?? 0;
   const qualifiedFriends = data?.qualifiedFriends ?? 0;
   const referrals = data?.referrals ?? [];
-  // Match the existing grant function, which counts purchased packs.
+  // Вехи — тот же счёт, что у выдачи боксов: новые друзья (с 22.10.2026), с 05.11 — прошедшие обучение.
+  const tierCount = data?.tierProgress?.count ?? 0;
   const thresholds = data?.tierProgress?.thresholds ?? [];
-  const currentTier = thresholds.filter((n) => qualifiedFriends >= n).length;
+  const currentTier = thresholds.filter((n) => tierCount >= n).length;
   const nextThreshold = thresholds[currentTier] ?? null;
   const stats = [
     { label: ru ? "Приглашено" : "Invited", value: totalFriends, Icon: Users },
-    { label: ru ? "С паком" : "With pack", value: qualifiedFriends, Icon: ShoppingBag },
+    { label: ru ? "Засчитаны" : "Counted", value: qualifiedFriends, Icon: UserCheck },
     {
-      label: ru ? "Без пака" : "No pack",
+      label: ru ? "Ещё нет" : "Not yet",
       value: Math.max(0, totalFriends - qualifiedFriends),
       Icon: User,
     },
@@ -43,12 +44,11 @@ export function ReferralDetails({
         <section className="castle-referrals__progress">
           <div className="castle-referrals__progress-heading">
             <h3>{ru ? "Этапы приглашений" : "Invitation milestones"}</h3>
-            <span>
-              {currentTier} / {thresholds.length}
-            </span>
+            {/* Вехи без конца (каждые 15 после 15-го) — «из скольких» не пишем. */}
+            <span>{currentTier}</span>
           </div>
           <p className="castle-referrals__reward">
-            {ru ? "+1 билет за каждый этап" : "+1 ticket per milestone"}
+            {ru ? "Bonus Box за каждый этап" : "A Bonus Box per milestone"}
           </p>
           <div
             className="castle-referrals__milestones"
@@ -77,8 +77,8 @@ export function ReferralDetails({
           <p className="castle-referrals__next">
             {nextThreshold
               ? ru
-                ? `Друзей с купленным паком до следующего этапа: ${nextThreshold - qualifiedFriends}.`
-                : `${nextThreshold - qualifiedFriends} more ${nextThreshold - qualifiedFriends === 1 ? "friend" : "friends"} with a purchased pack until the next milestone.`
+                ? `Засчитанных друзей до следующего этапа: ${nextThreshold - tierCount}.`
+                : `${nextThreshold - tierCount} more counted ${nextThreshold - tierCount === 1 ? "friend" : "friends"} until the next milestone.`
               : ru
                 ? "Все пороги достигнуты"
                 : "All thresholds reached"}
@@ -125,7 +125,7 @@ function FriendRows({ referrals }: { referrals: Stats["referrals"] }) {
             </time>
             <span className={r.qualified ? "is-qualified" : ""}>
               {r.qualified && <Check aria-hidden="true" />}
-              {r.qualified ? (ru ? "С паком" : "With pack") : ru ? "Без пака" : "No pack"}
+              {r.qualified ? (ru ? "Засчитан" : "Counted") : ru ? "Ещё нет" : "Not yet"}
             </span>
           </div>
         );

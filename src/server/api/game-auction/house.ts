@@ -1,3 +1,4 @@
+import { townHallError } from "@/server/api/castle-townhall/townhall-state";
 // Аукционный дом игрока: состояние, постройка/улучшение, мои вещи для лота.
 // Правила — lib/auctionHouse.ts; выставление и снятие лота — house-lot.ts.
 import { createServerFn } from "@tanstack/react-start";
@@ -7,9 +8,10 @@ import { mcpExec } from "../../db/mcpClient";
 import { requireWallet } from "../../auth";
 import { sqlStr } from "../raid-shared";
 import { raidOwner } from "../beta-raid/owner";
-import { listFreeArtifacts } from "../beta-raid/art-stock";
+import { listAuctionArts } from "./lot-arts";
 import { resolveBackpack } from "../beta-raid/market-backpack";
 import { ensureAuctionSchema } from "./schema";
+import { assertCastleSlot } from "../castle-townhall/townhall-buy";
 import { BUSY_SLOT_SQL } from "./house-fn";
 import {
   HOUSE_MAX_LEVEL,
@@ -20,6 +22,9 @@ import {
   houseSlots,
 } from "@/lib/auctionHouse";
 import { isWalletLinked } from "@/lib/walletLinked";
+import { artLotRef } from "@/lib/auctionArtRef";
+import { artDurability } from "@/lib/hero/artWear";
+import { googleOnlyWallet } from "@/lib/auth/entryRules";
 
 export async function who(): Promise<{ wallet: string; account: string }> {
   const wallet = await requireWallet();
@@ -84,7 +89,8 @@ export const getAuctionHouse = createServerFn({ method: "GET" }).handler(async (
     feePct: level > 0 ? houseFeePct(level) : null,
     nextFeePct: level < HOUSE_MAX_LEVEL ? houseFeePct(level + 1) : null,
     /** За что можно продавать сейчас. */
-    currencies: level > 0 ? houseCurrencies(level, isWalletLinked(wallet)) : [],
+    currencies:
+      level > 0 ? houseCurrencies(level, isWalletLinked(wallet), googleOnlyWallet(wallet)) : [],
     busy,
     /** Когда освободится слот проданного лота (мс), если сейчас все заняты. */
     freeAt:
@@ -105,12 +111,17 @@ export const upgradeAuctionHouse = createServerFn({ method: "POST" })
     await ensureAuctionSchema();
     const cost = houseCost(data.fromLevel);
     if (!cost) throw new Error(`Дом уже ${HOUSE_MAX_LEVEL}-го уровня`);
+    // Постройка (0 → 1) занимает место в лимите Ратуши (§8.64).
+    if (data.fromLevel === 0) await assertCastleSlot(account);
     const { error, data: rows } = await sb.rpc("castle_auction_house_upgrade", {
       p_account: account,
       p_from: data.fromLevel,
       p_cost: cost,
       p_op: `up:${account}:${data.opId}`,
     });
+  if (error && /townhall_no_slot:/.test(String(error.message ?? ""))) {
+    throw townHallError(new Error(String(error.message)));
+  }
     if (error) throw new Error(humanHouseError(String(error.message ?? "")));
     return { level: Number((rows as Array<{ level: number }> | null)?.[0]?.level ?? 0) };
   });
@@ -153,17 +164,21 @@ export const myAuctionGoods = createServerFn({ method: "GET" }).handler(async ()
   const { wallet, account } = await who();
   const [resources, artifacts, bag] = await Promise.all([
     loadResources(account),
-    listFreeArtifacts(account),
+    listAuctionArts(account),
     sellableGoods(wallet),
   ]);
   return {
     resources,
+    // Группа — шаблон, износ и зачарование (lib/auctionArtRef): своя полоса и свой ✦.
     artifacts: artifacts.map((a) => ({
-      ref: a.templateId,
+      ref: artLotRef(a.templateId, a.wear, a.enchantPct),
       name: a.name,
       image: a.imageUrl,
       rarity: a.rarity,
       max: a.count,
+      durability: artDurability(a.wear),
+      // ✦ (§8.87): зачарованные — своей группой, с лотом зачарование уходит победителю.
+      ...(a.enchantPct != null ? { enchanted: a.count, enchantPct: a.enchantPct } : {}),
     })),
     goods: bag.goods.map((g) => ({ ref: g.stackKey, name: g.name, image: g.image, max: g.max })),
   };

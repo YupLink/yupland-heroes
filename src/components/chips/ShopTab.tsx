@@ -1,3 +1,4 @@
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
 import { TicketBalance } from "./TicketBalance";
 import { useEffect } from "react";
 import { Link } from "@tanstack/react-router";
@@ -7,7 +8,7 @@ import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { listChipPacksPublic, reconcileMyDaraiPacks } from "@/server/api/chips-pack";
 import { getMyDaraiBalance } from "@/server/api/chips-craft";
-import { getMyTickets } from "@/server/api/user-tickets";
+import { useResources } from "@/lib/hooks/useResources";
 import { PendingPackPurchaseBanner } from "./PendingPackPurchaseBanner";
 import { RecoverPackPurchase } from "./RecoverPackPurchase";
 import { ChipPackCard } from "./ChipPackCard";
@@ -40,20 +41,18 @@ export function ShopTab({
   );
 }
 function ShopTabContent() {
+  usePurchaseMusic(true);
   const t = useT();
   const packs = useQuery({
     queryKey: ["chip-packs-public"],
     queryFn: () => listChipPacksPublic(),
   });
-  const tickets = useQuery({
-    queryKey: ["my-tickets"],
-    queryFn: () => getMyTickets(),
-  });
+  const resources = useResources();
   const darai = useQuery({
     queryKey: ["my-darai-balance"],
     queryFn: () => getMyDaraiBalance(),
   });
-  const available = tickets.data?.available ?? 0;
+  const available = resources.data?.gold ?? 0;
   const availableDarai = darai.data?.available ?? 0;
 
   const qcShop = useQueryClient();
@@ -104,7 +103,7 @@ function ShopTabContent() {
         <ChipPackCard
           key={p.id}
           pack={p}
-          availableTickets={available}
+          availableGold={available}
           availableDarai={availableDarai}
         />
       ))}
@@ -112,4 +111,5 @@ function ShopTabContent() {
     </div>
   );
 }
+
 

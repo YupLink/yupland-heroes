@@ -10,9 +10,12 @@
 // ожидания — ещё пара после обещанной минуты. Без сессии сервер отдаёт пусто.
 import { useEffect, useRef } from "react";
 import { useCreditNotices } from "@/lib/hooks/useCreditNotices";
+import { onCreditWatch } from "@/lib/creditWaitBus";
 
 /** После входа проверяем ещё раз к концу обещанной минуты и разок следом. */
 const FOLLOWUP_MS = [65_000, 100_000];
+/** Новое ожидание в этой сессии (пополнение, NFT): заходы и после того, как окно закрыли. */
+const ARMED_MS = [65_000, 100_000, 160_000, 300_000];
 
 export function CreditNoticesWatcher() {
   // autoPollOnMount:false — первый заход делаем сами, чтобы узнать `waiting` и
@@ -29,6 +32,8 @@ export function CreditNoticesWatcher() {
       if (res.waiting > 0) FOLLOWUP_MS.forEach((ms) => pollLater(ms));
     });
   }, [poll, pollLater]);
+
+  useEffect(() => onCreditWatch(() => ARMED_MS.forEach((ms) => pollLater(ms))), [pollLater]);
 
   return null;
 }

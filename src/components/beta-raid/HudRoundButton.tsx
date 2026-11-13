@@ -8,7 +8,7 @@
 // прозрачном фоне. Отсюда чёрная подложка: над песком, снегом и травой тонкая
 // золотая линия иначе теряется. Второй бордюр кнопке не нужен — ободок уже
 // нарисован в самой картинке, рамка дала бы двойное кольцо.
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { cn } from "@/lib/utils";
 import { AuctionCount } from "@/components/chips/auctions/AuctionCount";
 
@@ -21,6 +21,7 @@ export function HudRoundButton({
   pulse = false,
   hud,
   onClick,
+  buttonRef,
 }: {
   /** Путь к картинке значка — берётся из HUD_ART (src/lib/gameArt.ts). */
   art?: string;
@@ -36,10 +37,12 @@ export function HudRoundButton({
   /** Метка для подсветки подсказок (data-hud), например «harvest». */
   hud?: string;
   onClick: () => void;
+  buttonRef?: Ref<HTMLButtonElement>;
 }) {
   const n = Math.max(0, Math.floor(count));
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={onClick}
       data-hud={hud}
@@ -74,3 +77,4 @@ export function HudRoundButton({
     </button>
   );
 }
+

@@ -1,10 +1,13 @@
 // Выбранный маршрут — стрелки от гекса к гексу (та же пиксельная стрелка,
 // что лежит в public/route-arrow.png, повёрнутая по направлению шага).
 // Рисуется до подтверждения: игрок видит, каким путём пойдёт герой.
+// Докуда хватает энергии — зелёные, дальше красные (pathReach, 25.10.2026);
+// красная — та же стрелка беглеца (runner-arrow).
 import { R } from "./hexGeometry";
 import type { DrawScene } from "./betaCanvasScene";
 
 const ROUTE = "#46d160";
+const SHORT = "#d04646";
 const HEAD = R * 0.3;
 
 /** Картинка стрелки между клетками: середина отрезка, поворот по ходу. */
@@ -34,6 +37,7 @@ function arrow(
   g: CanvasRenderingContext2D,
   from: { x: number; y: number },
   to: { x: number; y: number },
+  color: string,
 ): void {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
@@ -65,8 +69,8 @@ function arrow(
   g.fill();
 
   // Основная стрелка поверх тени.
-  g.strokeStyle = ROUTE;
-  g.fillStyle = ROUTE;
+  g.strokeStyle = color;
+  g.fillStyle = color;
   g.beginPath();
   g.moveTo(sx, sy);
   g.lineTo(ex, ey);
@@ -83,6 +87,8 @@ export function drawRoute(
   scene: DrawScene,
   from: { q: number; r: number },
   path: Array<{ q: number; r: number }>,
+  /** Сколько первых шагов оплачено энергией; нет — весь путь зелёный. */
+  reach = path.length,
 ): void {
   if (path.length === 0) return;
   const { g, toPixel } = scene;
@@ -94,15 +100,17 @@ export function drawRoute(
   g.lineJoin = "round";
   // shadowBlur НЕ используем: тень встроена в спрайт или рисуется вручную (arrow).
 
-  const img = scene.images.get("arrow");
-  const ready = !!img && img.complete && img.naturalWidth > 0;
+  const ok = (img: HTMLImageElement | undefined) => !!img && img.complete && img.naturalWidth > 0;
+  const green = scene.images.get("arrow");
+  const red = scene.images.get("runner-arrow");
 
   let prev = toPixel(from.q, from.r);
-  for (const step of path) {
+  path.forEach((step, i) => {
     const next = toPixel(step.q, step.r);
-    if (ready) arrowImage(g, img!, prev, next);
-    else arrow(g, prev, next);
+    const img = i < reach ? green : red;
+    if (ok(img)) arrowImage(g, img!, prev, next);
+    else arrow(g, prev, next, i < reach ? ROUTE : SHORT);
     prev = next;
-  }
+  });
   g.restore();
 }

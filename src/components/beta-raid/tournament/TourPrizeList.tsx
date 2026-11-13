@@ -11,6 +11,7 @@ import type { TourBand, TourPrize } from "@/lib/tournament/types";
 import { ItemInfoModal } from "../market/ItemInfoModal";
 import { bandsByPlace, placesText, prizeText } from "./tourView";
 
+import { thumb } from "@/lib/image";
 const ITEM_KINDS = new Set<TourPrize["kind"]>(["art", "hero", "item"]);
 
 /** id шаблона, если приз — конкретный предмет; «артефакт редкости» — нет. */
@@ -49,7 +50,7 @@ export function TourPrizeList({ bands }: { bands: readonly TourBand[] }) {
                     >
                       {p.image && (
                         <img
-                          src={p.image}
+                          src={thumb(p.image, 64)}
                           alt=""
                           className="h-8 w-8 shrink-0 rounded-md object-cover"
                         />
@@ -65,7 +66,7 @@ export function TourPrizeList({ bands }: { bands: readonly TourBand[] }) {
                     className="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary/50 px-1.5 py-0.5 text-[11px]"
                   >
                     {p.image && (
-                      <img src={p.image} alt="" className="h-4 w-4 shrink-0 rounded object-cover" />
+                      <img src={thumb(p.image, 64)} alt="" className="h-4 w-4 shrink-0 rounded object-cover" />
                     )}
                     <span className="truncate">{text}</span>
                   </span>

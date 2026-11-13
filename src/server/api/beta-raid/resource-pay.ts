@@ -1,7 +1,9 @@
 // Плата НЕСКОЛЬКИМИ ресурсами разом — общая для портала, стройки и записи на турнир.
 //
 // Ресурсы те же, что в маркете (золото, камень, дерево, кристаллы, лайки,
-// билеты, энергия, любой токен) — списываются теми же проверенными путями.
+// энергия, любой токен) — списываются теми же проверенными путями. Строка «в
+// билетах» с 20.10.2026 платится золотом ×500 (§8.61, lib/ticketPriceGold) под
+// тем же ключом строки — разбор зависших записей турнира ищет его в res_ledger.
 // Строки цены берутся ВСЕ разом: «100 золота и 5 кристаллов» это одна цена, а
 // не выбор из двух.
 //
@@ -9,7 +11,7 @@
 // списана — без отката игрок платил бы за проход, которого не было.
 import { sb } from "../../db/pg";
 import { spendLikes } from "../heroes-shared";
-import { moveTickets, ticketMoveApplied } from "../tickets-ledger";
+import { ticketRowAsGold } from "@/lib/ticketPriceGold";
 import { payFromAccount } from "../currency/spend";
 import { accAccountId } from "../currency/move";
 import type { PortalPrice as ResourcePrice } from "@/lib/portal";
@@ -29,11 +31,12 @@ export type PayKinds = { kind?: string; refundKind?: string; keyed?: boolean };
 async function spendOne(
   wallet: string,
   account: string | null,
-  p: ResourcePrice,
+  row: ResourcePrice,
   ref: string,
   kind = "portal",
   keyed = false,
 ): Promise<void> {
+  const p = ticketRowAsGold(row);
   const res = p.resource;
   const amount = Number(p.amount) || 0;
   if (amount <= 0) return;
@@ -78,15 +81,6 @@ async function spendOne(
     return;
   }
   if (res === "likes") return void (await spendLikes(wallet, amount, "portal_or_build", ref));
-  if (res === "tickets") {
-    // Своего вида у прохода нет: для леджера это услуга постройки. applied=false —
-    // ключ уже проведён (слепой повтор моста), а не нехватка: её ticket_move бросает.
-    const r = await moveTickets({ wallet, delta: -amount, kind: "building", ref });
-    if (!r.applied && !(await ticketMoveApplied("building", ref).catch(() => false))) {
-      throw new Error("Не хватает билетов");
-    }
-    return;
-  }
   if (res === "energy") {
     if (keyed)
       return void (await (await import("./pay-once")).spendEnergyOnce(wallet, amount, ref));

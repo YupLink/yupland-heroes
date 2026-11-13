@@ -35,8 +35,8 @@ vi.mock("@/server/api/tournament/tour-note", () => ({
     void b.points.push(...(times ?? [])),
 }));
 vi.mock("@/server/api/beta-raid/fishing/fishing-bonus", () => ({
-  fishBonusOf: async () => b.plan.bonusPct,
-  fishBonusPlan: async () => b.plan,
+  fishBonusOf: async () => ({ bonusPct: b.plan.bonusPct, addPct: 0 }),
+  fishBonusPlan: async () => ({ ...b.plan, addPct: 0 }),
 }));
 
 const fish = fishKit(await import("./fishing"));

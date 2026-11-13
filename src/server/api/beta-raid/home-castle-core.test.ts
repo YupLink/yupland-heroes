@@ -24,7 +24,8 @@ beforeEach(() => {
 
 describe("setHome", () => {
   const place = { kind: "town" as const, q: 3, r: 4, name: "Город" };
-  it("первый выбор — без списания билетов", async () => {
+  it("первый выбор — без списания золота", async () => {
+    s.answers = [[{ moves: 1 }]];
     await core.setHome({
       account: "acc_1",
       wallet: "w",
@@ -33,31 +34,50 @@ describe("setHome", () => {
       cost: 0,
       opId: "op_12345678",
     });
+    expect(s.sql[0]).not.toContain("res_move");
     expect(s.sql[0]).not.toContain("ticket_move");
     expect(s.sql[0]).toContain("ON CONFLICT (account_id)");
   });
-  it("переселение — 5 билетов тем же запросом, ключ операции от нажатия", async () => {
+  it("переселение — 2 500 золота (5 билетов × 500) тем же запросом, ключ от нажатия", async () => {
+    s.answers = [[{ moves: 2 }]];
     await core.setHome({
       account: "acc_1",
       wallet: "w",
       mapId: "m",
       place,
-      cost: 5,
+      cost: core.HOME_MOVE_COST,
       opId: "op_12345678",
     });
+    expect(core.HOME_MOVE_COST).toBe(2500);
     expect(s.sql[0]).toContain(
-      "yuplink.ticket_move('acc_1', -5, 'home_castle', 'home:op_12345678', 'w')",
+      "yuplink.res_move('acc_1', 'gold', -2500, 'home_castle', 'home:op_12345678')",
     );
+    expect(s.sql[0]).not.toContain("ticket_move");
     // Оплата — подзапрос самой вставки: вложенный WITH с INSERT база отвергает
     // внутри обёртки mcpExec (09.10.2026).
     expect(s.sql[0]).toContain(") pay");
     expect(s.sql[0]).not.toMatch(/^\s*WITH/);
     expect(s.sql[0]).toContain("RETURNING moves");
+    // Строка вставляется только при проведённой оплате.
+    expect(s.sql[0]).toContain("WHERE pay.applied");
+  });
+  it("ключ нажатия уже проведён (applied=false, 0 строк) — отказ, замок не меняется", async () => {
+    s.answers = [[]];
+    await expect(
+      core.setHome({
+        account: "acc_1",
+        wallet: "w",
+        mapId: "m",
+        place,
+        cost: core.HOME_MOVE_COST,
+        opId: "op_12345678",
+      }),
+    ).rejects.toThrow("err.op_reused");
   });
 });
 
 describe("homeMoveCost", () => {
-  it("ни разу не выбирал — 0, выбирал — 5", async () => {
+  it("ни разу не выбирал — 0, выбирал — 2 500 золота", async () => {
     s.answers = [[]];
     expect(await core.homeMoveCost("acc_1")).toBe(0);
     s.answers = [[{ x: 1 }]];

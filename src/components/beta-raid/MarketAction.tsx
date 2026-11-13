@@ -1,3 +1,4 @@
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
 // Витрина маркета глазами игрока. У клетки ДВЕ независимые витрины, между
 // которыми переключается тумблер сверху:
 //   «Купить»  — магазин продаёт: игрок платит цену, получает товар (buyMarketItem);
@@ -8,26 +9,31 @@
 // Одна кнопка внизу проводит ВСЮ корзину: каждая позиция уходит атомарным
 // server-fn (деньги→товар→откат), корзина обходит их по очереди и сводит итог
 // (useMarketCheckout).
-import { useMemo, useState } from "react";
-import { starsForDarai } from "@/lib/starsForDarai";
-import { Loader2, ShoppingCart } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { useContext, useMemo, useState } from "react";
+import { Loader2, ShoppingCart, X } from "lucide-react";
+import { useLang, useT } from "@/lib/i18n";
 import type { MarketItemView } from "@/lib/buildingEffect";
 import type { MarketSide } from "@/lib/marketItem";
 import { MarketItemCard } from "./market/MarketItemCard";
 import { MarketSideTabs } from "./market/MarketSideTabs";
 import { MarketShopBanner } from "./market/MarketShopBanner";
-import { cartCost, costKey, type CostEntry } from "./market/cartCost";
-import { MarketCartGive } from "./market/MarketCartGive";
-import { usePlayerFunds } from "./market/usePlayerFunds";
+import { TrainingSalePanel } from "./island/TrainingSalePanel";
+import { cartCost } from "./market/cartCost";
+import {goodEntry} from "./market/exchange";
+import {GridViewToggle,useGridColumns} from "./market/MarketGridToggle";
+import {MarketSecondaryAction} from "./market/MarketSecondaryAction";
+import {MarketTradeSummary} from "./market/MarketTradeSummary";
+import "./market/market-player.css";
+import { useMarketShort } from "./market/useMarketShort";
 import { useMarketCheckout } from "./market/useMarketCheckout";
 import { artPayNeed, artPickMax } from "./market/artPay";
 import type { ArtChoice } from "./market/MarketArtPick";
-import { resPriceText } from "./market/priceLabel";
 import { numText } from "./market/num";
 import { sortMarketItems } from "./market/marketSort";
 import { useMarketMax } from "./market/useMarketMax";
-import { cityCartTotals } from "./market/townQuote";
+import {useSellInventory} from './market/useSellInventory';
+import {hasOwnedStock} from './market/sellInventory';
+import {cityCartTotals} from './market/townQuote';
 
 export function MarketAction({
   q,
@@ -55,11 +61,16 @@ export function MarketAction({
   shopSpecs?: string[] | null;
   /** Проходит ли ВЫБРАННЫЙ герой фильтр витрины. */
   heroFits?: boolean;
-  /** Лавка голодающего города: только приём еды (town-shop). */
+  /** Лавка голодающего города: приём еды; на острове ещё продажа ресурсов портала (town-shop). */
   townStarving?: boolean;
   onDone: () => void;
 }) {
   const t = useT();
+  const secondaryAction = useContext(MarketSecondaryAction);
+  const lang = useLang(),en=lang==='en';
+  const {columns,cycle}=useGridColumns();
+  const [search,setSearch]=useState('');
+  const [ownedOnly,setOwnedOnly]=useState(false);
   const items = useMemo(() => (Array.isArray(itemsRaw) ? itemsRaw : []), [itemsRaw]);
   const shopRaces = Array.isArray(shopRacesRaw) ? shopRacesRaw : [];
   const shopSpecs = Array.isArray(shopSpecsRaw) ? shopSpecsRaw : [];
@@ -89,7 +100,14 @@ export function MarketAction({
       : sideRaw === "buy" && buyItems.length === 0 && sellItems.length > 0
         ? "sell"
         : sideRaw;
+  usePurchaseMusic(side === "buy");
   const shown = side === "sell" ? sellItems : buyItems;
+  const inventory = useSellInventory(sellItems, side === 'sell');
+  const searched=shown.filter(it=>goodEntry(it,t,lang).label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const filtered=searched.filter(it=>side!=='sell'||!ownedOnly||hasOwnedStock(inventory.get(it)));
+  const unknownStock=side==='sell'?searched.filter(it=>{const stock=inventory.get(it);return stock.loading||stock.retryable;}):[];
+  const loadingStock=unknownStock.some(it=>inventory.get(it).loading);
+  const retryStock=unknownStock.some(it=>inventory.get(it).retryable);
   // Обе стороны непусты — есть между чем переключаться.
   const bothSides = buyItems.length > 0 && sellItems.length > 0;
   const clearCart = () => {
@@ -100,74 +118,79 @@ export function MarketAction({
   // разные сделки, тащить общий счёт из одной в другую нельзя.
   const setSide = (s: MarketSide) => {
     clearCart();
+    setSearch('');
+    setOwnedOnly(false);
     setSideRaw(s);
   };
 
   const lines = shown.map((it) => ({ it, qty: cart[it.id] ?? 0 })).filter((l) => l.qty > 0);
   // Количества целые — складываются без дробных хвостов.
+  const hiddenSelected=lines.filter(({it})=>!filtered.some(item=>item.id===it.id)).length;
   const totalUnits = lines.reduce((s, l) => s + l.qty, 0);
   // Позиция «любой арт редкости X» без выбранного артефакта — сделку не пускаем:
   // сервер иначе взял бы самый старый свободный, а это лотерея, а не сделка.
   // Проверяем ОБЕ витрины: в скупке такой артефакт — товар, в покупке — цена.
-  const needPick = lines.some((l) => artPayNeed(l.it) != null && !picks[l.it.id]);
+  // У скупки «Любой … герой» выбирают героя — кнопка так и подписана.
+  const pickWhat = lines.map((l) => (picks[l.it.id] ? null : artPayNeed(l.it)?.what)).find(Boolean);
+  const needPick = pickWhat != null;
 
-  // Чем игрок располагает — подсветить нехватку и не пустить пустую сделку.
-  const have = usePlayerFunds();
+  // Чего не хватает (marketShort): строки цены красным — на плитке и в
+  // «Передашь», — и кнопка гаснет. Предметная цена сверяется с рюкзаком.
+  const shortOf = useMarketShort();
   // Потолок кнопки «Макс» — на ОБЕИХ витринах: в скупке по товару на руках,
   // в покупке по деньгам под цену.
   const maxFor = useMarketMax(items);
 
   const costList = cartCost(lines);
-  // Баланс, который ещё не приехал (null), — это НЕ «не хватает»: пока кэш
-  // прогревается, витрина молчит, а отказать всё равно есть кому — серверу.
-  const short = (c: CostEntry): boolean => {
-    // DARAI звездочника, которой не хватает, списывается звёздами — их и сверяем.
-    const stars = c.resource === "token" && c.token === "Darai" ? starsForDarai(c.need) : null;
-    const n = stars != null ? have("token", "STARS") : have(c.resource, c.token);
-    return n != null && n < (stars ?? c.need);
-  };
-  const enough = !costList.some(short);
+  // Город: та же сумма по кривой, что в итоге, — плитка делит её на штуки (средняя «/шт»).
+  const cityTotals = cityCartTotals(lines);
+  // Неприехавший баланс — НЕ «не хватает»: отказать всё равно есть кому — серверу.
+  const short = shortOf(costList);
+  const enough = short.size === 0;
 
   const checkout = useMarketCheckout({ q, r, side, lines, picks, reset: clearCart, onDone });
 
-  // Продажа лавке города: сколько золота придёт по кривой ратуши за всю корзину.
-  const cityTotals = cityCartTotals(lines);
-  const cityGets = lines.reduce(
-    (s, l) => s + (l.it.side === "sell" ? (cityTotals.get(l.it.id) ?? 0) : 0),
-    0,
-  );
   const starvingNote = townStarving ? (
-    <div className="mb-2 rounded-xl border border-destructive/50 bg-destructive/10 px-3 py-2 text-center text-[11px] font-bold text-destructive">
-      {t("town.shop_starving")}
-    </div>
+    <div className="mb-2 rounded-xl border border-destructive/50 bg-destructive/10 px-3 py-2 text-center text-[11px] font-bold text-destructive">{t(items.some((i) => i.side !== "sell") ? 'town.shop_starving_portal' : 'town.shop_starving')}</div>
   ) : null;
-
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-border/60 bg-secondary/20 p-3 text-center text-[12px] text-muted-foreground">
-        {starvingNote ?? t("market.empty")}
-      </div>
+      <div className="raid-market"><div className="raid-market-content"><div className="raid-market-empty">{starvingNote ?? t("market.empty")}</div></div>{secondaryAction&&<div className="raid-market-cart is-empty" style={{gridTemplateRows:"auto"}}><div className="raid-market-actions"><div className="raid-market-secondary">{secondaryAction}</div></div></div>}</div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-secondary/20 p-2.5">
+    <div className="raid-market">
       {starvingNote}
+      <TrainingSalePanel />
       <MarketShopBanner races={shopRaces} specs={shopSpecs} heroFits={heroFits} />
 
       {/* Тумблер витрин. Показываем, только когда есть обе: одну сторону
           переключать не с чем. */}
-      {bothSides && <MarketSideTabs side={side} onSide={setSide} />}
+      <div className="raid-market-sticky">
+      {bothSides && <div className="raid-market-sides"><MarketSideTabs side={side} onSide={setSide} /></div>}
 
-      <div className="grid grid-cols-3 gap-2">
-        {shown.map((it) => (
+      <div className="raid-market-find">
+      <div className="raid-market-search"><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder={en?'Search by name':'Поиск по названию'} aria-label={en?'Search goods by name':'Поиск товаров по названию'}/>{search&&<button type="button" aria-label={en?'Clear search':'Очистить поиск'} onClick={()=>setSearch('')}>×</button>}</div>
+      {side==='sell'&&<label className="raid-market-owned-filter"><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)}/>{en?'I own':'У меня есть'}</label>}
+      <GridViewToggle columns={columns} onClick={cycle} en={en}/><button type="button" className="raid-market-close" aria-label={t('common.close')} onClick={onDone}><X size={16}/></button>
+      </div>
+      {side==='sell'&&unknownStock.length>0&&<div className="raid-market-stock-status" role="status">{loadingStock?(en?'Checking your items…':'Проверяем твои товары…'):(en?'Could not check all your items.':'Не удалось проверить все твои товары.')}{!loadingStock&&retryStock&&<button type="button" onClick={inventory.retry}>{en?'Retry':'Повторить'}</button>}</div>}
+      {hiddenSelected>0&&<div className="raid-market-hidden-selected">{en?`Selected outside this list: ${hiddenSelected}`:`Выбрано вне списка: ${hiddenSelected}`} <button type="button" onClick={()=>{setSearch('');setOwnedOnly(false);}}>{en?'Show':'Показать'}</button></div>}
+      </div>
+      <div className="raid-market-content"><div className="raid-market-grid" data-columns={columns}>
+        {filtered.map((it) => (
           <MarketItemCard
             key={it.id}
             it={it}
+            owned={side==='sell'?inventory.get(it):undefined}
             qty={cart[it.id] ?? 0}
+            cityTotal={cityTotals.get(it.id)}
             onQty={(n) => setCart((c) => ({ ...c, [it.id]: n }))}
             pick={picks[it.id] ?? null}
             maxAffordable={maxFor(it, picks[it.id]?.count ?? null)}
+            buyCap={side === "buy" ? maxFor(it, picks[it.id]?.count ?? null, false) : null}
+            short={side === "buy" ? shortOf(cartCost([{ it, qty: Math.max(1, cart[it.id] ?? 0) }])) : undefined}
             onPick={(a) => {
               setPicks((p) => ({ ...p, [it.id]: a }));
               // Свободных у нового шаблона может быть меньше, чем уже набрано —
@@ -180,47 +203,16 @@ export function MarketAction({
         ))}
       </div>
 
-      {/* Корзина: одна кнопка ПОД витриной проводит всё выбранное. Не липкая —
-          раньше `sticky bottom-0` держал её поверх, и товары проезжали под
-          полупрозрачной кнопкой: и криво, и мешало. Теперь она просто в конце
-          списка, ничего под ней не скроллится. */}
-      <div className="mt-2 space-y-1.5 border-t border-border/60 pt-2">
-        {/* Что спишется. Не хватает — красным, кнопка блокируется. */}
-        {side === "sell" && <MarketCartGive lines={lines} />}
-        {side === "sell" && cityGets > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase text-muted-foreground">
-              {t("market.will_get")}
-            </span>
-            <span className="rounded-full border border-gold/50 bg-gold/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-gold">
-              {resPriceText(t, cityGets, "gold", null)}
-            </span>
-          </div>
-        )}
-        {costList.length > 0 && side !== "sell" && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase text-muted-foreground">
-              {t("market.will_spend")}
-            </span>
-            {costList.map((c) => (
-              <span
-                key={costKey(c.resource, c.token)}
-                className={`rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums ${
-                  short(c)
-                    ? "border-destructive/50 bg-destructive/10 text-destructive"
-                    : "border-border bg-background/60 text-foreground"
-                }`}
-              >
-                {resPriceText(t, c.need, c.resource, c.token, c.name)}
-              </span>
-            ))}
-          </div>
-        )}
+      {!filtered.length&&!(ownedOnly&&unknownStock.length>0)&&<p className="raid-market-empty" role="status">{side==='sell'&&ownedOnly&&!search.trim()?(en?'No matching items found in your backpack':'В рюкзаке не найдены подходящие товары'):(en?'No matching goods':'Ничего не найдено')}</p>}</div>
+      <div className={`raid-market-cart ${lines.length>=2?'is-multiple':''}`}>
+        <MarketTradeSummary lines={lines} costs={costList} side={side} short={short}/>
+        <div className="raid-market-actions" data-secondary={secondaryAction || totalUnits>0 ? "" : undefined}>
+        {totalUnits>0 ? <div className="raid-market-secondary"><button type="button" className="raid-market-cancel flex w-full items-center justify-center disabled:opacity-50" disabled={checkout.isPending} title={en?'Clear selected items':'Сбросить выбранные товары'} onClick={clearCart}>{en?'Cancel':'Отмена'}</button></div> : secondaryAction && <div className="raid-market-secondary">{secondaryAction}</div>}
         <button
           type="button"
           onClick={() => checkout.mutate()}
           disabled={totalUnits === 0 || !enough || needPick || checkout.isPending}
-          className="flex w-full items-center justify-center gap-1.5 rounded-2xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-50"
+          className="raid-market-checkout"
         >
           {checkout.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -230,14 +222,19 @@ export function MarketAction({
           {totalUnits === 0
             ? t("market.cart_pick")
             : needPick
-              ? t("market.art_pick")
+              ? t(pickWhat === "hero" ? "market.hero_pick" : "market.art_pick")
               : !enough
                 ? t("market.not_enough")
                 : t(side === "sell" ? "market.cart_sell" : "market.cart_buy", {
                     n: numText(totalUnits),
                   })}
         </button>
+        </div>
       </div>
     </div>
   );
 }
+
+
+
+

@@ -1,11 +1,10 @@
-// Типы эффектов построек: что постройка отдаёт клиенту (BuildingExtra) и из чего
-// складывается цена услуги. Вынесены из buildingEffect.ts, чтобы и модуль логики,
-// и его потребители оставались в лимите ≤250 строк. buildingEffect.ts их
-// ре-экспортит, поэтому внешние импорты `@/lib/buildingEffect` не меняются.
+// Типы эффектов построек (BuildingExtra) и цены услуги — отдельно от buildingEffect.ts ради
+// лимита ≤250 строк; buildingEffect.ts их ре-экспортит, импорты `@/lib/buildingEffect` те же.
 import type { MarketItemView } from "./marketItemView";
 import type { SpellbookExtra } from "./spellbookExtra";
 import type { MineExtra } from "./mineExtra";
 import type { OblivionExtra } from "./oblivionConfig";
+import type { ArtGenExtra } from "./artGen/artGenConfig";
 import type { TownHallExtra } from "./townHallView";
 import type { PortalPrice } from "./portal";
 import type { FieldReward } from "./fieldConfig";
@@ -39,9 +38,14 @@ export type BuildingEffect =
   | "chambers"
   // ТУРНИР: окно с таблицами турниров (lib/tournament). Админ ставит на любую постройку.
   | "tournament"
-  // КАЗИНО: слот «Раскопки» на золото (lib/slot, server/api/slot). По имени
-  // «Казино» включается само.
+  // КАЗИНО: слот «Раскопки» на золото (lib/slot, server/api/slot); по имени «Казино» — само.
   | "casino"
+  | "buckwheat" // «Корона гречневого королевства» на золото (server/api/buckwheat)
+  // ЗАЧАРОВАНИЕ: заклинания на артефакты (lib/enchant); героев — обряды (lib/enchant/heroRite).
+  | "enchant"
+  | "hero_enchant"
+  | "building_shop" // ПРОДАЖА ПОСТРОЕК: товар — постройка под установку (lib/buildingSale)
+  | "art_gen" // ГЕНЕРАТОР АРТЕФАКТОВ: арт по редкости и словам (lib/artGen, §8.122)
   | null;
 
 /** Чем платят за услугу постройки. Энергия — только у дерева уровней. */
@@ -180,10 +184,8 @@ export type BuildingExtra =
       /** Достроен ли до последнего тира. Пока нет — окно скажет «строится». */
       built: boolean;
     }
-  // Турнир: только вход в окно — плашки и таблицы отдают ручки tour-read.ts.
-  | { kind: "tournament" }
-  // Казино: вход в слот на золото на весь экран.
-  | { kind: "casino" }
+  // Только вход (ручки окна свои): турнир, казино, гречка, зачарование артов и героев.
+  | { kind: "tournament" | "casino" | "buckwheat" | "enchant" | "hero_enchant" }
   | {
       kind: "boost";
       /** Что даёт алтарь: у одного может быть несколько прибавок. */
@@ -216,9 +218,10 @@ export type BuildingExtra =
       reasonKey: string | null;
       reasonParams?: Record<string, string | number>;
     }
-  // Столб заклинаний и «Забвение» — своими модулями: союз на пределе 250 строк.
+  // Столб заклинаний, «Забвение», генератор — своими модулями: союз на пределе 250 строк.
   | SpellbookExtra
   | OblivionExtra
+  | ArtGenExtra
   | TownHallExtra
   | {
       kind: "market";
@@ -244,4 +247,4 @@ export type BuildingExtra =
 // отсюда: потребители берут его из `@/lib/buildingEffect`, как и раньше.
 export type { MarketItemView } from "./marketItemView";
 export type { SpellbookExtra } from "./spellbookExtra";
-export type { MineExtra, MineResource } from "./mineExtra";
+export type { MineExtra, MineResource, MineV2View } from "./mineExtra";

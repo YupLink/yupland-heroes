@@ -10,7 +10,12 @@ import type { MapStore } from "@/components/beta-raid/mapStore";
 
 type Call = [string, ...unknown[]];
 
-function fakeScene(o: { scale: number; visible: number[]; revealAll?: boolean; unseen?: number[] }) {
+function fakeScene(o: {
+  scale: number;
+  visible: number[];
+  revealAll?: boolean;
+  unseen?: number[];
+}) {
   const calls: Call[] = [];
   const g = new Proxy(
     {},
@@ -39,6 +44,7 @@ function fakeScene(o: { scale: number; visible: number[]; revealAll?: boolean; u
     images: new Map([
       ["loot-bag", img],
       ["loot-mound", { ...img, naturalHeight: 56, naturalWidth: 112 }],
+      ["loot-fish", { ...img, naturalHeight: 216, naturalWidth: 256 }],
     ]),
     bucket: 1,
     sprites: {
@@ -94,6 +100,18 @@ describe("drawLootBags", () => {
     drawLootBags(scene, store, { "3,3": { n: 1, buried: false } });
     expect(drawn).toEqual(["loot-bag"]);
     expect(calls.some((c) => /shadow|filter/i.test(String(c[0])))).toBe(false);
+  });
+
+  it("рыба от красного динамита — спрайт рыбы, издалека синий квадрат", () => {
+    const near = fakeScene({ scale: 1, visible: [0, 1] });
+    drawLootBags(near.scene, store, {
+      "1,1": { n: 1, buried: false, fish: true },
+      "2,2": { n: 1, buried: false },
+    });
+    expect(near.drawn).toEqual(["loot-fish", "loot-bag"]);
+    const far = fakeScene({ scale: 0.4, visible: [0] });
+    drawLootBags(far.scene, store, { "1,1": { n: 1, buried: false, fish: true } });
+    expect(far.calls.filter((c) => c[0] === "set:fillStyle").map((c) => c[1])).toEqual(["#3d6f9e"]);
   });
 
   it("слоя нет — ничего не делаем", () => {

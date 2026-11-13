@@ -20,6 +20,8 @@ export async function portalExtra(opts: {
   standingHere: boolean;
   /** Портал острова: ачивки не готовы — сколько из 8 готово (§8.57); null — пускает. */
   gateDone?: number | null;
+  /** Демо-остров (demo-island): ни к чему не прикреплён — выходов нет. */
+  demo?: boolean;
 }): Promise<BuildingExtra> {
   const cfg = portalConfig(opts.cellConfig);
   // Комната — на этаже назначения (пусто — на своём): имя и выходы оттуда.
@@ -30,7 +32,7 @@ export async function portalExtra(opts: {
   const island = isIslandMapId(opts.mapId);
   const exits =
     door || island ? [] : await portalExits(room, { mapId: opts.mapId, q: opts.q, r: opts.r });
-  const exitCount = island ? 1 : exits.length;
+  const exitCount = opts.demo ? 0 : island ? 1 : exits.length;
   const levelOk = heroLevelFits(cfg, opts.heroLevel);
 
   // Причины отказа перечислены сверху вниз по важности: недостроенный портал
@@ -38,7 +40,7 @@ export async function portalExtra(opts: {
   // У двери кнопка делает обычный ШАГ на её клетку — плату берёт сам шаг, и
   // второго списания быть не может. Поэтому «нет второго портала» её не
   // касается: дверь никуда и не ведёт.
-  const gated = island && opts.gateDone != null;
+  const gated = island && !opts.demo && opts.gateDone != null;
   const reasonKey = !opts.built
     ? "braid.portal_unfinished"
     : gated

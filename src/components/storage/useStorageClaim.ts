@@ -142,7 +142,9 @@ export function useStorageClaim() {
       toast.success(t("storage.done", { n: formatYocto(fresh.claimable) }));
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
-      if (m === "PIN_REQUIRED" || m.includes("Неверный PIN")) {
+      if (m === "APP_PWD_SETUP") {
+        toast.error(t("wvault.need_setup"));
+      } else if (m === "PIN_REQUIRED" || m.includes("Неверный PIN")) {
         setNeedPin(true);
         toast.error(t("storage.pin"));
       } else if (m === "APP_PWD_REQUIRED" || m === "APP_LOCKED") {

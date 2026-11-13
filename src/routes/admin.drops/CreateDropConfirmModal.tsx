@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { Sparkles, Plus, Loader2 } from "lucide-react";
+import { goldFromTicketCost } from "./goldCost";
 
 export function CreateDropConfirmModal({
   summary,
@@ -57,7 +58,7 @@ export function CreateDropConfirmModal({
                 <div className="rounded-md border border-border bg-secondary/20 p-2">
                   <div className="text-[10px] uppercase text-muted-foreground">Цена клейма</div>
                   <div className="mt-0.5 font-medium">
-                    {summary.freeClaim ? "Бесплатно" : `${summary.ticketCost} билет${summary.ticketCost === 1 ? "" : summary.ticketCost < 5 ? "а" : "ов"}`}
+                    {summary.freeClaim ? "Бесплатно" : `${goldFromTicketCost(summary.ticketCost)} золота`}
                   </div>
                 </div>
               </div>

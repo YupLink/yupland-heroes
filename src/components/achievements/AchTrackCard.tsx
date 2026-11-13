@@ -26,6 +26,9 @@ export function AchTrackCard({
   const target = goal ?? v.target;
   const pct = goal ? Math.min(100, Math.round((count / goal) * 100)) : v.pct;
   const done = goal != null && count >= goal;
+  // Доля с друзей — итогом «14 % с друзей», а не «+14».
+  const gives = (n: number) =>
+    v.stat === "refpct" ? t("ach.gives_pct", { n }) : t("ach.gives", { n, stat });
   return (
     <div
       className={`ach-card${compact ? " ach-card--compact" : ""}${done ? " is-done" : ""}`}
@@ -52,9 +55,7 @@ export function AchTrackCard({
         </span>
         <span className="ach-card__foot">
           <span>{target == null ? t("ach.maxed") : `${Math.min(count, target)} / ${target}`}</span>
-          {!compact && v.bonus > 0 && (
-            <span className="ach-card__bonus">{t("ach.gives", { n: v.bonus, stat })}</span>
-          )}
+          {!compact && v.bonus > 0 && <span className="ach-card__bonus">{gives(v.bonus)}</span>}
         </span>
         {!compact && (
           <ol className="ach-ladder">
@@ -62,11 +63,12 @@ export function AchTrackCard({
               <li key={s.rarity} data-rarity={s.rarity} className={s.done ? "is-on" : undefined}>
                 <span>{t(`ach.rarity.${s.rarity}`)}</span>
                 <b>{s.target}</b>
-                <em>{t("ach.gives", { n: s.bonus, stat })}</em>
+                <em>{gives(s.bonus)}</em>
               </li>
             ))}
           </ol>
         )}
+        {!compact && !v.active && <small className="ach-card__how">{t("ach.bonus_off")}</small>}
         {!compact && <small className="ach-card__how">{t(`ach.track.${id}.how`)}</small>}
       </span>
     </div>

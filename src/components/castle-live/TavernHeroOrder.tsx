@@ -1,12 +1,26 @@
 import "./tavern-hero-order.css";
 import { useEffect, useRef, useState } from "react";
-import { Check, Pencil, X } from "lucide-react";
+import { Bookmark, Check, Columns2, Columns3, ListFilter, Pencil, Rows2, X } from "lucide-react";
+import { RACES, metaLabel } from "@/components/heroMeta";
+import { normalizeRace } from "@/lib/hero/heroStatSources";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { listMyHeroes } from "@/server/api/heroes-read";
+import { useTavernPins } from "@/lib/hooks/useTavernPins";
 import { TavernHeroCard } from "./TavernHeroCard";
 
 type Hero = Awaited<ReturnType<typeof listMyHeroes>>[number];
 const heroKey = (hero: Hero) => hero.itemId ? `item:${hero.itemId}` : hero.id ? `hero:${hero.id}` : `template:${hero.templateId}`;
 const storageKey = (wallet: string | null) => wallet ? `yuplink:tavern-hero-order:v1:${wallet}` : null;
+const gridKey = "yuplink:tavern-hero-grid:v1";
+
+function readGridColumns(): 1 | 2 | 3 {
+  if (typeof localStorage === "undefined") return 2;
+  try {
+    const saved = localStorage.getItem(gridKey);
+    return saved === "1" ? 1 : saved === "3" ? 3 : 2;
+  }
+  catch { return 2; }
+}
 
 function readOrder(wallet: string | null): string[] {
   const key = storageKey(wallet);
@@ -19,6 +33,9 @@ function readOrder(wallet: string | null): string[] {
 
 export function useTavernHeroOrder(rows: Hero[], activeHeroId: string | null, wallet: string | null) {
   const [saved, setSaved] = useState<string[]>(() => readOrder(wallet));
+  // Закладки — на аккаунте (одни на всех устройствах), см. useTavernPins.
+  const { pinnedKeys, togglePin: togglePinKey, saveError: pinSaveError } = useTavernPins(wallet);
+  const [raceFilter, setRaceFilter] = useState("all");
   const [draft, setDraft] = useState<string[] | null>(null);
   const [saveError, setSaveError] = useState(false);
   useEffect(() => { setSaved(readOrder(wallet)); setDraft(null); }, [wallet]);
@@ -28,16 +45,21 @@ export function useTavernHeroOrder(rows: Hero[], activeHeroId: string | null, wa
     .sort((a, b) => (positions.get(heroKey(a.hero)) ?? Infinity) - (positions.get(heroKey(b.hero)) ?? Infinity) || a.index - b.index)
     .map(({ hero }) => hero);
   const activeHero = activeHeroId ? allOrdered.find(hero => hero.id === activeHeroId) : null;
-  const otherHeroes = activeHero ? allOrdered.filter(hero => hero !== activeHero) : allOrdered;
-  const browsable = activeHero ? [activeHero, ...otherHeroes] : otherHeroes;
-  const byKey = new Map(otherHeroes.map(hero => [heroKey(hero), hero]));
+  const baseOtherHeroes = activeHero ? allOrdered.filter(hero => hero !== activeHero) : allOrdered;
+  const otherHeroes = [
+    ...baseOtherHeroes.filter(hero => pinnedKeys.has(heroKey(hero))),
+    ...baseOtherHeroes.filter(hero => !pinnedKeys.has(heroKey(hero))),
+  ];
+  const visibleHeroes = raceFilter === "all" ? otherHeroes : otherHeroes.filter(hero => normalizeRace(hero.race) === raceFilter);
+  const browsable = activeHero ? [activeHero, ...visibleHeroes] : visibleHeroes;
+  const byKey = new Map(baseOtherHeroes.map(hero => [heroKey(hero), hero]));
   const draftKeys = draft === null ? null : [
     ...draft.filter(key => byKey.has(key)),
-    ...otherHeroes.map(heroKey).filter(key => !draft.includes(key)),
+    ...baseOtherHeroes.map(heroKey).filter(key => !draft.includes(key)),
   ];
   const editHeroes = draftKeys?.map(key => byKey.get(key)).filter((hero): hero is Hero => !!hero) ?? [];
 
-  const start = () => { setDraft(otherHeroes.map(heroKey)); setSaveError(false); };
+  const start = () => { setDraft(baseOtherHeroes.map(heroKey)); setSaveError(false); };
   const cancel = () => { setDraft(null); setSaveError(false); };
   const move = (key: string, target: number) => setDraft(current => {
     if (!current) return current;
@@ -64,16 +86,29 @@ export function useTavernHeroOrder(rows: Hero[], activeHeroId: string | null, wa
       setSaveError(false);
     } catch { setSaveError(true); }
   };
-  return { browsable, otherHeroes, editHeroes, editing: draft !== null, saveError, start, cancel, move, moveToHero, save };
+  const togglePin = (hero: Hero) => togglePinKey(heroKey(hero));
+  return { browsable, otherHeroes, visibleHeroes, editHeroes, editing: draft !== null, saveError, pinSaveError, raceFilter, setRaceFilter, pinnedKeys, togglePin, start, cancel, move, moveToHero, save };
 }
 
-export function TavernOtherHeroes({ order, ru, onOpen }: {
+export function TavernOtherHeroes({ order, ru, onOpen, onShowBusyField }: {
   order: ReturnType<typeof useTavernHeroOrder>;
   ru: boolean;
   onOpen: (hero: Hero) => void;
+  onShowBusyField?: (q: number, r: number) => void;
 }) {
   const [dragging, setDragging] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [gridColumns, setGridColumns] = useState<1 | 2 | 3>(2);
+  useEffect(() => { setGridColumns(readGridColumns()); }, []);
+  const nextGridColumns = gridColumns === 1 ? 2 : gridColumns === 2 ? 3 : 1;
+  const nextGridLabel = ru
+    ? nextGridColumns === 1 ? "Показать по одному герою в ряд" : `Показать по ${nextGridColumns} героя в ряд`
+    : `Show ${nextGridColumns === 1 ? "one hero" : `${nextGridColumns} heroes`} per row`;
+  const toggleGrid = () => {
+    const next = nextGridColumns;
+    setGridColumns(next);
+    try { localStorage.setItem(gridKey, String(next)); } catch { /* Keep the choice for this visit. */ }
+  };
   const drag = useRef<{ key: string; element: HTMLElement; startX: number; startY: number; x: number; y: number; lastY: number; scrollTop: number; mode: "pending" | "drag" | "scroll" } | null>(null);
   const holdTimer = useRef<number | null>(null);
   const scrollHost = useRef<HTMLElement | null>(null);
@@ -132,11 +167,21 @@ export function TavernOtherHeroes({ order, ru, onOpen }: {
   return <section data-other-heroes tabIndex={-1} aria-labelledby="other-heroes-title">
     <div data-hero-order-heading>
       <h2 id="other-heroes-title">{ru ? "Остальные герои" : "Other heroes"} <span>· {order.otherHeroes.length}</span></h2>
-      {order.otherHeroes.length > 1 && !order.editing && <button type="button" data-hero-order-edit onClick={order.start} aria-label={ru ? "Изменить порядок героев" : "Edit hero order"} title={ru ? "Изменить порядок" : "Edit order"}><Pencil size={17} aria-hidden="true" /></button>}
+      <div data-hero-view-actions>
+        {!order.editing && order.otherHeroes.length > 0 && <Select value={order.raceFilter} onValueChange={order.setRaceFilter}>
+          <SelectTrigger data-hero-race-trigger data-filter-active={order.raceFilter !== "all" || undefined} aria-label={ru ? `Фильтр по расе: ${order.raceFilter === "all" ? "все расы" : metaLabel(order.raceFilter, "ru")}` : `Race filter: ${order.raceFilter === "all" ? "all races" : metaLabel(order.raceFilter, "en")}`} title={ru ? "Фильтр по расе" : "Filter by race"}><ListFilter size={19} aria-hidden="true" /><SelectValue className="sr-only" /></SelectTrigger>
+          <SelectContent className="tavern-race-menu">
+            <SelectItem className="tavern-race-option" value="all">{ru ? "Все расы" : "All races"}</SelectItem>
+            {RACES.map(race => <SelectItem className="tavern-race-option" key={race} value={race}>{metaLabel(race, ru ? "ru" : "en")}</SelectItem>)}
+          </SelectContent>
+        </Select>}
+        {order.otherHeroes.length > 0 && <button type="button" data-hero-grid-toggle onClick={toggleGrid} aria-label={nextGridLabel} title={nextGridLabel}>{gridColumns === 1 ? <Rows2 size={20} aria-hidden="true" /> : gridColumns === 2 ? <Columns2 size={20} aria-hidden="true" /> : <Columns3 size={20} aria-hidden="true" />}</button>}
+        {order.otherHeroes.length > 1 && !order.editing && <button type="button" data-hero-order-edit onClick={order.start} aria-label={ru ? "Изменить порядок героев" : "Edit hero order"} title={ru ? "Изменить порядок" : "Edit order"}><Pencil size={17} aria-hidden="true" /></button>}
+      </div>
     </div>
     {order.editing ? <>
       <p className="sr-only">{ru ? "Перетащи героя на нужное место. С клавиатуры используй стрелки." : "Drag a hero into place. Use arrow keys with a keyboard."}</p>
-      <div data-other-heroes-grid data-hero-order-grid>
+      <div data-other-heroes-grid data-grid-columns={gridColumns} data-hero-order-grid>
         {order.editHeroes.map((hero, index) => {
           const key = heroKey(hero);
           return <div key={key} data-hero-order-tile={key} data-dragging={dragging === key || undefined} data-drop-target={dropTarget === key && dragging !== key || undefined}
@@ -167,7 +212,8 @@ export function TavernOtherHeroes({ order, ru, onOpen }: {
             onPointerUp={event => { if (drag.current?.key === key && drag.current.mode === "drag") { const target = tileAt(event.clientX, event.clientY); if (target) order.moveToHero(key, target); } stopDrag(); }}
             onPointerCancel={stopDrag}
             onKeyDown={event => {
-              const step = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : event.key === "ArrowUp" ? -2 : event.key === "ArrowDown" ? 2 : 0;
+              const columnStep = gridColumns;
+              const step = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : event.key === "ArrowUp" ? -columnStep : event.key === "ArrowDown" ? columnStep : 0;
               if (step) { event.preventDefault(); order.move(key, Math.max(0, Math.min(order.editHeroes.length - 1, index + step))); }
             }}>
             <TavernHeroCard hero={hero} active={false} compact lang={ru ? "ru" : "en"} onOpen={() => {}} />
@@ -179,9 +225,17 @@ export function TavernOtherHeroes({ order, ru, onOpen }: {
         <button type="button" onClick={order.cancel} aria-label={ru ? "Отмена" : "Cancel"}><span data-hero-order-action-icon><X size={22} aria-hidden="true" /></span><span data-hero-order-action-label aria-hidden="true">{ru ? "Отмена" : "Cancel"}</span></button>
         <button type="button" onClick={order.save} aria-label={ru ? "Сохранить" : "Save"}><span data-hero-order-action-icon><Check size={22} aria-hidden="true" /></span><span data-hero-order-action-label aria-hidden="true">{ru ? "Сохранить" : "Save"}</span></button>
       </div>
-    </> : <div data-other-heroes-grid>
-      {order.otherHeroes.map(hero => <TavernHeroCard key={heroKey(hero)} hero={hero} active={false} compact lang={ru ? "ru" : "en"} onOpen={() => onOpen(hero)} />)}
+    </> : <div data-other-heroes-grid data-grid-columns={gridColumns}>
+      {order.visibleHeroes.map(hero => {
+        const pinned = order.pinnedKeys.has(heroKey(hero));
+        return <div key={heroKey(hero)} data-hero-pin-card>
+          <TavernHeroCard hero={hero} active={false} compact lang={ru ? "ru" : "en"} onOpen={() => onOpen(hero)} onShowBusyField={onShowBusyField} />
+          <button type="button" data-hero-pin data-pinned={pinned || undefined} aria-pressed={pinned} aria-label={`${pinned ? (ru ? "Открепить" : "Unpin") : (ru ? "Закрепить" : "Pin")} ${hero.name}`} title={pinned ? (ru ? "Открепить" : "Unpin") : (ru ? "Закрепить" : "Pin")} onClick={() => order.togglePin(hero)}><Bookmark aria-hidden="true" size={19} fill={pinned ? "currentColor" : "none"} /></button>
+        </div>;
+      })}
     </div>}
     {order.otherHeroes.length === 0 && <p>{ru ? "Других героев пока нет" : "No other heroes yet"}</p>}
+    {!order.editing && order.otherHeroes.length > 0 && order.visibleHeroes.length === 0 && <p data-hero-race-empty role="status">{ru ? "Героев этой расы пока нет." : "No heroes of this race yet."} <button type="button" onClick={() => order.setRaceFilter("all")}>{ru ? "Показать всех" : "Show all"}</button></p>}
+    {order.pinSaveError && <p role="alert" data-hero-order-error>{ru ? "Не удалось сохранить закрепление. Попробуй ещё раз." : "Could not save pinned heroes. Try again."}</p>}
   </section>;
 }

@@ -11,10 +11,18 @@ import {
   normalizeGiveAmount,
   type MarketDraft,
   type MarketKind,
+  isPlantKind,
 } from "@/lib/marketItem";
 import { MarketRefPicker } from "./MarketRefPicker";
 import { MarketImageInput } from "./MarketImageInput";
 import { NumField } from "./NumField";
+import { VeinKindSelect } from "./VeinKindSelect";
+import { VEIN_NAME_RU } from "@/lib/veinPlace";
+import { RecipeOutcomesEditor } from "./RecipeOutcomesEditor";
+import { recipeCover } from "@/lib/marketRecipe";
+import { BUILDING_KIND } from "@/lib/buildingSale";
+import { BuildingPresetPick } from "@/components/beta-raid/building-sale/BuildingPresetPick";
+import { useBuildingShop } from "@/components/beta-raid/building-sale/buildingShopContext";
 
 const KIND_LABEL: Record<MarketKind, string> = {
   resource: "Ресурс",
@@ -23,6 +31,12 @@ const KIND_LABEL: Record<MarketKind, string> = {
   art: "Артефакт",
   boss: "Босс",
   custom: "Свой товар",
+  tree: "Дерево для посадки",
+  rock: "Камень для установки",
+  land: "Земля (мир строителей)",
+  vein: "Жила (золото / алмазы)",
+  recipe: "Рецепт (исход по шансам)",
+  building: "Постройка (поставить в мире строителей)",
 };
 
 const inp = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm";
@@ -40,6 +54,24 @@ export function MarketGoodFields({
 }) {
   const isRes = draft.kind === "resource";
   const isCustom = draft.kind === "custom";
+  // Жила — вид из двух (золото / алмазы) обычным списком, без пикера шаблонов.
+  const isVein = draft.kind === "vein";
+  // Рецепт — свой список исходов с шансами вместо одного шаблона (§8.104).
+  const isRecipe = draft.kind === "recipe";
+  // Лавка построек торгует только постройками; в обычной лавке постройки нет.
+  const buildingShop = useBuildingShop();
+  const isBuilding = draft.kind === BUILDING_KIND;
+  const kinds = buildingShop
+    ? [BUILDING_KIND]
+    : MARKET_KINDS.filter(
+        (k) =>
+          k !== BUILDING_KIND &&
+          // Дерево, камень, земля, жила и рецепт — только покупкой (tree-, land-, vein-admin).
+          (!sell || (!isPlantKind(k) && k !== "land" && k !== "vein" && k !== "recipe")),
+      );
+
+  // Лавка построек: товар — шаблон постройки, настроенной на карте (имя и картинка — его).
+  if (buildingShop) return <BuildingPresetPick draft={draft} set={set} />;
 
   return (
     <>
@@ -58,15 +90,17 @@ export function MarketGoodFields({
             // позиция сохранилась бы, а каждая покупка падала бы.
             set({
               kind,
-              refId: kind === "resource" ? "gold" : null,
+              refId: kind === "resource" || kind === "vein" ? "gold" : null,
               image: null,
-              name: "",
+              name: kind === "vein" ? VEIN_NAME_RU.gold : "",
               giveAmount: normalizeGiveAmount(kind, draft.giveAmount),
+              outcomes: kind === "recipe" ? (draft.outcomes ?? []) : null,
+              building: kind === BUILDING_KIND ? { skinId: null, config: null } : null,
             });
           }}
           className={inp}
         >
-          {MARKET_KINDS.map((k) => (
+          {kinds.map((k) => (
             <option key={k} value={k}>
               {KIND_LABEL[k]}
             </option>
@@ -124,7 +158,18 @@ export function MarketGoodFields({
         </div>
       )}
 
-      {!isRes && (
+      {isVein && (
+        <VeinKindSelect
+          value={draft.refId}
+          onPick={(kind) => set({ refId: kind, name: VEIN_NAME_RU[kind] })}
+        />
+      )}
+
+      {isRecipe && (
+        <RecipeOutcomesEditor value={draft.outcomes ?? []} onChange={(v) => set({ outcomes: v })} />
+      )}
+
+      {!isRes && !isVein && !isRecipe && !isBuilding && (
         // Не <label>: label форвардил тап на кнопку-триггер (попап переоткрывался).
         // custom тоже через пикер: там можно выбрать готовый шаблон или создать
         // новый (картинка+имя сохраняются в raid_custom_item для повторного выбора).
@@ -135,15 +180,29 @@ export function MarketGoodFields({
           <MarketRefPicker
             kind={draft.kind}
             value={draft.refId}
+            heroAny={sell}
             onPick={(ref) => set({ refId: ref.id, name: draft.name || ref.name, image: ref.image })}
           />
         </div>
       )}
 
+      {(draft.kind === "land" || isVein) && (
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
+            Клеток в пачке
+          </span>
+          <NumField
+            value={draft.giveAmount || null}
+            onChange={(v) => set({ giveAmount: Math.max(1, Math.floor(v ?? 1)) })}
+            className={`${inp} tabular-nums`}
+          />
+        </label>
+      )}
+
       {/* Подпись — у ресурса (можно «Продать Дерево» / «Купить Дерево») и у
           кастомного. У ресурса необязательна: пусто → подпись ресурса. Шаблонным
           (пак/герой/арт/босс) имя даёт шаблон — поля нет. */}
-      {(isRes || isCustom) && (
+      {(isRes || isCustom || isRecipe) && (
         <label className="block">
           <span className="mb-0.5 block text-[10px] uppercase text-muted-foreground">
             {isRes ? "Подпись (необязательно)" : "Название"}
@@ -165,7 +224,11 @@ export function MarketGoodFields({
       {!isRes && !isCustom && (
         // Картинка пака/героя/арта берётся из шаблона; своя загрузка — только
         // когда нужна замена. У custom картинка приходит из шаблона.
-        <MarketImageInput image={draft.image} onImage={(url) => set({ image: url })} />
+        <MarketImageInput
+          image={draft.image}
+          fallback={isRecipe ? recipeCover(draft.outcomes) : null}
+          onImage={(url) => set({ image: url })}
+        />
       )}
     </>
   );

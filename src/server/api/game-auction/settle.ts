@@ -6,6 +6,8 @@ import { sqlStr } from "../raid-shared";
 import { ensureAuctionSchema } from "./schema";
 import { sb } from "../../db/pg";
 import { createGift } from "../gifts-create";
+import { artMemo } from "./escrow";
+import { lotEnchants, type ItemEnchant } from "./lot-arts";
 import type { GiftKind } from "../gifts-deliver";
 import { PLAYER_DUE_SQL, settlePlayerLot, voidStaleEscrow } from "./settle-player";
 import { GAME_DUE_SQL, bookGameIncome } from "./settle-game";
@@ -19,6 +21,10 @@ type Auc = {
   currency: string;
   status: string;
   source: string;
+  /** Износ артефакта лота игрока (escrow.wear): победителю — такой же. */
+  esc_wear?: string | null;
+  /** Зачарование группы лота игрока (escrow.enchant); есть — победителю едет зачарование. */
+  esc_enchant?: string | null;
 };
 
 // Приз кладём ПОДАРКОМ — победитель забирает клеймом в «Подарках», как добычу.
@@ -55,6 +61,13 @@ export async function refundLosers(auctionId: string): Promise<number> {
 /** Каждому победителю — свой подарок (ключ на ставку: повтор не задвоит). */
 async function deliverWinners(a: Auc): Promise<void> {
   const kind = PRIZE_TO_GIFT[a.prize_kind];
+  // Зачарованный лот: зачарование взятых экземпляров — в подарок победителю (lot-arts).
+  // Не прочиталось — подарок не выдаём, сторож повторит: целым-без-✦ отдавать нельзя.
+  let enchants: ItemEnchant[] | null = null;
+  if (a.prize_kind === "artifact" && a.source === "player" && a.esc_enchant != null) {
+    enchants = await lotEnchants(artMemo(a.id)).catch(() => null);
+    if (!enchants) return;
+  }
   const winners = (await mcpExec(
     `SELECT id, account_id FROM yuplink.auction_bid
       WHERE auction_id=${sqlStr(a.id)} AND active AND NOT delivered;`,
@@ -74,6 +87,9 @@ async function deliverWinners(a: Auc): Promise<void> {
           createdBy: "auction",
           // Приз оплачен ставкой — не сгорает, как и купленный набор.
           expiresNever: true,
+          // Артефакт продавца уходит с его износом (lib/hero/artWear).
+          itemWear: a.prize_kind === "artifact" && a.esc_wear != null ? Number(a.esc_wear) : null,
+          itemEnchant: enchants?.length ? enchants : null,
         },
         { notify: true },
       );
@@ -104,7 +120,8 @@ export async function settleOne(auctionId: string): Promise<void> {
   ).catch(() => {});
   const auc = (
     (await mcpExec(
-      `SELECT id, title, prize_kind, prize_ref, prize_qty, currency, status, source
+      `SELECT id, title, prize_kind, prize_ref, prize_qty, currency, status, source,
+              escrow->>'wear' AS esc_wear, escrow->>'enchant' AS esc_enchant
        FROM yuplink.auction WHERE id=${a};`,
       { wrapJson: true },
     ).catch(() => [])) as Auc[]

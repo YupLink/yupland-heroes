@@ -2,7 +2,9 @@
 //
 // На поле выходит ЛЮБОЙ герой игрока — редкий, эпический или легендарный;
 // сила и уровень тут ни при чём, работают руки. Занятый герой в списке
-// остаётся, но с пометкой: видно, что он уже стоит на другой грядке.
+// остаётся, но с пометкой: видно, что он уже стоит на другой грядке — в том
+// числе в ДРУГОМ мире (05.11: на ферме мира строителей герои с фермы Альфы
+// выглядели свободными, а отправить их было нельзя — герой один на все грядки).
 //
 // «Спящие» герои — те, что лежат в инвентаре предметом и экземпляра ещё не
 // имеют (его заводят лениво, при первой прокачке или выборе основным). Их тут
@@ -21,7 +23,7 @@ export type FieldHero = {
   imageUrl: string | null;
   rarity: string;
   level: number;
-  /** Где уже работает: «q,r» другой грядки. null — свободен. */
+  /** Где уже работает: «q,r» грядки этого мира, «q,r · Мир» — другого. null — свободен. */
   busyAt: string | null;
   /** До какого момента отдыхает (ISO): на грядку не встаёт. null — нет. */
   restUntil: string | null;
@@ -38,6 +40,8 @@ type Row = {
   image_url: string | null;
   busy_q: number | null;
   busy_r: number | null;
+  /** Мир грядки, если он не этот. */
+  busy_world: string | null;
   rest_until: string | null;
   main: boolean | null;
 };
@@ -49,11 +53,13 @@ export async function fieldHeroes(wallet: string, mapId: string): Promise<FieldH
   const rows = (await mcpExec(
     `SELECT h.id, h.level, h.rarity, h.template_id, t.image_url,
             COALESCE(NULLIF(t.name, ''), 'Герой') AS name,
-            w.q AS busy_q, w.r AS busy_r, h.rest_until, (h.selected_at IS NOT NULL) AS main
+            w.q AS busy_q, w.r AS busy_r, h.rest_until, (h.selected_at IS NOT NULL) AS main,
+            CASE WHEN w.map_id <> ${sqlStr(mapId)}
+                 THEN COALESCE(NULLIF(mp.name, ''), w.map_id) END AS busy_world
        FROM yuplink.hero_instance h
        LEFT JOIN yuplink.mystic_item_template t ON t.id = h.template_id
-       LEFT JOIN yuplink.raid_field_worker w
-              ON w.hero_id = h.id AND w.map_id = ${sqlStr(mapId)}
+       LEFT JOIN yuplink.raid_field_worker w ON w.hero_id = h.id
+       LEFT JOIN yuplink.raid_maps mp ON mp.id = w.map_id
       WHERE h.account_id = ${sqlStr(account)}
       ORDER BY (w.q IS NULL) DESC, h.level DESC LIMIT 60;`,
     { wrapJson: true },
@@ -64,7 +70,10 @@ export async function fieldHeroes(wallet: string, mapId: string): Promise<FieldH
     imageUrl: r.image_url,
     rarity: normalizeHeroRarity(r.rarity),
     level: Number(r.level) || 1,
-    busyAt: r.busy_q === null || r.busy_r === null ? null : `${r.busy_q},${r.busy_r}`,
+    busyAt:
+      r.busy_q === null || r.busy_r === null
+        ? null
+        : `${r.busy_q},${r.busy_r}${r.busy_world ? ` · ${r.busy_world}` : ""}`,
     restUntil: activeRest(r.rest_until),
     main: !!r.main,
   }));
@@ -106,7 +115,8 @@ export function guardedJoinSql(o: {
   return `${heroLockSql(o.heroId)}
    WITH h AS (
      SELECT id FROM yuplink.hero_instance
-      WHERE id = ${sqlStr(o.heroId)} AND selected_at IS NULL AND ${awakeSql()}
+      WHERE id = ${sqlStr(o.heroId)} AND account_id = ${sqlStr(o.account)}
+        AND selected_at IS NULL AND ${awakeSql()}
    ),
    j AS (
      SELECT yuplink.raid_field_join(${sqlStr(o.mapId)}, ${o.q}, ${o.r},

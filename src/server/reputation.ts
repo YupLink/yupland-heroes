@@ -18,6 +18,8 @@ interface SendlerReputationItem {
   // У владельцев с total_reputation < 0 owner_rank = null — для них мы
   // считаем СВОЙ anti-rank (1 = самый минусовой) и пишем в negative_rank.
   owner_rank: number | null;
+  // Бывает за пределами integer (−4,65 млрд с NFT «baron») — колонка bigint,
+  // migrations/sendler-rep-01.sql. Передаём как есть, не режем.
   total_reputation: number;
   house?: number;
   bonus_reputation?: number;
@@ -190,7 +192,8 @@ export async function getReputationForWallets(wallets: string[]): Promise<{
     wallet: r.wallet,
     rank: r.rank,
     negativeRank: r.negative_rank,
-    totalReputation: r.total_reputation,
+    // bigint (sendler-rep-01) может прийти строкой — к числу.
+    totalReputation: Number(r.total_reputation),
   }));
   const totRow = await pg.settings.findOne({ key: TOTAL_KEY });
   const negTotRow = await pg.settings.findOne({ key: NEGATIVE_TOTAL_KEY });

@@ -1,65 +1,63 @@
-/* Вкладки окна аукционов и карточка «Аукционный дом» — в той же гамме, что
-   auction-screen.css (дизайн замка Ангелины: Russo/Golos, золото, леджер). */
+/* Approved compact house plaque. API state and costs live in existing hooks. */
+.auction-tabs{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 4px;margin:0 0 12px;border:0;border-bottom:1px solid #56616b66;background:transparent}
+.auction-tab{min-height:44px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:#b8bdc1;font:400 15px/1.2 "Auction Russo",sans-serif;cursor:pointer}
+.auction-tab--on{background:transparent;color:#f1d180;border-bottom-color:#e1bd5e;box-shadow:none}
+.auction-house{container-type:inline-size;display:grid;grid-template-columns:16% minmax(0,1fr);gap:4px;padding:6px;margin-bottom:6px;border:1px solid #d9af54;border-radius:12px;background:radial-gradient(ellipse at 20% 20%,#f5d98866,transparent 65%),linear-gradient(110deg,#e8c777,#dfba60 60%,#c99c43);color:#241b0c;box-shadow:inset 0 1px #fff0b7}
+.auction-house__art{width:100%;aspect-ratio:1;object-fit:contain;align-self:center;image-rendering:pixelated}
+.auction-house__info{display:grid;gap:8px;min-width:0}
+.auction-house__head{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.auction-house__identity{display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 8px;min-width:0}
+.auction-house__identity h2{margin:0;color:#241b0c;font:400 14px/1.1 "Auction Russo",sans-serif}
+.auction-house__identity>span{font-size:12px;white-space:nowrap}
+.auction-house__upgrade{display:inline-flex;align-items:center;justify-content:center;flex:none;gap:3px;min-height:28px;padding:3px 5px;border:1px solid #93651c;border-radius:8px;background:transparent;color:#241b0c;font:400 11px/1.2 "Auction Russo",sans-serif;cursor:pointer}
+.auction-house__upgrade svg{width:12px;height:12px}
+.auction-house__upgrade:disabled{opacity:.6;cursor:default}
+.auction-house__stats{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);align-items:center;gap:4px}
+.auction-house__slots{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.auction-house__slots small{font-size:10px;white-space:nowrap}
+.auction-house__slots b{display:flex;align-items:center;gap:4px;color:#241b0c;font:400 18px/1 "Auction Russo",sans-serif;white-space:nowrap}
+.auction-house__slots img{width:18px;height:22px;object-fit:contain}
+.auction-house__fee{display:flex;flex-direction:column;gap:2px;min-height:34px;padding-left:4px;border-left:1px solid #9f742b;background:transparent;color:#241b0c;font:400 11px/1.15 "Auction Golos",sans-serif;white-space:nowrap}
+.auction-house__fee b{font-weight:500}
+.auction-house__sell{width:100%;min-width:0;min-height:38px;padding:4px;border:1px solid #656976;border-radius:8px;background:linear-gradient(120deg,#20252e,#171c24);color:#eee5d2;font:400 11px/1.2 "Auction Russo",sans-serif;cursor:pointer}
+.auction-house__sell:disabled{opacity:.5;cursor:not-allowed}
+.auction-house__wait{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:0;font-size:12px}
+.auction-house__wait svg{width:13px;height:13px}
+@media(min-width:521px){
+ .auction-house{grid-template-columns:18% minmax(0,1fr);gap:2%;padding:1.5% 2%;margin-bottom:8px;border-radius:16px}
+ .auction-house__info{gap:16px;padding:4px 0}
+ .auction-house__head{gap:8px}
+ .auction-house__identity{gap:12px}
+ .auction-house__identity h2{font-size:clamp(18px,4.2cqw,38px)}
+ .auction-house__identity>span{font-size:clamp(14px,2.9cqw,26px)}
+ .auction-house__upgrade{min-height:32px;padding:5px 8px;font-size:clamp(12px,2.5cqw,22px)}
+ .auction-house__upgrade svg{width:1em;height:1em}
+ .auction-house__stats{grid-template-columns:28% max-content minmax(0,1fr);gap:clamp(8px,1.2cqw,14px)}
+ .auction-house__slots small{font-size:clamp(12px,2.5cqw,21px)}
+ .auction-house__slots b{gap:8px;font-size:clamp(16px,3.4cqw,36px)}
+ .auction-house__slots img{width:clamp(25px,5cqw,54px);height:clamp(25px,5cqw,54px)}
+ .auction-house__fee{min-height:54px;padding-left:12px;border-left-width:2px;font-size:clamp(13px,2.6cqw,22px)}
+ .auction-house__sell{min-height:64px;padding:10px 12px;font-size:clamp(14px,2.9cqw,27px)}
+}
+@media(max-width:340px){
+ .auction-house{grid-template-columns:48px minmax(0,1fr);row-gap:6px}
+ .auction-house__info{display:contents}
+ .auction-house__art{grid-column:1;grid-row:1}
+ .auction-house__head{grid-column:2;grid-row:1}
+ .auction-house__stats{grid-column:1/-1;grid-row:2}
+ .auction-house__wait{grid-column:1/-1}
+}
 
-.auction-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin: 0 0 12px;
-  padding: 4px;
-  border: 1px solid #94703c;
-  border-radius: 14px;
-  background: #0d1b2b;
-}
-.auction-tab {
-  min-height: 40px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #cdb791;
-  font: 400 14px/1 "Auction Russo", sans-serif;
-  cursor: pointer;
-}
-.auction-tab--on {
-  background: var(--gradient-gold, linear-gradient(135deg, #ffd32e, #e08700));
-  color: #1f180c;
-  box-shadow: 0 3px 10px #0007, inset 0 1px 0 #fff8;
-}
+/* A missing house explains the existing selling requirement instead of vanishing. */
+.auction-window.auction-window--approved .auction-house-notice{margin:0 0 10px;padding:10px 12px;border:1px solid #544a3f;border-radius:12px;background:linear-gradient(145deg,#171a1b,#101314);color:#dfd8cd;font:400 14px/1.45 "Auction Golos",sans-serif;overflow-wrap:anywhere}
+.auction-window.auction-window--approved .auction-house-notice p{margin:0}
+.auction-window.auction-window--approved .auction-house-notice button{margin-top:8px}
 
-.auction-house { display: grid; gap: 12px; }
-.auction-house__head { display: flex; align-items: center; gap: 8px; }
-.auction-house__title {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  color: #fff0c7;
-  font: 400 18px/1.15 "Auction Russo", sans-serif;
-}
-.auction-house__slots {
-  color: #ffd773;
-  font: 400 18px/1 "Auction Russo", sans-serif;
-  font-variant-numeric: tabular-nums;
-}
-.auction-house__row { display: flex; align-items: center; gap: 10px; }
-.auction-house__row .auction-primary { flex: 1; }
-.auction-house__wait {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #ffd773;
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.auction-house__form { padding-top: 12px; border-top: 1px solid #a98a5955; }
-.auction-house__sell { width: 100%; }
-
-.auction-house__fee {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: #5a233022;
-  color: #f0b4ab;
-  font-size: 11px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
+/* Approved no-house introduction. Loading and errors retain the simple notice. */
+.auction-window.auction-window--approved .auction-house-notice--intro{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px 14px;padding:14px}
+.auction-window.auction-window--approved .auction-house-notice__art{grid-column:1;grid-row:1/3;align-self:center;width:64px;height:72px;object-fit:contain}
+.auction-window.auction-window--approved .auction-house-notice__title{grid-column:2;margin:0;color:#f3eee5;font:700 18px/1.25 "Auction Golos",sans-serif}
+.auction-window.auction-window--approved .auction-house-notice__copy{grid-column:2;display:grid;gap:8px;min-width:0;font-weight:400;font-variation-settings:"wght" 400;font-synthesis:none}
+.auction-window.auction-window--approved .auction-house-notice__copy strong{color:#e6c36b;font-weight:600;font-variation-settings:"wght" 600}
+@media(min-width:741px){.auction-window.auction-window--approved .auction-house-notice--intro{font-size:18px}.auction-window.auction-window--approved .auction-house-notice__title{font-size:22px}}
+@media(max-width:520px){.auction-window.auction-window--approved .auction-house-notice--intro{grid-template-columns:40px minmax(0,1fr);gap:8px 10px;padding:12px}.auction-window.auction-window--approved .auction-house-notice__art{grid-row:1;width:40px;height:40px}.auction-window.auction-window--approved .auction-house-notice__title{align-self:center;font-size:16px}.auction-window.auction-window--approved .auction-house-notice__copy{grid-column:1/-1}}

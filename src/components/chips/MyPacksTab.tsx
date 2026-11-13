@@ -10,6 +10,7 @@ import { MysticBoxesSection } from "@/components/MysticBoxesSection";
 import { PackRevealModal } from "./PackRevealModal";
 import { OpenPackConfirmModal } from "./OpenPackConfirmModal";
 import { humanError } from "@/lib/humanError";
+import { invalidateChipQueries } from "@/lib/query";
 import { PackNftInputAction } from "./PackNftInputAction";
 
 type RevealItem = Awaited<ReturnType<typeof openChipPack>>["results"][number];
@@ -42,7 +43,8 @@ export function MyPacksTab({ giftPack }: { giftPack?: { giftId: string; packId: 
         items: r.results,
       });
       qc.invalidateQueries({ queryKey: ["my-chip-packs"] });
-      qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
+      // Обычные И тренировочные (пак острова): иначе в бою их нет до F5.
+      invalidateChipQueries(qc);
     },
     onError: (e: Error) => {
       setConfirmOpen(null);

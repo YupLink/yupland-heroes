@@ -1,11 +1,10 @@
-// Прошедшие лоты для игрока: грузятся, только когда блок раскрыли. Итог лота —
-// плашкой (продан / не продан / отменён), цена продажи, «твой выигрыш»/«твой лот».
+// History is fetched only after expanding PastSection. No trading actions here.
 import { useQuery } from "@tanstack/react-query";
-import { Gavel, Loader2 } from "lucide-react";
+import { Check, Gavel, Loader2 } from "lucide-react";
 import { listPastAuctions } from "@/server/api/game-auction";
-import { currencyLabel } from "@/lib/auctionCurrency";
 import { KIND_EN, KIND_RU, fmtNum, qtyText } from "./auctionFormat";
 import { RarityChip } from "./PrizeInfoLine";
+import { AuctionCurrency } from "./AuctionCurrency";
 import { PastSection } from "./PastSection";
 
 const OUTCOME: Record<string, [string, string]> = {
@@ -20,58 +19,41 @@ function PastList({ source, en }: { source: "game" | "player"; en: boolean }) {
     queryFn: () => listPastAuctions({ data: { source } }),
     staleTime: 30_000,
   });
-  if (q.isLoading) {
-    return (
-      <div className="auction-loading">
-        <Loader2 className="h-5 w-5 animate-spin" />
-      </div>
-    );
-  }
+  if (q.isLoading) return <div className="auction-loading" role="status" aria-label={en ? "Loading history" : "Загрузка истории"}><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (q.isError) return <div className="auction-empty"><p>{en ? "Couldn't load history" : "Не удалось загрузить историю"}</p><button type="button" className="auction-primary" onClick={() => void q.refetch()}>{en ? "Try again" : "Повторить"}</button></div>;
   const rows = q.data?.auctions ?? [];
-  if (rows.length === 0) return <p className="auction-empty">{en ? "None yet" : "Пока нет"}</p>;
-  return (
-    <div className="auction-ledger auction-past__list">
-      {rows.map((r) => (
-        <div key={r.id} className="auction-past__row">
-          <span className="auction-past__media">
-            {r.prizeImage ? <img src={r.prizeImage} alt="" /> : <Gavel aria-hidden="true" />}
-          </span>
-          <div className="auction-past__info">
-            <p className="auction-past__name">
-              <span className="auction-kind">
-                {(en ? KIND_EN : KIND_RU)[r.prizeKind] ?? r.prizeKind}
-              </span>{" "}
-              <RarityChip info={r.prizeInfo} en={en} />
-              {r.prizeName}
-              {qtyText(r.prizeQty, en)}
-            </p>
-            <p className="auction-past__meta">
-              <span className={`auction-past__outcome auction-past__outcome--${r.outcome}`}>
-                {OUTCOME[r.outcome][en ? 1 : 0]}
-              </span>
-              {r.price != null && (
-                <b>
-                  {fmtNum(r.price, en)} {currencyLabel(r.currency, en)}
-                </b>
-              )}
-              {r.iWon && <span className="auction-lead">{en ? "You won" : "Твой выигрыш"}</span>}
-              {r.mine && <span className="auction-lead">{en ? "Your lot" : "Твой лот"}</span>}
-            </p>
+  if (!rows.length) return <p className="auction-empty">{en ? "None yet" : "Пока нет"}</p>;
+  return <div className="auction-ledger auction-history">
+    {rows.map((r) => {
+      const sold = r.outcome === "sold";
+      const outcome = OUTCOME[r.outcome]?.[en ? 1 : 0] ?? r.outcome;
+      return <article key={r.id} className="auction-history__row">
+        <span className="auction-history__media">
+          {r.prizeImage ? <img src={r.prizeImage} alt="" loading="lazy" /> : <Gavel aria-hidden="true" />}
+          <span className="auction-history__quantity" aria-label={`${en ? "Quantity" : "Количество"}: ${fmtNum(r.prizeQty, en)}`}>{fmtNum(r.prizeQty, en)}</span>
+        </span>
+        <div className="auction-history__info">
+          <div className="auction-history__labels"><span>{(en ? KIND_EN : KIND_RU)[r.prizeKind] ?? r.prizeKind}</span><RarityChip info={r.prizeInfo} en={en} /></div>
+          <h3 className="auction-history__name" title={`${r.prizeName}${qtyText(r.prizeQty, en)}`}>{r.prizeName}</h3>
+          <div className="auction-history__meta">
+            <span className={`auction-history__outcome${sold ? " auction-history__outcome--sold" : ""}`}>
+              {sold && <Check aria-hidden="true" />}{outcome}
+            </span>
+            {sold && r.price != null && <b className="auction-history__price"><AuctionCurrency currency={r.currency} en={en} />{fmtNum(r.price, en)}</b>}
           </div>
-          <time className="auction-past__date">
-            {new Date(r.endedAt).toLocaleDateString(en ? "en-GB" : "ru-RU", {
-              day: "2-digit",
-              month: "2-digit",
-            })}
-          </time>
         </div>
-      ))}
-    </div>
-  );
+        <div className="auction-history__date">
+          <time dateTime={new Date(r.endedAt).toISOString()} title={new Date(r.endedAt).toLocaleString(en ? "en-GB" : "ru-RU")}>
+            {new Date(r.endedAt).toLocaleDateString(en ? "en-GB" : "ru-RU", { day: "2-digit", month: "2-digit" })}
+          </time>
+          {r.mine && <span>{en ? "Your lot" : "Твой лот"}</span>}
+          {r.iWon && <span className="auction-history__won">{en ? "You won" : "Твой выигрыш"}</span>}
+        </div>
+      </article>;
+    })}
+  </div>;
 }
 
 export function PastAuctions({ source, en }: { source: "game" | "player"; en: boolean }) {
-  return (
-    <PastSection en={en}>{(open) => open && <PastList source={source} en={en} />}</PastSection>
-  );
+  return <PastSection en={en}>{(open) => open && <PastList source={source} en={en} />}</PastSection>;
 }

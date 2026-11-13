@@ -2,6 +2,9 @@
 // расам относится декор, постройка или облик. Несколько вариантов сразу;
 // пусто = подходит всем. Метки читает генератор больших карт и поселений.
 //
+// У декора ещё «Природа» (шахты v2, §8.59.8): дерево или гора — одна галочка из
+// двух; по ним постановка лесопилки и каменной шахты считает соседей.
+//
 // Сохраняется каждая галочка сразу, минуя очередь выгрузки: метка — свойство
 // шаблона, а не клетки. Правки одного ассета идут строго по очереди (scope),
 // чтобы быстрые тапы не приехали на сервер вперемешку и не затёрли друг друга.
@@ -13,10 +16,17 @@ import { useLang, useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
 import { localizeAssetName } from "@/lib/translations/assetNames";
 import { adminGetAssetTags, adminSetAssetTags } from "@/server/api/beta-raid/asset-tags";
-import type { AssetTagKind, AssetTags } from "@/lib/raid/assetTags";
+import {
+  ASSET_NATURES,
+  type AssetNature,
+  type AssetTagKind,
+  type AssetTags,
+} from "@/lib/raid/assetTags";
 
 type Data = Awaited<ReturnType<typeof adminGetAssetTags>>;
 type Field = "terrains" | "races";
+/** Что уходит на сервер одной галочкой: весь набор меток ассета. */
+type Draft = Pick<AssetTags, Field> & { nature?: AssetNature | null };
 
 function CheckGroup({
   title,
@@ -80,8 +90,7 @@ export function AdminTagChecks({
 
   const save = useMutation({
     scope: { id: `asset-tags:${refId}` },
-    mutationFn: (next: Pick<AssetTags, Field>) =>
-      adminSetAssetTags({ data: { refId, kind, ...next } }),
+    mutationFn: (next: Draft) => adminSetAssetTags({ data: { refId, kind, ...next } }),
     onMutate: (next) => {
       qc.setQueryData<Data>(key, (d) =>
         d ? { ...d, tags: { ...d.tags, [refId]: { ...next, auto: false } } } : d,
@@ -93,16 +102,27 @@ export function AdminTagChecks({
     },
   });
 
+  const isDecor = kind === "decoration";
+  const nature = tags.nature ?? null;
+  const base = (): Draft => ({
+    terrains: tags.terrains,
+    races: tags.races,
+    ...(isDecor ? { nature } : {}),
+  });
   const toggle = (field: Field, v: string) => {
     const list = tags[field];
     const next = list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
-    save.mutate({ terrains: tags.terrains, races: tags.races, [field]: next });
+    save.mutate({ ...base(), [field]: next });
   };
+  // Природа — одна из двух: повторный тап снимает.
+  const toggleNature = (v: string) =>
+    save.mutate({ ...base(), nature: v === nature ? null : (v as AssetNature) });
 
   const terrainName = new Map((q.data?.terrains ?? []).map((x) => [x.id, x.name]));
   const summary = [
     `${t("tags.terrain")}: ${tags.terrains.length || t("tags.any")}`,
     `${t("tags.race")}: ${tags.races.map((r) => t(`tags.race.${r}`)).join(", ") || t("tags.any")}`,
+    ...(isDecor && nature ? [t(`tags.nature.${nature}`)] : []),
   ].join(" · ");
 
   return (
@@ -139,6 +159,14 @@ export function AdminTagChecks({
             selected={tags.races}
             onToggle={(v) => toggle("races", v)}
           />
+          {isDecor && (
+            <CheckGroup
+              title={t("tags.nature")}
+              options={ASSET_NATURES.map((n) => ({ value: n, label: t(`tags.nature.${n}`) }))}
+              selected={nature ? [nature] : []}
+              onToggle={toggleNature}
+            />
+          )}
         </div>
       )}
     </div>

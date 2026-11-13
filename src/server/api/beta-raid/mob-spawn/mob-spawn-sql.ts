@@ -6,6 +6,8 @@ import { cellLockKey } from "@/server/api/beta-raid/chest/chest-cell";
 import { CELL_LAYER, deadHpSql } from "@/server/api/beta-raid/runners";
 import { targetSql } from "@/server/api/beta-raid/god-move/move-object-sql";
 import { WATER_SQL } from "@/server/api/beta-raid/cell-sql";
+import { mobGroundSql } from "@/server/api/beta-raid/mob-ground";
+import { weatherNowSql } from "./mob-spawn-weather-sql";
 
 /** Сколько точек разбирает один проход: остальные — следующим. */
 const BATCH = 300;
@@ -47,12 +49,13 @@ export const deathsSql = (): string =>
            AND c.object_id = s.object_id AND NOT ${deadHpSql("c", CELL_LAYER)})
    RETURNING s.id;`;
 
-/** Пора вставать: убит давно, чем «Возрождение». */
+/** Пора вставать: убит давно, чем «Возрождение», и в мире погода точки. */
 export const dueSql = (): string =>
   `SELECT s.id, s.map_id, s.home_q, s.home_r, s.object_id, s.object_config
      FROM yuplink.raid_mob_spawn s
     WHERE s.dead_at IS NOT NULL
       AND s.dead_at + make_interval(mins => s.respawn_min) <= now()
+      AND ${weatherNowSql("s")}
     ORDER BY s.dead_at
     LIMIT ${BATCH};`;
 
@@ -73,9 +76,14 @@ const BLOCKERS = [
   "object",
 ];
 
-/** Поставить моба на родную клетку, если она свободна. Занята — ждёт следующего прохода. */
-export function respawnSql(s: DueSpawn): string {
-  const home = { q: Number(s.home_q), r: Number(s.home_r) };
+/**
+ * Поставить моба на клетку `at` (по умолчанию — родную), если она свободна.
+ * Занята — ждёт следующего прохода (на острове сначала пробуют соседние, mob-spawn).
+ * Дорога и жила — как занятая (владелец, 22.10.2026: «мобов на жилах и дорогах
+ * не спавнить», mob-ground).
+ */
+export function respawnSql(s: DueSpawn, at?: { q: number; r: number }): string {
+  const home = at ?? { q: Number(s.home_q), r: Number(s.home_r) };
   const id = sqlStr(s.id);
   const free = BLOCKERS.map((f) => `NOT tg.${f}`).join(" AND ");
   return `${locksSql(
@@ -92,13 +100,13 @@ export function respawnSql(s: DueSpawn): string {
          SET object_id = sp.object_id, object_config = sp.object_config - 'resHold', saved_at = now()
         FROM yuplink.raid_mob_spawn sp, ok
        WHERE sp.id = ${id} AND sp.dead_at IS NOT NULL
-         AND c.map_id = sp.map_id AND c.q = sp.home_q AND c.r = sp.home_r
-         AND c.object_id IS NULL
+         AND c.map_id = sp.map_id AND c.q = ${home.q} AND c.r = ${home.r}
+         AND c.object_id IS NULL AND ${mobGroundSql("c")}
       RETURNING c.q, c.r
     ),
     mark AS (
       UPDATE yuplink.raid_mob_spawn sp
-         SET cur_q = sp.home_q, cur_r = sp.home_r, dead_at = NULL, updated_at = now(),
+         SET cur_q = ${home.q}, cur_r = ${home.r}, dead_at = NULL, updated_at = now(),
              next_step_at = now() + make_interval(mins => sp.step_min)
         FROM put WHERE sp.id = ${id}
       RETURNING 1
@@ -111,8 +119,8 @@ export function respawnSql(s: DueSpawn): string {
 /**
  * Кому шагать: живой, бродит, срок шага вышел, не ранен (раненого не уводим из
  * чужого боя). Цель — случайная соседняя клетка в радиусе от родной: суша без
- * дороги, объекта, постройки, декора, блока и купола. Полную проверку (игрок,
- * беглец, сундук, корабль…) делает сам перенос.
+ * дороги и жилы (mob-ground), объекта, постройки, декора, блока и купола. Полную
+ * проверку (игрок, беглец, сундук, корабль…) делает сам перенос.
  */
 export const stepsSql = (): string =>
   `SELECT s.id, s.map_id, s.object_id, s.cur_q, s.cur_r, n.q AS to_q, n.r AS to_r
@@ -125,7 +133,7 @@ export const stepsSql = (): string =>
          LEFT JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
         WHERE NOT COALESCE(${WATER_SQL}, false) AND (abs(c.q - s.home_q) + abs(c.r - s.home_r) + abs(c.q + c.r - s.home_q - s.home_r)) / 2
               <= s.roam
-          AND c.terrain_id IS NOT NULL AND c.road_id IS NULL AND c.object_id IS NULL
+          AND c.terrain_id IS NOT NULL AND ${mobGroundSql("c")} AND c.object_id IS NULL
           AND c.building_id IS NULL AND c.decoration_id IS NULL AND c.group_id IS NULL
           AND NOT COALESCE(c.void_fog, false)
         ORDER BY random()

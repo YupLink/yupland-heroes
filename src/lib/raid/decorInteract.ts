@@ -24,6 +24,7 @@
 // её кнопка и окно рубки пишут её. Нет en — ru; нет вовсе — прежние тексты.
 import type { Lang } from "@/lib/store";
 import { toolIdOf, toolIdsOf } from "@/lib/raid/decorTools";
+import { secureRandom } from "@/lib/secureRandom";
 
 export { toolIdOf };
 
@@ -152,7 +153,7 @@ export function parseDecorInteract(raw: unknown): DecorInteract | null {
 }
 
 /** Бросок количества в диапазоне (оба края включительно). */
-export function rollAmount(r: AmountRange, rnd: () => number = Math.random): number {
+export function rollAmount(r: AmountRange, rnd: () => number = secureRandom): number {
   const span = r.max - r.min + 1;
   return r.min + Math.min(span - 1, Math.floor(Math.max(0, rnd()) * span));
 }

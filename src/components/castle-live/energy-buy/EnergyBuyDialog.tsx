@@ -1,3 +1,4 @@
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
 // Окно «Купить энергию» в замке — дизайн Ангелины (design/app-preview/
 // CastlePurchaseDialog, ветка энергии) на настоящих данных: подписка, разовые
 // пакеты, «+N за лайки». Экраны: каталог → способ оплаты → подтверждение →
@@ -14,11 +15,12 @@ import { PackMethods, SubMethods } from "./EnergyMethods";
 import { EnergyConfirm, EnergyDone, EnergyTopUp, type Reward } from "./EnergyConfirm";
 import { EnergyTierGlyph } from "./energyGlyphs";
 import { boxesWord, energyWord, num, tierGlyph } from "./energyFormat";
+import { subscriptionAssignment, trackSubscriptionEvent, type SubscriptionAssignment } from "@/lib/subscriptionExperiment";
 import "./energy-buy.css";
+import "./subscription-variants.css";
 
 type Stage = "catalog" | "methods" | "confirm" | "top-up" | "success";
 type Sel = { kind: "pack"; id: string } | { kind: "sub"; index: number };
-export type EnergyReturn = { packId: string; optionKey: string; origin: "catalog" | "methods"; catalogScroll: number };
 
 export function EnergyBuyDialog({
   open,
@@ -26,8 +28,6 @@ export function EnergyBuyDialog({
   walletView,
   onClose,
   returnFocus,
-  onNeedTickets,
-  resume,
 }: {
   open: boolean;
   ru: boolean;
@@ -35,9 +35,8 @@ export function EnergyBuyDialog({
   walletView: boolean;
   onClose: () => void;
   returnFocus: () => void;
-  onNeedTickets?: (selection: EnergyReturn) => void;
-  resume?: EnergyReturn | null;
 }) {
+  usePurchaseMusic(open);
   const data = useEnergyBuy(open);
   const [stage, setStage] = useState<Stage>("catalog");
   const [sel, setSel] = useState<Sel | null>(null);
@@ -46,18 +45,21 @@ export function EnergyBuyDialog({
   const [error, setError] = useState("");
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [doneTitle, setDoneTitle] = useState("");
+  const [resolvedLayout, setResolvedLayout] = useState<{ account: string | null; assignment: SubscriptionAssignment } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const catalogScroll = useRef(0);
+  const exposedThisOpen = useRef(false);
 
   useLayoutEffect(() => {
     if (!open) return;
-    catalogScroll.current = resume?.catalogScroll ?? 0;
-    setStage(resume ? "confirm" : "catalog");
-    setSel(resume ? { kind: "pack", id: resume.packId } : null);
-    setPick(resume ? { key: resume.optionKey, opId: newOpId() } : null);
-    setOrigin(resume?.origin ?? "methods");
+    catalogScroll.current = 0;
+    setStage("catalog");
+    setSel(null);
+    setPick(null);
+    setOrigin("methods");
     setError("");
-  }, [open, resume]);
+    exposedThisOpen.current = false;
+  }, [open]);
   useLayoutEffect(() => {
     if (dialogRef.current) dialogRef.current.scrollTop = stage === "catalog" ? catalogScroll.current : 0;
   }, [stage]);
@@ -65,8 +67,30 @@ export function EnergyBuyDialog({
   // Всё — из свежих данных: ступень лестницы или курс сменились — видна новая цена.
   const card = sel?.kind === "pack" ? (data.cards.find((c) => c.id === sel.id) ?? null) : null;
   const tier = sel?.kind === "sub" ? (data.tiers[sel.index] ?? null) : null;
-  const opts: PayOpt[] = card ? [...(card.game ? [card.game] : []), ...card.others] : tier ? subOpts(tier) : [];
+  const assignment = resolvedLayout?.account === data.analyticsId ? resolvedLayout?.assignment ?? null : null;
+  const opts: PayOpt[] = card ? [...(card.game ? [card.game] : []), ...card.others] : tier ? subOpts(tier, data.stars, data.googleOnly) : [];
   const opt = pick ? (opts.find((o) => o.key === pick.key) ?? null) : null;
+
+  useEffect(() => {
+    if (!open || data.status !== "ready" || !data.tiers.length || assignment) return;
+    let cancelled = false;
+    void subscriptionAssignment(data.analyticsId).then((value) => {
+      if (!cancelled) setResolvedLayout({ account: data.analyticsId, assignment: value });
+    });
+    return () => { cancelled = true; };
+  }, [open, data.status, data.tiers.length, data.analyticsId, assignment]);
+
+  useEffect(() => {
+    if (!open || stage !== "catalog" || !assignment?.exposed || exposedThisOpen.current || !data.tiers.length) return;
+    exposedThisOpen.current = true;
+    trackSubscriptionEvent(assignment, "$experiment_exposure");
+  }, [open, stage, assignment, data.tiers.length]);
+
+  useEffect(() => {
+    if (open && stage === "methods" && tier && assignment?.exposed) {
+      trackSubscriptionEvent(assignment, "subscription_payment_methods_opened", { tier_id: tier.id });
+    }
+  }, [open, stage, tier?.id, assignment]);
 
   useEffect(() => {
     const selectionSettled = sel?.kind === "pack"
@@ -98,7 +122,12 @@ export function EnergyBuyDialog({
     setBusyKey(o.key);
     setError("");
     try {
-      await data.pay(o, opId);
+      const result = await data.pay(o, opId);
+      if (result?.subId && tier && assignment?.exposed) {
+        trackSubscriptionEvent(assignment, "subscription_purchase_completed", {
+          tier_id: tier.id, sub_id: result.subId, currency: o.token, $insert_id: `esub:${result.subId}`,
+        });
+      }
       setDoneTitle(title);
       setPick(null);
       setStage("success");
@@ -131,6 +160,7 @@ export function EnergyBuyDialog({
   const flow = stage === "methods" || stage === "confirm" || stage === "success";
   const cls = [
     "energy-buy energy-buy--bundle-study",
+    stage === "catalog" && "energy-buy--subscription-ab",
     stage === "catalog" && "energy-buy--subscription-led",
     stage === "catalog" && data.cards.length > 0 && "energy-buy--energy-catalog",
     flow && "energy-buy--energy-flow",
@@ -218,6 +248,10 @@ export function EnergyBuyDialog({
                 <p className="energy-buy__status">{ru ? "Сейчас нет доступных предложений." : "No offers are available right now."}</p>
               )}
               {data.status === "ready" && (
+                data.tiers.length > 0 && !assignment &&
+                <p className="energy-buy__status" role="status">{ru ? "Подбираем вид подписки…" : "Loading subscription plans…"}</p>
+              )}
+              {data.status === "ready" && (assignment || data.tiers.length === 0) && (
                 <EnergyCatalog
                   ru={ru}
                   walletView={walletView}
@@ -226,8 +260,10 @@ export function EnergyBuyDialog({
                   mine={data.mine}
                   savings={data.savings}
                   busyKey={busyKey}
+                  subscriptionLayout={assignment?.layout ?? "vertical"} dollars={data.googleOnly}
                   onTier={(index) => {
                     leaveCatalog();
+                    if (assignment?.exposed) trackSubscriptionEvent(assignment, "subscription_plan_selected", { tier_id: data.tiers[index].id });
                     setSel({ kind: "sub", index });
                     setStage("methods");
                   }}
@@ -252,7 +288,7 @@ export function EnergyBuyDialog({
               tier={tier}
               glyph={tierGlyph(tierIdx, data.tiers.length)}
               saving={walletView ? (data.savings[tierIdx] ?? null) : null}
-              opts={opts}
+              opts={opts} cardOnly={data.googleOnly}
               onPick={(o) => choose(o, "methods")}
             />
           )}
@@ -266,9 +302,6 @@ export function EnergyBuyDialog({
               pending={busyKey === opt.key}
               onPay={() => void run(opt, reward.title, pick?.opId)}
               onTopUp={() => setStage("top-up")}
-              onNeedTickets={card && opt && onNeedTickets
-                ? () => onNeedTickets({ packId: card.id, optionKey: opt.key, origin, catalogScroll: catalogScroll.current })
-                : undefined}
             />
           )}
           {stage === "top-up" && opt && (
@@ -280,3 +313,5 @@ export function EnergyBuyDialog({
     </Dialog>
   );
 }
+
+

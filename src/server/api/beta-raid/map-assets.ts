@@ -25,7 +25,7 @@ export type ObjectDict = Record<
     level: number | null;
   }
 >;
-export type DecorDict = Record<string, { id: string; name: string; imageUrl: string | null }>;
+export type DecorDict = Record<string, { id: string; name: string; imageUrl: string | null; bridge?: unknown }>;
 
 export function buildAssetDicts(rows: {
   terrainRows: Array<{
@@ -44,7 +44,7 @@ export function buildAssetDicts(rows: {
     rarity: string | null;
     level: number | null;
   }> | null;
-  decorRows: Array<{ id: string; name: string; image_url: string | null }> | null;
+  decorRows: Array<{ id: string; name: string; image_url: string | null; meta?: unknown }> | null;
   roadRows: Array<{
     id: string;
     name: string;
@@ -80,7 +80,8 @@ export function buildAssetDicts(rows: {
 
   const decorations: DecorDict = {};
   for (const d of rows.decorRows ?? []) {
-    decorations[d.id] = { id: d.id, name: d.name, imageUrl: d.image_url };
+    const meta = d.meta && typeof d.meta === "object" ? d.meta as Record<string, unknown> : null;
+    decorations[d.id] = { id: d.id, name: d.name, imageUrl: d.image_url, bridge: meta?.bridge ?? null };
   }
 
   const roads: TerrainDict = {};

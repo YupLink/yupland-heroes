@@ -2,6 +2,7 @@ import { Component, useEffect, useRef, useState, type ReactNode } from "react";
 import yupikWalk from "../../assets/loading/yupik-walk.gif";
 import yupikStill from "../../assets/loading/yupik-still.webp";
 import { useSplashCovered } from "./splashPolicy";
+import { reloadForStaleChunk, reloadQuietly } from "@/lib/staleReload";
 import "./game-load-state.css";
 
 /** Fresh HTML/chunks, preserving the route and Telegram launch fragment. */
@@ -11,7 +12,18 @@ export function reloadGameScreen() {
   window.location.replace(url.toString());
 }
 
-export function GameLoadState({ ru, state, destination = "game", fullscreen = true, onRetry, onBack, backLabel }: {
+// Игрока не гоняем по кнопкам (владелец, 28.10.2026): сбой загрузки повторяем сами —
+// через 3, 6, 12… до 30 с; серия забывается после двух минут без сбоев.
+let failStreak = 0;
+let failAt = 0;
+function nextRetryDelay(): number {
+  const now = Date.now();
+  if (now - failAt > 120_000) failStreak = 0;
+  failAt = now;
+  return Math.min(3_000 * 2 ** failStreak++, 30_000);
+}
+
+export function GameLoadState({ ru, state, destination = "game", fullscreen = true, onRetry, onBack, backLabel, menu }: {
   ru: boolean;
   state: "loading" | "error" | "empty";
   destination?: "game" | "world" | "castle";
@@ -19,6 +31,8 @@ export function GameLoadState({ ru, state, destination = "game", fullscreen = tr
   onRetry?: () => void;
   onBack?: () => void;
   backLabel?: string;
+  /** Меню входа (GameStartMenu) вместо подписи и клеток: тот же Юпик идёт дальше, путь не начинается заново. */
+  menu?: ReactNode;
 }) {
   // Медленная сеть (17.10): с 15 с — подпись «Медленная сеть…», анимация идёт дальше;
   // «Обновить игру» — только с минуты: на медленном интернете перезагрузка начинает всё заново.
@@ -42,7 +56,23 @@ export function GameLoadState({ ru, state, destination = "game", fullscreen = tr
     };
   }, [state, destination]);
   const covered = useSplashCovered();
-  const stalled = state === "loading" && delayed;
+  // Пока открыто меню входа, «загрузка задерживается» не показываем: игрок выбирает, а не ждёт.
+  const stalled = !menu && state === "loading" && delayed;
+  // Минута без ответа — обновляемся сами (не чаще раза в 10 мин: на медленной сети
+  // перезагрузка начинает всё заново, поэтому дальше — кнопка).
+  useEffect(() => {
+    if (stalled) reloadQuietly("stall-reload-at", 10 * 60_000);
+  }, [stalled]);
+  const retryRef = useRef(onRetry);
+  useEffect(() => {
+    retryRef.current = onRetry;
+  });
+  useEffect(() => {
+    // Полная перезагрузка страницы — только через сторож GameLoadBoundary, не по кругу.
+    if (state !== "error" || !retryRef.current || retryRef.current === reloadGameScreen) return;
+    const timer = window.setTimeout(() => retryRef.current?.(), nextRetryDelay());
+    return () => window.clearTimeout(timer);
+  }, [state]);
   const loading = state === "loading" && !stalled;
   const title = stalled ? ru ? "Загрузка задерживается" : "Loading is taking longer"
     : loading && slow
@@ -73,11 +103,11 @@ export function GameLoadState({ ru, state, destination = "game", fullscreen = tr
     );
   }
   return (
-    <section className={`game-load-state${fullscreen ? " game-load-state--fullscreen" : ""}${loading ? " game-load-state--loading" : " game-load-state--inactive"}`} data-walk-ready={walkReady} aria-busy={loading}>
+    <section className={`game-load-state${fullscreen ? " game-load-state--fullscreen" : ""}${loading ? " game-load-state--loading" : " game-load-state--inactive"}`} data-walk-ready={walkReady} aria-busy={loading && !menu}>
       {fullscreen ? <div className="game-load-state__scene">
         <img ref={walkRef} className="game-load-state__runner game-load-state__runner--walking" src={yupikWalk} alt="" aria-hidden="true" onLoad={() => setWalkReady(true)} onError={() => setWalkReady(false)} />
         <img className="game-load-state__runner game-load-state__runner--still" src={yupikStill} alt="" aria-hidden="true" />
-        {loading ? <>
+        {loading && menu ? menu : loading ? <>
           <h1 className="game-load-state__caption" role="status">{title}</h1>
           <div className="game-load-state__cells" aria-hidden="true">
             {Array.from({ length: 16 }, (_, index) => <span key={index} />)}
@@ -97,13 +127,20 @@ export function GameLoadState({ ru, state, destination = "game", fullscreen = tr
   );
 }
 
-/** A failed lazy chunk needs a new page load; resetting React.lazy repeats the same rejected promise. */
-export class GameLoadBoundary extends Component<{ ru: boolean; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
+/**
+ * A failed lazy chunk needs a new page load; resetting React.lazy repeats the same rejected promise.
+ * Перезагружаемся сами (раз в 30 с), игрок видит загрузку; кнопка — если перезагрузка не помогла.
+ */
+export class GameLoadBoundary extends Component<{ ru: boolean; children: ReactNode }, { failed: boolean; reloading: boolean }> {
+  state = { failed: false, reloading: false };
+  static getDerivedStateFromError() { return { failed: true, reloading: true }; }
+  componentDidCatch() {
+    if (!reloadForStaleChunk()) this.setState({ reloading: false });
+  }
   render() {
-    return this.state.failed
-      ? <GameLoadState ru={this.props.ru} state="error" onRetry={reloadGameScreen} />
-      : this.props.children;
+    if (!this.state.failed) return this.props.children;
+    return this.state.reloading
+      ? <GameLoadState ru={this.props.ru} state="loading" />
+      : <GameLoadState ru={this.props.ru} state="error" onRetry={reloadGameScreen} />;
   }
 }

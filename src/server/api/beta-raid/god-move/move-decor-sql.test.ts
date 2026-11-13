@@ -86,8 +86,13 @@ describe("перенос декора", () => {
     );
     expect(put).toContain("ON CONFLICT (map_id, q, r) DO UPDATE SET decor_id = EXCLUDED.decor_id");
     expect(put).toContain("placed_at = NULL, created_at = EXCLUDED.created_at");
+    const planted = `EXISTS (SELECT 1 FROM yuplink.raid_map_cells pc WHERE ${SRC("pc")} AND pc.decoration_id IS NOT NULL AND pc.planted_decor = pc.decoration_id)`;
     expect(cte("regrow_del")).toBe(
-      `DELETE FROM yuplink.raid_decor_respawn d USING go WHERE ${SRC("d")} AND d.placed_at IS NULL RETURNING 1`,
+      `DELETE FROM yuplink.raid_decor_respawn d USING go WHERE ${SRC("d")} AND d.placed_at IS NULL AND NOT ${planted} RETURNING 1`,
+    );
+    // Едет посаженное дерево — ожидание декора карты под ним остаётся и будится (decor-05).
+    expect(cte("regrow_wake")).toBe(
+      `UPDATE yuplink.raid_decor_respawn d SET due_at = now() FROM go WHERE ${SRC("d")} AND d.placed_at IS NULL AND d.held_at IS NOT NULL AND ${planted} RETURNING 1`,
     );
   });
 
@@ -95,6 +100,6 @@ describe("перенос декора", () => {
     const written = writtenTables(sql);
     expect([...written].sort()).toEqual(["raid_decor_respawn", "raid_map_cells"]);
     expect([...sql.matchAll(WRITE_RE)].length).toBe(unitWriteNames(decorAt).length);
-    expect(unitWriteNames(decorAt)).toEqual(["cells", "regrow_put", "regrow_del"]);
+    expect(unitWriteNames(decorAt)).toEqual(["cells", "regrow_put", "regrow_del", "regrow_wake"]);
   });
 });

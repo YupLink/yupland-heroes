@@ -10,6 +10,9 @@ export const dict: Record<string, Entry> = {
   "bag.title": { ru: "Мешочек", en: "Loot bag" },
   "bag.mound": { ru: "Бугорок", en: "Mound" },
   "bag.title_many": { ru: "Мешочков: {n}", en: "Loot bags: {n}" },
+  // Рыба, всплывшая от красного динамита (30.10.2026): тот же мешочек, только рыба
+  "bag.fish": { ru: "Рыба", en: "Fish" },
+  "bag.fish_boot": { ru: "Упс, показалось", en: "Oops, must have imagined it" },
   "bag.left_h": { ru: "осталось {h} ч", en: "{h} h left" },
   "bag.left_m": { ru: "осталось {m} мин", en: "{m} min left" },
   "bag.have": { ru: "В мешочке: {n}", en: "In the bag: {n}" },
@@ -28,6 +31,8 @@ export const dict: Record<string, Entry> = {
   },
   // Тосты
   "bag.took": { ru: "Забрано: {n}", en: "Taken: {n}" },
+  // «Забрать всё» унесло не всё: что осталось в мешочке.
+  "bag.not_fit": { ru: "Не влезло: {list}", en: "Didn't fit: {list}" },
   "bag.put_toast": { ru: "Положено в мешочек: {n}", en: "Put in the bag: {n}" },
   "bag.buried_toast": { ru: "Мешочек закопан", en: "The bag is buried" },
   "bag.dug_toast": { ru: "Бугорок раскопан", en: "The mound is dug up" },
@@ -62,6 +67,11 @@ export const dict: Record<string, Entry> = {
   "bag.buried": { ru: "Мешочек уже закопан", en: "The bag is already buried" },
   "bag.not_buried": { ru: "Бугорок уже раскопали", en: "The mound has already been dug up" },
   "bag.taken": { ru: "Это уже забрали", en: "Someone already took it" },
+  // Ресурс счёта появляется в мешочке только разборкой шахты (§8.70).
+  "bag.res_no_put": {
+    ru: "Ресурсы в мешочек не кладут",
+    en: "Resources can't be put into a loot bag",
+  },
   "bag.need_shovel": { ru: "Нужна лопата", en: "Shovel needed" },
   "bag.drop_failed": {
     ru: "Не получилось — энергия и инструмент вернулись, попробуй ещё раз",

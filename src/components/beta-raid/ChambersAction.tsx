@@ -66,6 +66,9 @@ export function ChambersAction({
       // Дебаффы висят на самой карте (значки над героем) — перечитать.
       void qc.invalidateQueries({ queryKey: ["beta-raid-state"] });
       void qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
+      // Плата: золото (цена «в билетах» ×500, §8.61) или лайки — балансы сразу.
+      void qc.invalidateQueries({ queryKey: ["my-resources"] });
+      void qc.invalidateQueries({ queryKey: ["my-like-balance"] });
       onDone();
     },
     onError: (e: Error) => toast.error(humanError(e)),

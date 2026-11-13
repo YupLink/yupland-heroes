@@ -161,7 +161,7 @@ function ResourceBar({ energy }: ResourceBarProps) {
     shortAmount(likes, 0, sfx),
     shortAmount(res?.wood ?? 0, 0, sfx),
     shortAmount(res?.stone ?? 0, 0, sfx),
-    shortAmount(res?.gold ?? 0, 0, sfx),
+    ...(!castleMode ? [shortAmount(res?.gold ?? 0, 0, sfx)] : []),
     shortAmount(res?.diamonds ?? 0, 0, sfx),
   ];
   // Мерим ПОЛОСУ ЦЕЛИКОМ (она во всю ширину карты), а не саму плашку: на
@@ -200,7 +200,6 @@ function ResourceBar({ energy }: ResourceBarProps) {
             <Res src="/resources/likes.webp" value={likes} compactAt={10_000} />
             <Res src="/resources/wood.webp" value={res?.wood ?? 0} compactAt={10_000} />
             <Res src="/resources/stone.webp" value={res?.stone ?? 0} compactAt={10_000} />
-            <Res src="/resources/gold.webp" value={res?.gold ?? 0} compactAt={10_000} />
             <Res src="/resources/crystal.webp" value={res?.diamonds ?? 0} compactAt={10_000} />
           </>
         ) : (

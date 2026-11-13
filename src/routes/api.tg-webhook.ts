@@ -44,16 +44,11 @@ interface TgUpdate {
 }
 
 function maskWallet(wallet: string): string {
-  return wallet.length > 12
-    ? wallet.replace(/^(.{6}).+(.{4})$/, "$1…$2")
-    : wallet;
+  return wallet.length > 12 ? wallet.replace(/^(.{6}).+(.{4})$/, "$1…$2") : wallet;
 }
 
 async function failChallenge(nonce: string, message: string): Promise<void> {
-  await pg.tgChallenges.update(
-    { nonce },
-    { consumed: true, error_message: message }
-  );
+  await pg.tgChallenges.update({ nonce }, { consumed: true, error_message: message });
 }
 
 async function processStart(text: string, from: TgUser, chatId: number) {
@@ -66,6 +61,10 @@ async function processStart(text: string, from: TgUser, chatId: number) {
   const refMatch = text.match(/^\/start(?:@\S+)?\s+ref(\d+)$/);
   if (refMatch) {
     const inviterTgId = refMatch[1];
+    // Переход по реф-ссылке — в статистику (ref_click).
+    await import("@/server/referralClick").then((m) =>
+      m.noteRefClick(inviterTgId, from.id, "wallet"),
+    );
     const { openAppButtonWithRef } = await import("@/server/tg");
     await tgSendMessage(chatId, tFor(lang, "bot.welcome_ref"), {
       replyMarkup: openAppButtonWithRef(`tg${inviterTgId}`),
@@ -102,16 +101,14 @@ async function processStart(text: string, from: TgUser, chatId: number) {
   const me = await pg.users.findOne({ wallet: challenge.wallet });
 
   if (me?.detached) {
-    const errMsg =
-      "Этот кошелёк был отвязан от Telegram. Повторная привязка невозможна.";
+    const errMsg = "Этот кошелёк был отвязан от Telegram. Повторная привязка невозможна.";
     await failChallenge(nonce, errMsg);
     await tgSendMessage(chatId, tFor(lang, "bot.wallet_detached"));
     return;
   }
 
   if (me?.telegram_id && me.telegram_id !== from.id) {
-    const errMsg =
-      "К этому кошельку уже привязан другой Telegram. Привязка постоянная.";
+    const errMsg = "К этому кошельку уже привязан другой Telegram. Привязка постоянная.";
     await failChallenge(nonce, errMsg);
     await tgSendMessage(chatId, tFor(lang, "bot.wallet_other_tg"));
     return;
@@ -123,7 +120,7 @@ async function processStart(text: string, from: TgUser, chatId: number) {
       chatId,
       tFor(lang, "bot.wallet_already_yours", {
         wallet: maskWallet(challenge.wallet),
-      })
+      }),
     );
     return;
   }
@@ -135,7 +132,7 @@ async function processStart(text: string, from: TgUser, chatId: number) {
         telegram_id: from.id,
         telegram_username: from.username ?? null,
         telegram_linked_at: new Date().toISOString(),
-      }
+      },
     );
   } catch {
     const errMsg = "Не удалось привязать. Попробуй ещё раз.";
@@ -160,7 +157,7 @@ async function processStart(text: string, from: TgUser, chatId: number) {
   await tgSendMessage(
     chatId,
     tFor(lang, "bot.linked_ok", { wallet: maskWallet(challenge.wallet) }),
-    { replyMarkup: openAppButton }
+    { replyMarkup: openAppButton },
   );
 }
 
@@ -169,14 +166,11 @@ export const Route = createFileRoute("/api/tg-webhook")({
     handlers: {
       POST: async ({ request }) => {
         // Secret-token валидация (защита от подделки апдейтов, критично для
-        // приёма Stars-платежей). Обратно-совместимо: если TG_WEBHOOK_SECRET не
-        // задан — НЕ отклоняем, чтобы не сломать бота до перерегистрации вебхука
-        // с secret_token. После установки env + setWebhook(secret) — валидируем.
+        // приёма Stars-платежей и «одобрить выплату»). Секрет задан и вебхук
+        // зарегистрирован с ним — без секрета отказ (аудит 11.11.2026: раньше
+        // пустой TG_WEBHOOK_SECRET пускал поддельные платежи и одобрения).
         const wantSecret = process.env.TG_WEBHOOK_SECRET;
-        if (
-          wantSecret &&
-          request.headers.get("x-telegram-bot-api-secret-token") !== wantSecret
-        ) {
+        if (!wantSecret || request.headers.get("x-telegram-bot-api-secret-token") !== wantSecret) {
           return new Response("forbidden", { status: 403 });
         }
 
@@ -187,86 +181,10 @@ export const Route = createFileRoute("/api/tg-webhook")({
           return new Response("bad json", { status: 400 });
         }
 
-        // ── Telegram Stars: pre_checkout_query — ответить ok в течение 10с,
-        //    иначе платёж отменяется. Валидируем наш payload (hw_chips + XTR).
-        const pcq = update.pre_checkout_query;
-        if (pcq) {
-          try {
-            const { answerPreCheckoutQuery } = await import("@/server/tg");
-            let okPay = false;
-            try {
-              const p = JSON.parse(pcq.invoice_payload) as { k?: string; o?: string | number };
-              okPay =
-                pcq.currency === "XTR" &&
-                ((p?.k === "hw_chips" && typeof p.o === "string") ||
-                  // Пополнение счёта звёздами: сумму подтверждаем по инвойсу,
-                  // фактическое начисление — по successful_payment ниже.
-                  (p?.k === "acc_stars" && Number(pcq.total_amount) > 0));
-            } catch {
-              /* payload не наш */
-            }
-            await answerPreCheckoutQuery(
-              pcq.id,
-              okPay,
-              okPay ? undefined : "Счёт недействителен"
-            );
-          } catch (err) {
-            console.error("tg-webhook pre_checkout error", err);
-          }
-          return new Response("ok");
-        }
-
-        // ── Telegram Stars: successful_payment — выдать товар ИДЕМПОТЕНТНО.
-        //    Идёт ДО текст-гейта (это message без text).
-        const sp = update.message?.successful_payment;
-        const spFrom = update.message?.from;
-        if (sp && spFrom) {
-          try {
-            const p = JSON.parse(sp.invoice_payload) as {
-              k?: string;
-              o?: string;
-            };
-            if (p.k === "acc_stars" && sp.currency === "XTR") {
-              // Пополнение счёта звёздами. Сумма — из самого платежа
-              // (total_amount), не из payload: платёж авторитетнее.
-              const { creditAccountStars } = await import(
-                "@/server/api/currency/stars"
-              );
-              const res = await creditAccountStars({
-                chargeId: sp.telegram_payment_charge_id,
-                tgId: spFrom.id,
-                amountStars: sp.total_amount,
-              });
-              if (res.credited) {
-                await tgSendMessage(
-                  spFrom.id,
-                  `✅ Зачислено <b>${sp.total_amount}</b>★ на счёт. Баланс: <b>${res.balance}</b>★.`
-                );
-              }
-              return new Response("ok");
-            }
-            if (p.k === "hw_chips" && p.o && sp.currency === "XTR") {
-              const { grantStarHallwayChips } = await import(
-                "@/server/hallwayStars"
-              );
-              const res = await grantStarHallwayChips({
-                chargeId: sp.telegram_payment_charge_id,
-                tgId: spFrom.id,
-                offerId: p.o,
-                amountStars: sp.total_amount,
-              });
-              if (res.granted) {
-                await tgSendMessage(
-                  spFrom.id,
-                  `✅ Начислено <b>${res.count}</b> тренировочных фишек. Открой прихожу и выпускайся в игру!`
-                );
-              }
-            }
-          } catch (err) {
-            console.error("tg-webhook successful_payment error", err);
-          }
-          return new Response("ok");
-        }
+        // ── Telegram Stars (server/tgStarsUpdate): счета этого бота, выставленные до 02.11.
+        //    Идёт ДО текст-гейта (successful_payment — message без text).
+        const { handleStarsUpdate } = await import("@/server/tgStarsUpdate");
+        if (await handleStarsUpdate(update, "wallet")) return new Response("ok");
 
         const text = update.message?.text;
         const from = update.message?.from;

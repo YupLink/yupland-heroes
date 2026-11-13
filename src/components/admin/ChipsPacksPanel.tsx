@@ -26,7 +26,6 @@ import {
   Power,
   Coins,
   AlertTriangle,
-  Ticket as TicketIcon,
   Star,
   Layers,
   Zap,
@@ -35,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { EnergyPacksAdminPanel } from "./EnergyPacksAdminPanel";
 import { EnergyLikeOfferAdmin } from "./EnergyLikeOfferAdmin";
 import { humanError } from "@/lib/humanError";
+import { TICKET_SPEND_GOLD, goldForTicketPrice } from "@/lib/ticketGold";
 
 type PackData = Awaited<ReturnType<typeof adminListChipPacks>>[number];
 type CollectionData = Awaited<ReturnType<typeof adminListChipCollections>>[number];
@@ -55,7 +55,7 @@ interface DropTableConfig {
 // Минимальные цены паков (по продуктовым правилам — не давать админу
 // случайно создать «копеечный» пак).
 const MIN_PRICE_DARAI = 50_000;
-const MIN_PRICE_TICKETS = 1;
+const MIN_PRICE_TICKETS = TICKET_SPEND_GOLD; // в ЗОЛОТЕ: поле — золото, в базу price_tickets = золото/500 (§8.61)
 
 const LEVELS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 
@@ -350,7 +350,7 @@ function PackForm({
     initial?.priceDarai != null ? String(initial.priceDarai) : ""
   );
   const [priceTickets, setPriceTickets] = useState(
-    initial?.priceTickets != null ? String(initial.priceTickets) : ""
+    initial?.priceTickets != null ? String(goldForTicketPrice(initial.priceTickets)) : ""
   );
   const [priceStars, setPriceStars] = useState(
     initial?.priceStars != null ? String(initial.priceStars) : ""
@@ -443,7 +443,7 @@ function PackForm({
             : null,
         priceTickets:
           priceTickets.trim().length > 0
-            ? Math.max(MIN_PRICE_TICKETS, Number(priceTickets))
+            ? Math.max(1, Math.round(Number(priceTickets) / TICKET_SPEND_GOLD))
             : null,
         priceStars:
           priceStars.trim().length > 0 ? Math.max(1, Math.floor(Number(priceStars))) : null,
@@ -686,12 +686,12 @@ function PackForm({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Цена в билетах
+              Цена в золоте (кратно {TICKET_SPEND_GOLD})
             </label>
             <input
               type="number"
               min={MIN_PRICE_TICKETS}
-              step={1}
+              step={TICKET_SPEND_GOLD}
               value={priceTickets}
               onChange={(e) => setPriceTickets(e.target.value)}
               placeholder={`мин ${MIN_PRICE_TICKETS}`}
@@ -1269,8 +1269,8 @@ function PackCard({
             )}
             {pack.priceTickets != null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-neon/10 px-2 py-0.5 font-medium text-neon">
-                <TicketIcon className="h-3 w-3" />
-                {pack.priceTickets.toLocaleString()}
+                <span aria-hidden>🪙</span>
+                {goldForTicketPrice(pack.priceTickets).toLocaleString()}
               </span>
             )}
             <span

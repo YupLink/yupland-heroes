@@ -1,0 +1,44 @@
+/* Комья и пыль из-под лопаты (DigDirt). Размеры — от кучки (проценты её ширины). */
+.casino-ui .dig-dirt {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.casino-ui .dig-clod {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: calc(9% * var(--s, 1));
+  aspect-ratio: 1;
+  border-radius: 45% 55% 50% 40%;
+  background: radial-gradient(circle at 35% 30%, #a0723f, #5b3a1c 70%);
+  box-shadow: 0 1px 0 #2a180a;
+  opacity: 0;
+  animation: casino-dig-clod 620ms cubic-bezier(0.2, 0.7, 0.4, 1) both;
+}
+@keyframes casino-dig-clod {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
+  12% { opacity: 1; }
+  50% { opacity: 1; transform: translate(calc(-50% + var(--dx) * 0.7), calc(-1 * var(--dy))) scale(1) rotate(90deg); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), 10%) scale(0.85) rotate(200deg); }
+}
+.casino-ui .dig-dust {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 70%;
+  aspect-ratio: 2 / 1;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #8a6a45aa, #8a6a4500 70%);
+  opacity: 0;
+  animation: casino-dig-dust 700ms ease-out both;
+}
+@keyframes casino-dig-dust {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(-50%, -30%) scale(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .casino-ui .dig-clod, .casino-ui .dig-dust { animation: none; opacity: 0; }
+}

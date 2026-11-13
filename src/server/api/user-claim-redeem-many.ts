@@ -34,7 +34,8 @@ export const redeemDropMany = createServerFn({ method: "POST" })
     const allTokens = await pg.rewardTokens.findMany();
     const tokenInfoMap = new Map(allTokens.map((t) => [t.symbol, t]));
     const tiers = parseRewardTiers(drop.reward_tiers);
-    const hasEnergyTier = !!tiers?.some((t) => t.kind === "energy");
+    // Энергия и товар «за фишку» не выдаются (processChipDrop отказывает).
+    const hasEnergyTier = !!tiers?.some((t) => t.kind === "energy" || t.kind === "custom");
 
     const pickReward = (): {
       amount: number;

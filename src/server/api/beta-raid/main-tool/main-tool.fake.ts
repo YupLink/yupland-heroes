@@ -5,8 +5,11 @@
 // Postgres под локом героя: удар (tool-wear hitSql) с гардом основного
 // (mainOkModel — зеркало main-tool-sql mainOkSql; что SQL считает так же,
 // сверено SELECT-ом на живой базе, см. main-tool-sql.test), откат, закрытие
-// ключа, выбор основного, чтения и копка пустой земли.
+// ключа, выбор основного, чтения; копка пустой земли — ground-dig.fake.
 import { hitStack, undoHit } from "@/lib/raid/toolWear";
+import { groundRun, resetGround } from "./ground-dig.fake";
+
+export type { FakeCell } from "./ground-dig.fake";
 
 type Stack = { count: number; wear: number };
 type Op = {
@@ -17,13 +20,6 @@ type Op = {
   settled: boolean;
   at: number;
 };
-/** Клетка карты для «Копать»: что на ней (всё, что мешает, — true). */
-export type FakeCell = Partial<
-  Record<"water" | "decor" | "building" | "object" | "bag" | "chest" | "ship", boolean>
-> & {
-  terrain?: boolean;
-};
-
 export const fx = {
   /** Герой → записанный основной (hero_instance.main_tool). */
   main: new Map<string, string | null>(),
@@ -34,13 +30,12 @@ export const fx = {
   /** Декор с инструментом: id товара-инструмента (канон). */
   decorTools: [] as string[],
   wearOps: new Map<string, Op>(),
-  cells: new Map<string, FakeCell>(),
-  /** raid_loot_bag_op: ключ копки → исход и nonce. */
-  digOps: new Map<string, { state: string; nonce: string | null }>(),
   sql: [] as string[],
   clock: 0,
   /** Ответ этого оператора потеряется (применён, попытка — ошибка). */
   loseOn: null as string | null,
+  /** Этот оператор применится, а ответ придёт пустым (мост: не JSON). */
+  emptyOn: null as string | null,
   /** Этот оператор упадёт до записи. */
   failOn: null as string | null,
 };
@@ -52,13 +47,13 @@ export function resetFx(): void {
     catalog: new Map(),
     decorTools: [],
     wearOps: new Map(),
-    cells: new Map(),
-    digOps: new Map(),
     sql: [],
     clock: 0,
     loseOn: null,
+    emptyOn: null,
     failOn: null,
   });
+  resetGround();
 }
 
 export const packOf = (hero: string): Map<string, Stack> => {
@@ -166,27 +161,6 @@ function setMain(sql: string): unknown[] {
   return row({ set: ok });
 }
 
-function ground(sql: string): unknown[] {
-  const at = /c\.q = (-?\d+) AND c\.r = (-?\d+)/.exec(sql);
-  const cell = fx.cells.get(`${at?.[1]},${at?.[2]}`);
-  if (!cell) return [];
-  const { terrain = true, ...rest } = cell;
-  return [{ ok: terrain && !Object.values(rest).some(Boolean) }];
-}
-
-function mark(sql: string): unknown[] {
-  const op = pick(sql, /WHERE op = '([^']+)'/);
-  const prior = fx.digOps.get(op);
-  if (sql.includes("'ground', 'failed'")) {
-    if (!prior) fx.digOps.set(op, { state: "failed", nonce: null });
-    return row({ state: fx.digOps.get(op)!.state });
-  }
-  const nonce = pick(sql, /jsonb_build_object\('nonce', '([^']+)'\)/);
-  if (prior) return row({ state: prior.state, mine: prior.nonce === nonce });
-  fx.digOps.set(op, { state: "done", nonce });
-  return row({ state: "done", mine: true });
-}
-
 function run(sql: string): unknown[] {
   if (sql.includes("INSERT INTO yuplink.raid_tool_wear_op (op, hero_id, stack_key, taken, mob"))
     return hit(sql);
@@ -203,12 +177,8 @@ function run(sql: string): unknown[] {
     return [{ key, shovel: isShovel(key) }];
   }
   if (sql.includes("SET main_tool =") && sql.includes("WITH upd AS")) return setMain(sql);
-  if (sql.includes("FROM yuplink.raid_map_cells c") && sql.includes("AS ok")) return ground(sql);
-  if (sql.includes("'ground', 'done'") || sql.includes("'ground', 'failed'")) return mark(sql);
-  if (sql.includes("SELECT state FROM yuplink.raid_loot_bag_op WHERE op")) {
-    const o = fx.digOps.get(pick(sql, /WHERE op = '([^']+)'/));
-    return o ? [{ state: o.state }] : [];
-  }
+  const dug = groundRun(sql);
+  if (dug) return dug;
   if (sql.includes("meta->'interact' AS interact")) {
     return fx.decorTools.map((toolId) => ({
       id: `decoration_${toolId}`,
@@ -241,6 +211,10 @@ export async function fakeExec(sql: string): Promise<unknown[]> {
     throw new Error("MCP timeout");
   }
   const out = run(sql);
+  if (fx.emptyOn && sql.includes(fx.emptyOn)) {
+    fx.emptyOn = null;
+    return [];
+  }
   if (fx.loseOn && sql.includes(fx.loseOn)) {
     fx.loseOn = null;
     throw new Error("MCP timeout");

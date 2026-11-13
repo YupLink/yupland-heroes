@@ -1,0 +1,24 @@
+.hud-frost-coating {
+ position:absolute!important;inset:auto!important;top:var(--frost-top,0px)!important;left:var(--frost-left,0px)!important;z-index:45;display:block!important;
+ width:var(--frost-width)!important;height:var(--frost-height)!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;transform:none!important;box-sizing:border-box;
+ pointer-events:none!important;user-select:none;overflow:hidden;
+ opacity:.72;
+ clip-path:inset(0 round var(--frost-radius,0px));
+ --frost-depth:15px;--frost-flip:scaleX(1);--frost-turn:0deg;--frost-bias:120deg;
+}
+.hud-frost-coating::before{content:"";position:absolute;inset:0;box-sizing:border-box;border:var(--frost-depth) solid transparent;border-image:url('./hud-frost.webp') 75 / var(--frost-depth) / 0 round;transform:var(--frost-flip);mask-image:linear-gradient(var(--frost-bias),#000 12%,#0009 48%,#000d 70%,#000 95%);pointer-events:none}
+.hud-frost-coating::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 2px 1px #e4f8ffb0;pointer-events:none;mask-image:linear-gradient(125deg,#000 0%,#0005 35%,#0002 60%,#000 100%)}
+.hud-frost-coating[data-frost-temperature="very-cold"]{opacity:.94;--frost-depth:18px}
+.hud-frost-coating[data-pattern="1"]{--frost-flip:scaleX(-1);--frost-turn:75deg;--frost-bias:40deg}
+.hud-frost-coating[data-pattern="2"]{--frost-flip:scaleY(-1);--frost-turn:165deg;--frost-bias:220deg}
+.hud-frost-coating[data-pattern="3"]{--frost-flip:scale(-1);--frost-turn:250deg;--frost-bias:300deg}
+.hud-frost-coating[data-pattern="1"]::before{border-image-slice:65 83 90 60}
+.hud-frost-coating[data-pattern="2"]::before{border-image-slice:90 60 70 83}
+.hud-frost-coating[data-pattern="3"]::before{border-image-slice:60 90 83 70}
+.hud-frost-coating[data-round="true"]{clip-path:circle(50%);border-radius:50%!important}
+.hud-frost-coating[data-round="true"]::before{border:0;background:url('./hud-frost.webp') center/100% 100% no-repeat;transform:rotate(var(--frost-turn));mask-image:radial-gradient(circle,transparent 12%,#000 56%)}
+.hud-frost-coating[data-round="true"]::after{transform:rotate(var(--frost-turn));box-shadow:inset 0 0 3px 2px #ddf6ffb0}
+.hud-frost-coating[data-compact="true"]{--frost-depth:7px}
+.raid-weather__drawer>.hud-frost-coating{--frost-depth:12px}
+.raid-weather__details>.hud-frost-coating{--frost-depth:15px}
+.raid-map-nav__button--primary:has(>.hud-frost-coating).raid-map-nav__castle>span:not(.raid-map-nav__castle-art):not(.hud-frost-coating){white-space:nowrap;font:700 13px/1 var(--font-sans)}

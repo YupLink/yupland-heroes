@@ -1,7 +1,8 @@
 // Окно мешочка как у склада: плитки обеих сторон и окно «сколько». Чистый
 // модуль — числа держит тест, JSX — LootBagGrid.
 import { exactQty, stackCells } from "@/lib/warehouseCells";
-import { bagTimeLeft, type LootBagItem } from "@/lib/lootBag";
+import { bagNeverBurns, bagResOf, bagTimeLeft, type LootBagItem } from "@/lib/lootBag";
+import { marketResourceIconSrc } from "@/lib/resourceIcons";
 import { buildCells, type Cell, type Stack } from "@/components/beta-raid/warehouseGrid";
 
 export type BagPick = {
@@ -49,29 +50,42 @@ export const takePick = (c: Cell): BagPick => ({
   busyKey: `bag:${c.key}`,
 });
 
-/** Плитки мешочка: позиции по ячейкам, без пустых — места у мешочка не меряют. */
-export function bagCells(items: readonly LootBagItem[], name: (n: string) => string): Cell[] {
-  const stacks: Stack[] = items.map((i) => ({
-    stackKey: i.stackKey,
-    kind: i.kind,
-    refId: i.refId,
-    name: name(i.name),
-    image: i.image,
-    count: i.count,
-    cells: stackCells(i.count),
-  }));
-  return buildCells(stacks, 0).filter((c): c is Cell => c !== null);
+/**
+ * Плитки мешочка: позиции по ячейкам, без пустых — места у мешочка не меряют.
+ * Ресурс счёта (разборка шахты, §8.70) — одна плитка на всё и значок ресурса:
+ * в рюкзак он не идёт, ячейки ему не нужны.
+ */
+export function bagCells(
+  items: readonly LootBagItem[],
+  name: (n: string, stackKey: string) => string,
+): Cell[] {
+  return items.flatMap((i) => {
+    const res = bagResOf(i.stackKey);
+    const stack: Stack = {
+      stackKey: i.stackKey,
+      kind: i.kind,
+      refId: i.refId,
+      name: name(i.name, i.stackKey),
+      image: res ? marketResourceIconSrc(res) : i.image,
+      count: i.count,
+      cells: res ? 1 : stackCells(i.count),
+    };
+    if (res) return [{ key: `${i.stackKey}#0`, stack, units: exactQty(i.count) }];
+    return buildCells([stack], 0).filter((c): c is Cell => c !== null);
+  });
 }
 
 /**
  * Срок позиции на плитке: часы, последний час — минуты (не меньше одной).
- * null — сгорела (плитка гаснет сама, не дожидаясь ответа сервера).
+ * null — сгорела (плитка гаснет сама, не дожидаясь ответа сервера) или не
+ * сгорает вовсе (ресурс разборки шахты, §8.70).
  */
 export function leftLabel(
   leftMs: number,
   gotAt: number,
   now: number,
 ): { key: string; params: Record<string, number> } | null {
+  if (bagNeverBurns(leftMs)) return null;
   const left = bagTimeLeft(leftMs, gotAt, now);
   if (!left) return null;
   return left.h > 0

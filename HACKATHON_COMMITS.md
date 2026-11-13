@@ -1,0 +1,1056 @@
+# YupLand Heroes — commit chronicle of the hackathon window
+
+This is the list of commit subjects from the private repository during the hackathon window (2026-10-19 00:00 – 2026-11-15 00:00, +03:00), in commit order (oldest first), one line per non-merge commit. A few subjects repeat because the same change was re-applied on another branch.
+Subjects stay in their original language (mostly Russian) and are sanitized: personal data, player and account names, team members' names (replaced by roles) and internal infrastructure were removed. Commit hashes and private PR numbers are omitted because the public repository has no history.
+The code state before and after the window is in the tags `pre-hackathon` and `hackathon-submission`.
+
+## Week 1 (Oct 19–25) — 363 commits
+
+- 2026-10-19 — ui(chips): keep upgraded chip card open with current state
+- 2026-10-19 — ui(chips): keep upgraded chip card open with current state
+- 2026-10-19 — ui(chips): keep upgraded chip card open with current state
+- 2026-10-19 — ui(chips): keep upgraded chip card open with current state
+- 2026-10-19 — feat(island): отдельное право «тест острова» для тестового аккаунта без админки
+- 2026-10-19 — ПРАВИЛА §8.59: шахты v2 — утверждённый план (стандарт добычи, режимы, поломка и починка, Архитектор, места постройки)
+- 2026-10-19 — ПРАВИЛА §8.59: босс при поломке сбегает навсегда; все шахты непроходимы, копать на них нельзя; 6 шахт у порталов и дороги — перенос при запуске
+- 2026-10-19 — fix(ui): transfer available storage capacity and await balance refresh
+- 2026-10-19 — feat(slot): add approved chip music and event sounds
+- 2026-10-19 — feat(slot): ascending octave cues for landed bonus symbols
+- 2026-10-19 — fix(slot): approved musical bonus steps and aligned dig mute
+- 2026-10-20 — fix(slot): recover missing cave artwork with image fallback
+- 2026-10-20 — design(castle): stage optimized five-style decor catalog and separate shadows
+- 2026-10-20 — design(castle): connect admin decor styles, terrain, paths and independent shadows
+- 2026-10-20 — style(slot): compact payline numbers and expand reel symbols
+- 2026-10-20 — feat(island): правки по отзывам — 64×64, подарок острова, герой на выбор расы, проход от 5 ур., портал за ресурсы
+- 2026-10-20 — ПРАВИЛА §8.59: перенос 11 шахт с проходов к порталам и дорогам (20.10)
+- 2026-10-20 — Шахты v2: Архитектор замка — уровни 0..4 и заготовки шахт (§8.59.7)
+- 2026-10-20 — Шахты v2: сквозь шахты не пройти (§8.59 п. 9)
+- 2026-10-20 — Шахты v2 (§8.59): движок — режимы, запас службы, поломка, починка
+- 2026-10-20 — Шахты v2 (§8.59): окно шахты — режим, запас службы, починка
+- 2026-10-20 — Шахты v2: постановка шахты из заготовки — дерево и камень (§8.59.8)
+- 2026-10-20 — Шахты v2: постановка не перекрывает проход (соседи цели связаны в обход в радиусе 8)
+- 2026-10-20 — Шахты v2: убрана неутверждённая проверка «перекроет проход»; ПРАВИЛА §8.59 — сделано
+- 2026-10-20 — Шахты v2: правки по ревью — хвост часа по выработке, турнирный учёт по клетке, хвост при поломке, мешочки под шахтой, надёжная рассылка постановки, блоки-шахты, снимок g3, часы телефона, возврат заготовки одним шагом
+- 2026-10-20 — Шахты v2: ПРАВИЛА §8.59 «как сделано», справочник параметров — шахта и Архитектор
+- 2026-10-20 — fix(build): castlePaths — недостающий модуль из прошлого PR, сборка падала
+- 2026-10-20 — feat(island): остров v3, часть 1 — дроп боссов, подарок в первом сундуке, герой сразу, 50 боссов, камни, 40 кладов, скупка
+- 2026-10-20 — build: отказ собирать поверх живой игры (.output — ссылка)
+- 2026-10-20 — Отдельный бот игры; бот кошелька ведёт только в кошелёк
+- 2026-10-20 — Крафт фишек за золото и банк в замке для игроков (ПРАВИЛА §8.60)
+- 2026-10-20 — Шахты v2: неполный час платится сразу и точно, турнирный хвост без повторов, живой мешочек, словарь до дельты, кэш карты без шахт не пишется, добор оплат Архитектора
+- 2026-10-20 — Письма о подарках и анонсы аукционов админа — от игрового бота с кнопкой в игру
+- 2026-10-20 — Шахты v2: хвост часа вниз (trunc) — щелчком режима не выбить лишнего; финиш турнира узнаёт и прежний ключ minetail
+- 2026-10-20 — Restore slot reel motion and add mechanical reel and digging audio
+- 2026-10-20 — Apply approved compact auction UI to live components
+- 2026-10-20 — design: use approved casino machine and auction building artwork
+- 2026-10-20 — Шахты v2: постановка не перекрывает проход (§8.59 п. 8, владелец) — стены как у шага + объекты и вырастающий декор, сверка шахт рядом под локом карты
+- 2026-10-20 — Казино: барабаны — настоящая лента (разгон, ход, торможение с отскоком, по очереди), ожидание бонуса не выдаёт исход; земля при копании
+- 2026-10-20 — Казино: вернул оформление файлов дизайнера (автоформат задел их в прошлом коммите, логика не менялась)
+- 2026-10-20 — Шахты v2: клетки с боссом или объектом при проверке прохода — не стена (владелец 20.10)
+- 2026-10-20 — Казино: звук копания слышно — удар лопаты ×3, земля ×4,4, музыка на удар приглушается
+- 2026-10-20 — fix(auctions): админский список аукционов — своя строка, не сетка новой карточки (текст вставал по букве в столбик)
+- 2026-10-20 — wip: общий множитель энергии острова (energy.ts)
+- 2026-10-20 — Остров новичка: энергия ×0,5 на все действия (кроме захвата шахты)
+- 2026-10-20 — Остров v3, часть 2: четыре сломанные шахты, лопата и клад до лесопилки, добыча шахт при выходе
+- 2026-10-20 — Шахты острова новичка на движке v2: 4 шахты чинятся один раз, 7 дней, алмаз раз в сутки (§8.59 п. 11)
+- 2026-10-20 — Шахты острова: миграция minev2-30 по финальным телам v2 (close без дробного хвоста у алмаза), кэш островов в тестах
+- 2026-10-20 — Остров v3, часть 2: по ревью — алмаз острова «в день» в сводке добычи, честные тесты (сутки, детерминизм острова)
+- 2026-10-21 — Билетов больше нет — золото (ПРАВИЛА §8.61)
+- 2026-10-21 — Остров: энергия ×0,1 (в 10 раз дешевле мира), три города
+- 2026-10-21 — Казино: спин начинается с прошлого результата, без пустого кадра и дёрганья
+- 2026-10-21 — Банк, обмен: комиссия — только процент, без раскладки по пулам
+- 2026-10-21 — Банк у всех построен сразу; строившим — возврат ресурсов по «ОК»; кнопка «Банк» рядом с аукционом
+- 2026-10-20 — Scope approved auction styles to auction overlay
+- 2026-10-21 — fix(raid): стоя на портале с беглецом под ним — тап открывает портал, а не уводит с клетки («Туда не пройти»)
+- 2026-10-21 — Маркет фишек за золото, золото в прокачке, ввод NFT холдеров только с банком
+- 2026-10-21 — Энергия копится 1 за 5 минут — текст подсказки острова и справочника; комментарии острова ×0,1
+- 2026-10-21 — Золотая и алмазная шахты ставятся из заготовки на жилу своего вида
+- 2026-10-21 — Шахты: режим прямо в «Добыче» и новые имена режимов
+- 2026-10-21 — Полосы службы над шахтами v2 на карте рейда (§8.59 п. 12)
+- 2026-10-21 — Жилы золота и алмазов: таблица, раскладка на «Мире Альфа», снимок, отрисовка
+- 2026-10-21 — ПРАВИЛА §8.59: жилы золота и алмаза, режим в «Добыче», новые имена режимов
+- 2026-10-21 — Полосы службы: под куполом игроку не отдаём; ПРАВИЛА — жилы только снимком, миграция до кода
+- 2026-10-21 — fix(castle): edit and persist all owned buildings with shared style contract
+- 2026-10-21 — Анонс аукциона админа: коротко — 4–5 строк
+- 2026-10-21 — Охрана шахты: при отдалении больше не рисуется убитый охранник
+- 2026-10-21 — Жилы гнёздами по 1–2 клетки: 100 мест каждого вида (minev2-31), снимок g5
+- 2026-10-21 — Анонс аукциона: кнопка «К аукциону» сразу открывает окно аукционов
+- 2026-10-21 — Панель запасов замка: дроби вниз до целого (548,62 → 548)
+- 2026-10-21 — Архитектор: золотая и алмазная заготовки, цены админа с товарами
+- 2026-10-21 — Подписи замка не белеют в ночном режиме браузера (Mi Browser): color-scheme only light
+- 2026-10-21 — Вход: админский кошелёк — из любого аккаунта своего Telegram (ПРАВИЛА §8.58)
+- 2026-10-21 — Остров: босс встаёт рядом, рюкзак новичка +4 на 7 дней, ловля руками, сытость ×0,1, удочки и еда в городах
+- 2026-10-21 — Остров: удочек снова 10 в сутки у каждой лавки (мастерская + 3 города = 40)
+- 2026-10-21 — Шахты: режим стройки — призрак по карте, зелёные/красные клетки, чертёж и постановка за энергию
+- 2026-10-21 — Шахты, режим стройки: правки ревью
+- 2026-10-21 — Ачивки: «Удачливый лудоман» — оборот в казино, 30 тыс. … 50 млн; награда удачи пока не включена
+- 2026-10-21 — build: сборщику 8 ГБ кучи — на 4 ГБ «rendering chunks» падал по памяти (2 выката 21.10)
+- 2026-10-21 — Ачивки: «Лудоман» — награда удачи включена (+1…+24), название по слову владельца
+- 2026-10-21 — build: память сборки 4,2 → 1,8 ГБ кучи без поднятия предела
+- 2026-10-21 — ПРАВИЛА §8.47: энергия подарка острова выше лимита тает (energy_reward), как любая наградная
+- 2026-10-21 — Остров: рыбу принимает ратуша — и привязанные к ней лавки (ПРАВИЛА §8.47)
+- 2026-10-21 — perf: склады карты с кэшем 30 с — запрос был ~10 % времени базы (2,25 млн вызовов)
+- 2026-10-21 — ci: exact UI release build and regression contracts
+- 2026-10-21 — Restyle past auctions while preserving compact history density
+- 2026-10-21 — fix(casino): soften win sound and lighten bonus announcement artwork
+- 2026-10-21 — perf(casino): lighten sprite atlases and remove card-back question marks
+- 2026-10-22 — Остров: цены рыбы в ратушах в 10 раз ниже мировых (ПРАВИЛА §8.47)
+- 2026-10-22 — Пакет 22.10: рефералы-боксы и 10 % с подписок, ломбард героев, статистика пулов, DARAI-шахта-мешочек, охрана за энергию, старт игры (ПРАВИЛА §8.62)
+- 2026-10-22 — Unify trade entry and approved castle reward icons
+- 2026-10-22 — Пакет 22.10 (2): рефы только за новых, меню только новичку, DARAI-шахта без охраны и мешочка, цена охраны по запасу шахты, обычные герои обычные, способность «Снятие иммунитетов», бой по нажатию, износ артефактов
+- 2026-10-22 — Use approved colored trade art on castle and raid entry buttons
+- 2026-10-22 — Зелья: списание и все эффекты — одной транзакцией (всё или ничего)
+- 2026-10-22 — Ратуша замка: 9 уровней и лимит зданий, покупка зданий и декора, Храм — покупаемый (ПРАВИЛА §8.64)
+- 2026-10-22 — Грибы DARAI: 10 000/ч, неделя жизни, поднять/посадить по 5 энергии, одна ячейка с отсчётом; обычные герои — возврат лайков и 10-й уровень
+- 2026-10-22 — Покупка золота: пять пакетов в $, оплата USDT / DARAI / звёздами со счёта (ПРАВИЛА §8.65)
+- 2026-10-22 — Рынок героев (сервер) и минимум маркета фишек 200 золота (ПРАВИЛА §8.66)
+- 2026-10-22 — Покупка золота: пустой ответ базы — сначала квитанция; взаимная блокировка — «нажми ещё раз»
+- 2026-10-22 — Рынок героев: постановка на грядку — только своего героя под замком; залоговый на грядке/рыбалке не продаётся; рюкзак в мешочек — под FOR UPDATE
+- 2026-10-22 — ПРАВИЛА: покупка золота — §8.66, рынок героев — §8.67 (§8.65 занят грибами DARAI)
+- 2026-10-22 — Unify raid and castle market with readable saved catalog layouts
+- 2026-10-22 — Грибы трёх видов (DARAI, золотой, алмазный) с появлением на жилах раз в час, лимиты по всем мирам, грибы втрое меньше, шахты сажаются без проверки прохода
+- 2026-10-22 — Move Bank into shared Trade chooser with illustrated icon
+- 2026-10-22 — Cycle market layout with a single grid button
+- 2026-10-22 — Маркет фишек: минимум 10 золота; рынок героев: новичку без пака покупка закрыта, как у фишек (ПРАВИЛА §8.67)
+- 2026-10-22 — Use approved scaffold tower for castle construction entry
+- 2026-10-22 — Рынок героев: при покупке все строки рюкзака героя (и пустые) — покупателю (миграция hero-market-02)
+- 2026-10-22 — Грибы: защита на час за 5 энергии после посадки; мобы и боссы не появляются на дорогах и жилах
+- 2026-10-22 — Ратуша: цены уровней и декора ждут утверждения владельца — улучшение и декор закрыты до settings.townhall_prices_open
+- 2026-10-22 — Пул сжигания DARAI: в дупло одной транзакцией от 250 млн; доля обмена $ → DARAI — в пул, а не сразу (ПРАВИЛА §8.68)
+- 2026-10-22 — Мобы: при бегстве на дороги и жилы можно, генерация (и бегущих существ) — нельзя; переселение стоящих боссов с дорог и жил (mob-relocate-01)
+- 2026-10-22 — Ратуша: карандаш цены декора в каталоге редактора замка — админ и дизайнер, только золото (ПРАВИЛА §8.64)
+- 2026-10-22 — Каталог декора: монета у цены — 12 px, строка цены — по низу карточки
+- 2026-10-22 — Reduce Trade chooser row height and vertical spacing
+- 2026-10-22 — Match Trade background to approved Auction navy palette
+- 2026-10-22 — Рынок героев: карманы выставляемого — основному герою (миграция hero-market-03)
+- 2026-10-22 — Рынок героев: согласие «выпадет» — по герою и на показанный список; без основного — мешочком
+- 2026-10-22 — Деревья: товар лавки «Дерево для посадки» (цену ставит админ), посадка из рюкзака за 15 энергии по правилам шахт
+- 2026-10-22 — Use exact approved Harvest surfaces for Trade background
+- 2026-10-22 — Add Tavern busy field map link
+- 2026-10-22 — Планшет: замок по центру, игра в Telegram во весь экран, заставка и слот без растяжки
+- 2026-10-22 — Посаженные игроком деревья не отрастают после рубки; «Хозяин шахт» не считает DARAI с грибов
+- 2026-10-22 — Шахты: при захвате прежний хозяин получает и начатый час (minev2-50)
+- 2026-10-22 — Откат: при захвате шахты — только полные часы (minev2-51)
+- 2026-10-22 — design(bank): apply approved mobile bank UI with live actions
+- 2026-10-22 — Грибы: обход «конец жизни» сверяет героя под локом рюкзака — гриб, уехавший к основному (рынок героев), не теряет строку (миграция mushroom-05)
+- 2026-10-22 — fix(bank): accessible selections and approved license shield
+- 2026-10-22 — «Хозяин шахт»: DARAI с грибов — 1 очко за 1 000; пересчёт накопленного (achv-fix-02)
+- 2026-10-22 — Бой на карте: по боссу нажимают дважды — первое выбирает (появляются «i» и «Атаковать»), дальше — удар
+- 2026-10-23 — Шахты: разобрать сломанную за 100 энергии — 30 % цены заготовки мешочком (§8.70)
+- 2026-10-23 — Износ артефактов без дебафов до ремонта: флаг BROKEN_ART_PENALTY (§8.63 п.3)
+- 2026-10-23 — feat(castle): add five approved building styles for admins
+- 2026-10-23 — Мешочек: «Забрать всё» — над плитками; не влезло — тост «Не влезло: …»
+- 2026-10-23 — Рюкзак: цена товаром из того же рюкзака освобождает место под покупку
+- 2026-10-23 — UI: утверждённый рынок фишек и героев — три вида и реальные API
+- 2026-10-23 — Отбитые шахты: несобранное при потере шахты/гриба — не на баланс, а в «Добычу» с кнопкой «Забрать»; уведомление в игре и в игровом боте, без имени захватчика
+- 2026-10-23 — Кузница: ремонт артефактов за золото и алмазы — пока только админам (§8.71)
+- 2026-10-23 — Ремонт: ключ нажатия «Починить все» — по списку на экране, повтор после обрыва не показывает прошлый итог
+- 2026-10-23 — fix(ui): align market filters and add chip type search
+- 2026-10-23 — Отбитые шахты: строкой в общем списке шахт «Добычи» вместо блока; уведомление — только «Шахту захватили (q, r)»
+- 2026-10-23 — design(bank): add approved compact tab and currency icons
+- 2026-10-23 — design(bank): scope the approved bank shell
+- 2026-10-23 — design(bank): restore approved tab artwork
+- 2026-10-23 — design(bank): use compact currency pickers from approved preview
+- 2026-10-23 — design(bank): align scoped shell and exchange layout with mobile preview
+- 2026-10-23 — design(bank): restore clearly labeled illustrative chart
+- 2026-10-23 — design(bank): style labeled chart illustration
+- 2026-10-23 — design(bank): show resource icon in compact deposit input
+- 2026-10-23 — design(bank): restore compact deposit rows and earnings card
+- 2026-10-23 — design(bank): label chart data as illustrative
+- 2026-10-23 — design(bank): preserve release contract while scoping bank shell
+- 2026-10-23 — design(bank): keep shell styles scoped by data marker
+- 2026-10-23 — Банк: график курса золото/DARAI за 7 дней для игроков
+- 2026-10-23 — design(bank): support all resource pairs with icons
+- 2026-10-23 — design(bank): style dynamic pair picker and resource icons
+- 2026-10-23 — Оружейная: общий экран из таверны и будущей постройки
+- 2026-10-23 — Сломанный артефакт слетает с героя; кузница — вкладка «Ремонт» (§8.63 п.3, §8.72)
+- 2026-10-23 — Снаряжение: после запуска поломки запись набора отбрасывает сломанное (гонка «Надеть» с ударом)
+- 2026-10-23 — Оружейная: фокус и компактная шапка на узком экране
+- 2026-10-23 — Оружейная: аккуратная шкала прочности и ключ героя
+- 2026-10-23 — Репутация Sendler: суммы в bigint — кэш снова обновляется целиком
+- 2026-10-23 — Репутация: total_reputation к числу при чтении (колонка стала bigint)
+- 2026-10-23 — Refine armory back button and durability accents
+- 2026-10-23 — Ломбард: скупка «любой герой» — свои иконки HEROES по редкости
+- 2026-10-23 — Рефакторинг: encounter-attack.ts разбит на модули (299 → 76 строк)
+- 2026-10-23 — Банк: компактная лицензия и график перед расчётом
+- 2026-10-23 — Добыча: единое окно и компактные кнопки карты
+- 2026-10-23 — Шахты: уровни 1–4, улучшение Строителем, золото 10 в час (§8.74)
+- 2026-10-23 — Банк: курс золото/DARAI свечами 1ч/4ч/1д, линия или свечи, живая последняя свеча
+- 2026-10-23 — Ломбард: несколько героев одной сделкой, редкость героя на витрине, сданные арты перепродаются починенными (§8.73)
+- 2026-10-23 — Банк: добавить утверждённый фон зала в игровое окно
+- 2026-10-23 — Ломбард: при сбое снятия возвращается и текущая копия; алерт ищет снимки всех копий сделки
+- 2026-10-23 — Банк: приблизить живой график к утверждённой примерке
+- 2026-10-23 — Банк: сохранить семантику раздела графика
+- 2026-10-23 — Динамит: бросок в радиусе 3 за 100 энергии, взрыв 7 клеток (сломанные шахты, −10 % HP мобам, деревья/камни мешочком); набор дизайнера: руины сломанных шахт, призраки постановки, взрыв шахт по событию mine_blast
+- 2026-10-23 — Рейд: золото рядом с энергией
+- 2026-10-23 — Show auction durability beside title without image bars
+- 2026-10-23 — Keep auction durability adjacent to title on wide screens
+- 2026-10-23 — Guard initial armory load and surface recovery details
+- 2026-10-23 — Банк: привести цвет, шрифты и отступы к утверждённой примерке
+- 2026-10-23 — Банк: вернуть подпись перехода в замок
+- 2026-10-23 — Банк: добавить утверждённый значок DARAI
+- 2026-10-23 — Банк: сохранить компактную лицензию и значок совы
+- 2026-10-23 — Compact approved raid resource HUD
+- 2026-10-23 — Банк: убрать лишнюю высоту шапки и ширину панели
+- 2026-10-23 — Банк: выровнять геометрию с примеркой на 390 и 800 px
+- 2026-10-23 — Банк: вернуть стрелку перехода в замок из примерки
+- 2026-10-23 — Банк: оформить стрелку возврата как в примерке
+- 2026-10-23 — Банк: совместить вертикальные интервалы обмена с примеркой
+- 2026-10-23 — Банк: оформить заголовок живого графика по утверждённой примерке
+- 2026-10-23 — Банк: выровнять типографику живого графика по примерке
+- 2026-10-23 — Банк: дать длинному курсу место на узком экране
+- 2026-10-23 — Explain Auction House requirement when listing is unavailable
+- 2026-10-23 — Банк: сохранить написание «золото» как в эталоне
+- 2026-10-23 — Банк: вернуть подпись выбора лимита лицензии из примерки
+- 2026-10-23 — Банк: вернуть маркер статуса лицензии
+- 2026-10-23 — Банк: убрать лишнюю строку дохода у вклада без лока
+- 2026-10-23 — Банк: вернуть визуальную иерархию ставок вкладов
+- 2026-10-23 — Банк: убрать лишнюю высоту карточки дохода
+- 2026-10-23 — Match bank license form spacing and row height to approved preview
+- 2026-10-23 — Align bank license balance line height with preview
+- 2026-10-23 — Castle music: alternating tracks and profile sound control
+- 2026-10-23 — Золотые шахты 1/5/10/20; рюкзак сданного героя — мешочком на клетку основного; плитки витрины не режут картинку
+- 2026-10-23 — Оружейная: убрать двойной верхний отступ Таверны
+- 2026-10-23 — Аукцион: оформить согласованную подсказку о своём лоте
+- 2026-10-23 — Remove decorative crown from bank header
+- 2026-10-23 — fix(market): show gold purchase dialog above market overlay
+- 2026-10-23 — Align bank title with castle button in the header
+- 2026-10-23 — feat(town-hall): integrate approved catalogue and owned building views
+- 2026-10-23 — Замок: заменить базовый облик Банка утверждённым зданием
+- 2026-10-23 — Move raid spellbook beside backpack
+- 2026-10-23 — fix(castle): overlap courtyard ground beneath fence
+- 2026-10-23 — fix(castle): overlap courtyard ground beneath fence
+- 2026-10-23 — feat(raid): exploration music with sound inside + menu
+- 2026-10-23 — fix(audio): one sound preference for castle and raid
+- 2026-10-23 — Add atomic credit on mine capture with unread notice
+- 2026-10-23 — Expose credited capture notices and read acknowledgement
+- 2026-10-23 — Include credited mine capture notices in harvest summary
+- 2026-10-23 — Expose actual personal warehouse slot use for harvest fields
+- 2026-10-23 — Show mines and farms as source rows with coordinates below map action
+- 2026-10-23 — Apply approved scoped harvest window layout
+- 2026-10-23 — Add compact acknowledged capture notices
+- 2026-10-23 — Allow illustrated harvest section heading
+- 2026-10-23 — Add approved harvest labels for source status and map coordinates
+- 2026-10-23 — Add already-credited capture notice translations
+- 2026-10-23 — Port approved rewards, capture notices and mine-farm list to current game APIs
+- 2026-10-23 — Use game reward imagery and remove emoji fallback
+- 2026-10-23 — Preserve loss reason for stopped mine rows
+- 2026-10-23 — Carry lost-mine reason in harvest row type
+- 2026-10-23 — Keep unclaimed broken and legacy lost mines visible and collectible
+- 2026-10-23 — Include unclaimed lost mine rows in collection list
+- 2026-10-23 — Label stopped mine and pending legacy resource states
+- 2026-10-23 — Keep capture notification delivery after atomic credit
+- 2026-10-23 — Лимит вывода DARAI = заведённое + 10 %; таверна на карте будит копию героя; новая иконка золотого гриба
+- 2026-10-23 — Distinguish new auto-credited notices from historical capture logs
+- 2026-10-23 — Show only new auto-credited captures as unread notices
+- 2026-10-23 — Limit notice acknowledgement to auto-credited events
+- 2026-10-23 — fix(town-hall): restore button typography and omit unknown catalogue slots
+- 2026-10-23 — Письма (админ): картинка — загрузка файлом, как везде, вместо ссылки
+- 2026-10-23 — Credit mine capture fractional tail in same transaction
+- 2026-10-23 — Keep cross-floor sources labeled and avoid wrong-map navigation
+- 2026-10-23 — Include capture map context to prevent wrong-floor navigation
+- 2026-10-23 — Pass current map and floors to capture notices
+- 2026-10-23 — Show capture floor and preserve safe map link
+- 2026-10-23 — Match approved full-width harvest dialog on phone
+- 2026-10-23 — Keep existing castle harvest width while widening raid harvest
+- 2026-10-23 — Allow explicit raid harvest modal variant
+- 2026-10-23 — Use approved full-width harvest variant in raid
+- 2026-10-23 — Scope new harvest layout to raid and preserve castle window
+- 2026-10-23 — Correct nested media rule while scoping raid harvest CSS
+- 2026-10-23 — Make cross-floor map control visibly unavailable
+- 2026-10-23 — Limit credited capture notifications to new auto-credit rows
+- 2026-10-23 — Банк: вклад NFT-холдера досрочно не снять — 7 или 30 дней от ввода (§8.51 п. 3, bank-10)
+- 2026-10-23 — Грибы: декор под грибом не стирается — ждёт и отрастает, когда гриб ушёл (подобрали, украли, кончилась жизнь)
+- 2026-10-23 — Износ артефактов: 50 / 100 / 250 / 500 боёв по редкости
+- 2026-10-23 — Separate approved raid source list from castle income strip
+- 2026-10-23 — Restore existing castle income strip behavior
+- 2026-10-23 — Render isolated source list only in raid harvest
+- 2026-10-23 — feat(ui): shared castle and raid sound controls with volume
+- 2026-10-23 — Износ артефактов — за бой, а не за удар: бой = одна жизнь цели (artifact-wear-02)
+- 2026-10-23 — Декор под грибом: таймер отрастания — с момента ухода гриба (held_at, миграция decor-04)
+- 2026-10-23 — fix(town-hall): use approved mine office and auction base artwork
+- 2026-10-23 — Карта на телефоне: окно «Карта» не пересобирает ландшафт на каждое событие, атлас по экрану, память отдаётся сразу, основная карта на паузе под окном; музыка не рвётся на кратких скрытиях
+- 2026-10-23 — fix(town-hall): use approved standalone casino machine artwork
+- 2026-10-23 — Animate mounted heroes in four raid directions
+- 2026-10-23 — Вывод DARAI по обороту: заведённые — назад 1:1 вне лимита, +10 % — только за потраченное в игру (wd-07)
+- 2026-10-23 — Keep captured mine resources claimable in harvest list
+- 2026-10-23 — Play approved Wardens music while boss windows are open
+- 2026-10-23 — fix(harvest): open published harvest window from castle
+- 2026-10-23 — fix(harvest): open published harvest window from raid
+- 2026-10-23 — Перф карты на телефоне: порядок клеток тумана считается раз на загрузку, сетка пути колонками, ключи клеток и маски дорог не пересоздаются на каждое событие, шапка энергии без синхронной раскладки
+- 2026-10-23 — Ломбард: надетые арты проданного героя — мешочком на клетку основного; «Забрать» — в инвентарь
+- 2026-10-24 — Бой: инвентарь фишек — только при изменении фишек (chipsChanged); окно боя грузит неизменное один раз, HP/урон/энергия — из ответа удара на месте; удар: ~10 запросов/520 КБ → 2/13 КБ
+- 2026-10-23 — fix: harvest modal mobile layout and map click targets
+- 2026-10-24 — Бой: фишки не выбраны — в бой идут 10 самых сильных, состав запоминается в окне
+- 2026-10-23 — Добыча: группы одинаковых шахт и грибов, отдельные активные фермы
+- 2026-10-23 — feat(audio): tie soft raid hoof sounds to visible hero motion
+- 2026-10-24 — feat(audio): switch raid movement foley for roads and boats
+- 2026-10-24 — Звук движения: слышимость земли и переключение без задержки
+- 2026-10-24 — fix(market): contain chip portraits and fit landscape controls
+- 2026-10-24 — feat(audio): approved wooden cues for building windows
+- 2026-10-24 — fix(audio): make approved building cues audible over music
+- 2026-10-24 — audio: softer wooden sliding cues for building windows
+- 2026-10-24 — fix(warehouse): keep item icons consistent across grids
+- 2026-10-24 — Style raid town hall entry window
+- 2026-10-24 — Group town hall details below entry
+- 2026-10-24 — Give town hall entry a prominent action
+- 2026-10-24 — Move raid town hall entry above city details
+- 2026-10-24 — Replace building opening cue with approved softened door recording
+- 2026-10-24 — Remove leading cue silence and match building close sound
+- 2026-10-24 — Lower building window cues by one third
+- 2026-10-24 — Reduce building cues another third
+- 2026-10-24 — Play approved purchase theme across shopping windows
+- 2026-10-24 — Soften purchase music crossfades to 2.5 seconds
+- 2026-10-24 — Add compact animated sound drop to scene HUD
+- 2026-10-24 — Add compact animated sound drop to scene HUD
+- 2026-10-24 — Use compact sound drop in castle and raid
+- 2026-10-24 — Use compact sound drop in castle and raid
+- 2026-10-24 — Sequence purchase music fades without overlapping melodies
+- 2026-10-24 — Make sound slider respond to touch drags in mobile WebViews
+- 2026-10-24 — Join sound drop outline to castle and raid HUD frames
+- 2026-10-24 — Shorten sequential purchase music handoff to 1.42 seconds
+- 2026-10-24 — Use gold coin in compact purchase amounts
+- 2026-10-24 — Use gold coin in compact purchase amounts
+- 2026-10-24 — Use gold coin in compact purchase amounts
+- 2026-10-24 — Use gold coin in compact purchase amounts
+- 2026-10-24 — Fix sound volume dragging in mobile WebViews
+- 2026-10-24 — Use castle raid transition envelope for purchase music
+- 2026-10-24 — Join sound drop outline in closed and open states
+- 2026-10-24 — Keep gold purchase payment buttons uniform across packs
+- 2026-10-24 — Match purchase track loudness to exploration after live recording audit
+- 2026-10-24 — Use sound icon and chevron for collapsed drop
+- 2026-10-24 — Match raid HUD glass and join narrower icon-only drop
+- 2026-10-24 — Restart scene music from soft intro after closing purchase
+- 2026-10-24 — Anchor raid sound drop to left HUD edge
+- 2026-10-24 — Match raid sound glass to HUD surface
+- 2026-10-24 — Keep sound trigger hit area within visible drop
+- 2026-10-25 — Служебный пересчёт бонуса энергии от Интеллекта у всех выбранных героев
+- 2026-10-25 — Баланс: энергия 200 и +5 за 5 мин, скорость до −90 %, по 2 очка за сверхуровень
+- 2026-10-25 — Посаженное дерево держит отрастание горы карты; срубили — таймер с этой минуты
+- 2026-10-25 — Подписки esub-07: новые тарифы, «Ультра +», одна подписка за раз
+- 2026-10-25 — Банк: пулы с любыми монетами и свой график у каждого пула
+- 2026-10-25 — Сверхуровни: +2 за уровень, ещё +10 за каждый 5-й и +20 за каждый 10-й
+- 2026-10-25 — Здание «Управление шахтами»: покупка в Ратуше (10 000 дерева, 5 000 камня, 5 000 золота, 5 алмазов), иконка в замке; удалённо режим, починка и сбор своих шахт v2
+- 2026-10-25 — fix(ui): restore rounded sound drop and match HUD glass
+- 2026-10-25 — fix(ui): keep sound drop outline one pixel during morph
+- 2026-10-25 — fix(ui): retain raid HUD frame at sound drop gap
+- 2026-10-25 — Ломбард: несколько артефактов одной сделкой, как герои
+- 2026-10-25 — Админ: поиск клетки по координатам одной строкой
+- 2026-10-25 — Лавка: у не-ресурса количество за покупку всегда 1
+- 2026-10-25 — Обучение острова: шаг «Герой в подарок», список шагов от сервера, пропуск обучения
+- 2026-10-25 — Лавка: сделка только там, где лавка стоит
+- 2026-10-25 — Align sound drop outline and join HUD border cleanly
+- 2026-10-25 — Draw one continuous HUD and sound drop outline
+- 2026-10-25 — Use the continuous sound drop outline in both HUDs
+- 2026-10-25 — Курс DARAI: цена одного токена вместо прайс-листа Ref
+- 2026-10-25 — Ультра +: энергия не тает — запись в правилах и миграция-след
+- 2026-10-25 — Грибы: вид в уведомлении, отсчёт в каждой ячейке рюкзака/склада; заяц под мобом не пропадает после убийства моба; разборка шахты — ресурсы сразу на баланс (minev2-61)
+- 2026-10-25 — Paint sound drop and HUD as one glass surface
+- 2026-10-25 — Unify sound drop glass behind HUD content
+- 2026-10-25 — Hide unified glass when sound control is hidden
+- 2026-10-25 — Preserve HUD glass while sound control is hidden
+- 2026-10-25 — Keep expanded sound controls within the drop contour
+- 2026-10-25 — Обучение острова: серверный список шагов и пропуск для тестового аккаунта
+- 2026-10-25 — fix(audio): apply one master volume to music and exploration effects
+- 2026-10-25 — Рубка руками: энергия ×2 от цены рубки топором (§8.56)
+- 2026-10-25 — Маршрут «докуда хватит энергии»: зелёные/красные стрелки, идти частью пути
+- 2026-10-25 — Синий динамит: одна клетка, шахта — охрана, потом уровень, потом руины
+- 2026-10-25 — Лавка: «Камень для установки» — горы и камни под кирку, как дерево для посадки
+- 2026-10-25 — Динамит: красный — деревья, синий — и горы; грибы не трогает никто
+- 2026-10-25 — Энергия: стартовое значение колонки 200 = максимум (запасное; основное уже 200 из 200)
+- 2026-10-25 — Шахты: окружение лесопилки и каменоломни — n деревьев (гор) из 6 → n/3 добычи
+- 2026-10-25 — Лаборатория артефактов (§8.81, только админам): артефакт из бесплатной нейросети
+- 2026-10-25 — fix(castle): expose layout editor to all castle owners
+- 2026-10-25 — fix(audio): isolate volume observers and route resident voices through master
+- 2026-10-25 — fix(castle): filter editor by server purchases and support unified appearance bundles
+- 2026-10-25 — fix(townhall): retain appearance union typing for catalogue rendering
+- 2026-10-25 — fix(castle): preserve hidden style selections when ownership changes
+- 2026-10-25 — fix(castle): grant confirmed admins full appearance access
+- 2026-10-25 — fix(castle): grant confirmed admins full appearance access
+- 2026-10-25 — feat(castle): join compact effects drop to HUD sound contour
+- 2026-10-25 — Динамит: синий — только горы и камни, деревья — только красный
+
+## Week 2 (Oct 26 – Nov 1) — 333 commits
+
+- 2026-10-26 — Подписка: «начисление», а не «подарок»; камни поднимают каменоломню
+- 2026-10-26 — Остров: кнопка «Обучение с нуля» для админов/дизайнера — снимок и сброс обучения своего аккаунта без повторных наград (island-12)
+- 2026-10-26 — Мир строителей (land-01): общий бесконечный мир, земля из лавки кладётся в пустоту в радиусе 3 — пока только админам
+- 2026-10-26 — Экран ошибки: «Попробовать снова» при сбое загрузки модуля — полная перезагрузка с обходом кэша
+- 2026-10-26 — Мир строителей (land-02): несколько клеток одним нажатием (земля и динамит), перестройка другой местности за 5 ⚡, земля в главной руке — тап по карте кладёт
+- 2026-10-26 — Лаборатория: бесплатные генераторы цепочкой — SANA (MIT) → FLUX → AI Horde
+- 2026-10-26 — Горы игроков — окружение и для постановки шахты; в лавке земли «!» — энергия
+- 2026-10-26 — Вход в замок у ратуши любого мира; подтверждение улучшения шахты
+- 2026-10-26 — ui: present castle appearance bundles with approved landscape covers
+- 2026-10-26 — fix(castle): honor designated castle editor appearance access
+- 2026-10-26 — fix(castle): keep effects drop interactive when count is zero
+- 2026-10-26 — Три бага: окно героя в замке, зачисление без Казны, банк видит новые DARAI
+- 2026-10-26 — Вещь в руке: земля и динамит без отдельного режима; город для динамита — здание + 1
+- 2026-10-26 — Рука: «тап = разместить» кладёт только клетку под пальцем, отмеченные ждут кнопку или двойной тап
+- 2026-10-26 — Банк: прямой выбор валют и отдельное управление
+- 2026-10-26 — Банк: увеличить цели кнопок управления
+- 2026-10-26 — Move main castle action to raid Town Hall
+- 2026-10-26 — Move main castle action to raid Town Hall
+- 2026-10-26 — Move main castle action to raid Town Hall
+- 2026-10-26 — Move main castle action to raid Town Hall
+- 2026-10-26 — Move main castle action to raid Town Hall
+- 2026-10-26 — Move main castle action to raid Town Hall
+- 2026-10-26 — Move main castle action to raid Town Hall
+- 2026-10-26 — Замок: синхронизация расстановки между устройствами — getCastleLayout / saveCastleLayout с атомарной ревизией и проверкой прав на здания и декор (castle-layout-01)
+- 2026-10-26 — Place passive main castle status below city name
+- 2026-10-26 — Style main castle marker as small noninteractive caption
+- 2026-10-26 — Рука: земля на воду без «нет корабля»; камера заезжает за край разведанного (тестер)
+- 2026-10-26 — Тест: запас камеры за краем разведанного
+- 2026-10-26 — Остров: шаг «Забери добычу слизня» (slime_loot, награда за слизня этого острова из «Добычи»); выбор героя возвращает выданного героя (имя, редкость, спец., раса, alreadyHad) + getMyIslandHero
+- 2026-10-26 — Аукцион: счётчик новых лотов — getAuctionUnread / markAuctionsSeen (таблица auction_seen, по аккаунту, без лимита 100)
+- 2026-10-26 — Add account castle layout sync client
+- 2026-10-26 — Add account castle layout sync client
+- 2026-10-26 — Add account castle layout sync client
+- 2026-10-26 — Connect castle viewport to account layout sync
+- 2026-10-26 — Test castle layout conflict and local backup
+- 2026-10-26 — fix(audio): suspend exploration sound while casino owns the screen
+- 2026-10-26 — Expand castle editor zoom range
+- 2026-10-26 — Connect editor zoom controls to castle camera
+- 2026-10-26 — UI: последовательная посадка деревьев из рюкзака
+- 2026-10-26 — Port castle editor layout with current appearance permissions
+- 2026-10-26 — Банк: рисованная шапка в стиле Рынка и ровные стрелки валют
+- 2026-10-26 — Add two-zone castle editor styles
+- 2026-10-26 — Connect editor selection scope and decor copy to synced viewport
+- 2026-10-26 — Use one territory style for castle decor catalog
+- 2026-10-26 — Keep decor catalog cards readable in compact editor
+- 2026-10-26 — Include complete editor dependencies in PR
+- 2026-10-26 — Ship approved compact harvest UI and individual lost-source collection
+- 2026-10-26 — Add scoped decor erase mode to castle editor
+- 2026-10-26 — Style compact decor erase controls
+- 2026-10-26 — Handle decor erase on eligible map objects
+- 2026-10-26 — Золотые шахты: 5 / 10 / 25 / 50 золота в час по уровням (коррекция владельца, minev2-82 накатана)
+- 2026-10-26 — Остров: согласованный маршрут обучения для тестового аккаунта — фишки сразу после первого пака, после Таверны уровень/комплекты/Ворота на остров/8 достижений, без Храма и портала (серверная часть)
+- 2026-10-26 — Keep layout recovery prompt below mobile editor toolbar
+- 2026-10-26 — Reserve mobile toolbar height for recovery note
+- 2026-10-26 — Cover tablet widths in recovery-note spacing
+- 2026-10-26 — feat(island): connect approved tutorial UI for pilot account
+- 2026-10-26 — fix(castle): show island destination at tutorial gates
+- 2026-10-26 — feat(audio): add optimized casino splash and sequential entry/return transitions
+- 2026-10-26 — fix(audio): preserve smooth splash reveal and verify shared output lifecycle
+- 2026-10-26 — fix(island): acknowledge return only at current tutorial step
+- 2026-10-26 — Polish castle editor appearance, decor erasing and path corners
+- 2026-10-26 — Restore complete castle editor icon PNG
+- 2026-10-26 — Optimize editor icons and separate object size from map pinch zoom
+- 2026-10-26 — fix(island): reveal actual granted hero on replay
+- 2026-10-26 — Version repaired editor icon mask URL to bypass cached broken resource
+- 2026-10-26 — Add subscription catalog variants and guarded PostHog events
+- 2026-10-26 — Fix subscription variant exposure and card interactions
+- 2026-10-26 — feat(trade): unread auction badges and visible-card acknowledgements
+- 2026-10-26 — Погода рейда: общая на мир, смена раз в 3 ч (−40…+40, шаг ≤20, ясно/пасмурно/шторм + значок по температуре), ручка getRaidWeather; влияние на шахты v2, поля, рыбалку, ход героя и корабля — по флагу слота (settings.weather_effects), «стандарт» не в среднем
+- 2026-10-26 — ПРАВИЛА §8.83: погода рейда
+- 2026-10-26 — Кони героя и ход наперёд (§8.84): место «Конь», темп по коню, прыжок пегаса, пачки шагов
+- 2026-10-26 — Окно героя: клетка «Конь» сверху по центру — в нижнем ряду наезжала на «Карманы»
+- 2026-10-26 — Каменоломня: «гора» рядом — всё, что бьётся киркой (minev2-83)
+- 2026-10-27 — Погода рейда: панель и общее влияние из серверного API
+- 2026-10-27 — Simplify raid weather drawer to icon and temperature
+- 2026-10-27 — fix: show authoritative architect build price in town hall
+- 2026-10-27 — Fix tutorial QA: island.css
+- 2026-10-27 — Fix tutorial QA: IslandSpotlight.tsx
+- 2026-10-27 — Fix tutorial QA: IslandQuestPanel.tsx
+- 2026-10-27 — Fix tutorial QA: useGuideSpot.ts
+- 2026-10-27 — Fix tutorial QA: useCastleTour.ts
+- 2026-10-27 — Fix tutorial QA: guidePaths.ts
+- 2026-10-27 — Fix tutorial QA: BarracksScreen.tsx
+- 2026-10-27 — Fix tutorial QA: barracks.css
+- 2026-10-27 — Fix tutorial QA: island-guide.ts
+- 2026-10-27 — Fix tutorial QA: island.ts
+- 2026-10-27 — Админка рейдов: управление влиянием погоды
+- 2026-10-27 — Avoid forced compositing of large castle SVG layers on scroll
+- 2026-10-27 — fix(subscriptions): keep box rewards aligned in both layouts
+- 2026-10-27 — fix(subscriptions): anchor HIT ribbon and reserve arrow space
+- 2026-10-27 — Guide to nearest available island target: IslandLayer.tsx
+- 2026-10-27 — Guide to nearest available island target: BetaRaidCanvas.tsx
+- 2026-10-27 — Guide to nearest available island target: IslandQuestPanel.tsx
+- 2026-10-27 — Sync required UI verification test from main
+- 2026-10-27 — Connect dedicated mine office artwork for all six styles
+- 2026-10-27 — Add backpack lesson before packs: IslandLayer.tsx
+- 2026-10-27 — Add backpack lesson before packs: IslandQuestPanel.tsx
+- 2026-10-27 — Add backpack lesson before packs: guidePaths.ts
+- 2026-10-27 — Align compact weather control with raid Plus menu row
+- 2026-10-27 — Add backpack lesson before packs: useGuideSpot.ts
+- 2026-10-27 — Add backpack lesson before packs: island-guide.ts
+- 2026-10-27 — Fix subscription HIT ribbon corner alignment
+- 2026-10-27 — Finish castle overview by Tavern: useCastleTour.ts
+- 2026-10-27 — Finish castle overview by Tavern: island.ts
+- 2026-10-27 — Limit tutorial chip shortcut to pilot step
+- 2026-10-27 — Guide player to expand hero actions before backpack
+- 2026-10-27 — Add hero actions hint for backpack lesson
+- 2026-10-27 — Clarify how to reveal backpack on map
+- 2026-10-27 — Add back fold to subscription HIT ribbon
+- 2026-10-27 — Replace protruding weather handle with inset rectangular control
+- 2026-10-27 — Keep tutorial spotlights behind castle building windows
+- 2026-10-27 — Hide guide tip while castle building window is open
+- 2026-10-27 — Pass explored map cells to tutorial targets
+- 2026-10-27 — Limit nearest tutorial targets to revealed cells
+- 2026-10-28 — Погода в показе выхода: «Добыча» (шахты v2 и фермы), окна поля и шахты — «в час» с учётом погоды своей карты + значок погоды
+- 2026-10-28 — Грибы: «Съесть» — награда сразу, гриб через 10 часов встаёт на жиле
+- 2026-10-28 — Синий динамит взрывает корабли; экипаж — в основной город (dynamite-05, §8.75а)
+- 2026-10-28 — Сервер: битый адрес от сканеров не роняет разбор (h3, patch-deps); гаснущий рабочий не сорит ERR_IPC_CHANNEL_CLOSED
+- 2026-10-28 — Грибы: «Съесть» за 50 энергии с подтверждением, без возврата через 10 часов
+- 2026-10-28 — Bonus Box: «Открыть все» до 50 за раз (каждый бокс бросается отдельно), итог одним списком — одинаковые награды суммой, одинаковые арты/герои/паки «×n»
+- 2026-10-28 — Restore approved subscription calendar icon
+- 2026-10-28 — Грибы: съеденный через 12 часов с шансом 50 % встаёт на свободной жиле
+- 2026-10-28 — Match approved calendar icon sizing
+- 2026-10-28 — Update harvest UI contract test for weather rendering dependencies
+- 2026-10-28 — Remove duplicate fold behind subscription hit ribbon
+- 2026-10-28 — Пересборка: ключ аналитики PostHog в окружении сборки
+- 2026-10-28 — Add hero mount atlases and raid movement visuals
+- 2026-10-28 — Рефка — на игрового бота (оплата Stars — по-прежнему старым ботом)
+- 2026-10-28 — Синий динамит: окно «Ваш корабль подорвали — вас телепортировало в город» отнесённому (§8.75а)
+- 2026-10-28 — Игру не просят перезагрузить: старые куски кода из архива, обновление само и незаметно
+- 2026-10-28 — Казино: динамические барабаны — у каждого игрока своя отдача к 90 %
+- 2026-10-28 — Clean stray transparent pixels from Pegasus atlases
+- 2026-10-28 — Restore compact weather droplet and role-based HUD position
+- 2026-10-28 — Ячейка — 30 штук вместо 20 (§8.86); проверки считают от CELL_SIZE
+- 2026-10-28 — Fix island tutorial targets and chest walk distractions
+- 2026-10-28 — Add approved walking sounds for foot heroes on earth and paving
+- 2026-10-28 — Play approved axe and pick cues for completed gathering actions
+- 2026-10-28 — feat(ui): approved mine management and architect windows
+- 2026-10-28 — Динамит в руке: красный по чужому кораблю — подсказка, а не «занят другим игроком»
+- 2026-10-28 — Лавка зачарования: здание с эффектом enchant — игрок выбирает артефакт и заклинание, усиление шанса −/+ (до 5 шагов, цена ×2), одно зачарование на артефакт; админ настраивает заклинания в окне здания (цена из любых ресурсов/токенов/товаров)
+- 2026-10-28 — Синий динамит по плывущему кораблю: цель — по живым причалам, не по старому кругу
+- 2026-10-28 — ПРАВИЛА §8.87: лавка зачарования
+- 2026-10-28 — Лаборатория: артефакт по словам или рандомом, минимальный экран; SanaSprint в цепочке
+- 2026-10-28 — Зачарованные артефакты отмечены ✦ в Таверне («Артефакты») и в инвентаре, своей плиткой — не сливаются с обычными
+- 2026-10-28 — Play approved short reel cast on fishing start
+- 2026-10-28 — Prevent overlapping gathering and fishing cues
+- 2026-10-28 — Погода меняется плавно (шансы в админке) + здание «Метеостанция» в замке (§8.83, §8.88)
+- 2026-10-28 — Use approved dark listbox for mine sorting
+- 2026-10-28 — Refresh fishing release snapshot with current main
+- 2026-10-28 — feat(audio): play approved warm raid music by current weather
+- 2026-10-28 — Лавка зачарования: отрицательное усиление (-20-50, до -99), описание выбранного заклинания с шансами текстом и предупреждением о разрушении; «Осмотреть округу» только у вышки
+- 2026-10-28 — Новое сразу у игроков без F5: проверка версии раз в минуту; окно постройки незнакомого вида — тихое обновление и само открывается заново
+- 2026-10-28 — Казино: гость без входа крутит вхолостую на 1 000 кредитов (ничего не на сервер)
+- 2026-10-28 — Play approved dry wood strikes for bare-hand gathering
+- 2026-10-28 — Лаборатория: цвет по редкости, мотивы рас по героям, желание словами в картинке
+- 2026-10-28 — Add on-foot hero action sprite atlases and fishing hold poses
+- 2026-10-28 — Метеостанция: облик дизайнера (база утверждена — во всех стилях; 5 тематических ждут приёмки)
+- 2026-10-28 — Render on-foot hero actions and fishing hold in raid
+- 2026-10-28 — Handle knight art and clear action state on unmount
+- 2026-10-28 — Казино, холостая игра гостя: отдача 105 % (в том же счёте, что 90 % на золото)
+- 2026-10-28 — Лаборатория: FLUX.1-schnell на Cloudflare Workers AI — первым в цепочке
+- 2026-10-28 — Хижина шаманов в замке + обряд шамана в метеостанции (§8.88, §8.89)
+- 2026-10-28 — Keep resource art visible through the strike animation
+- 2026-10-28 — Лавка зачарования: заклинания по редкости (лег сверху), заметное выделение выбранного с ✓, редкость словом, «при успехе» было → стало по статам выбранного артефакта
+- 2026-10-28 — Wait for action art before animation and cancel actions on movement
+- 2026-10-28 — Казино, холостая игра: та же умная перестройка барабанов, цель 105 % (вместо постоянных щедрых)
+- 2026-10-28 — Управление шахтами: после починки шахта остаётся на месте, кнопка ждёт свежую полосу
+- 2026-10-28 — Mirror pending on-foot hero frame for left-facing actions
+- 2026-10-28 — Лаборатория: голосом — распознавание на сервере (Whisper на Cloudflare)
+- 2026-10-28 — Зачарованные артефакты отмечены ✦ везде: окно героя (кукла, слоты, выбор в слот), лист артефакта, Оружейная, кузница, выбор арта в маркете/ломбарде/аукционе, рынок героев, мешочки — общий EnchantMark
+- 2026-10-28 — Дропы: награда «Товар» — товар маркета за NFT, в «Подарки» (и без героя)
+- 2026-10-28 — Лаборатория: 18+ — полный рандом; иконки 256×256 с палитрой (~3 КБ)
+- 2026-10-28 — Хижина шаманов: админу цена и характеристики шамана прямо в окне хижины
+- 2026-10-28 — Preserve action through arrival motion and cancel on a new route
+- 2026-10-28 — Open raid weather panel on entry
+- 2026-10-29 — Лаборатория: голос — через наш транскрибатор на сервере, без Cloudflare
+- 2026-10-29 — Метеостанция: обряд — по одному в каждом мире за смену; админ переименовывает и скрывает миры
+- 2026-10-29 — Банк: «Пополнить» берёт монеты с основного кошелька (проверка «свободно»), пулы с DARAI — со счёта админа; «Изменить» пул — комиссия всегда, курс у пустого; курс словами на карточке; ПРАВИЛА §8.48 п.10
+- 2026-10-29 — Рубка руками — и при топоре (§8.56, владелец 29.10): «Срубить руками» в окне всегда
+- 2026-10-29 — Удар по большому лесу: дерево под ударом — размером как на карте
+- 2026-10-29 — fix(ui): retain spellbook during refresh and stop expired cooldown timer
+- 2026-10-29 — Compact mine management cards with expandable controls
+- 2026-10-29 — Add independent media volume path for Android WebView
+- 2026-10-29 — Test streaming media volume fallback
+- 2026-10-29 — Промокоды на что угодно: создание и ввод в профиле, выдача сразу куда надо (§8.90)
+- 2026-10-29 — Зациклить удары, ускорить кадры бега и добавить рубку руками и позу рыбалки
+- 2026-10-29 — Дать точной игровой сборке достаточный лимит памяти
+- 2026-10-29 — feat(castle): connect dedicated shaman hut artwork in six styles
+- 2026-10-29 — Keep raid hero portrait and satiety ring above balance frame
+- 2026-10-29 — Design: apply approved weather station UI with real game odds
+- 2026-10-29 — Weather station: localize UI and preserve ritual result on reopen
+- 2026-10-29 — Weather station: align ritual sheet on mobile
+- 2026-10-29 — feat(ui): approved Shaman Hut window on current main
+- 2026-10-29 — Add approved fishing waiting scenes for all seven heroes
+- 2026-10-29 — Fix island replay showing a false hero race choice
+- 2026-10-29 — Castle: compact slide-out action menu
+- 2026-10-29 — Dock tutorial notices below island quest panel
+- 2026-10-29 — Track tutorial panel resize while placing guide tip
+- 2026-10-29 — Reserve a safe tutorial lane on narrow screens
+- 2026-10-29 — Сводка для новостей: /api/news по ключу + вкладка «Новости» в «$ Экономика»
+- 2026-10-29 — Keep tutorial map target while panning after Show
+- 2026-10-29 — Limit pan persistence to tutorial Show requests
+- 2026-10-29 — Mark island lesson camera targets as pannable
+- 2026-10-29 — Carry tutorial pan flag through camera requests
+- 2026-10-29 — Лавки рейда: «i» на товаре открывала карточку под окном постройки
+- 2026-10-29 — Замок: личное право «строить бесплатно» (дизайнер, §8.64)
+- 2026-10-29 — Карта: туман не выдаёт клетки — неразведанное того же цвета, что пустота
+- 2026-10-29 — Вход через Google — база, выключено (§8.91): отдельный диапазон id, вывод закрыт (ручки + триггеры google-01), админка Google-входа — настройки, тестовый вход админом, журнал входов
+- 2026-10-29 — fix(raid): keep overflowing tool pixels in their action frame
+- 2026-10-29 — fix(auction): keep quantity visible over item icons and use Harvest surfaces
+- 2026-10-29 — Жила — товар лавки: золото/алмаз накладкой поверх местности (§8.92)
+- 2026-10-29 — Спрятать обучение в боковую вкладку во время проходки
+- 2026-10-29 — Оформить боковую вкладку обучения в стиле погодной капли
+- 2026-10-29 — «Вестник героев»: газета игры картинкой — каждый день в чат, по понедельникам сводка в канал (§8.93)
+- 2026-10-29 — Шахта на купленной жиле — кто угодно (владелец 29.10: «точно всем можно»)
+- 2026-10-29 — «Вестник героев»: одна ссылка — страница /vestnik со всем управлением
+- 2026-10-29 — Зачарование героев (hero-rite-01, ПРАВИЛА §8.91): постройка hero_enchant — N героев одной редкости в одного следующей с шансом
+- 2026-10-29 — «Вестник героев»: каждый день новые картинки и заголовок из того, что было в игре
+- 2026-10-29 — Google-вход (§8.91, владелец 29.10): одно устройство — один Google-аккаунт с выключателем в админке; 10 % USDT с подписок приглашённых Google-игроку не идут
+- 2026-10-29 — Добавить зазор между звуком и открытым обучением
+- 2026-10-29 — «Вестник героев»: на странице «Сгенерировать заново» и «Данные API»
+- 2026-10-29 — Метеостанция: показывать текущий мир игрока первым
+- 2026-10-29 — Добавить уже опубликованные изображения новостей для точной сборки
+- 2026-10-29 — Уникальный герой — «лег+» (hero-rite-02, ПРАВИЛА §8.91): обряд «легендарный → уникальный», потолок 50/70, рюкзак +1
+- 2026-10-29 — Уник: ступени 60→70 — 420 000 … 600 000 лайков (+20 000, владелец 29.10.2026)
+- 2026-10-29 — «Вестник героев»: ИИ — «Что нового» само, «Что обсуждают» из чата, картинка по смыслу; кнопки копирования данных
+- 2026-10-29 — «Что нового» от ИИ: список изменений — из выгрузки git на сервере, а не из сборки
+- 2026-10-29 — «Внести NFT» — только с подключённым кошельком: у входа Telegram/Google кнопки нет
+- 2026-10-29 — Карта: здание, чья картинка ещё грузится, не рисуется серым прямоугольником — появляется сразу картинкой (и призрак шахты при постройке)
+- 2026-10-29 — ui: filter mine management by world
+- 2026-10-29 — fix(castle): inherit hidden scene visibility in expanded menu
+- 2026-10-29 — «Вестник героев»: без картинок ИИ — главная картинка только пейзаж из сцен игры
+- 2026-10-29 — Track two existing news images required by release checks
+- 2026-10-29 — Карта: источник межмировых порталов для карт игрока (getWorldPortals)
+- 2026-10-29 — Align tutorial handle with attached sliding panel
+- 2026-10-29 — Point guided island drawer collapse arrow left
+- 2026-10-29 — Keep tutorial OK clickable above modal content
+- 2026-10-29 — Prevent modal outside-click from swallowing tutorial OK
+- 2026-10-29 — Direct oak lesson to credited target and backpack
+- 2026-10-29 — feat(audio): publish approved cold and arctic weather music
+- 2026-10-30 — Политика конфиденциальности /privacy (ru+en) — адрес для Google Auth Platform → Branding; открыта и в закрытую бету
+- 2026-10-30 — Show interworld portals and destination worlds on player maps
+- 2026-10-30 — Fix oak log lesson in backpack and clipped guide tooltip
+- 2026-10-30 — Polish compact interworld portal card
+- 2026-10-30 — Refresh island tutorial immediately after chest pickup
+- 2026-10-30 — Keep all authorized interworld entrances on detailed map
+- 2026-10-30 — Keep island hints compact and stop repeated ack prompts
+- 2026-10-30 — Render approved raid weather effects from current world weather
+- 2026-10-30 — Карта: межмировой портал-блок виден по любой разведанной клетке блока
+- 2026-10-30 — Сверка порталов /portal-check: только чтение, дизайнеру и админам
+- 2026-10-30 — Telegram на телефоне во весь экран: шапка с крестиком уходит, верх игры ниже кнопок Telegram
+- 2026-10-30 — «Рамки Telegram» в профиле: телефон по умолчанию с рамками, весь экран — по выбору
+- 2026-10-30 — Апгрейд подписки: доплата «цена − зачёт остатка», новый тариф на 30 дней, старые закрываются
+- 2026-10-30 — Подписки по одной каждого вида (до 4), без апгрейда; лицензии банка складываются по видам
+- 2026-10-30 — Лицензии банка: купить можно по одной каждого вида, лимиты складываются
+- 2026-10-30 — Рыбалка красным динамитом + синий не взрывает свой корабль
+- 2026-10-30 — Restore island castle tutorial after visiting the map
+- 2026-10-30 — fix(raid): run seven foot heroes with complete eight-pose diagonal cycles
+- 2026-10-30 — Газетный киоск — здание замка: покупка в Ратуше, один на аккаунт (§8.96)
+- 2026-10-30 — Улов динамитом — в журнал улова и турнир «Улов» (владелец 30.10)
+- 2026-10-30 — fix(ui): move overcast shadows with raid map
+- 2026-10-30 — Заклинание «Создание большого корабля» (create_big_ship) — на любую воду, океан тоже (§8.97)
+- 2026-10-30 — feat(audio): release approved cool and hot weather arrangements
+- 2026-10-30 — Подбитый динамитом корабль: не чинится, занимает клетку, через час исчезает (§8.98)
+- 2026-10-30 — Вестник: промокод дня для газеты в игре — в JSON /api/news (§8.93)
+- 2026-10-30 — Add cold-weather frost coating to raid HUD surfaces
+- 2026-10-30 — Connect newspaper kiosk building to Town Hall and castle styles
+- 2026-10-31 — Расстановка замка: «Газетный киоск» — только у построивших
+- 2026-10-31 — Лавки рейда: одна сделка — до 999 штук (было 99), покупка и продажа
+- 2026-10-31 — fix(castle): place purchased buildings manually and persist expanded layouts
+- 2026-10-31 — Газеты на картах: выпуски редакции, экземпляры, прочтение, полки киоска (§8.96)
+- 2026-10-31 — Compact raid shop windows, headers and controls
+- 2026-10-31 — Make HUD frost visible and varied; include weather drawer and details
+- 2026-10-31 — fix(map): isolate personal markers by world and current ownership
+- 2026-10-31 — Fix raid shop fullscreen layout and compact actions
+- 2026-10-31 — Keep current world name readable in mobile station menu
+- 2026-10-31 — Reduce overcast shadow diameter and darkness without changing drift or coverage
+- 2026-10-31 — fix(raid): play five tool strikes with contact-aligned audio
+- 2026-10-31 — fix(ui): make mine building screens fill the viewport
+- 2026-10-31 — Склад: стабильные ячейки и сведения о предмете
+- 2026-10-31 — Compact shop cards and scroll header behind sticky trading controls
+- 2026-10-31 — Таверна: фильтр, закладки и сетка 1/2/3
+- 2026-10-31 — fix(castle): preserve building picker taps while dragging dock
+- 2026-10-31 — Show full forecast with art from most likely weather and temperature
+- 2026-10-31 — Style illustrated weather odds and separate temperature chances
+- 2026-10-31 — fix(weather): remove screen-edge water runoff
+- 2026-10-31 — feat(ui): connect newspaper map reader and kiosk archive
+- 2026-10-31 — Show item properties in free shop card space
+- 2026-10-31 — Animate map enchanter with lazy, throttled steam and boot gag
+- 2026-10-31 — Restore approved shop buttons and mask sticky edges
+- 2026-10-31 — Газеты: сохранение черновика, «прочитал», «отложить» — запись через wrapJsonCte; отложить без киоска (Kaylani)
+- 2026-10-31 — Газета без ников: лицо и имя героя, повтор — «брат-близнец» (§8.93)
+- 2026-10-31 — Ратуша: новый товар берёт цену ×1 из последнего настроенного города, а не «десятку» лавок
+- 2026-10-31 — feat(weather): anchor soft fog visibility to hero
+- 2026-10-31 — Газета: «брат-близнец» без номеров
+- 2026-10-31 — Банк и Казна: настоящие иконки монет из блокчейна (ft_metadata), скачаны в public/tokens
+- 2026-10-31 — Земля кладётся в радиусе 4 (61 клетка); гриб — в руку, сажать тапом по карте
+- 2026-10-31 — Аукцион: зачарованный артефакт — своей строкой с ✦ при выставлении, ✦ на лоте, победителю — с зачарованием (§8.87)
+- 2026-10-31 — Погода по мирам: свои шансы у мира поверх общих (weather-06); в окне погоды — имя мира
+- 2026-10-31 — Спавн мобов по погоде: у точки возрождения — погода; пришла — встаёт, ушла — не раненый уходит с карты (§8.49б)
+- 2026-10-31 — Align shop properties and add demand and Cancel actions
+- 2026-10-31 — Stabilize map shaman and add five alternating magical results
+- 2026-10-31 — Add full-month newspaper collection calendar using existing kiosk shelves
+- 2026-10-31 — Кони: иконки предметов из утверждённой анимации езды
+- 2026-10-31 — Улучшения за алмаз: фермы (+50 % и +1 личная ячейка) и склады (+1 ячейка), по разу на игрока (§8.99)
+- 2026-10-31 — Добыча по погоде: точка на клетке — в свою погоду мешочек (ресурс/товар/артефакт, «1-10»), забрали — через таймер (§8.49в)
+- 2026-10-31 — Лопата: находки по долям, ямка сутки держит клетку (§8.24 п. 6б)
+- 2026-10-31 — Лицензия банка: покупка снова работает (bank-14, «tier is ambiguous»); покупка самому — цены ×2
+- 2026-10-31 — Replace repeating overcast pattern with broad moving cloud shadows
+- 2026-10-31 — Compact shop cards and fill demand flame; include existing news image dependencies
+- 2026-10-31 — Лицензия банка: звёзды вместо алмазов — от цены в DARAI по курсу, +10 % (bank-15)
+- 2026-10-31 — Лопата по словам владельца: ямка — час, на ямке только «Закопать», находка — мешочком (§8.24 п. 6б)
+- 2026-10-31 — Шаблоны городов острова новичка (§8.100): дизайнер рисует город на своём острове, генератор ставит его вместо выращенных
+- 2026-10-31 — Карта: убраны тени туч — вешали карту на телефонах при «облачно»
+- 2026-10-31 — Погода: метель, иней и туман легче для телефона (вид тот же)
+- 2026-11-01 — Ячейка за улучшения — всего +1: ферма и склад дают одну и ту же (3, не 4); склад после фермы не продаётся (§8.99)
+- 2026-11-01 — Улучшение за алмаз — одно и частное: купил в окне фермы или склада — +50 % своим героям и +1 личная ячейка, повтор не продаётся (farm-02, §8.99)
+- 2026-11-01 — Restore shop headers for styled buildings and cut panorama payload by 90%
+- 2026-11-01 — Refresh cached shop artwork on the lightweight image release
+- 2026-11-01 — Прыжок пегаса: 10 ровно + цена клетки приземления (погода больше не множит 10); лицензия банка: снова алмазы 50/200/800 рядом со звёздами
+- 2026-11-01 — Bound weather rendering cost and anchor fog texture to world
+- 2026-11-01 — Доп. вывод DARAI по подписке: Новичок +5, Продвинутый +20, Эксперт +35, Ультра +100 млн/мес — по самой старшей (wd-08, §8.53)
+- 2026-11-01 — Restore backpack ownership highlighting and sell filter using existing inventory reads
+- 2026-11-01 — fix(raid): continuous hero movement with fixed mount gait cadence
+- 2026-11-01 — Restore bounded cached cloud shadows and dissolve fog per hex
+- 2026-11-01 — test(raid): cover fixed mount cadence and linear renderer transitions
+- 2026-11-01 — Compact shop search and view controls into one row
+- 2026-11-01 — Avoid frost HUD work on text ticks and batch targeted geometry updates
+- 2026-11-01 — Optimize raid HUD image sizes and defer optional panels
+- 2026-11-01 — Preserve direct HUD button styling while restoring focus
+- 2026-11-01 — Defer the remaining raid overlay hero entry and guard eager imports
+- 2026-11-01 — Keep the modified HUD module within the project size limit
+- 2026-11-01 — fix(weather): disable cloud shadows and remove full-map outline
+
+## Week 3 (Nov 2–8) — 193 commits
+
+- 2026-11-02 — Publish original newspaper issue 03 image for 2 November 2026
+- 2026-11-02 — Publish newspaper PNGs in one action without daily code releases
+- 2026-11-02 — Звёзды — через игровой бот: счёт выставляет он, звёзды на его баланс; старые счета дообрабатывает кошельковый
+- 2026-11-02 — Свой индексатор NEAR (шаг 1, в тени): каждый блок из публичного потока блоков neardata → переводы наших кошельков и события NFT в базу (chain-01)
+- 2026-11-02 — Индексатор NEAR: один запрос на блок (neardata сам ждёт новый блок), на 429 — минута паузы
+- 2026-11-02 — Индексатор NEAR: опрос истории своих адресов (публичный API FastNEAR) вместо чтения всех блоков — бесплатный neardata режет ~30 запросов/мин (chain-02)
+- 2026-11-02 — Show every backpack slot represented by the capacity counter
+- 2026-11-02 — fix(castle): use approved base Architect artwork and shadows
+- 2026-11-02 — Рефка золотом: 10–20 % покупок друга раз в сутки, % в фонд выкупа, неделя обмена без лимита (§8.101)
+- 2026-11-02 — Show confirmed Town Hall purchases and guide players to the castle editor
+- 2026-11-02 — Show actual world name after confirmed interworld travel
+- 2026-11-02 — Focus the editor object picker after purchase navigation
+- 2026-11-02 — Индексатор NEAR: не чаще запроса в секунду, опрос раз в 30 с (бесплатный API режет всплески)
+- 2026-11-02 — Short pilot island tutorial: hero, sale-funded axe, boat and spell
+- 2026-11-02 — Restore focus to the purchase details when dismissing confirmation
+- 2026-11-02 — Рефка золотом — только новые друзья с 02.11.2026: прежним не компенсируем
+- 2026-11-02 — Keep tavern hero return and close controls visible
+- 2026-11-02 — Рефка: звёзды без фонда выкупа, письмо в бота после начисления, «Экономика → Рефералы», переходы по ссылкам
+- 2026-11-02 — Индексатор NEAR: владение NFT (chain_nft_owner) — снимок каталога + события; магазин перечитан за неделю (chain-03)
+- 2026-11-02 — Keep tutorial hint text and dismissal inside the viewport
+- 2026-11-03 — Keep tutorial hints clear of the castle skip control
+- 2026-11-03 — fix(newspaper): explicitly collect issues and hide deferred copies per player
+- 2026-11-03 — test(newspaper): update player regressions for explicit collect action
+- 2026-11-03 — Record real tutorial hero and backpack views without OK
+- 2026-11-03 — Tutorial finale: sail to a real spell pillar
+- 2026-11-03 — Турнир «Золото»: свой улов после старта продаётся раньше запасов до старта — свежая рыба снова в зачёте
+- 2026-11-03 — Профиль: кнопка «Получить 1 000 золота» — только дизайнеру (§8.102)
+- 2026-11-03 — Конь: зачарование множит скорость бега (§8.84)
+- 2026-11-03 — Турнир «Золото»: запасы до старта тоже в зачёт — продажа есть продажа
+- 2026-11-04 — Курс DARAI: живой обмен на Ref вместо застывшего индексера
+- 2026-11-04 — Сторож курса DARAI: тревога в бот, если курс застыл или ушёл от рынка
+- 2026-11-04 — Боксы: приз «любой артефакт / герой по редкости» и «любой товар»
+- 2026-11-04 — Рецепт в лавке: платишь — получаешь исход по шансам (§8.104)
+- 2026-11-04 — Точка спавна (mob-03, ПРАВИЛА §8.49г): мобы, погода, частота и награда в одной точке; погода возрождения — несколько сразу
+- 2026-11-04 — Дуэль героев — песочница админов (§8.105): пошаговый бой 16×8 по концепту партнёра
+- 2026-11-04 — Дуэль: герой-компьютер бьёт сам, когда дотягивается (колдует — только если бить некого или надо лечить/есть)
+- 2026-11-04 — Погода по расписанию Мск (weather-07): днём 12–20 раз в 2 ч, ночью и утром — раз в 4 ч
+- 2026-11-04 — Лавка: до пяти ингредиентов в цене, любых (§8.104 п. 1а)
+- 2026-11-04 — Замок не падает из-за одной картинки: повторы загрузки, отказ decode не ошибка, повтор расстановки
+- 2026-11-04 — Корзина лавки: видно все пять ингредиентов — «Получишь» ужимается по содержимому, «Передашь» мельчит и переносится строкой
+- 2026-11-04 — Картинки легче: PNG → WebP по всей игре, замок грузит только своё, газета и фишки через ужатие
+- 2026-11-04 — Права админки по одному: god_map — режим бога на любой карте без денег и наград (§8.103)
+- 2026-11-04 — fix(weather): frost the sound drop along its shaped surface
+- 2026-11-04 — Сохранённые острова: «Бар-На» дизайнера не удаляется никакой дорогой (§8.104)
+- 2026-11-04 — Карта рейда: без лишних полос прокрутки у окна погоды и правого меню
+- 2026-11-04 — Лавка города: «/шт» при большом количестве — средняя цена, а не цена первой штуки (§8.26 п. 4)
+- 2026-11-04 — Таверна: закладки героев на аккаунте, а не на устройстве
+- 2026-11-04 — Смена героя и отряд — у ратуши любого мира, как в Мидгарде
+- 2026-11-04 — Промокоды не админа: только энергия и лайки, только свои коды, создатель в списке (право promo_soft)
+- 2026-11-04 — Рецепт лавки: картинка подтягивается из самого вероятного приза
+- 2026-11-04 — Уведомления о шахтах (§8.106): мир и вид в письме, «Показать» ведёт к клетке, всё — в «Добыче» с цифрой и «×», «Отбитые» за 7 дней, «разрешить боту писать»
+- 2026-11-04 — Режим бога целиком на своём острове без денег — право island_god (§8.105)
+- 2026-11-04 — ПРАВИЛА: мои разделы прав, сохранённых островов и режима бога — 8.107–8.109 (номера совпали с параллельными)
+- 2026-11-04 — Общие справочники без денег — право catalogs (дизайнер)
+- 2026-11-04 — Письмо админам о покупке подписки и лицензии (§8.111): что, почём, звёзды; кто купил — только владельцу
+- 2026-11-04 — Справочники: свой товар удаляет только админ — он может лежать у игроков
+- 2026-11-04 — Справочники: свой товар право catalogs только создаёт — менять и удалять только админ (§8.110)
+- 2026-11-04 — Остров-образец «Бар-На» для всех — под выключателем, выключен
+- 2026-11-04 — Шахты: запас чужой шахты виден только во «втором обзоре» героя (20 клеток)
+- 2026-11-05 — Старт героя на острове — выбирает режим бога (дизайнер на своём острове)
+- 2026-11-05 — Шахты: админ видит запас чужих шахт как игрок; все — только в режиме бога
+- 2026-11-05 — fix(newspaper): retain confirmed collection across worlds and stale responses
+- 2026-11-05 — ci: collect newspaper and build evidence even when another test fails
+- 2026-11-05 — fix(ui): keep frost aligned on expanding hero actions
+- 2026-11-05 — test: isolate workshop SQL test from island master DB dependency
+- 2026-11-05 — «Управление шахтами»: серверные методы «Починить всё» (цена → починка пачкой)
+- 2026-11-05 — Рефка: новый друг засчитывается после обучения в игре, без порога трат (§8.101 п. 13)
+- 2026-11-05 — «Управление шахтами»: кнопка «Починить всё» — только шахты с запасом меньше 90 %
+- 2026-11-05 — Остров-образец: точная копия — бойцы, дубы, камни и клады на местах дизайнера (§8.112)
+- 2026-11-05 — Показывать текущую выработку рядом с уровнем шахты
+- 2026-11-05 — Показывать дату и время потери шахты или гриба
+- 2026-11-05 — «Починить всё»: ползунок порога запаса — чинить шахты ниже N %
+- 2026-11-05 — Демо-остров Kaylani: свой остров для проб, ни к чему не прикреплён, вход и выход из профиля
+- 2026-11-05 — Остров: допуск тест-аккаунту прогонов — общий маршрут новичка, не пилот
+- 2026-11-05 — Демо-остров: портал с образца никуда не ведёт — «некуда», без платной починки
+- 2026-11-05 — «Починить всё»: отдельный шаг подтверждения и запомненный порог ползунка
+- 2026-11-05 — Остров-образец: дубы и камни — как стоят у образца, дороги и постройки не затираются (§8.112)
+- 2026-11-05 — Остров-образец: шахты, верфь и мастерская задания — там, где стоят у образца (§8.112)
+- 2026-11-05 — Казино: кнопки пульта видно нажатыми на каждом тапе
+- 2026-11-05 — Загрузка: шрифты TTF → woff2, автомат прогревает тяжёлые картинки кабинета заранее
+- 2026-11-05 — Остров новичка: маршрут в туман; ратуша: своя наценка товара
+- 2026-11-05 — Промокоды: один приз по весам, «Ничего» — отдельная строка
+- 2026-11-05 — Автомат: картинки корпуса, шапки, пульта и кнопок ужаты 2,4 МБ → 0,97 МБ
+- 2026-11-05 — Запуск игры: сторож на заставке — оборвалась загрузка кода, страница сама перезагружается
+- 2026-11-05 — Продажа построек (§8.113): поведение «Продажа построек», товар-постройка с настройкой как на карте, установка игроком в Мире строителей
+- 2026-11-05 — Автомат: «Авто» рядом с «Крутить», «Правила» в ряду линий — весь пульт на одном экране
+- 2026-11-05 — Автомат: «Правила» в ряду линий — правило сильнее общего .arcade.rect (на проде кнопка уезжала между 5 и 7)
+- 2026-11-05 — Казино: заставка входа рендерит портал только после монтирования — без React #418 на /slot
+- 2026-11-05 — Serialize legacy castle purchases with the town hall slot limit
+- 2026-11-05 — Style hand fishing action consistently with raid HUD
+- 2026-11-05 — Test slot contention in PostgreSQL and track current stylesheet fonts
+- 2026-11-05 — Normalize font regression test whitespace
+- 2026-11-05 — Fix UI contract font fixture to match current CSS asset
+- 2026-11-05 — Рейд: убрать анимацию ширины шкалы сытости
+- 2026-11-05 — Рынок героев: продавец видит цену своего лота
+- 2026-11-06 — Продажа построек, шаг 2 (§8.113): шаблоны построек, первый тир, витрина плавильни, разбор за 50 %, табличка хозяина
+- 2026-11-06 — Погода: климат мира — диапазоны, аномалии холод/жара, огненный дождь
+- 2026-11-06 — Автомат: кнопки 1–9 вплотную друг к другу, «Правила» у левого края
+- 2026-11-06 — Автомат: «Правила» и кнопки 1–9 не заходят на рамку пульта
+- 2026-11-06 — Карта рейда: добитый моб не будит закрытые окна построек
+- 2026-11-06 — Остров новичка: потолок выноса — 50 дерева, 20 камня, 100 золота, 2 алмаза (§8.114)
+- 2026-11-06 — Остров встречает всех новичков: выбор расы → свой остров, старт — где поставил дизайнер
+- 2026-11-06 — Индексатор NEAR: сверка с Sendler и записями игры, здоровье, письма, вкладка «Блокчейн» (§11а.1)
+- 2026-11-06 — Замок: казино админа снова на площади — данное, а не купленное, встаёт на своё место
+- 2026-11-06 — Остров новичка: потолок накопления, лимит артефактов, сдача артефактов и тренировочных фишек за энергию (§8.114 п. 5–7)
+- 2026-11-06 — Сверка индексатора и сдача фишек: запись одной командой без вложенного WITH
+- 2026-11-06 — Сверка индексатора: письма только владельцу
+- 2026-11-06 — Склад замка: «Вещи героев» — у кого из героев что в рюкзаке, как «Мои вещи в мире»
+- 2026-11-06 — Обучение: тур по замку больше не ждёт убранный «Торговый дом»
+- 2026-11-06 — Усиление чертежа шахты у Архитектора (§8.115): «Усилить» под «Изготовить», 2/8/15/25 💎, захват ×2/×3/×5/×8
+- 2026-11-06 — Обучение: «Мои фишки» в окне паков — всем новичкам острова на шаге «Твои фишки»
+- 2026-11-06 — Карта рейда: шаг и конец пути не перерисовывают экран целиком
+- 2026-11-06 — Вход по NEAR-кошельку без Telegram: старые кошельки — в свой аккаунт, новых — до 100, статистика в админке
+- 2026-11-06 — Кнопка «Войти через NEAR-кошелёк» — по ширине как кнопка Telegram
+- 2026-11-06 — ПРАВИЛА §8.114: вторая ратуша «Гавань», цены острова, доски для корабля
+- 2026-11-06 — Карта рейда: меньше мусора в памяти — копия колонки карты и круг тумана
+- 2026-11-06 — Static anomaly weather visuals for heat and cold
+- 2026-11-06 — Паспорт аккаунта в админке: Telegram, кошельки и Google каждого аккаунта в одной строке
+- 2026-11-06 — Остров: голодный город всё равно продаёт дерево, камень и алмазы на портал
+- 2026-11-06 — Казино закрыто входу через Google: автомат и постройка в замке отказывают
+- 2026-11-06 — Паспорт аккаунта: список приглушается, пока грузится другой режим; дата под аккаунтом без переноса
+- 2026-11-06 — ПРАВИЛА §8.114 п.10: голод на острове не закрывает ресурсы портала
+- 2026-11-06 — Вход в игру без заминки: туман погоды считается фоном, берег — числовой сеткой
+- 2026-11-06 — Add traversable bridges for raid demo
+- 2026-11-06 — Казино не видно входу через Google; новый аккаунт по кошельку не заводится
+- 2026-11-06 — Шаблоны точек спавна: настроить раз — ставить тапами, точки видны в режиме бога (§8.49д)
+- 2026-11-06 — Вывод DARAI: прибавка подписки и для «только своё» (wd-09, накатана)
+- 2026-11-06 — Паспорт аккаунта: вместо внутренних номеров — «На этом Telegram аккаунтов: N»; режим «два аккаунта» собран по Telegram; «был в игре …» / «не заходил с 15.10»
+- 2026-11-06 — Вход через Google для новых игроков: кнопка на экране входа, выключатель, мультиаккаунты
+- 2026-11-06 — Кнопка Google на экране входа — по ширине как кнопка NEAR-кошелька
+- 2026-11-07 — Один аккаунт на Telegram/кошелёк: второй — в архив (где больше ресурсов — основной, ресурсы не складываются); вход старым кошельком без подписи — в свой аккаунт без вывода; implicit-ключ сверяется с блокчейном
+- 2026-11-07 — Безопасность: метка «вход кошельком без подписи» хранится внутри подписанной сессии; вход через Telegram её снимает
+- 2026-11-07 — feat: pair approved anomaly music with existing weather visual states
+- 2026-11-07 — test: preserve TypeScript file type and default asset imports
+- 2026-11-07 — Вывод DARAI: прибавка своя у каждой подписки, сразу при покупке (wd-10, накатана)
+- 2026-11-07 — Газета: турниры в /api/news; снимки шахт — за минуту до конца турнира
+- 2026-11-07 — Креатор: шаблоны поселений на голых картах (§8.116, миграция creator-01 накатана)
+- 2026-11-07 — Режим бога: не узнали карту игрока — нет доступа, а не ошибка
+- 2026-11-07 — «Корона гречневого королевства» (мини-игра Kaylani) — постройка на карте и в замке, на настоящее золото
+- 2026-11-07 — «Корона гречневого королевства»: случайность ходов из секретной соли, повтор запроса — тот же итог
+- 2026-11-07 — «Корона гречневого королевства»: статистика ставок для админов
+- 2026-11-07 — Креатор: вход сразу в мир, управление — панелью мира на карте (§8.116)
+- 2026-11-07 — Креатор: кнопка мира на карте рядом с замком
+- 2026-11-07 — Креатор: мир из пустоты, «Очистить всё», автосохранение кисти
+- 2026-11-07 — Клад дня: фонд админа, закапывание в 12:00 МСК, скрин админам и в газету (§8.117, treasure-01 накатана)
+- 2026-11-07 — Креатор: правки мира не теряются при переходе
+- 2026-11-07 — Клад: «Закопать сейчас» для админа (сутки от запуска) и кадр скрина ~4×4 клетки (treasure-02 накатана)
+- 2026-11-07 — Мир креатора: пустые клетки — часть снимка карты (холст под кисть)
+- 2026-11-07 — Креатор: студия, роли «смотреть/править», копия, расширение до 512, каталог и команда
+- 2026-11-07 — Клад в API газеты — только скрин живого клада, без мира, приза и нашедшего
+- 2026-11-07 — Студия креатора: справа место под «+» верхней строки — шеврон «свернуть» больше не под ней
+- 2026-11-07 — Ластик режима бога с режимами; в мире креатора — стереть и местность
+- 2026-11-07 — Эффект копания на карте: Юпик с лопатой при монете и всём, что реже, и на кладе дня (§8.118)
+- 2026-11-07 — Имя игрока в профиле — его видят все: турниры, доски урона, лавка и дуэли фишек (§8.119, pname-01 накатана)
+- 2026-11-07 — Дуэль героев: страница сразу открывается полем боя, без настроек
+- 2026-11-08 — Убран эффект копания: ни Юпика с лопатой на карте, ни звука лопаты (§8.118)
+- 2026-11-08 — «Кладоискатель» считает копку земли лопатой: находка или клад дня — +1 (§8.57)
+- 2026-11-08 — «Кладоискатель»: засчитаны прошлые находки лопатой (ach-03 накатана)
+- 2026-11-08 — ПРАВИЛА §8.57: копка земли лопатой с находкой — в «Кладоискателя»
+- 2026-11-08 — «Кладоискатель»: пороги 30/100/250/1 125/4 000/15 000 (владелец 08.11)
+- 2026-11-08 — Дуэль героев: поле из местности героя, фигурки с карты, ход виден — идут, бьют, урон над целью
+- 2026-11-08 — Дуэль: ход и дальность удара у каждого моба (проставлено всем 69), камера на телефоне ведёт к тому, кто ходит
+- 2026-11-08 — «Корона гречневого королевства» — тест для всех на фантики (§8.120, buckwheat-02-demo накатана)
+- 2026-11-08 — Бинокль и лестница: «Применить» из рюкзака (§8.120)
+- 2026-11-08 — Бинокль и лестница: ссылки на раздел правил §8.121 (§8.120 заняла гречка)
+- 2026-11-08 — «Корона гречневого королевства»: у игроков в замке не размещаем — только постройка на карте
+- 2026-11-08 — «Корона гречневого королевства»: разовый пропуск к демке за 100 золота (buckwheat-03-pass накатана)
+- 2026-11-08 — Генератор артефактов — поведение постройки (§8.122)
+- 2026-11-08 — «Корона гречневого королевства»: фантики выключены — всем на настоящее золото
+- 2026-11-08 — Лестница: ещё 10 золота за каждое использование (§8.121)
+- 2026-11-08 — Генератор: уникальность без ключа клиента, только свой арт, 50 генераций в сутки на всех
+- 2026-11-08 — Darken heat anomaly edges and add bounded raster fire rain
+- 2026-11-08 — Газета: язык игры выбирает RU/EN, недельный номер — 4 страницы
+- 2026-11-08 — Soften ordinary rain using a shared 12×64 bitmap
+- 2026-11-08 — Anchor bounded rain impacts to visible map cells
+- 2026-11-08 — Double rain fall speed while preserving splash duration
+- 2026-11-08 — Add lightweight landing snow and sparse terrain cover
+- 2026-11-08 — «Корона гречневого королевства»: ссылка /crown со входом NEAR-кошельком и ставка DARAI
+- 2026-11-08 — Газета: страница для людей /api/news?format=html (всё по газете на одной странице)
+- 2026-11-08 — «Корона гречневого королевства»: первый запрос игры больше не теряется
+- 2026-11-08 — «Корона»: ответ игре — и запасным путём; на ссылке всегда сразу коннектор NEAR
+- 2026-11-08 — Клад: в «Добычу» с «Забрать», письмо нашедшему, слот 09:00 МСК; чат в API без ИИ
+- 2026-11-08 — «Корона»: вход по ссылке — подключение и подпись кошелька одним окном
+- 2026-11-08 — «Корона»: коннектор NEAR на ссылке — только по кнопке, сам не открывается
+- 2026-11-08 — «Корона»: по ссылке админ входит своим кошельком без Telegram
+- 2026-11-08 — «Корона»: владелец входит по ссылке своим кошельком (казна ≠ запрет)
+- 2026-11-08 — «Корона»: на ссылке — шапка с балансами и вводом/выводом DARAI; в игре — как было
+- 2026-11-08 — «Корона»: после перезагрузки ссылки вход кошельком сохраняется
+- 2026-11-08 — «Корона»: музыка включается в нажатии «Играть», как в оригинале Kaylani
+- 2026-11-08 — «Корона»: вывод у подтверждённого кошелька; ссылка на пул DARAI (Rhea / Ref)
+- 2026-11-08 — «Корона»: картинки не мигают и кэшируются, выбор клетки без пересборки, обмен DARAI
+- 2026-11-08 — «Корона»: музыка в Safari и на iPhone; адрес без хвоста ?_v=
+- 2026-11-08 — «Корона»: экран не пересобирается на каждый ход; музыка с открытия игры
+
+## Week 4 (Nov 9–14) — 149 commits (148 shown)
+
+- 2026-11-09 — Способность героя «Шахтёр» в списке выбора (§8.52)
+- 2026-11-09 — Уникальный арт генератора — на аукцион; боксы его больше не выдают (§8.122)
+- 2026-11-09 — Способности героев: Рыбак +3 к шансу, замок Шахтёра на шахту (§8.52, §8.123)
+- 2026-11-09 — feat(ui): apply isolated Vanaheim WebP art to demo island
+- 2026-11-09 — Окружение шахт: местность не гора, дерево (гора) — долями на все шахты рядом (§8.80)
+- 2026-11-09 — Уникальный арт — на аукционы никогда: откат по аукциону + запрет призом лота игры (§8.122)
+- 2026-11-09 — «Корона»: «Выйти» на ссылке — в игру полной загрузкой, как обычный вход
+- 2026-11-09 — Доля владельцев казино: 5 % прибыли суток в «Добычу» (§8.124)
+- 2026-11-09 — «Корона»: «Выйти» — сразу в игру (/chips), без лишнего перехода через «/»
+- 2026-11-09 — Add sparse cached ground puddles and faster denser rain
+- 2026-11-09 — «Корона»: свой фонд DARAI игры и его статистика
+- 2026-11-09 — Apply Vanaheim world art by template type and share atomic image loading
+- 2026-11-09 — «Поделиться» приглашением, кто позвал; кнопки кошельков в профиле — только с кошельком (§8.125)
+- 2026-11-09 — «Корона»: фонд не уходит в минус — выплата добирается из пула карты, сообщение троим
+- 2026-11-09 — Вход в браузере на '/': игровой экран «YupLand Heroes», только Telegram и Google
+- 2026-11-09 — Экран входа в браузере не прыгает при смене языка; компактный EN/RU
+- 2026-11-09 — Use the approved hot fog theme
+- 2026-11-09 — Move creative world tools into collapsible floating panels
+- 2026-11-09 — Погода «Снег» (snow) для «Холодно» и «Очень холодно»; без кнопки публикации «Вестника»
+- 2026-11-09 — Кнопки Telegram и Google не мигают при смене языка
+- 2026-11-09 — Keep large palettes scrollable and show the selected brush
+- 2026-11-09 — Кнопка Telegram на экране входа — снова как была (без слоя замены)
+- 2026-11-09 — Add Svartalfheim terrain and decor WebP profile by world and template ID
+- 2026-11-09 — Disable weather fog overlay and use bounded fast diagonal blizzard
+- 2026-11-09 — Add repair-all action below each mine resource group
+- 2026-11-09 — Google-аккаунту кошелёк не привязывается (сервер + меню профиля)
+- 2026-11-09 — Кнопка Google показывается только готовой — без подмены запасной кнопкой
+- 2026-11-09 — «Вестник»: в канал ничего не отправляется
+- 2026-11-09 — Show snow scenes for freezing rain in weather station
+- 2026-11-09 — fix(castle): move Crown building clear of warehouse
+- 2026-11-09 — fix(castle): move Crown building clear of warehouse
+- 2026-11-09 — fix(castle): move Crown building clear of warehouse
+- 2026-11-09 — Кнопка Google: новая — прозрачным слоем, показ после ухода запасной
+- 2026-11-09 — Keep the durability percentage together on narrow screens
+- 2026-11-09 — Кнопка Google на входе — сразу, подмена только при смене языка
+- 2026-11-09 — Кнопка Google: не ждать готовности, если Google её не доводит
+- 2026-11-09 — fix(raid): preserve original decoration geometry with world skins
+- 2026-11-09 — Свои кнопки входа Telegram и Google: видны сразу, язык без перерисовки
+- 2026-11-09 — Refine thunderstorm with bounded pixel rain and compact cached lightning
+- 2026-11-09 — feat(raid): apply approved art to all nine worlds while preserving decoration scale
+- 2026-11-09 — Дуэль: поле 12×8, расстановка до боя, понятная разметка и панель хода (§8.105 п. 5)
+- 2026-11-09 — Лагерь онлайн на карте: анимация и счёт «онлайн/офлайн»
+- 2026-11-09 — Дуэль: свои бойцы списком (до 4), расстановка до боя (§8.105 п. 6)
+- 2026-11-09 — fix(raid): restore original Midgard art and exclude main world from skins
+- 2026-11-09 — fix(raid): remove beveled stone edges from Asgard water
+- 2026-11-09 — Fix weather overlap in god mode and increase thunderstorm to 300 drops
+- 2026-11-09 — Дуэль: выбор бойцов каруселью иконок (жизни и урон коротко), бой переживает перезагрузку
+- 2026-11-09 — Анимации зданий на карте — только во втором обзоре и ближе
+- 2026-11-09 — Дуэль: «Предложить ничью» и «Предложить сдаться» — решает противник (§8.105 п. 8)
+- 2026-11-09 — Дуэль: предложение раз в 10 ходов, итоги ничьей/сдачи, жизни мобов между боями, одинаковые мобы (§8.105 п. 9)
+- 2026-11-09 — Казино: мягкая тяга — 90 % у каждого игрока, как бы он ни играл
+- 2026-11-09 — Дуэль: поле в перспективе «как в Героях», нижняя панель, без лечения
+- 2026-11-10 — Дуэль: гексы, как на карте; разметка поля в тон земли (§8.105 п. 11)
+- 2026-11-10 — routeTree.gen.ts: убрать блок, дописанный локальным dev-сервером
+- 2026-11-10 — feat(art): regenerate active Asgard assets in 16-bit style
+- 2026-11-10 — Show bounded pixel fog corners with precomputed animation
+- 2026-11-10 — Replace complete Vanaheim art with optimized 16-bit WebP
+- 2026-11-10 — Use optimized 16-bit art for all active Svartalfheim terrain and decor
+- 2026-11-10 — Use optimized 16-bit art for all active Muspelheim terrain and decor
+- 2026-11-10 — Refresh Niflheim used terrain and decorations in 16-bit pixel art
+- 2026-11-11 — Генератор артефактов: бесплатные исчерпаны — рисует fal.ai (§8.122 п. 8)
+- 2026-11-11 — «Переместить» здание: обряды, заклинания, касса ратуши и замок шахты едут с ним (§8.33)
+- 2026-11-11 — Генератор артефактов: на fal.ai — SANA вместо FLUX ($0,001 за арт)
+- 2026-11-11 — Арты: доспех без слова «chest» — модель рисовала по нему сундук
+- 2026-11-11 — Генератор артефактов: на fal.ai — FLUX.1-schnell, как у бесплатного Cloudflare
+- 2026-11-11 — Генератор артефактов: цена растёт с каждым заказом подряд, 5 подряд (§8.122 п. 9)
+- 2026-11-11 — Короткое обучение острова — всем новичкам (выключатель island_short)
+- 2026-11-11 — Короткое обучение: сундук копии оплачивает столб образца
+- 2026-11-11 — Безопасность: закрыты XSS в окне кошелька и гонки повторных запросов (паки, урон рейда), проверка шаблона героя
+- 2026-11-11 — Refresh Jotunheim terrain and decoration in 16-bit pixel art
+- 2026-11-11 — Короткое обучение: подогнанный урок не отбрасывается при чтении
+- 2026-11-11 — Короткое обучение: верфь шага «лодка» — до которой можно дойти
+- 2026-11-11 — Безопасность перед открытием кода: закрыты дыры аудита, данные игроков — в базу (§8.126)
+- 2026-11-11 — Безопасность: Telegram-номер не отдаётся и в таблицах рейда (турнир, лидеры рейд-боссов)
+- 2026-11-11 — Короткое обучение: переправа кораблём — по воде без водорослей, цель на воде
+- 2026-11-11 — Refresh Alfheim used art with scale-preserving 16-bit WebP
+- 2026-11-11 — fix(castle): render approved Kaylani throne in each building style
+- 2026-11-11 — Остров: письма ждут и в замке острова; «Пропустить шаг» над нижней строкой
+- 2026-11-11 — Туман: разведанное — только рядом с тем, где герой был (§8.126 п. 7)
+- 2026-11-11 — Публичная копия кода: скрипт снимка без истории, внутреннего и аккаунтов команды (§8.126 п. 9)
+- 2026-11-11 — public-snapshot.mjs: форматирование
+- 2026-11-11 — Refresh Helheim used art with scale-preserving 16-bit WebP
+- 2026-11-11 — Три входа в игру (§8.127): Google на /, Telegram на /tg, кошелёк на /near; белый список вывода
+- 2026-11-11 — fix(castle): align Kaylani throne artwork with isometric buildings
+- 2026-11-11 — Карта: смена тира постройки перерисовывает кадр (портал острова после починки)
+- 2026-11-11 — Защитный заголовок страницы (CSP) — режим наблюдения, метка на каждый ответ
+- 2026-11-11 — Туман: досягаемость в неразведанном — 10 клеток от героя (бинокль 20), клетки светлее, тап ставит маршрут
+- 2026-11-11 — Команда проекта — из env сервера, а не из кода
+- 2026-11-11 — Гигиена репо: проверка на секреты и данные игроков (pre-commit + CI)
+- 2026-11-11 — Гигиена: IP сервера и аккаунт дизайнера — не в коде и доках (DEPLOY_HOST, TEAM_DESIGNER_ACCOUNT)
+- 2026-11-11 — Лицензия кода Apache-2.0 (владелец 11.11.2026), NOTICE: арт и музыка — все права защищены; README
+- 2026-11-11 — Оплата картой через Xsolla для входа только через Google (§8.127 п. 7)
+- 2026-11-11 — TanStack Start 1.167.39 → 1.168.61: закрыта критичная XSS в ответах server-функций (GHSA-qx66-fv34-fjm8)
+- 2026-11-11 — Пароль кошелька шифрует ключи (аудит 11.11, владелец: «да, делай»)
+- 2026-11-11 — Лёгкая пиксельная рябь на видимой воде
+- 2026-11-11 — Открытая копия: проверка гигиены едет вместе с кодом (иначе CI в yupland-heroes падает)
+- 2026-11-11 — CSP: метка для окон NEAR-кошельков и страниц вестника/газеты — блокировку можно включать
+- 2026-11-11 — «Корона»: код Kaylani напрямую из её репозитория (§8.128)
+- 2026-11-11 — CSP-отчёт: без адреса страницы — файл скрипта (окна кошельков); пересборка с CSP_ENFORCE=1
+- 2026-11-11 — «Корона»: код Kaylani исполняется без права записи
+- 2026-11-11 — «Корона»: проверка автоподтяжки — отметка её коммита на шаг назад (вернёт сам Buckwheat sync)
+- 2026-11-11 — «Корона»: проверка автоподтяжки ставит vitest сама (в package.json его нет)
+- 2026-11-11 — «Корона»: обновлён код Kaylani из её репозитория (PR #7)
+- 2026-11-11 — «Корона»: ручки принимают номер партии с версией правил — ходы новых партий падали на проверке
+- 2026-11-11 — ПРАВИЛА §8.127: tg.service и near.service.yupland.io работают (переход на /tg и /near)
+- 2026-11-11 — Три входа — три домена, без /tg и /near (§8.127)
+- 2026-11-11 — Аудит безопасности 11.11, остаток: закрыты обходы прав на начисления и перепривязку встроенного кошелька; обновлены зависимости
+- 2026-11-11 — Исправить выбор расы и переход из таверны к сундуку
+- 2026-11-12 — Туман: в Свартальвхейме досягаемости в неразведанном нет, в других мирах — как было
+- 2026-11-12 — Привязка Google сводит аккаунты в один по правилу «один аккаунт на ключ»
+- 2026-11-11 — «Корона»: обновлён код Kaylani из её репозитория (PR #8)
+- 2026-11-12 — Потолок размера запроса: 1 МБ, загрузка 10 МБ — закрывает дыру zod 3 (§8.126 п.13)
+- 2026-11-12 — Привязка Google не сливает аккаунты — только через поддержку (откат)
+- 2026-11-12 — ПРАВИЛА §8.127 п. 8: Telegram и кошельки сливаются (второй в архив), Google — только через поддержку
+- 2026-11-12 — Бинокль и лестница: «Применить» в «Вещах героя» (окно героя и таверна)
+- 2026-11-12 — Предметы: после применения — «активирован» (бинокль, лестница, бусты, зелья, склад)
+- 2026-11-12 — Паки: убрана «Купить паки» — вела на мёртвую витрину (12.11.2026)
+- 2026-11-12 — «Надеть лучшее»: Торговля и Алхимия — тоже прибавка
+- 2026-11-12 — Лопата: «Копать» издалека — сразу в путь; двойной тап — копать одним жестом
+- 2026-11-12 — Рябь на воде: не пересобирать маску на ходу — подвисания на пробежке
+- 2026-11-12 — Карта: маска ряби — только по своим источникам, плёнка тумана не каждый кадр
+- 2026-11-12 — Копка: ямка исчезла — клетка снова даёт шанс на находку (вместо раза в сутки)
+- 2026-11-12 — Use calm optimized Midgard water with cached sparse static waves
+- 2026-11-12 — Load real water variant helper in isolated weather cache regression test
+- 2026-11-12 — fix: resolve live Hel world name to approved Helheim art
+- 2026-11-12 — fix(tutorial): use valid source for starter training pack
+- 2026-11-12 — Unify eight-world water textures with approved Midgard waves
+- 2026-11-12 — Тест острова: право island_tester — кнопка-пальма и «Обучение с нуля» без Telegram дизайнера
+- 2026-11-12 — Крон «обучение с нуля» за тестера: тот же код, что кнопка-пальма, только аккаунтам с правом island_tester
+- 2026-11-12 — Рябь своей подложкой: фаза воды больше не перерисовывает всю карту
+- 2026-11-12 — Карта под окном не анимируется 8 раз/с; в пробе — сборка клиента
+- 2026-11-13 — «Только Google»: золото и подписки — в $ и только картой; DarAi в Казне всегда; выбор расы без мигания
+- 2026-11-13 — Обучение острова: без «Ок» на шагах-действиях, в замке — путь к «Выходу в мир», новое задание всплывает само
+- 2026-11-13 — Грядка: дробный хвост при снятии больше не округляется вверх — закрыта печать урожая
+- 2026-11-13 — Панель острова: после обучения нет «Пропустить», есть «Закрыть» (значок у края)
+- 2026-11-13 — Свёрнутое меню рейда «+»: цифра — сколько есть забрать (добыча, подарки, новые лоты)
+- 2026-11-13 — Рубка из окна: «Срубить» сразу ведёт героя к дереву, цена дороги — в кнопке
+- 2026-11-13 — Копия острова: сухопутные бойцы и клады — не в воде
+- 2026-11-13 — Рубка: «добавлено в рюкзак» — после удара, а не в его начале
+- 2026-11-13 — Фишки из пака сразу видны в бою: после открытия перечитываются и тренировочные
+- 2026-11-13 — Боссы острова обучения — только канонные награды
+- 2026-11-13 — Лавка: нехватка цены красным, «Купить» гаснет, отказ называет чего не хватает
+- 2026-11-13 — Копия острова: бойцы и с гор тоже, и без точки возрождения
+- 2026-11-13 — Миграция isle-relocate-01: бойцы из воды и с гор, клады из воды — на живых островах
+- 2026-11-13 — «Только Google»: золото и подписки — картой или за DarAi; в письме о покупке картой — кто купил
+- 2026-11-13 — ПРАВИЛА §8.127 п. 3: «только Google» — картой или за DarAi; учёт покупок картой
+- 2026-11-13 — Письмо о покупке картой: повтор через 3 с при сбое связи с Telegram
+- 2026-11-13 — Долг аккаунта: оплата в Казне (§8.129)
+
+Total commits in window up to 2026-11-13: 1038 (shown: 1037, dropped as internal: 1)

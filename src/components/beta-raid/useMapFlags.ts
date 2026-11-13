@@ -15,6 +15,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMineFlags, type MineFlag } from "@/server/api/beta-raid/mine-flags";
 import { getSpellPillarMarks } from "@/api";
+import { useMineLifeFeed } from "./mine-life/useMineLifeFeed";
+import type { StepAt } from "./useStepRefetch";
 
 const SPELL_PILLARS_KEY = ["beta-raid-spell-pillars"] as const;
 
@@ -30,7 +32,17 @@ export function withTakenPillars(
   return out;
 }
 
-export function useMapFlags(): Record<string, MineFlag> | undefined {
+/**
+ * heroAt — позиция героя: чужие полосы шахт видны только вокруг неё; god — режим
+ * бога включён (админу тогда все полосы, useMineLifeFeed).
+ */
+export function useMapFlags(
+  heroAt: StepAt | null = null,
+  god = false,
+): Record<string, MineFlag> | undefined {
+  // Полосы службы шахт v2 — тем же слоем «над постройками», но мимо React:
+  // экран от них не пересобирается (mine-life/useMineLifeFeed).
+  useMineLifeFeed(heroAt, god);
   const mine = useQuery({
     queryKey: ["beta-raid-mine-flags"],
     queryFn: () => getMineFlags(),

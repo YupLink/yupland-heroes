@@ -38,9 +38,9 @@ beforeEach(() => Object.assign(s, { sql: [], dropped: 0 }));
 describe("износ своего товара", () => {
   it("создание: число пишется, пусто — NULL", async () => {
     expect((await call(mod.createCustomItem, { ...base, toolWear: 25 })).toolWear).toBe(25);
-    expect(s.sql[0]).toMatch(/, 25\);$/);
+    expect(s.sql[0]).toMatch(/, 25,\n\s+false, false\);$/);
     expect((await call(mod.createCustomItem, { ...base, toolWear: null })).toolWear).toBeNull();
-    expect(s.sql[1]).toMatch(/, NULL\);$/);
+    expect(s.sql[1]).toMatch(/, NULL,\n\s+false, false\);$/);
   });
 
   it("правка: задан — пишется и рубка берёт свежее; старая вкладка без поля — не трогаем", async () => {

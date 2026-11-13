@@ -32,4 +32,14 @@ export const dict: Record<string, Entry> = {
     en: "Your rods last only {n} min",
   },
   "fish.off": { ru: "Рыбалка пока не настроена", en: "Fishing is not set up yet" },
+  // Ловля руками — остров новичка (владелец, 21.10.2026)
+  "fish.hand": { ru: "Ловить руками", en: "Fish by hand" },
+  "fish.hand_hungry": {
+    ru: "Мало сытости — нужно {n}",
+    en: "Not enough satiety — need {n}",
+  },
+  "fish.hand_island_only": {
+    ru: "Руками ловят только на острове новичка",
+    en: "Fishing by hand works only on the newbie island",
+  },
 };

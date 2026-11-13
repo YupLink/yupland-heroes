@@ -6,6 +6,8 @@
 import type { MarketKind, MarketPriceResource, MarketSide } from "./marketItem";
 import type { BoostEffect } from "./hero/boost";
 import type { TownCurve } from "./townPricing";
+import type { RecipeOutcome } from "./marketRecipe";
+import type { PriceLine } from "./marketPrices";
 
 /** Товар маркета глазами покупателя. */
 export type MarketItemView = {
@@ -61,9 +63,19 @@ export type MarketItemView = {
   /** Свой товар с галочкой «зелье»: покупка ложится в сумку зелий. */
   potion?: boolean;
   /**
+   * Редкость героя-товара — по ярусу шаблона (market-hero-rarity), плашкой на
+   * плитке. null у прочих товаров и у «Любого … героя» (редкость в имени); нет
+   * поля — снимок витрины из суточного кэша до этой правки, плашки нет.
+   */
+  heroRarity?: "common" | "rare" | "epic" | "legendary" | "unique" | null;
+  /**
    * Лавка в городе: цена не фикс, а кривая ратуши по объёму (townPricing).
    * stock — склад города сейчас. Нет поля — обычная лавка с ценой позиции.
    */
   /** rush — особый спрос: город скупает до НЗ вдвое дороже обычного (×4). */
   town?: { stock: number; curve: TownCurve; rush?: boolean } | null;
+  /** Ещё ингредиенты цены (до трёх) с подписью/картинкой шаблона, как priceName. */
+  priceMore?: Array<PriceLine & { name: string | null; image: string | null }> | null;
+  /** Рецепт (kind='recipe'): исходы с шансами. Нет поля — не рецепт. */
+  outcomes?: RecipeOutcome[] | null;
 };

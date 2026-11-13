@@ -11,7 +11,8 @@ import { marketResourceIconSrc } from "@/lib/resourceIcons";
 export type TownRef = {
   /** `${kind}:${refId}` — по нему товар ратуши находит свою подпись. */
   key: string;
-  kind: MarketKind;
+  /** Товар ратуши — без дерева для посадки (только витрина лавки). */
+  kind: Exclude<MarketKind, "tree" | "rock" | "land" | "vein" | "recipe" | "building">;
   refId: string;
   name: string;
   image: string | null;
@@ -49,7 +50,7 @@ export function useTownRefs(enabled = true) {
 
   const refs: TownRef[] = RESOURCES.map((code) => ({
     key: townRefKey("resource", code),
-    kind: "resource" as MarketKind,
+    kind: "resource" as const,
     refId: code,
     name: RESOURCE_LABELS_RU[code],
     image: marketResourceIconSrc(code),

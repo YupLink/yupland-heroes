@@ -7,6 +7,7 @@ import { nanoid } from "nanoid";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import type { StackOrigin } from "@/server/api/beta-raid/stack-origin";
+import { isMoneyFreeMap, isMoneyKind } from "./god-money";
 
 export type QueuedReward = {
   account: string;
@@ -41,6 +42,13 @@ export type QueuedReward = {
    * выдачи второй строки не кладут. Нет — случайный id, как было.
    */
   key?: string;
+  /**
+   * Без метки происхождения (промокод, как подарок админа): mob = false —
+   * rewardOriginSql читает «без метки», товар ляжет в рюкзак «безымянным» и в
+   * магический сундук не годится. Колонку пишем только тогда: остальным
+   * вставкам mob по-прежнему NULL.
+   */
+  unlabeled?: boolean;
 };
 
 const num = (v: number | null | undefined): string =>
@@ -61,15 +69,22 @@ const dmg = (v: number | null | undefined): string =>
 /** Ставит одну награду в очередь получения. Ничего не начисляет. */
 export async function queueEncounterReward(r: QueuedReward): Promise<void> {
   if (!(r.amount > 0)) return;
+  // Остров с правом island_god — без денег: монеты оттуда не выдаются (god-money).
+  if (isMoneyKind(r.kind) && (await isMoneyFreeMap(r.mapId))) return;
+  // Пак с DARAI/Stars внутри — те же деньги (аудит 11.11, mystic-money.ts).
+  if (r.kind === "pack" && r.packId && (await isMoneyFreeMap(r.mapId))) {
+    const { packPaysMoney } = await import("../mystic-money");
+    if (await packPaysMoney(r.packId)) return;
+  }
   const id = r.key ? `'rr_' || md5(${sqlStr(r.key)})` : sqlStr(`rr_${nanoid(12)}`);
   await mcpExec(
     `INSERT INTO yuplink.raid_reward
        (id, location_id, cycle_no, account_id, place, damage, reward_kind, reward_amount,
-        pack_id, boss_id, source_name, created_at, origin)
+        pack_id, boss_id, source_name, created_at, origin${r.unlabeled ? ", mob" : ""})
      VALUES (${id}, ${sqlStr(r.mapId)}, ${Math.floor(r.cycleNo) || 0},
              ${sqlStr(r.account)}, ${num(r.place)}, ${dmg(r.damage)}, ${sqlStr(r.kind)},
              ${Number(r.amount) || 0}, ${r.packId ? sqlStr(r.packId) : "NULL"},
              ${r.targetId ? sqlStr(r.targetId) : "NULL"}, ${sqlStr(r.sourceName)}, now(),
-             ${r.origin ? sqlStr(r.origin) : "NULL"})${r.key ? "\n     ON CONFLICT (id) DO NOTHING" : ""};`,
+             ${r.origin ? sqlStr(r.origin) : "NULL"}${r.unlabeled ? ", false" : ""})${r.key ? "\n     ON CONFLICT (id) DO NOTHING" : ""};`,
   );
 }

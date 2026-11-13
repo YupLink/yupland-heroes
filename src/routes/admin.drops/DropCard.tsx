@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Users, Coins, Layers, Gift, Ticket, Copy, Pencil, Pause, Play,
+  Users, Coins, Layers, Gift, Copy, Pencil, Pause, Play,
   Repeat, Trash2, AlertTriangle, ChevronDown, Loader2,
 } from "lucide-react";
 import { getDropClaimers } from "@/server/api/admin-stats";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { RewardBadge } from "./RewardBadge";
 import { DropEditForm } from "./DropEditForm";
 import type { DropEvent } from "./types";
+import { goldFromTicketCost } from "./goldCost";
 
 export function DropCard({
   drop,
@@ -105,7 +106,7 @@ export function DropCard({
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-gold">
-                <Ticket className="h-3 w-3" /> {drop.ticketCost ?? 1} {drop.mode === "combo" ? "за комбо" : "за клейм"}
+                <Coins className="h-3 w-3" /> {goldFromTicketCost(drop.ticketCost)} золота {drop.mode === "combo" ? "за комбо" : "за клейм"}
               </span>
             )}
           </div>

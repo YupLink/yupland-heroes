@@ -27,6 +27,7 @@ import {
   levelRingClass,
 } from "./PvPBattle";
 
+import { thumb } from "@/lib/image";
 export const Route = createFileRoute("/chips/pvp")({
   head: () => ({
     meta: [{ title: "YupLink · PvP" }, { name: "robots", content: "noindex" }],
@@ -315,12 +316,12 @@ function HistoryTab() {
             </div>
             <div className="mb-2 flex items-center gap-2 text-[11px]">
               <div className="text-muted-foreground">
-                {b.iAmCreator ? t("pvp.you") : "@" + (b.creatorUsername ?? b.creatorWallet)}
+                {b.iAmCreator ? t("pvp.you") : (b.creatorUsername ?? b.creatorWallet)}
               </div>
               <Swords className="h-3 w-3 text-rose-400" />
               <div className="text-muted-foreground">
                 {b.iAmCreator
-                  ? "@" + (b.opponentUsername ?? b.opponentWallet ?? "—")
+                  ? (b.opponentUsername ?? b.opponentWallet ?? "—")
                   : t("pvp.you")}
               </div>
             </div>
@@ -652,7 +653,7 @@ function ChipGrid({
               )}
             >
               {c.imageUrl ? (
-                <img src={c.imageUrl} alt="" className="h-full w-full object-cover" />
+                <img src={thumb(c.imageUrl, 128)} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full items-center justify-center text-xl">🎯</div>
               )}

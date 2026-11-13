@@ -31,7 +31,7 @@ export function CastleProfileOverlay({ ru, onClose, onOpenTavern, initialGiftPac
         </div>
       ) : (
         <>
-          <header className="flex shrink-0 items-center gap-3 border-b p-3 pt-[max(12px,env(safe-area-inset-top))]">
+          <header className="flex shrink-0 items-center gap-3 border-b p-3 pt-[max(12px,var(--app-top,env(safe-area-inset-top,0px)))]">
             <button type="button" className="flex min-h-11 items-center gap-1 rounded-lg border px-3" onClick={onClose}>
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               {ru ? "Карта" : "Map"}

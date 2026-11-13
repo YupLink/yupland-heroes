@@ -4,12 +4,8 @@
 // корабль игрок строит сам на верфи острова (владелец, 17.10.2026). Только тексты — исполняет island-create по порядку, ПОСЛЕ клеток:
 // точка возрождения берёт босса и его настройку с клетки.
 import { sqlStr } from "@/server/api/raid-shared";
-import {
-  ISLAND_BOSS_RESPAWN_MIN,
-  ISLAND_ITEMS,
-  ISLAND_LOOT,
-  type Amount,
-} from "@/lib/raid/island/catalog";
+import { ISLAND_BOSS_RESPAWN_MIN, ISLAND_ITEMS, type Amount } from "@/lib/raid/island/catalog";
+import { digLoot } from "@/lib/raid/island/loot";
 import { plainBosses } from "@/lib/raid/island/features";
 import type { IslandPlaces } from "@/lib/raid/island/steps";
 import type { Cell } from "@/lib/raid/worldgen/geo";
@@ -52,11 +48,15 @@ export function buriedBagSql(
 export const digIdSql = (mapId: string, n: number): string =>
   `'lb_' || md5(${sqlStr(`island:${mapId}:${n}`)})`;
 
-/** Прочие клады: по очереди доска и руда (ISLAND_LOOT.digs). */
-export function digsSql(mapId: string, digs: readonly Cell[], account: string): string[] {
-  const kinds = ISLAND_LOOT.digs;
+/** Прочие клады: начинка по таблице кладов с диапазонами (loot.ts, от сида). */
+export function digsSql(
+  mapId: string,
+  digs: readonly Cell[],
+  account: string,
+  seed: number,
+): string[] {
   return digs.flatMap((at, i) =>
-    buriedBagSql(digIdSql(mapId, i + 1), mapId, at, account, kinds[i % kinds.length]),
+    buriedBagSql(digIdSql(mapId, i + 1), mapId, at, account, digLoot(i, seed)),
   );
 }
 

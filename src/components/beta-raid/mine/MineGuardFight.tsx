@@ -8,7 +8,9 @@ import { gameInfoToast } from "@/lib/gameInfoToast";
 import { humanError } from "@/lib/humanError";
 import { useT, useLang } from "@/lib/i18n";
 import { localizeAssetName } from "@/lib/translations/assetNames";
-import { ENERGY_KEY, useEnergy } from "@/lib/hooks/useEnergy";
+import { useEnergy } from "@/lib/hooks/useEnergy";
+import { afterArtWear } from "@/lib/hooks/useArtBroken";
+import { refreshAfterGuardHit } from "./guardRefresh";
 import { BossVault } from "@/components/raid/BossVault";
 import { ChipSquadPicker } from "@/components/game/ChipSquadPicker";
 import { useRememberedLineup } from "../useRememberedLineup";
@@ -111,18 +113,9 @@ export function MineGuardFight({
         },
       }),
     onSuccess: (res) => {
-      // Урон/смерть охранника + энергия видны сразу: перечитываем окно шахты
-      // (guardian/can), оверлей охранников, флаги и энергию.
-      for (const key of [
-        ["beta-raid-building", q, r],
-        ["beta-raid-mine-guards"],
-        ["beta-raid-mine-flags"],
-        ENERGY_KEY,
-        ["my-chip-inventory"],
-        ["beta-raid-state"],
-      ]) {
-        qc.invalidateQueries({ queryKey: key, refetchType: "all" });
-      }
+      // Только то, что удар мог изменить (guardRefresh); износ и поломка — afterArtWear.
+      refreshAfterGuardHit(qc, res, q, r);
+      afterArtWear(qc, res.artBroken);
       setResult({
         killed: res.killed,
         wiped: res.wiped,

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Ticket, Battery, Plus, Gem } from "lucide-react";
+import { Coins, Battery, Plus, Gem } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import { useTickets } from "@/lib/hooks/useTickets";
+import { useResources } from "@/lib/hooks/useResources";
 import { energyTrend } from "@/lib/hooks/useEnergy";
 import { getMyEnergy } from "@/server/api/chips-stake";
 import { EnergyBuyModal } from "@/routes/chips";
 import { NftInputModal } from "./NftInputModal";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
 export function StatCard({
   icon: Icon,
@@ -21,7 +21,7 @@ export function StatCard({
   actionTitle,
   onClick,
 }: {
-  icon: typeof Ticket;
+  icon: typeof Coins;
   label: string;
   value: number | string;
   subValue?: string;
@@ -88,8 +88,11 @@ export function StatCard({
   );
 }
 
-export function StatsBar({ showNftInput = true }: { showNftInput?: boolean }) {
+export function StatsBar({ showNftInput: allowNftInput = true }: { showNftInput?: boolean }) {
   const t = useT();
+  // «Только Google» (§8.127): «Ввести NFT» нет.
+  const googleOnly = useEntryRules().googleOnly;
+  const showNftInput = allowNftInput && !googleOnly;
   const [nftInputOpen, setNftInputOpen] = useState(false);
   const [energyBuyOpen, setEnergyBuyOpen] = useState(false);
   const [, setTick] = useState(0);
@@ -97,20 +100,15 @@ export function StatsBar({ showNftInput = true }: { showNftInput?: boolean }) {
     const t = setInterval(() => setTick((v) => v + 1), 1000);
     return () => clearInterval(t);
   }, []);
-  const tickets = useTickets();
+  // Билетов нет (ПРАВИЛА §8.61): на их месте золото — им теперь платят и его получают.
+  const resources = useResources();
   const energy = useQuery({
     queryKey: ["my-energy"],
     queryFn: () => getMyEnergy(),
     refetchInterval: 5 * 60_000,
   });
 
-  const ticketsRaw =
-    (tickets.data as { availableRaw?: number } | undefined)?.availableRaw ??
-    tickets.data?.available ??
-    0;
-  const ticketsCount = Number.isInteger(ticketsRaw)
-    ? ticketsRaw
-    : Math.round(ticketsRaw * 100) / 100;
+  const gold = Math.floor(resources.data?.gold ?? 0);
   const energyNow = energy.data?.energy ?? 0;
   const energyMax = energy.data?.maxEnergy ?? 30;
 
@@ -146,17 +144,7 @@ export function StatsBar({ showNftInput = true }: { showNftInput?: boolean }) {
   return (
     <section className="relative z-10 mx-auto max-w-3xl px-4 pt-3">
       <div className="grid grid-cols-2 gap-2">
-        <div className="relative">
-          <StatCard icon={Ticket} label={t("chips.tickets")} value={ticketsCount} tone="gold" />
-          <Link
-            to="/my-nfts"
-            search={{ shop: "open" }}
-            title={t("chips.buy_tickets")}
-            className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full border border-gold/60 bg-gold text-gold-foreground shadow-card transition hover:scale-110 active:scale-95"
-          >
-            <Plus className="h-4 w-4" strokeWidth={3} />
-          </Link>
-        </div>
+        <StatCard icon={Coins} label={t("chips.gold")} value={resources.data ? gold : "…"} tone="gold" />
         <div className="relative">
           <StatCard
             icon={Battery}

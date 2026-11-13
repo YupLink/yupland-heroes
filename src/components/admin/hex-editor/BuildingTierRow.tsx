@@ -22,7 +22,8 @@ export type TierDraft = {
 };
 
 const PRICE_KINDS: Array<{ value: TierPrice["kind"]; label: string }> = [
-  { value: "tickets", label: "Билеты" },
+  // Билетов нет (§8.61): цена «в билетах» платится золотом ×500.
+  { value: "tickets", label: "Золото ×500 (цена в билетах)" },
   { value: "likes", label: "Лайки" },
   { value: "token", label: "Токен" },
 ];

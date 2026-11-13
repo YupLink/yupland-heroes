@@ -11,8 +11,8 @@ import { attachCellIndex, cellIndex } from "./cellIndex";
 
 /** Числовые колонки клеток. */
 type NumCol = "q" | "r" | "t" | "road" | "obj" | "dec" | "bld";
-/** Списки индексов: «добыт», «под куполом», «беглец», блоки — списком. */
-type ListCol = "defeated" | "voidFog" | "runners" | "groups";
+/** Списки индексов: «добыт», «под куполом», «беглец», «шахта», блоки и жилы — списком. */
+type ListCol = "defeated" | "voidFog" | "runners" | "mines" | "groups" | "veins";
 /** Словари id: кисть дописывает в них свежепоставленные ассеты (и блоки). */
 export type PoolName =
   | "terrainIds"
@@ -54,14 +54,36 @@ export class PackedEdit {
     return this.index.get(key);
   }
 
-  /** Колонка на запись: клонируется при первом касании. */
-  col(name: NumCol): number[] {
+  /**
+   * Колонка на запись: клонируется при первом касании — ТОГО ЖЕ типа и одним
+   * куском. С сервера колонки приходят Int16Array (218 КБ на Мидгард), а копия
+   * раскладкой `[...src]` делала из неё number[] на 872 КБ через итератор: на
+   * каждое событие карты от чужого боя — мегабайт мусора, и раздутая колонка
+   * оставалась в памяти насовсем (замер 06.11.2026: половина всего мусора в покое).
+   */
+  private writable(name: NumCol): number[] {
     if (!this.copied.has(name)) {
       this.copied.add(name);
       this.dirty = true;
-      this.out[name] = [...this.src[name]];
+      this.out[name] = this.src[name].slice();
     }
     return this.out[name];
+  }
+
+  /** Колонка, в которую можно дописывать строки (addRow): только обычный массив. */
+  col(name: NumCol): number[] {
+    const c = this.writable(name);
+    if (!Array.isArray(c)) this.out[name] = Array.from(c as ArrayLike<number>);
+    return this.out[name];
+  }
+
+  /** Записать значение клетки; не влезло в Int16 — колонка становится обычным массивом. */
+  set(name: NumCol, i: number, value: number): void {
+    const c = this.writable(name);
+    if (!Array.isArray(c) && (value < -32768 || value > 32767)) {
+      this.out[name] = Array.from(c as ArrayLike<number>);
+    }
+    this.out[name][i] = value;
   }
 
   /** Что сейчас в колонке (с учётом уже сделанных правок). */

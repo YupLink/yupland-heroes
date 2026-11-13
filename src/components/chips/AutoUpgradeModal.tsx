@@ -6,10 +6,13 @@ import { useLang, useT } from "@/lib/i18n";
 import { previewAutoUpgradeChip, autoUpgradeChip } from "@/server/api/chips-craft";
 import { CRAFT_RULES } from "@/server/api/chips-craft";
 import { myChipInventory } from "@/server/api/chips-pack";
-import { fmtTickets, levelKey } from "@/components/chips/collectionsHelpers";
+import { levelKey } from "@/components/chips/collectionsHelpers";
+import { fmtGold } from "@/lib/craftGold";
+import { CRAFT_GOLD_KEY } from "@/components/chips/useCraftGoldPrice";
 import { UpgradeChip, UpgradeCurrency, UpgradeHero, UpgradeShell, starLevel } from "@/components/chips/ChipUpgradeUI";
 import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { UpgradeUnfeasible, type MissReason } from "./UpgradeUnfeasible";
+import { GoldShortNote } from "./GoldPriceLine";
 import { humanError } from "@/lib/humanError";
 import { invalidateAfterCraft } from "@/lib/chipCraftInvalidate";
 
@@ -40,17 +43,17 @@ function AutoUpgradeModal({ chipId, chipLevel, template, onClose, onDone }: {
       const fresh = await previewAutoUpgradeChip({ data: { baseChipId: chipId } });
       const shown = preview.data;
       const ids = (value: typeof fresh) => value.burnChips.map(c => c.id).sort().join("|");
-      if (!shown || !fresh.feasible || fresh.totalTickets !== shown.totalTickets || ids(fresh) !== ids(shown)) {
+      if (!shown || !fresh.feasible || fresh.totalGold !== shown.totalGold || ids(fresh) !== ids(shown)) {
         throw new Error(ru ? "План изменился. Проверь фишки и цену ещё раз." : "The plan changed. Review the chips and price again.");
       }
-      return autoUpgradeChip({ data: { baseChipId: chipId } });
+      return autoUpgradeChip({ data: { baseChipId: chipId, expectGold: shown.totalGold } });
     },
     onSuccess: r => {
-      toast.success(<span>{template.name}: {starLevel(r.newLevel)} · −{fmtTickets(r.spentTickets)} <ResourceGlyph kind="tickets" /></span>);
+      toast.success(<span>{template.name}: {starLevel(r.newLevel)} · −{fmtGold(r.spentGold, ru)} <ResourceGlyph kind="gold" /></span>);
       onDone(r.newChipId, r.newLevel);
       invalidateAfterCraft(qc, template.id);
     },
-    onError: (e: Error) => { toast.error(humanError(e)); void preview.refetch(); },
+    onError: (e: Error) => { toast.error(humanError(e)); void preview.refetch(); void qc.invalidateQueries({ queryKey: CRAFT_GOLD_KEY }); },
   });
   pendingRef.current = run.isPending;
   useEffect(() => {
@@ -96,11 +99,11 @@ function AutoUpgradeModal({ chipId, chipLevel, template, onClose, onDone }: {
             ? (ru ? "Сначала соберёт недостающий материал из выбранных фишек, затем улучшит эту фишку на 0,5★." : "It will craft missing material from selected chips, then upgrade this chip by 0.5★.")
             : (ru ? "Использует готовые фишки для одного шага улучшения на 0,5★." : "It will use ready chips for one 0.5★ upgrade.")}</p>
         </div>}
-        {!p.feasibleChips && <UpgradeUnfeasible concise shortfall={p.shortfall} ticketShortfall={p.ticketShortfall} missReason={(p as typeof p & { missReason?: MissReason | null }).missReason} />}
-        {p.feasibleChips && <div className="chip-upgrade__summary"><UpgradeCurrency label={ru ? "Итого" : "Total"} value={p.totalTickets} /><UpgradeCurrency label={ru ? "Баланс" : "Balance"} value={p.haveTickets} /></div>}
-        {p.feasibleChips && p.ticketShortfall > 0 && <p role="status" className="chip-upgrade__warning" aria-label={ru ? `Не хватает ${fmtTickets(p.ticketShortfall)} билетов` : `Missing ${fmtTickets(p.ticketShortfall)} tickets`}>{ru ? "Не хватает" : "Missing"} <ResourceGlyph kind="tickets" /> {fmtTickets(p.ticketShortfall)}</p>}
+        {!p.feasibleChips && <UpgradeUnfeasible concise shortfall={p.shortfall} goldShortfall={p.goldShortfall} needGold={p.totalGold} haveGold={p.haveGold} missReason={(p as typeof p & { missReason?: MissReason | null }).missReason} />}
+        {p.feasibleChips && <div className="chip-upgrade__summary"><UpgradeCurrency label={ru ? "Требуется золото" : "Gold required"} value={p.totalGold} /><UpgradeCurrency label={ru ? "Баланс" : "Balance"} value={p.haveGold} /></div>}
+        {p.feasibleChips && p.goldShortfall > 0 && <GoldShortNote className="chip-upgrade__warning" need={p.totalGold} have={p.haveGold} />}
       </>}
-    <button data-game-button="primary" type="button" className="chip-upgrade__confirm" disabled={!canConfirm} onClick={() => run.mutate()} aria-label={p?.feasibleChips ? (ru ? `Подтвердить улучшение за ${fmtTickets(p.totalTickets)} билетов` : `Confirm upgrade for ${fmtTickets(p.totalTickets)} tickets`) : undefined}>{run.isPending ? (ru ? "Улучшаем…" : "Upgrading…") : <>{ru ? "Улучшить" : "Upgrade"}{p?.feasibleChips && <> {ru ? "за" : "for"} {fmtTickets(p.totalTickets)} <ResourceGlyph kind="tickets" /></>}</>}</button>
+    <button data-game-button="primary" type="button" className="chip-upgrade__confirm" disabled={!canConfirm} onClick={() => run.mutate()} aria-label={p?.feasibleChips ? (ru ? `Подтвердить улучшение за ${fmtGold(p.totalGold, ru)} золота` : `Confirm upgrade for ${fmtGold(p.totalGold, ru)} gold`) : undefined}>{run.isPending ? (ru ? "Улучшаем…" : "Upgrading…") : <>{ru ? "Улучшить" : "Upgrade"}{p?.feasibleChips && <> {ru ? "за" : "for"} {fmtGold(p.totalGold, ru)} <ResourceGlyph kind="gold" /></>}</>}</button>
     <button type="button" className={`chip-upgrade__back${!p?.feasible ? " is-prominent" : ""}`} onClick={onClose} disabled={run.isPending}>{ru ? "Назад к выбору" : "Back to selection"}</button>
   </UpgradeShell>, document.body);
 }

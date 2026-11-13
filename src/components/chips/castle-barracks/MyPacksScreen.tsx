@@ -14,15 +14,16 @@ import { listMyMysticPacks } from "@/server/api/mystic";
 import { MysticBoxesSection } from "@/components/MysticBoxesSection";
 import type { MysticRewardDestination } from "@/lib/mysticRewardDestination";
 import { humanError } from "@/lib/humanError";
+import { invalidateChipQueries } from "@/lib/query";
 import { PackDetails, type OwnedPackStack } from "./PackDetails";
 import { PackReveal } from "./PackReveal";
 import { PackNftInputAction } from "@/components/chips/PackNftInputAction";
 
-import { PackBuyShelfSlot } from "./PackBuyShelfSlot";
 
+import { thumb } from "@/lib/image";
 type RevealItem = Awaited<ReturnType<typeof openChipPack>>["results"][number];
 
-export function MyPacksScreen({ onViewMysticReward, giftPack, onBuyPacks }: { onViewMysticReward?: (kind: MysticRewardDestination) => void; giftPack?: { giftId: string; packId: string } | null; onBuyPacks?: () => void } = {}) {
+export function MyPacksScreen({ onViewMysticReward, giftPack }: { onViewMysticReward?: (kind: MysticRewardDestination) => void; giftPack?: { giftId: string; packId: string } | null} = {}) {
   const ru = useAppStore((state) => state.lang) === "ru";
   const queryClient = useQueryClient();
   const packs = useQuery({ queryKey: ["my-chip-packs"], queryFn: () => myChipPackGrants() });
@@ -58,7 +59,8 @@ export function MyPacksScreen({ onViewMysticReward, giftPack, onBuyPacks }: { on
         items: result.results,
       });
       void queryClient.invalidateQueries({ queryKey: ["my-chip-packs"] });
-      void queryClient.invalidateQueries({ queryKey: ["my-chip-inventory"] });
+      // Обычные И тренировочные (пак острова): иначе в бою их нет до F5.
+      invalidateChipQueries(queryClient);
       void queryClient.invalidateQueries({ queryKey: ["my-chip-history"] });
       if (args.count > result.opened)
         toast.error(ru ? "Часть паков не открылась" : "Some packs were not opened");
@@ -149,7 +151,7 @@ export function MyPacksScreen({ onViewMysticReward, giftPack, onBuyPacks }: { on
           <p>{ru ? "Не удалось загрузить паки" : "Unable to load packs"}</p>
           <button onClick={() => void packs.refetch()}>{ru ? "Повторить" : "Retry"}</button>
         </div>
-      ) : visibleStacks.length > 0 || onBuyPacks ? (
+      ) : visibleStacks.length > 0 ? (
         <>
           <div className="pack-shelf-grid">
             {visibleStacks.map((stack) => (
@@ -169,7 +171,7 @@ export function MyPacksScreen({ onViewMysticReward, giftPack, onBuyPacks }: { on
                 >
                   <span className="pack-shelf-art">
                     {stack.imageUrl ? (
-                      <img src={stack.imageUrl} alt="" loading="lazy" decoding="async" />
+                      <img src={thumb(stack.imageUrl, 320)} alt="" loading="lazy" decoding="async" />
                     ) : (
                       <span className="pack-shelf-empty">
                         {ru ? "Арт пака недоступен" : "Pack art unavailable"}
@@ -181,7 +183,6 @@ export function MyPacksScreen({ onViewMysticReward, giftPack, onBuyPacks }: { on
                 </button>
               </div>
             ))}
-            {onBuyPacks && <PackBuyShelfSlot count={visibleStacks.length} onClick={onBuyPacks} ru={ru} />}
           </div>
         </>
       ) : boxes.isSuccess && unopenedBoxes.length === 0 ? (

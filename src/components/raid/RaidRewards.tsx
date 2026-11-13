@@ -1,6 +1,7 @@
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { thumb } from "@/lib/image";
+import { rewardShownAmount } from "@/lib/rewardKinds";
 
 // Расклад «место → награда» переехал в отдельный модуль (правило ≤250 строк).
 export { BossRewardPool } from "./BossRewardPool";
@@ -36,7 +37,7 @@ export function RewardByPlace({
                   .filter((f) => f.amount > 0)
                   .map(
                     (f) =>
-                      `${fillerIcon(f.kind)} ${f.amount.toLocaleString()}${std.has(f.kind) ? "" : " " + f.kind}`
+                      `${fillerIcon(f.kind)} ${rewardShownAmount(f.kind, f.amount).toLocaleString()}${std.has(f.kind) ? "" : " " + f.kind}`
                   )
                   .join(" · ")}
               </span>
@@ -61,7 +62,7 @@ export function RewardByPlace({
 function fillerIcon(kind: string): string {
   switch (kind) {
     case "likes": return "❤️";
-    case "tickets": return "🎟";
+    case "tickets": return "🪙"; // золото ×100 (ПРАВИЛА §8.61)
     case "energy": return "⚡";
     default: return "🪙";
   }

@@ -1,7 +1,8 @@
 // Внутрянка замка — отдельная страница вне /admin/*, СВОЯ область дизайнера
-// (админы и designer.example.tg). Слои, свои картинки, блоки 2–10 клеток с масштабом,
+// (админы и дизайнер). Слои, свои картинки, блоки 2–10 клеток с масштабом,
 // подписи построек; «Тест · игровые окна» — настоящие окна игры по постройкам.
 import { CastleLiveView } from "@/components/castle-live/CastleLiveView";
+import { requestCenter } from "@/components/beta-raid/centerMapBus";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -167,8 +168,9 @@ function CastleEditorPage() {
         cells={cells}
         assets={assets}
         onEdit={stopTesting}
-        onCity={() => {
+        onCity={(target) => {
           if (dirty && !confirm("Есть несохранённые правки. Уйти без сохранения?")) return;
+          if (target) requestCenter({ ...target, ttlMs: 3000 });
           void navigate({ to: "/beta-raid" });
         }}
         onSignedOut={() => void navigate({ to: "/" })}

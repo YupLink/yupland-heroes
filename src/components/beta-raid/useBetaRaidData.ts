@@ -36,12 +36,20 @@ export type MapData = {
   packed: PackedCells | null;
   terrains: Record<string, TerrainInfo>;
   objects: Record<string, ObjectInfo>;
-  decorations: Record<string, { id: string; name: string; imageUrl: string | null }>;
+  decorations: Record<string, { id: string; name: string; imageUrl: string | null; bridge?: unknown }>;
   roads: Record<string, TerrainInfo>;
-  /** Постройки: шаблон с цепочкой тиров (картинка, цена, требования). */
+  /**
+   * Постройки: шаблон с цепочкой тиров (картинка, цена, требования) и эффект
+   * шаблона — по нему дельта карты узнаёт новую шахту (packedMines).
+   */
   buildings?: Record<
     string,
-    { id: string; name: string; tiers?: Array<{ name?: string; imageUrl?: string | null }> }
+    {
+      id: string;
+      name: string;
+      tiers?: Array<{ name?: string; imageUrl?: string | null }>;
+      effect?: string | null;
+    }
   >;
   /** Текущий тир построек: "q,r" → номер. */
   buildingTiers?: Record<string, number>;
@@ -59,6 +67,10 @@ export type RaidState = {
   slowExtra?: number;
   /** Спрайт расы героя игрока — вид фигурки на карте. */
   heroSprite?: string | null;
+  /** Конь выбранного героя (lib/hero/mount, §8.84); старый кэш поля не знает — «без коня». */
+  mount?: string;
+  /** Зачарование коня, % — множит скорость (03.11.2026); нет поля — 0. */
+  mountPct?: number;
   /**
    * Что герой даёт на карте: обзор, скидку на шаг, признак замка. Поля нет
    * вовсе, пока флаг hero_power закрыт — по нему и определяется режим героя.

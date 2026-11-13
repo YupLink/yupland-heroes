@@ -9,6 +9,14 @@ export const dict: Record<string, Entry> = {
   // отвечает и сервер (move-step: посадка «только в большой»), и клиент
   // (routeSearch, routeFleet).
   "braid.ship_need_big": { ru: "Нет подходящего корабля", en: "No suitable ship" },
+  "braid.bridge_ship_stop": {
+    ru: "Под мостом нельзя остановить корабль",
+    en: "A ship cannot stop beneath the bridge",
+  },
+  "braid.bridge_deck_only": {
+    ru: "На мост можно войти только со стороны настила",
+    en: "Enter the bridge from the deck side",
+  },
   // Отказы шага на маршруте (сервер, move-step-guard). Тормоз частоты: чаще
   // клиент не ходит — это скрипт или зажатая клавиша.
   "braid.step_too_fast": {
@@ -21,4 +29,17 @@ export const dict: Record<string, Entry> = {
     ru: "Герой уже сдвинулся — шаг не засчитан",
     en: "Your hero has already moved — step not counted",
   },
+  // Подбитый синим динамитом корабль (владелец, 30.10.2026; dynamite-08): не чинится
+  // (доски, «Ремонт корабля» — ship-blasted), клетку держит, через час исчезает.
+  "braid.ship_blasted_title": { ru: "Подбитый корабль", en: "Blasted ship" },
+  "braid.ship_blasted_no_repair": {
+    ru: "Подбитый корабль не починить",
+    en: "A wrecked ship can't be repaired",
+  },
+  "braid.ship_blasted_cell": {
+    ru: "Там подбитый корабль — клетка занята",
+    en: "A wrecked ship blocks that tile",
+  },
+  "braid.ship_blasted_left": { ru: "Исчезнет через {n} мин", en: "Disappears in {n} min" },
+  "braid.ship_blasted_gone": { ru: "Сейчас исчезнет", en: "Disappearing now" },
 };

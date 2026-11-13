@@ -1,21 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { usePurchaseMusic } from "@/hooks/usePurchaseMusic";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useLang } from "@/lib/i18n";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { TradingHouseView } from "./TradingHouseView";
+import { TradingHouseView, type HouseMethod } from "./TradingHouseView";
 import type { HouseProduct } from "./model";
 import { listChipPacksPublic, buyChipPack, reconcileMyDaraiPacks } from "@/server/api/chips-pack";
 import { buyChipPackFromAccount } from "@/server/api/chips-pack-account-pay";
-import { getMyTickets } from "@/server/api/user-tickets";
 import { listChipCollectionsPublic } from "@/server/api/chips-stake";
 import { getSession } from "@/server/api/user-auth";
 import { useAccountBalances } from "@/lib/hooks/useAccountBalances";
+import { useResources } from "@/lib/hooks/useResources";
+import { useEntryRules } from "@/hooks/useEntryRules";
 import { buyChipPackWithDaraiOnChain } from "../useChipPackPurchase";
-import { TicketPurchaseLive } from "./TicketPurchaseLive";
 import { PendingPackPurchaseBanner } from "../PendingPackPurchaseBanner";
 import { RecoverPackPurchase } from "../RecoverPackPurchase";
 
+// Покупка золота (§8.66) — то же окно, что у «+» в шапке замка.
+const GoldBuyDialog = lazy(() =>
+  import("@/components/castle-live/gold-buy/GoldBuyDialog").then((m) => ({ default: m.GoldBuyDialog })),
+);
+
 const refreshKeys = [
   "my-chip-packs",
-  "my-tickets",
+  "my-resources",
   "my-darai-balance",
   "my-darai-deposits",
   "chip-packs-public",
@@ -43,7 +50,10 @@ export function TradingHouseLive({
   initialPage?: "packs" | "artifacts";
   onPageChange?: (page: "packs" | "artifacts") => void;
 }) {
+  usePurchaseMusic(true);
   const qc = useQueryClient();
+  const ru = useLang() === "ru";
+  const [goldOpen, setGoldOpen] = useState(false);
   const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
   const sessionReady = !session.isPending && !session.isFetching && !session.isError;
   const wallet = sessionReady ? (session.data?.wallet ?? null) : null;
@@ -52,14 +62,8 @@ export function TradingHouseLive({
     queryFn: () => listChipPacksPublic(),
     retry: false,
   });
-  const tickets = useQuery({
-    queryKey: ["my-tickets"],
-    queryFn: () => getMyTickets(),
-    enabled: Boolean(wallet),
-    refetchInterval: 15_000,
-    refetchOnWindowFocus: true,
-    staleTime: 5_000,
-  });
+  // Билетов нет (ПРАВИЛА §8.61): цена пака в билетах платится золотом ×500.
+  const resources = useResources();
   const collections = useQuery({
     queryKey: ["chip-collections-public"],
     queryFn: () => listChipCollectionsPublic(),
@@ -70,8 +74,12 @@ export function TradingHouseLive({
       ? null
       : (accountBalances.data.balances.find((item) => item.token.toLowerCase() === "darai")
           ?.balance ?? 0);
-  const [ticketPurchaseOpen, setTicketPurchaseOpen] = useState(false);
-  const products = (packs.data ?? []) as HouseProduct[];
+  // Без настоящего Telegram (§8.127) цены в звёздах нет — ни на витрине, ни в оплате.
+  const stars = useEntryRules().stars;
+  const products = useMemo(() => {
+    const list = (packs.data ?? []) as HouseProduct[];
+    return stars ? list : list.map((p) => ({ ...p, priceStars: null }));
+  }, [packs.data, stars]);
   const collectionNames = useMemo(
     () => new Map((collections.data ?? []).map((item) => [item.id, item.name])),
     [collections.data],
@@ -97,7 +105,7 @@ export function TradingHouseLive({
   const purchase = async (
     product: HouseProduct,
     count: number,
-    method: "tickets" | "darai" | "stars",
+    method: HouseMethod,
   ) => {
     if (!sessionReady) throw new Error("Сначала дождись проверки аккаунта");
     if (!wallet && method !== "stars") throw new Error("Кошелёк не подключён");
@@ -106,9 +114,9 @@ export function TradingHouseLive({
       if (method === "darai" && !accountOpen && count !== 1)
         throw new Error("С кошелька можно купить один пак за операцию");
       for (let index = 0; index < count; index++) {
-        if (method === "tickets") {
+        if (method === "gold") {
           const result = await buyChipPack({
-            data: { packId: product.id, payWith: "tickets", count: 1 },
+            data: { packId: product.id, payWith: "gold", count: 1 },
           });
           if (result.bought !== 1) throw new Error("Выдача пака не подтверждена");
           completed++;
@@ -165,18 +173,12 @@ export function TradingHouseLive({
           void session.refetch();
           void packs.refetch();
         }}
-        tickets={
-          !tickets.isError && !tickets.isFetching && tickets.data
-            ? "availableRaw" in tickets.data
-              ? Number(tickets.data.availableRaw)
-              : tickets.data.available
-            : null
+        gold={!resources.isError && !resources.isFetching ? (resources.data?.gold ?? null) : null}
+        goldStatus={
+          resources.isError ? "error" : resources.isPending || resources.isFetching ? "loading" : "ready"
         }
-        ticketStatus={
-          tickets.isError ? "error" : tickets.isPending || tickets.isFetching ? "loading" : "ready"
-        }
-        onRetryTickets={() => {
-          void tickets.refetch();
+        onRetryGold={() => {
+          void resources.refetch();
         }}
         daraiBalance={accountOpen ? accountDarai : null}
         daraiFromAccount={accountOpen}
@@ -185,34 +187,29 @@ export function TradingHouseLive({
         accountPurchaseAllowed={accountOpen}
         maxDaraiQuantity={accountOpen ? 50 : 1}
         collectionNames={collectionNames}
-        ticketPurchaseOpen={ticketPurchaseOpen}
-        onBuyTickets={() => setTicketPurchaseOpen(true)}
         onPurchase={purchase}
+        onBuyGold={() => setGoldOpen(true)}
       />
+      {goldOpen && (
+        <Suspense fallback={null}>
+          <GoldBuyDialog
+            open
+            ru={ru}
+            onClose={() => setGoldOpen(false)}
+            returnFocus={() =>
+              requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-gold-topup]")?.focus())
+            }
+          />
+        </Suspense>
+      )}
       {wallet && (
         <div className="mx-auto max-w-lg space-y-2 p-3">
           <PendingPackPurchaseBanner />
           <RecoverPackPurchase packs={products} />
         </div>
       )}
-      <TicketPurchaseLive
-        open={ticketPurchaseOpen}
-        walletConnected={Boolean(wallet)}
-        accountOpen={accountOpen}
-        onClose={() => {
-          setTicketPurchaseOpen(false);
-          void qc.invalidateQueries({ queryKey: ["my-tickets"], refetchType: "all" });
-        }}
-        returnFocus={() =>
-          requestAnimationFrame(() =>
-            (
-              document.querySelector<HTMLElement>("[data-ticket-topup]") ??
-              document.querySelector<HTMLElement>(".trading-house__balance-add")
-            )?.focus(),
-          )
-        }
-      />
     </>
   );
 }
+
 

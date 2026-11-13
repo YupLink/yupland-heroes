@@ -27,7 +27,7 @@ export function SlotFrame({
       data-slot-frame=""
       className="fixed inset-0 z-[140] flex flex-col bg-background text-foreground"
     >
-      <header className="flex shrink-0 items-center gap-3 border-b p-3 pt-[max(12px,env(safe-area-inset-top))]">
+      <header className="flex shrink-0 items-center gap-3 border-b p-3 pt-[max(12px,var(--app-top,env(safe-area-inset-top,0px)))]">
         <button
           type="button"
           className="flex min-h-11 items-center gap-1 rounded-lg border px-3"

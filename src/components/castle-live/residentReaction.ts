@@ -1,3 +1,5 @@
+import { getExplorationAudioContext, getExplorationAudioOutput } from '@/lib/audio/castleMusicChannel';
+import { getExplorationMusicPreference } from '@/lib/audio/castleMusicController';
 import yup from './yup.mp3';
 import yupyup from './yupyup.mp3';
 
@@ -5,6 +7,13 @@ import yupyup from './yupyup.mp3';
 export function residentReaction(root:SVGGElement,enabled:()=>boolean=()=>true){
  let audio:HTMLAudioElement|null=null,lockedUntil=0,disposed=false;
  const players=[yup,yupyup].map(src=>{const player=new Audio();player.hidden=true;player.preload='auto';player.dataset.residentVoice='';player.src=src;player.volume=.75;root.ownerSVGElement?.parentElement?.append(player);player.load();return player;});
+ let context:AudioContext|undefined;
+ const sources=new Map<HTMLAudioElement,MediaElementAudioSourceNode>();
+ let storage:Storage|undefined;
+ try{storage=window.localStorage;}catch{/* Session preference remains available. */}
+ const preference=getExplorationMusicPreference(storage);
+ const syncSound=()=>{if(preference.getSnapshot()||preference.getVolume()===0)players.forEach(player=>player.pause());};
+ const unsubscribe=preference.subscribe(syncSound);
  const pauses=new WeakMap<Element,number>();
  const animations=new Set<Animation>();
  const react=(node:SVGGElement)=>{
@@ -16,10 +25,20 @@ export function residentReaction(root:SVGGElement,enabled:()=>boolean=()=>true){
    const animation=sprite.animate([{transform:'translateY(0)'},{transform:'translateY(-10px)',offset:.45},{transform:'translateY(0)'}],{duration:380,easing:'ease-out'});
    animations.add(animation);animation.onfinish=()=>animations.delete(animation);
   }
-  if(!enabled())return;
+  if(!enabled()||preference.getSnapshot()||preference.getVolume()===0)return;
   audio?.pause();audio=players[Math.random()<.2?1:0];audio.currentTime=0;
   // A blocked playback must never break navigation or cause a late surprise sound.
-  const playing=audio;void playing.play().catch(()=>{playing.pause();});
+  const playing=audio;
+  try{
+   context??=getExplorationAudioContext();
+   if(!sources.has(playing)){
+    const source=context.createMediaElementSource(playing);
+    source.connect(getExplorationAudioOutput(context));sources.set(playing,source);
+   }
+   void Promise.all([context.resume(),playing.play()]).then(()=>{
+    if(disposed||document.hidden||preference.getSnapshot()||preference.getVolume()===0)playing.pause();
+   }).catch(()=>{playing.pause();});
+  }catch{playing.pause();}
  };
  let tap:{node:SVGGElement;id:number;x:number;y:number;moved:boolean}|null=null;
  const cancelTap=()=>{if(tap)pauses.delete(tap.node);tap=null;};
@@ -55,6 +74,7 @@ export function residentReaction(root:SVGGElement,enabled:()=>boolean=()=>true){
  root.addEventListener('click',click);root.addEventListener('keydown',key);document.addEventListener('visibilitychange',hide);
  return {
   active:(node:Element,now:number)=>(pauses.get(node)??0)>now,
-  dispose:()=>{disposed=true;cancelTap();window.removeEventListener('pointerdown',down,true);window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',up,true);window.removeEventListener('pointercancel',up,true);players.forEach(player=>{player.pause();player.removeAttribute('src');player.load();player.remove();});animations.forEach(a=>a.cancel());root.removeEventListener('click',click);root.removeEventListener('keydown',key);document.removeEventListener('visibilitychange',hide);},
+  dispose:()=>{disposed=true;unsubscribe();sources.forEach(source=>source.disconnect());cancelTap();window.removeEventListener('pointerdown',down,true);window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',up,true);window.removeEventListener('pointercancel',up,true);players.forEach(player=>{player.pause();player.removeAttribute('src');player.load();player.remove();});animations.forEach(a=>a.cancel());root.removeEventListener('click',click);root.removeEventListener('keydown',key);document.removeEventListener('visibilitychange',hide);},
  };
 }
+

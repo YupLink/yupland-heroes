@@ -214,8 +214,8 @@
   .castle-purchase-dialog--bundle-study .castle-purchase-dialog__tier-benefit { font-size: 12px; }
   .castle-purchase-dialog__box-reward img { width: 30px; height: 30px; margin: -5px 0; }
 }
-@font-face { font-family: "Castle Ticket Russo"; src: url("../../../assets/tavern/RussoOne.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Castle Ticket Golos"; src: url("../../../assets/tavern/GolosText.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: "Castle Ticket Russo"; src: url("../../../assets/tavern/RussoOne.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Castle Ticket Golos"; src: url("../../../assets/tavern/GolosText.woff2") format("woff2"); font-weight: 400 900; font-display: swap; }
 .castle-ticket-live__offers { display: grid; gap: 9px; font-family: "Castle Ticket Golos", sans-serif; }
 .castle-ticket-live__card { min-width: 0; padding: 10px 12px; border: 1px solid #405066; border-radius: 14px; background: linear-gradient(110deg, #182331, #111922 68%, #18212a); }
 .castle-ticket-live__top { display: grid; grid-template-columns: 48px minmax(0, 1fr) minmax(92px, 35%); align-items: center; gap: 8px; }

@@ -1,35 +1,41 @@
-// ── Безопасное хранилище ключа кошелька (PROD) ──
-// Приватный ключ NEAR (Ed25519) импортируется как НЕИЗВЛЕКАЕМЫЙ CryptoKey и
-// кладётся в IndexedDB. JS может ПОДПИСАТЬ им (crypto.subtle.sign), но НЕ может
-// прочитать байты ключа (exportKey бросает). Переживает перезагрузки/новые
-// вкладки (IndexedDB постоянен и привязан к origin). PIN не нужен — границу
-// держит сам браузер.
+// ── Хранилище ключей встроенного кошелька (PROD) ──
+// Записи IndexedDB, ключ = accountId (secureWalletDb). С 11.11.2026 секреты
+// (сид или приватный ключ) запечатаны ключом из пароля кошелька (walletVault,
+// secureWalletSeal): без пароля их не открыть и не подписать. Новый кошелёк
+// создаётся только при разблокированном пароле; прежние записи (ключ браузера +
+// готовый signingKey) запечатываются при первом вводе пароля.
 //
-// Мультиаккаунт: записи в одном object store, ключ = accountId.
-//
-// Гибрид: рядом — копия сид-фразы, завёрнутая НЕИЗВЛЕКАЕМЫМ AES-ключом, для
-// кнопки «показать сид» (расшифровка в памяти только по явному запросу; в UI
-// gated биометрией). Это нужно для бэкапа/восстановления.
-//
-// Авто-детект: если браузер умеет Ed25519 в WebCrypto → «чистый» режим (приват
-// вообще не появляется в JS при подписи). Если нет (старый WebKit) → fallback:
-// подпись считается в памяти из расшифрованного сида через @noble/ed25519.
+// Подпись: если браузер умеет Ed25519 в WebCrypto — открытый паролем приват
+// импортируется неизвлекаемым CryptoKey и живёт в памяти до замка; иначе
+// (старый WebKit) подпись считается из привата через @noble/ed25519.
 import * as ed25519 from "@noble/ed25519";
 import { base58 } from "@scure/base";
 import { deriveRawKeyFromSeedPhrase } from "./embeddedWallet";
 import { hasAppPassword, isAppUnlocked, touchAppCache } from "./appLock";
+import type { VerificationBlob } from "./appLockCrypto";
+import { hasVaultKey, onVaultLock, withVaultLock } from "./walletVault";
+import { removeSealedCopy, restoreFromCopies, writeSealedCopy } from "./walletSealedCopy";
+import {
+  isSealed,
+  resealStoredWallets,
+  sealStoredWallets,
+  sealedRecord,
+  secretsOf,
+} from "./secureWalletSeal";
 
-// Защита самого нижнего слоя: если установлен пароль кошелька (app-lock) и он
-// заблокирован — НЕ выдаём секрет / не подписываем, даже при прямом импорте
-// этого модуля (консоль/закладка), мимо фасада embeddedWallet и UI.
+// Защита самого нижнего слоя: без пароля кошелька и без разблокировки этой
+// страницы НЕ выдаём секрет и не подписываем — даже при прямом импорте модуля
+// (консоль/закладка), мимо фасада embeddedWallet и UI. С 11.11.2026 пароль
+// обязателен: им зашифрованы секреты (walletVault, secureWalletSeal).
 function assertAppUnlocked(): void {
-  if (hasAppPassword() && !isAppUnlocked()) {
-    throw new Error("APP_LOCKED");
-  }
+  if (!hasAppPassword()) throw new Error("APP_PWD_SETUP");
+  if (!isAppUnlocked()) throw new Error("APP_LOCKED");
 }
 
-const DB_NAME = "yl-secure-wallet";
-const STORE = "wallets";
+// Подписывающие ключи, открытые паролем, — только в памяти и до замка.
+const signingCache = new Map<string, CryptoKey>();
+onVaultLock(() => signingCache.clear());
+
 
 // ── DER-обёртки для WebCrypto Ed25519 ──
 function hexToBytes(hex: string): Uint8Array {
@@ -63,83 +69,7 @@ export async function ed25519Supported(): Promise<boolean> {
 }
 
 // ── IndexedDB helpers (ключ = accountId) ──
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function idbPut(key: string, value: unknown): Promise<void> {
-  const db = await openDb();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-  db.close();
-}
-async function idbGet<T>(key: string): Promise<T | null> {
-  const db = await openDb();
-  const v = await new Promise<T | null>((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
-    const r = tx.objectStore(STORE).get(key);
-    r.onsuccess = () => resolve((r.result as T) ?? null);
-    r.onerror = () => reject(r.error);
-  });
-  db.close();
-  return v;
-}
-async function idbDelete(key: string): Promise<void> {
-  const db = await openDb();
-  await new Promise<void>((resolve) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(key);
-    tx.oncomplete = () => resolve();
-  });
-  db.close();
-}
-async function idbKeys(): Promise<string[]> {
-  const db = await openDb();
-  const keys = await new Promise<string[]>((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
-    const r = tx.objectStore(STORE).getAllKeys();
-    r.onsuccess = () => resolve((r.result as IDBValidKey[]).map(String));
-    r.onerror = () => reject(r.error);
-  });
-  db.close();
-  return keys;
-}
-
-// ── Запись в хранилище ──
-// Два типа кошельков, единый стор/формат:
-//  - seed-кошелёк (keyOnly отсутствует/false): хранит AES-обёртку СИД-ФРАЗЫ
-//    (seedWrapKey/seedIv/seedCt). «Показать сид» и «показать приватный ключ»
-//    работают (приватник деривируется из сида).
-//  - key-only кошелёк (keyOnly:true): сида НЕТ. Хранит AES-обёртку ПРИВАТНОГО
-//    КЛЮЧА (privWrapKey/privIv/privCt) — для «показать приватный ключ». В
-//    fallback-режиме (нет Ed25519 в WebCrypto) подпись считается из
-//    распакованного приватника через noble. «Показать сид» недоступно.
-type StoredRecord = {
-  mode: "ed25519" | "aes";
-  accountId: string;
-  publicKeyStr: string;
-  keyOnly?: boolean; // true → импортирован по приватному ключу, сида нет
-  signingKey: CryptoKey | null; // только mode=ed25519
-  // Обёртка сид-фразы (только seed-кошельки). Для key-only — отсутствуют.
-  seedWrapKey?: CryptoKey; // неизвлекаемый AES-GCM, для сида
-  seedIv?: Uint8Array;
-  seedCt?: ArrayBuffer;
-  // Обёртка приватного ключа (только key-only кошельки). secretKeyStr в виде
-  // ed25519:<base58(priv32||pub32)> зашифрован под неизвлекаемым AES-GCM.
-  privWrapKey?: CryptoKey;
-  privIv?: Uint8Array;
-  privCt?: ArrayBuffer;
-};
+import { idbDelete, idbGet, idbKeys, idbPut, type StoredRecord } from "./secureWalletDb";
 
 export type SecureMode = "ed25519" | "aes";
 
@@ -151,51 +81,20 @@ export async function setupSecureWallet(
   seedPhrase: string,
   accountIdOverride?: string
 ): Promise<{ accountId: string; publicKeyStr: string; mode: SecureMode }> {
+  assertAppUnlocked(); // кошелёк — только под паролем: секреты сразу запечатаны
   const { priv32, publicKeyStr, accountId: implicitId } =
     await deriveRawKeyFromSeedPhrase(seedPhrase);
+  priv32.fill(0);
   const accountId = accountIdOverride?.trim() || implicitId;
-
-  // AES-обёртка сида (для «показать сид»). Ключ НЕИЗВЛЕКАЕМЫЙ.
-  const seedWrapKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
-  const seedIv = crypto.getRandomValues(new Uint8Array(12));
-  const seedCt = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: seedIv },
-    seedWrapKey,
-    new TextEncoder().encode(seedPhrase.trim())
+  const mode: SecureMode = (await ed25519Supported()) ? "ed25519" : "aes";
+  const base: StoredRecord = { mode, accountId, publicKeyStr, signingKey: null };
+  await withVaultLock(async () =>
+    idbPut(accountId, await sealedRecord(base, { seed: seedPhrase.trim() })),
   );
-
-  const supported = await ed25519Supported();
-  let signingKey: CryptoKey | null = null;
-  if (supported) {
-    // Чистый режим: приват импортируется НЕИЗВЛЕКАЕМЫМ, сырые байты затираем.
-    signingKey = await crypto.subtle.importKey(
-      "pkcs8",
-      pkcs8FromRawPriv(priv32) as BufferSource,
-      { name: "Ed25519" },
-      false,
-      ["sign"]
-    );
-  }
-  priv32.fill(0); // затираем сырой приват из памяти
-
-  const rec: StoredRecord = {
-    mode: supported ? "ed25519" : "aes",
-    accountId,
-    publicKeyStr,
-    signingKey,
-    seedWrapKey,
-    seedIv,
-    seedCt,
-  };
-  await idbPut(accountId, rec);
-
+  signingCache.delete(accountId);
   // Просим браузер не вытеснять хранилище.
   try { await navigator.storage?.persist?.(); } catch { /* noop */ }
-
-  return { accountId, publicKeyStr, mode: rec.mode };
+  return { accountId, publicKeyStr, mode };
 }
 
 // ── Парсинг приватного ключа NEAR ──
@@ -247,6 +146,7 @@ export async function setupSecureWalletFromPrivateKey(
   privateKeyStr: string,
   accountIdOverride?: string
 ): Promise<{ accountId: string; publicKeyStr: string; mode: SecureMode }> {
+  assertAppUnlocked(); // кошелёк — только под паролем (см. setupSecureWallet)
   const { priv32, pub32 } = await parsePrivateKeyStr(privateKeyStr);
   const publicKeyStr = `ed25519:${base58.encode(pub32)}`;
   const implicitId = bytesToHexLocal(pub32);
@@ -258,47 +158,16 @@ export async function setupSecureWalletFromPrivateKey(
   concat.set(pub32, 32);
   const secretKeyStr = `ed25519:${base58.encode(concat)}`;
 
-  // AES-обёртка приватника. Ключ НЕИЗВЛЕКАЕМЫЙ.
-  const privWrapKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
-  const privIv = crypto.getRandomValues(new Uint8Array(12));
-  const privCt = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: privIv },
-    privWrapKey,
-    new TextEncoder().encode(secretKeyStr)
+  priv32.fill(0);
+  concat.fill(0);
+  const mode: SecureMode = (await ed25519Supported()) ? "ed25519" : "aes";
+  const base: StoredRecord = { mode, accountId, publicKeyStr, keyOnly: true, signingKey: null };
+  await withVaultLock(async () =>
+    idbPut(accountId, await sealedRecord(base, { secretKey: secretKeyStr })),
   );
-
-  const supported = await ed25519Supported();
-  let signingKey: CryptoKey | null = null;
-  if (supported) {
-    // Чистый режим: приват импортируется НЕИЗВЛЕКАЕМЫМ, сырые байты затираем.
-    signingKey = await crypto.subtle.importKey(
-      "pkcs8",
-      pkcs8FromRawPriv(priv32) as BufferSource,
-      { name: "Ed25519" },
-      false,
-      ["sign"]
-    );
-  }
-  priv32.fill(0); // затираем сырой приват из памяти
-
-  const rec: StoredRecord = {
-    mode: supported ? "ed25519" : "aes",
-    accountId,
-    publicKeyStr,
-    keyOnly: true,
-    signingKey,
-    privWrapKey,
-    privIv,
-    privCt,
-  };
-  await idbPut(accountId, rec);
-
+  signingCache.delete(accountId);
   try { await navigator.storage?.persist?.(); } catch { /* noop */ }
-
-  return { accountId, publicKeyStr, mode: rec.mode };
+  return { accountId, publicKeyStr, mode };
 }
 
 function bytesToHexLocal(bytes: Uint8Array): string {
@@ -331,30 +200,60 @@ export async function loadSecureWallet(accountId: string): Promise<{
 
 /** Список accountId всех безопасно-сохранённых кошельков. */
 export async function listSecureAccounts(): Promise<string[]> {
+  await restoreFromCopies(); // пропавшие записи IndexedDB — из запечатанных копий
   return idbKeys();
 }
 
-/** Подписать сообщение (обычно sha256(tx)). В чистом режиме приват не появляется в JS. */
+/** Сырой приват (32 байта) из секретов записи: из сида или из приватника. */
+async function priv32Of(rec: StoredRecord): Promise<Uint8Array> {
+  const secrets = await secretsOf(rec);
+  if (rec.keyOnly) {
+    if (!secrets.secretKey) throw new Error("Приватный ключ недоступен для этого кошелька");
+    return (await parsePrivateKeyStr(secrets.secretKey)).priv32;
+  }
+  if (!secrets.seed) throw new Error("NO_SEED: сид недоступен для этого кошелька");
+  return (await deriveRawKeyFromSeedPhrase(secrets.seed)).priv32;
+}
+
+/** Прежняя запись при разблокированном кошельке — запечатать (перенос на лету). */
+async function sealedOrMigrate(accountId: string): Promise<StoredRecord> {
+  const rec = await idbGet<StoredRecord>(accountId);
+  if (!rec) throw new Error("Кошелёк не подключён");
+  if (isSealed(rec) || !hasVaultKey()) return rec;
+  return withVaultLock(async () => {
+    const next = await sealedRecord(rec, await secretsOf(rec));
+    await idbPut(accountId, next);
+    return next;
+  });
+}
+
+/**
+ * Подписать сообщение (обычно sha256(tx)). Ключ подписи открывается паролем и
+ * живёт в памяти до замка; в браузере с Ed25519 — неизвлекаемым CryptoKey.
+ */
 export async function signWithSecure(accountId: string, message: Uint8Array): Promise<Uint8Array> {
   assertAppUnlocked(); // замок: подпись только разблокированным кошельком
   touchAppCache(); // активная подпись держит окно живым (анти-лок в длинном батче)
-  const rec = await idbGet<StoredRecord>(accountId);
-  if (!rec) throw new Error("Кошелёк не подключён");
-  if (rec.mode === "ed25519" && rec.signingKey) {
-    const sig = await crypto.subtle.sign({ name: "Ed25519" }, rec.signingKey, message as BufferSource);
+  const rec = await sealedOrMigrate(accountId);
+  if (rec.mode === "ed25519") {
+    let key = signingCache.get(accountId);
+    if (!key) {
+      const priv32 = await priv32Of(rec);
+      key = await crypto.subtle.importKey(
+        "pkcs8",
+        pkcs8FromRawPriv(priv32) as BufferSource,
+        { name: "Ed25519" },
+        false,
+        ["sign"],
+      );
+      priv32.fill(0);
+      signingCache.set(accountId, key);
+    }
+    const sig = await crypto.subtle.sign({ name: "Ed25519" }, key, message as BufferSource);
     return new Uint8Array(sig);
   }
-  // Fallback (нет Ed25519 в WebCrypto): разворачиваем приват в памяти,
-  // подписываем noble, затираем. Для seed-кошелька — деривируем приват из
-  // сида; для key-only — берём приват прямо из обёртки приватника.
-  let priv32: Uint8Array;
-  if (rec.keyOnly) {
-    const parsed = await parsePrivateKeyStr(await revealPrivateKeyFor(rec));
-    priv32 = parsed.priv32;
-  } else {
-    const seed = await revealSeedFor(rec);
-    priv32 = (await deriveRawKeyFromSeedPhrase(seed)).priv32;
-  }
+  // Fallback (нет Ed25519 в WebCrypto): приват в памяти, подпись noble, затираем.
+  const priv32 = await priv32Of(rec);
   const sig = await ed25519.signAsync(message, priv32);
   priv32.fill(0);
   return sig;
@@ -366,51 +265,79 @@ export async function signWithSecure(accountId: string, message: Uint8Array): Pr
  */
 export async function revealSeed(accountId: string): Promise<string> {
   assertAppUnlocked(); // замок: не выдаём сид при заблокированном кошельке
-  const rec = await idbGet<StoredRecord>(accountId);
-  if (!rec) throw new Error("Кошелёк не подключён");
-  if (rec.keyOnly || !rec.seedWrapKey || !rec.seedIv || !rec.seedCt) {
+  const rec = await sealedOrMigrate(accountId);
+  if (rec.keyOnly) {
     throw new Error("NO_SEED: кошелёк импортирован по приватному ключу — сид-фразы нет");
   }
-  return revealSeedFor(rec);
-}
-async function revealSeedFor(rec: StoredRecord): Promise<string> {
-  if (!rec.seedWrapKey || !rec.seedIv || !rec.seedCt) {
-    throw new Error("NO_SEED: сид недоступен для этого кошелька");
-  }
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: rec.seedIv as BufferSource }, rec.seedWrapKey, rec.seedCt);
-  return new TextDecoder().decode(pt);
+  const { seed } = await secretsOf(rec);
+  if (!seed) throw new Error("NO_SEED: сид недоступен для этого кошелька");
+  return seed;
 }
 
 /**
  * Показать приватный ключ (ed25519:<base58>). Работает для ОБОИХ типов:
- *  - key-only: расшифровываем сохранённую обёртку приватника;
- *  - seed: деривируем приват из расшифрованного сида.
+ *  - key-only: сохранённый приватник;
+ *  - seed: деривируем приват из сида.
  * Возвращает null если кошелёк не secure (legacy plain/PIN — там путь через
  * getKeyPairBytes/getSeedPhrase в embeddedWallet).
  */
 export async function revealPrivateKey(accountId: string): Promise<string | null> {
   assertAppUnlocked(); // замок: не выдаём приватный ключ при заблокированном кошельке
-  const rec = await idbGet<StoredRecord>(accountId);
-  if (!rec) return null;
-  if (rec.keyOnly) return revealPrivateKeyFor(rec);
-  // seed-кошелёк: деривируем приват из сида.
-  const seed = await revealSeedFor(rec);
-  const { priv32, pub32 } = await deriveRawKeyFromSeedPhrase(seed);
+  if (!(await idbGet<StoredRecord>(accountId))) return null;
+  const rec = await sealedOrMigrate(accountId);
+  const secrets = await secretsOf(rec);
+  if (rec.keyOnly && secrets.secretKey) return secrets.secretKey;
+  const priv32 = await priv32Of(rec);
+  const pub32 = await ed25519.getPublicKeyAsync(priv32);
   const concat = new Uint8Array(64);
   concat.set(priv32, 0);
   concat.set(pub32, 32);
   priv32.fill(0);
   return `ed25519:${base58.encode(concat)}`;
 }
-async function revealPrivateKeyFor(rec: StoredRecord): Promise<string> {
-  if (!rec.privWrapKey || !rec.privIv || !rec.privCt) {
-    throw new Error("Приватный ключ недоступен для этого кошелька");
+
+/**
+ * Перенос под пароль (зовёт appLock при вводе пароля): прежние записи IndexedDB
+ * и старые незашифрованные сиды из localStorage — в запечатанные записи.
+ */
+export async function sealAllWallets(): Promise<void> {
+  if (!hasVaultKey()) return;
+  const { listWalletAccounts, loadWalletBlob, isPlainBlob, readPlainBlob, removeWalletBlob } =
+    await import("./walletStorage");
+  for (const acc of await listWalletAccounts()) {
+    const raw = await loadWalletBlob(acc);
+    if (!raw || !isPlainBlob(raw)) continue;
+    let seed = "";
+    try {
+      seed = readPlainBlob(raw);
+    } catch {
+      continue;
+    }
+    if (!seed) continue;
+    if (!(await idbGet<StoredRecord>(acc))) await setupSecureWallet(seed, acc);
+    const rec = await sealedOrMigrate(acc);
+    // Открытый сид → запечатанная копия (страховка остаётся, но под паролем);
+    // убираем, только когда запечатанная запись даёт тот же сид.
+    if ((await secretsOf(rec)).seed !== seed.trim()) continue;
+    writeSealedCopy(acc, rec);
+    await removeWalletBlob(acc);
   }
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: rec.privIv as BufferSource }, rec.privWrapKey, rec.privCt);
-  return new TextDecoder().decode(pt);
+  await sealStoredWallets();
+}
+
+/** Смена пароля: всё запечатанное — под новый ключ (сбой — ничего не тронуто). */
+export async function resealAllWallets(
+  oldKey: CryptoKey,
+  newKey: CryptoKey,
+  newBlob: VerificationBlob,
+): Promise<void> {
+  await resealStoredWallets(oldKey, newKey, newBlob);
+  signingCache.clear();
 }
 
 /** Удалить безопасную запись (при удалении кошелька). */
 export async function removeSecureWallet(accountId: string): Promise<void> {
   await idbDelete(accountId);
+  removeSealedCopy(accountId);
+  signingCache.delete(accountId);
 }

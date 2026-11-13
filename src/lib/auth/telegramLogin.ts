@@ -13,12 +13,18 @@ import { resetAccountQueries } from "./resetAccountQueries";
 /** skipped — у Telegram нет своего аккаунта (вход кошельком устройства, Ярослав). */
 export type TgLoginState = "idle" | "pending" | "ok" | "skipped" | "failed";
 
-/** wallet — аккаунт, в который вошли по Telegram (авторитетный: кош не может его сменить). */
+/** Какой бот открыл мини-апку: «wallet» (@yuplink_bot) ведёт только в кошелёк,
+ *  «game» (@yupland_heroes_bot) — в игру (владелец 20.10). */
+export type TgBot = "wallet" | "game" | "hallway";
+
+/** wallet — аккаунт, в который вошли по Telegram (авторитетный: кош не может его сменить).
+ *  bot — какой бот открыл мини-апку (null — ещё не известно или не Telegram). */
 export const useTgLogin = create<{
   state: TgLoginState;
   error: string | null;
   wallet: string | null;
-}>(() => ({ state: "idle", error: null, wallet: null }));
+  bot: TgBot | null;
+}>(() => ({ state: "idle", error: null, wallet: null, bot: null }));
 
 type WebApp = { initData?: string; platform?: string };
 
@@ -95,7 +101,7 @@ async function attempt(qc: QueryClient): Promise<TgLoginResult> {
             useAppStore.getState().setWallet(res.wallet);
             void qc.invalidateQueries();
           }
-          useTgLogin.setState({ state: "ok", error: null, wallet: res.wallet });
+          useTgLogin.setState({ state: "ok", error: null, wallet: res.wallet, bot: res.bot ?? null });
           return { result: "ok", wallet: res.wallet };
         }
         if (!res.ok && res.error === "no_wallet_linked") {

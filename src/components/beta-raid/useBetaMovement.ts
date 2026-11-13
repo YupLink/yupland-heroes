@@ -7,41 +7,34 @@ import { createRouteLifetime } from "./routeLifetime";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { announceToll } from "./gateToll";
-import { approachesOf } from "./approaches";
+import { approachRoute } from "./approachRoute";
 import { pathCrossesDoor } from "./pathTolls";
-import { routeTo, routeToAny, sayNeedBig } from "./routeSearch";
-import type { PortalPrice } from "@/lib/portal";
-import { moveBetaRaid } from "@/server/api/beta-raid";
+import { routeTo, sayNeedBig, type RouteSearchOpts } from "./routeSearch";
 import { DIRS, type ShipMap } from "./usePathfinding";
 // Тип местности — из hexStepCost: там же живёт и цена шага по нему.
-import { isOceanCell, isWaterCell, type TerrainInfo as Terrain } from "./hexStepCost";
-import { stepSatietyCost } from "@/lib/hero/satiety";
+import type { TerrainInfo as Terrain } from "./hexStepCost";
+import { BASE_STEP_MS, mountJumps, mountStepMs, mountTier } from "@/lib/hero/mount";
+import { useSatietyMult } from "./useEnergyMult";
 import type { Cell } from "./unpackMap";
 import { ENERGY_KEY } from "@/lib/hooks/useEnergy";
 import { useT } from "@/lib/i18n";
-import { serverErrorText } from "@/lib/serverErrorText";
-import { applyFled, type FleeMove } from "./applyFled";
-import { emitFlee } from "./fleeFlash";
-import { revealFled } from "./fleeReveal";
 import { makeStepCache, STATE_KEY } from "./stepCache";
 import { SHIPS_KEY } from "./patchShipsCache";
 import { makeRoutePilot } from "./routeFleet";
+import { makeStepSend } from "./stepSend";
+import { setHeroStepMs, setHeroRouteActive } from "./heroPace";
+import type { RaidState } from "./useBetaRaidData";
 
 type Step = { q: number; r: number; cost: number };
 
 /** Что произойдёт в конце маршрута. */
 export type PendingAction = {
-  kind: "collect" | "build" | "battle" | "decor" | "dig" | "ship";
+  kind: "collect" | "build" | "battle" | "decor" | "dig" | "ship" | "mineplan";
   q: number;
   r: number;
   /** Цена самого действия — она входит в общий счёт на метке маршрута. */
   extraCost: number;
 };
-
-/** Столько же едет герой на карте — раньше шага не отправляем. */
-const STEP_MS = 190;
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function useBetaMovement(opts: {
   playerPos: { q: number; r: number } | null;
@@ -49,6 +42,7 @@ export function useBetaMovement(opts: {
   terrains: Record<string, Terrain> | undefined;
   /** Дороги: шаг по ним стоит свою цену, а не цену местности. */
   roads?: Record<string, Terrain> | undefined;
+  decorations?: Record<string, { bridge?: unknown }>;
   availableMoves: Array<{ q: number; r: number; cost: number }>;
   /** Игрок за штурвалом: по воде считаем цену как за плавание. */
   onShip?: boolean;
@@ -60,6 +54,7 @@ export function useBetaMovement(opts: {
    */
   slowExtra?: number;
   stepDiscount?: number;
+  energyMult?: RouteSearchOpts["energyMult"]; // остров — 0,1; погода (useMoveMult)
   /**
    * Клетки-двери: маршрут их обходит, пока есть обход; нет обхода — ведёт
    * сквозь, и плату показывает плашка (routeSearch). Списание — шагом в дверь.
@@ -69,6 +64,8 @@ export function useBetaMovement(opts: {
   hardDoors?: ReadonlySet<string>;
 }) {
   const t = useT();
+  // Сытость шага на острове — в 10 раз меньше (island/satiety), как спишет сервер.
+  const satietyMult = useSatietyMult();
   const terrains = opts.terrains; // купол — флаг клетки, словарь про него не знает
   const qc = useQueryClient();
   const [pendingPath, setPendingPath] = useState<Step[] | null>(null);
@@ -80,6 +77,7 @@ export function useBetaMovement(opts: {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [walking, setWalking] = useState(false);
   const lifetime = useRef(createRouteLifetime()).current;
+  const routeVisualOwner = useRef(Symbol("hero-route")).current;
   /**
    * Просьба встать посреди маршрута.
    *
@@ -106,60 +104,19 @@ export function useBetaMovement(opts: {
   useEffect(() => {
     lifetime.mount();
     return () => {
+      setHeroRouteActive(false, routeVisualOwner);
       lifetime.unmount();
       stopRef.current = true;
       if (pendingTimer.current) clearTimeout(pendingTimer.current);
     };
   }, []);
 
-  /**
-   * Один шаг: рисуем сразу, запрос идёт параллельно анимации.
-   * Возвращает false, если сервер шаг не принял.
-   */
-  const sendStep = async (step: Step, big = false): Promise<boolean> => {
-    const snapshot = cache.snapshot();
-    cache.applyStep(
-      step.q,
-      step.r,
-      step.cost,
-      stepSatietyCost({ water: stepOnWater(step), ocean: stepOnOcean(step) }),
-    );
-    try {
-      const [res] = await Promise.all([
-        moveBetaRaid({ data: { q: step.q, r: step.r, ...(big ? { big } : {}) } }) as Promise<{
-          remainingEnergy?: number;
-          satiety?: { now: number; max: number; hungry: boolean } | null;
-          fled?: FleeMove[];
-          toll?: PortalPrice[];
-        }>,
-        sleep(STEP_MS),
-      ]);
-      if (typeof res?.remainingEnergy === "number") cache.applyServerEnergy(res.remainingEnergy);
-      if (res?.satiety) cache.applyServerSatiety(res.satiety);
-      // От нашего шага кто-то отбежал (server flee-move). Карту правим ЗДЕСЬ,
-      // а не по живому потоку: сразу после шага экран решает, с чем игрок
-      // взаимодействует, и решать он должен по уже переехавшей цели.
-      applyFled(qc, res?.fled);
-      // Вспышку показываем по СЫРОМУ списку побегов, а не по отфильтрованному
-      // applyFled: беглец мог уйти из-под объекта под другой объект (не виден ни
-      // до, ни после) — карта не меняется, но «куда убежал» показать всё равно надо.
-      emitFlee(res?.fled);
-      revealFled(step, res?.fled); // видел, откуда убежал, — видит и куда (fleeReveal)
-      announceToll(qc, res?.toll, t);
-      return true;
-    } catch (e) {
-      cache.rollback(snapshot);
-      toast.error(serverErrorText(e, t, t("braid.move_failed")));
-      return false;
-    }
-  };
-
-  /** Вода ли клетка, куда ведёт шаг. */
-  const stepOnWater = (step: Step): boolean =>
-    isWaterCell(opts.cells?.[`${step.q},${step.r}`], terrains ?? {});
-  /** Океан ли — шаг туда стоит герою больше сытости (lib/hero/satiety). */
-  const stepOnOcean = (step: Step): boolean =>
-    isOceanCell(opts.cells?.[`${step.q},${step.r}`], terrains ?? {});
+  // Отправка шагов: по одному (с кораблём) и пачкой наперёд по суше — stepSend.
+  const send = makeStepSend({ qc, cache, t, satietyMult, cells: opts.cells, terrains });
+  const { stepOnWater } = send;
+  /** Конь выбранного героя (§8.84) — из состояния рейда: темп шага и прыжок пегаса. */
+  const mount = () => mountTier(qc.getQueryData<RaidState>(STATE_KEY)?.mount);
+  const searchOpts = (): RouteSearchOpts => ({ ...opts, jump: mountJumps(mount()) });
 
   /**
    * Идём по подтверждённому маршруту шаг за шагом.
@@ -172,11 +129,13 @@ export function useBetaMovement(opts: {
    * ложатся ДО его ответа: иначе на воде под героем на мгновение оказывалась
    * пустая вода, а корабль — позади.
    */
-  const moveAlongPath = async (path: Step[]): Promise<boolean> => {
+  // limit — только первые N шагов (§8.78); лоцман судна видит весь путь (океан впереди).
+  const moveAlongPath = async (path: Step[], limit?: number): Promise<boolean> => {
     const token = lifetime.begin();
     if (token === null) return false;
     try {
       setWalking(true);
+      setHeroRouteActive(true, routeVisualOwner);
       stopRef.current = false;
       clearPending();
       let done = true;
@@ -188,25 +147,36 @@ export function useBetaMovement(opts: {
       let fleetMoved =
         !!opts.playerPos && !!opts.ships?.has(`${opts.playerPos.q},${opts.playerPos.r}`);
       const pilot = makeRoutePilot(qc, opts.playerPos, { path, cells: opts.cells, terrains });
-      for (const step of path) {
-        // Нажали «стоп» — дальше не идём. Пройденное остаётся пройденным:
-        // энергия за сделанные шаги уже списана честно.
-        if (stopRef.current || !lifetime.valid(token)) {
-          done = false;
-          break;
-        }
-        const fleet = pilot.step(step, stepOnWater(step));
-        // Судно на той стороне заняли, пока мы шли: встаём здесь, до траты.
-        if (fleet.blocked) {
-          toast.error(t(fleet.needBig ? "braid.ship_need_big" : "braid.ship_taken"));
-          done = false;
-          break;
-        }
-        fleetMoved = fleetMoved || fleet.deltas.length > 0;
-        if (!(await sendStep(step, fleet.bigOnly))) {
-          pilot.rollback(fleet.snapshot);
-          done = false;
-          break;
+      const steps = limit != null ? path.slice(0, limit) : path;
+      // По суше — пачками наперёд в темпе коня (§8.84); с кораблём — по шагу, как было.
+      const onLand = !fleetMoved && !opts.onShip && !steps.some(stepOnWater);
+      const pct = Number(qc.getQueryData<RaidState>(STATE_KEY)?.mountPct) || 0;
+      const stepMs = onLand ? mountStepMs(mount(), pct) : BASE_STEP_MS;
+      setHeroStepMs(stepMs);
+      const stopped = () => stopRef.current || !lifetime.valid(token);
+      if (onLand) {
+        done = await send.walkLand(steps, stepMs, stopped);
+      } else {
+        for (const step of steps) {
+          // Нажали «стоп» — дальше не идём. Пройденное остаётся пройденным:
+          // энергия за сделанные шаги уже списана честно.
+          if (stopped()) {
+            done = false;
+            break;
+          }
+          const fleet = pilot.step(step, stepOnWater(step));
+          // Судно на той стороне заняли, пока мы шли: встаём здесь, до траты.
+          if (fleet.blocked) {
+            toast.error(t(fleet.needBig ? "braid.ship_need_big" : "braid.ship_taken"));
+            done = false;
+            break;
+          }
+          fleetMoved = fleetMoved || fleet.deltas.length > 0;
+          if (!(await send.sendStep(step, fleet.bigOnly))) {
+            pilot.rollback(fleet.snapshot);
+            done = false;
+            break;
+          }
         }
       }
       // Один рефетч в конце пути вместо одного на каждый шаг.
@@ -222,6 +192,7 @@ export function useBetaMovement(opts: {
       if (fleetMoved) qc.invalidateQueries({ queryKey: SHIPS_KEY });
       return done && !stopRef.current && lifetime.valid(token);
     } finally {
+      setHeroRouteActive(false, routeVisualOwner);
       lifetime.finish();
       if (lifetime.mounted) setWalking(false);
     }
@@ -239,7 +210,7 @@ export function useBetaMovement(opts: {
   };
 
   // Сам поиск — в routeSearch: обход дверей, а без обхода — сквозь них.
-  const pathTo = (q: number, r: number): Step[] | null => routeTo(opts, q, r);
+  const pathTo = (q: number, r: number): Step[] | null => routeTo(searchOpts(), q, r);
 
   /**
    * Клик по клетке — всегда предложение маршрута с ценой и кнопкой «Идти».
@@ -275,29 +246,24 @@ export function useBetaMovement(opts: {
     failKey = "braid.no_path",
     /** С любой стороны, и с берега: разбитое судно чинят вплотную откуда угодно. */
     anySide = false,
-  ) => {
+    /** Сразу идти, без плашки (лопата, 12.11.2026); дверь на пути — плашка, как walkTo. */
+    go = false,
+  ): Promise<boolean> | undefined => {
     if (walking) return;
     if (!opts.playerPos || !opts.cells || !terrains) return;
-    // ОДИН поиск на все шесть подходов, а не шесть подряд.
-    //
-    // Раньше на каждого соседа цели запускался свой A* со своим потолком в
-    // 20 000 узлов: тап по сундуку у воды разворачивал перебор шесть раз, и
-    // пять результатов из шести тут же выбрасывались. Хуже всего было со
-    // сторонами, куда пути нет вовсе (вода, скала, чужое судно) — такой поиск
-    // не находит ничего, зато обходит всю достижимую карту.
-    //
-    // Мультицель выбирает по тому же признаку — по энергии: два шага по болоту
-    // дороже трёх по дороге, и очередь по цене отдаёт сначала дешёвое.
-    const goals = approachesOf(
-      q,
-      r,
-      opts.doors,
-      anySide ? undefined : (cq, cr) => isWaterCell(opts.cells?.[`${cq},${cr}`], terrains),
-    );
-    const best = routeToAny(opts, goals);
+    // ОДИН поиск на все шесть подходов — approachRoute.
+    const { goals, best } = approachRoute(searchOpts(), q, r, anySide);
+    if (best && best.length > 0 && go && !pathCrossesDoor(best, opts.doors)) {
+      clearPending();
+      return moveAlongPath(best);
+    }
     if (best && best.length > 0) offerPath(best, action);
     else if (!sayNeedBig(opts, goals, t)) toast.error(t(failKey));
   };
+
+  /** Маршрут подхода без похода и плашки: окно рубки пишет цену дороги (13.11). */
+  const approachPath = (q: number, r: number): Step[] | null =>
+    approachRoute(searchOpts(), q, r).best;
 
   /**
    * Сразу пойти на клетку без предложения-маршрута с кнопкой «Идти».
@@ -334,11 +300,13 @@ export function useBetaMovement(opts: {
     /** Встать на месте: следующий шаг маршрута не уйдёт. */
     stopWalk: () => {
       stopRef.current = true;
+      setHeroRouteActive(false, routeVisualOwner);
     },
     moveAlongPath,
     handleCellClick,
     walkTo,
     approachCell,
+    approachPath,
     clearPending,
   };
 }

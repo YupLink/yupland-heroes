@@ -12,7 +12,7 @@
 // без истёкшего баффа. Заброс пишет ступени в строку (chance_steps), и попытка
 // после срока идёт без его удачи. Ослабление удачи от босса держится весь
 // заброс, как и было.
-import { heroFishBonus } from "@/lib/raid/fishBonus";
+import { fisherBaseAdd, heroFishBonus } from "@/lib/raid/fishBonus";
 import type { BonusStep } from "@/lib/raid/fishChanceSteps";
 import { mcpExec } from "@/server/db/mcpClient";
 import { sqlStr } from "@/server/api/raid-shared";
@@ -26,6 +26,9 @@ export type LuckBuff = { value: number; endMs: number };
 
 /** Бонус сейчас (% к базе) и его ступени по срокам баффов удачи. */
 export type FishBonusPlan = { bonusPct: number; steps: BonusStep[] };
+
+/** Бонус героя сейчас и прибавка к базе мира в пунктах (рыбак, fisherBaseAdd). */
+export type FishBonusNow = { bonusPct: number; addPct: number };
 
 /** Живые баффы удачи аккаунта со сроками (wrapJson). */
 export const luckBuffsSql = (account: string): string =>
@@ -82,22 +85,31 @@ async function luckBuffsOf(wallet: string): Promise<LuckBuff[]> {
   return parseLuckBuffs(rows ?? []);
 }
 
-/** План бонуса героя кошелька. Героя нет — ноль без ступеней. */
-export async function fishBonusPlan(wallet: string): Promise<FishBonusPlan> {
+/**
+ * План бонуса героя кошелька и прибавка рыбака к базе. Героя нет — нули.
+ * Способность — на шаблоне героя, как бонус артефакта на предмете: считается
+ * и при закрытой силе героя.
+ */
+export async function fishBonusPlan(wallet: string): Promise<FishBonusPlan & FishBonusNow> {
   const hero = await loadSelectedHero(wallet).catch(() => null);
-  if (!hero) return { bonusPct: 0, steps: [] };
+  if (!hero) return { bonusPct: 0, steps: [], addPct: 0 };
+  const addPct = fisherBaseAdd(hero.ability);
   const hp = await import("@/server/api/beta-raid/hero-power");
-  if (!(await hp.heroPowerEnabled(wallet))) return bonusPlanOf(hero.gear, () => 0, []);
+  if (!(await hp.heroPowerEnabled(wallet))) {
+    return { ...bonusPlanOf(hero.gear, () => 0, []), addPct };
+  }
   const [buffs, weaken] = await Promise.all([luckBuffsOf(wallet), loadWeakenFor(wallet)]);
   const { info } = hp.buildHeroPower(hero);
-  return bonusPlanOf(
+  const plan = bonusPlanOf(
     hero.gear,
     (t) => luckAt(info, buffs, weaken, t),
     buffs.map((b) => b.endMs),
   );
+  return { ...plan, addPct };
 }
 
-/** Бонус героя кошелька сейчас, % к базе (окно заброса). Сбой — ноль. */
-export async function fishBonusOf(wallet: string): Promise<number> {
-  return (await fishBonusPlan(wallet).catch(() => null))?.bonusPct ?? 0;
+/** Бонус героя кошелька сейчас (% к базе) и прибавка рыбака к базе. Сбой — нули. */
+export async function fishBonusOf(wallet: string): Promise<FishBonusNow> {
+  const p = await fishBonusPlan(wallet).catch(() => null);
+  return { bonusPct: p?.bonusPct ?? 0, addPct: p?.addPct ?? 0 };
 }

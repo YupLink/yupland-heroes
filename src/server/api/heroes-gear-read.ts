@@ -14,6 +14,10 @@ import { heroCombat, heroField, type HeroCombat, type HeroField } from "@/lib/he
 import { zeroStats } from "@/lib/hero/heroStatSources";
 import { heroAlchemy, heroTrade } from "@/lib/hero/heroExtraStats";
 import { bestGearFor } from "@/lib/hero/bestGear";
+import { artDisabled } from "@/lib/hero/artWear";
+import { artLocked } from "@/lib/hero/artBroken";
+import { withEnchant } from "@/lib/enchant/enchantGear";
+import { enchantPctSql } from "@/server/api/beta-raid/enchant/enchant-sql";
 import type { HeroStats } from "@/lib/heroStats";
 import { buildHeroPower } from "./beta-raid/hero-power";
 import type { LoadedGearPiece, LoadedHero } from "./beta-raid/hero-load";
@@ -87,7 +91,8 @@ const GEAR_COLS = `u.id AS "itemId", u.template_id AS "templateId", t.name, t.sl
         t.specialization, t.spec_amount::float8 AS "specAmount",
         t.land, t.land_amount::float8 AS "landAmount", t.immunities,
             COALESCE(t.fish_bonus_pct, 0)::float8 AS "fishBonusPct",
-        lt.name AS "landName"`;
+        lt.name AS "landName", u.wear::float8 AS wear, t.meta->>'mount' AS mount,
+        ${enchantPctSql()} AS "enchantPct"`;
 
 /** Имя местности — из её же шаблона: в карточке «Земля terrain_7w9…» нечитаемо. */
 const GEAR_JOIN_LAND = `LEFT JOIN yuplink.mystic_item_template lt ON lt.id = t.land`;
@@ -110,7 +115,7 @@ async function loadArtifacts(w: string, extra: string): Promise<LoadedGearPiece[
       ORDER BY t.name, u.id;`,
     { wrapJson: true },
   ).catch(() => [])) as LoadedGearPiece[];
-  return rows ?? [];
+  return (rows ?? []).map(withEnchant); // зачарованный — со статами × (1 + pct/100)
 }
 
 /** Артефакт игрока по id. null: чужой или такого нет. */
@@ -123,11 +128,23 @@ export async function ownedArtifact(w: string, itemId: string): Promise<LoadedGe
 export const loadOwnedArtifacts = (wallet: string): Promise<LoadedGearPiece[]> =>
   loadArtifacts(wallet, "");
 
-/** Записать экипировку целиком — мест максимум 14, диффы ни к чему. */
+/**
+ * Записать экипировку целиком — мест максимум 14, диффы ни к чему. После запуска
+ * поломки (art_repair_open) сломанное отбрасывается в самой записи: удар мог снять
+ * его, пока набор собирался из прочитанного раньше (§8.63 п.3).
+ */
 export async function writeEquipped(heroId: string, eq: Record<string, string>): Promise<void> {
+  const next = `${sqlStr(JSON.stringify(eq))}::jsonb`;
   const rows = (await mcpExec(
     `UPDATE yuplink.hero_instance
-        SET equipped = ${sqlStr(JSON.stringify(eq))}::jsonb, updated_at = now()
+        SET equipped = CASE WHEN EXISTS (SELECT 1 FROM yuplink.settings s
+                                          WHERE s.key = 'art_repair_open' AND s.value = 'true')
+              THEN (SELECT COALESCE(jsonb_object_agg(e.key, e.value), '{}'::jsonb)
+                      FROM jsonb_each_text(${next}) e
+                     WHERE NOT EXISTS (SELECT 1 FROM yuplink.user_game_item u
+                                        WHERE u.id = e.value AND u.wear >= 100))
+              ELSE ${next} END,
+            updated_at = now()
       WHERE id = ${sqlStr(heroId)}
       RETURNING id;`,
     { wrapJsonCte: true },
@@ -170,9 +187,14 @@ export function gearView(
   weaken?: WeakenMap,
   /** Временные бусты с алтарей и товаров — то же, что подмешивает бой. */
   buffs?: HeroBoosts,
+  /** Механика поломки запущена (§8.63 п.3): сломанное в «лучшее» не кандидат. */
+  brokenOn = false,
 ): HeroGearView {
   const rarity = normalizeHeroRarity(hero.rarity);
-  const byId = new Map(hero.gear.map((p) => [p.itemId, p]));
+  // Сломанный лежит в слоте как есть (полоса на нуле). Выключенный поломкой
+  // (artDisabled) статов не даёт: в hero.gear его нет (hero-load), и в лучший
+  // набор он не кандидат. Пока ремонта нет — работает как целый.
+  const byId = new Map([...hero.gear, ...(hero.broken ?? [])].map((p) => [p.itemId, p]));
   const eq = hero.equipped;
   // Раскладываем ДО подсчёта статов: сумма обязана совпасть с тем, что игрок
   // видит в слотах. Висячую запись не чистим — надевашка перепишет equipped.
@@ -192,7 +214,14 @@ export function gearView(
   const info = weakenHero(buffHero(built.info, buffs ?? {}), weaken ?? {});
   const ctx: Ctx = { race: info.race, spec: info.spec };
   // На ТЕХ ЖЕ данных, что показываем: иначе стрелка обещала бы предмет не из списка.
-  const best = bestGearFor({ slots, items: [...all, ...kept], equipped: eq, ctx });
+  // Сломанный при запущенной механике надеть нельзя — стрелка его не обещает.
+  const ok = (p: LoadedGearPiece) => !artDisabled(p.wear) && !artLocked(p.wear, brokenOn);
+  const best = bestGearFor({
+    slots,
+    items: [...all.filter(ok), ...kept.filter(ok)],
+    equipped: eq,
+    ctx,
+  });
 
   return {
     heroId: info.heroId,

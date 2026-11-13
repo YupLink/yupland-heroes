@@ -11,10 +11,14 @@ import {
 } from "./boostImmune";
 
 describe("список иммунитетов", () => {
-  it("всё из каталога способностей, кроме удара по всем", () => {
-    expect(IMMUNE_KINDS).toEqual(ABILITY_KINDS.filter((k) => k !== "cleave"));
+  it("всё из каталога способностей, кроме удара по всем и снятия иммунитетов", () => {
+    expect(IMMUNE_KINDS).toEqual(
+      ABILITY_KINDS.filter((k) => k !== "cleave" && k !== "strip_immune"),
+    );
     expect(IMMUNE_KINDS).toContain("weak_int");
     expect(IMMUNE_KINDS).not.toContain("cleave");
+    // Иммунитета к снятию нет (владелец, 22.10.2026).
+    expect(IMMUNE_KINDS).not.toContain("strip_immune");
   });
 
   it("«Все» стоит первым пунктом", () => {

@@ -20,6 +20,7 @@ import { roadColumn } from "./map-roads";
 import { readDaraiHold, settleDaraiHold } from "./map-darai-hold";
 import { ensureTownSchema, handleBuildingChange, readCellBuildingId } from "./town-resolve";
 import { assertUsdtPatches } from "../usdt-cells";
+import { liftedBlockMine } from "@/server/api/beta-raid/mine-block-sync";
 
 const cell = { q: z.number().int(), r: z.number().int() };
 
@@ -166,8 +167,10 @@ export const adminPatchCell = createServerFn({ method: "POST" })
     // Журнал карты: правка уходит игрокам дельтой со словарями новых ассетов.
     // Смена постройки — «карта перестроена»: окна построек и списки ратуш
     // перечитываются целиком, а не по одной клетке.
+    // Купол сняли с члена блока-шахты — патч шахту не передаст (mine-block-sync).
     const { noteAdminPatches, noteMapRebuilt } = await import("./map-change-hooks");
-    if (data.buildingId !== undefined) await noteMapRebuilt(mapId);
+    const blockMine = await liftedBlockMine(mapId, data);
+    if (data.buildingId !== undefined || blockMine) await noteMapRebuilt(mapId);
     else {
       await noteAdminPatches(mapId, [
         {

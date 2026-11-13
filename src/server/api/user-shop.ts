@@ -12,6 +12,7 @@ import { verifyFtTransfer } from "../near";
 import { requireFreshClient } from "../buildGate";
 import { getSisterWallets, invalidateTicketsCache } from "./user";
 import { assertWalletPurchaseAllowed } from "./account-rollout";
+import { refuseTicketPurchase } from "./tickets-shop-closed";
 
 // ─── Магазин билетов: интеграция с Yupland-Energy ──────────────────────────
 //
@@ -192,26 +193,20 @@ export const getShopGlobalStats = createServerFn({ method: "GET" }).handler(asyn
 
 export const listMyShopOffers = createServerFn({ method: "GET" }).handler(async () => {
   const wallet = getCurrentWallet();
-  const rows =
-    ((
-      await pg.ticketShopOffers
-        .raw()
-        .select("*")
-        .eq("active", true)
-        .order("sort_order", { ascending: true })
-        .order("price_energy", { ascending: true })
-    ).data as Array<{
-      id: string;
-      tickets: number;
-      price_energy: number;
-      payment_token: string | null;
-      price_token: number | null;
-      price_stars: number | null;
-      price_usd?: number | string | null;
-      active: boolean;
-      sort_order: number;
-      created_at: string;
-    }>) ?? [];
+  // Магазина билетов больше нет (§8.61): предложений не отдаём, в базу не ходим.
+  const rows: Array<{
+    id: string;
+    tickets: number;
+    price_energy: number;
+    payment_token: string | null;
+    price_token: number | null;
+    price_stars: number | null;
+    price_usd?: number | string | null;
+    active: boolean;
+    sort_order: number;
+    created_at: string;
+  }> = [];
+  if (rows.length === 0) return [];
   const tokens = await pg.rewardTokens.findMany();
   const tokenMap = new Map(tokens.map((t) => [t.symbol, t]));
   // Активная подписка → процент скидки. Применяется в effective*-полях.
@@ -324,6 +319,8 @@ export const purchaseTicketsViaToken = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     assertNotMaintenance();
     // Старый клиент имеет TOKEN_BURN_RECEIVER=darai_duplo.near в бандле —
     // если попытается купить, DARAI улетят не туда. Блокируем заранее.
@@ -388,17 +385,6 @@ export const purchaseTicketsViaToken = createServerFn({ method: "POST" })
         near_tx_hash: data.txHash,
         idempotency_key: idempotencyKey,
       });
-      // Баланс живёт в леджере; ref = ключ идемпотентности покупки,
-      // поэтому парные реализации в разных файлах не задвоят билеты.
-      {
-        const { moveTickets } = await import("./tickets-ledger");
-        await moveTickets({
-          wallet: creditedWallet,
-          delta: totalTickets,
-          kind: "purchase",
-          ref: idempotencyKey,
-        });
-      }
     } catch (e) {
       // Идемпотентность: если эта же квитанция уже зачтена (UNIQUE на
       // idempotency_key, код 23505) — возвращаем success с уже начисленными
@@ -465,6 +451,8 @@ export const adminClaimOrphanFtPurchase = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     requirePayoutsAdmin();
 
     const offer = await pg.ticketShopOffers.findFirst({
@@ -544,17 +532,6 @@ export const adminClaimOrphanFtPurchase = createServerFn({ method: "POST" })
       near_tx_hash: data.txHash,
       idempotency_key: idempotencyKey,
     });
-    // Баланс живёт в леджере; ref = ключ идемпотентности покупки,
-    // поэтому парные реализации в разных файлах не задвоят билеты.
-    {
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet: actualSender || data.senderWallet,
-        delta: totalTickets,
-        kind: "purchase",
-        ref: idempotencyKey,
-      });
-    }
     invalidateTicketsCache(allowedSenders);
     return {
       ok: true,
@@ -581,6 +558,8 @@ export const recoverMyTicketPurchase = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Кошелёк не подключён");
 
@@ -656,17 +635,6 @@ export const recoverMyTicketPurchase = createServerFn({ method: "POST" })
       near_tx_hash: data.txHash,
       idempotency_key: idempotencyKey,
     });
-    // Баланс живёт в леджере; ref = ключ идемпотентности покупки,
-    // поэтому парные реализации в разных файлах не задвоят билеты.
-    {
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet: actualSender || wallet,
-        delta: totalTickets,
-        kind: "purchase",
-        ref: idempotencyKey,
-      });
-    }
     invalidateTicketsCache(allowedSenders);
     return {
       ok: true,
@@ -962,6 +930,8 @@ export const purchaseTicketsViaEnergy = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и записей.
+    refuseTicketPurchase();
     assertNotMaintenance();
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Кошелёк не подключён");
@@ -1033,17 +1003,6 @@ export const purchaseTicketsViaEnergy = createServerFn({ method: "POST" })
       yupland_tx_id: null,
       idempotency_key: idempotencyKey,
     });
-    // Баланс живёт в леджере; ref = ключ идемпотентности покупки,
-    // поэтому парные реализации в разных файлах не задвоят билеты.
-    {
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet: wallet,
-        delta: totalTickets,
-        kind: "purchase",
-        ref: idempotencyKey,
-      });
-    }
 
     return {
       ok: true,

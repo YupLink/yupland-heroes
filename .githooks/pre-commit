@@ -1,0 +1,9 @@
+#!/bin/sh
+# Не пускает в коммит секреты и данные игроков (scripts/check-repo-hygiene.mjs --staged).
+# Включить один раз на клон:  git config core.hooksPath .githooks
+# Намеренный фейк — пометьте строку комментарием hygiene-ok. Обойти разово: git commit --no-verify.
+command -v node >/dev/null 2>&1 || {
+  echo "repo-hygiene: node не найден, проверка пропущена (CI проверит при пуше)" >&2
+  exit 0
+}
+exec node "$(git rev-parse --show-toplevel)/scripts/check-repo-hygiene.mjs" --staged

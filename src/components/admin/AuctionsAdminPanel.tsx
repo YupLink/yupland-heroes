@@ -1,3 +1,4 @@
+import { useVisibleAuctions } from "@/components/trade/useVisibleAuctions";
 // Админка аукционов в дизайне замка: создать/запустить, список, отмена живого
 // (все ставки возвращаются). Минимум данных. Вверху — идущие, завершённые и
 // отменённые — в свёрнутых «Прошедших». Классы — auction-screen.css.
@@ -34,6 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function AuctionsAdminPanel() {
+  const seenRoot = useVisibleAuctions();
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const list = useQuery({
@@ -79,7 +81,7 @@ export function AuctionsAdminPanel() {
   const live = rows.filter(isLive);
   const past = rows.filter((r) => !isLive(r));
   const renderRow = (r: Row) => (
-    <div key={r.id} className="auction-lot">
+    <div key={r.id} className="auction-lot auction-lot--admin" data-auction-seen-id={isLive(r) ? r.id : undefined}>
       <div className="auction-lot__top">
         <span className="auction-lot__media" {...tap(r)}>
           {r.prize_image ? <img src={r.prize_image} alt="" /> : <Gavel aria-hidden="true" />}
@@ -120,7 +122,7 @@ export function AuctionsAdminPanel() {
   );
 
   return (
-    <div>
+    <div ref={seenRoot}>
       <button
         type="button"
         className="auction-primary"

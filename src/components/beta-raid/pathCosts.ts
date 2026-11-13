@@ -15,7 +15,8 @@
 // моря A* вырождался в Дейкстру — фронт расходился кругом во все стороны.
 // Теперь к оценке добавляется надбавка за шаги, которые заведомо будут
 // морскими; доказательство — у rest().
-import { stepEnergyCost } from "@/lib/shipRules";
+import { moveMultFor, sameMoveMult, stepEnergyCost, type MoveMult } from "@/lib/shipRules";
+import { JUMP_ENERGY } from "@/lib/hero/mount";
 import { hexDistance } from "./hexGeometry";
 import { DIRS } from "./hexPassable";
 import type { PathGrid } from "./pathGrid";
@@ -32,6 +33,9 @@ export type PathCosts = {
   sailBig: number;
   /** Посадка на свободное судно. */
   board: number;
+  /** Прыжок пегаса (§8.84) без клетки: 10 ровно; к нему — land клетки приземления. */
+  jump: number;
+  minStep: number;
   /** Оценка остатка от клетки до цели. Никогда не больше настоящего. */
   rest(q: number, r: number, goal: GoalBound): number;
   /** Цель → её предрасчёт (сколько морских шагов гарантированы в конце). */
@@ -41,7 +45,13 @@ export type PathCosts = {
 /** Потолок волны: дальше 255 шагов считать нечего — карта меньше. */
 const FAR = 255;
 
-type Entry = { slowExtra: number; stepDiscount: number; bigSail: boolean; costs: PathCosts };
+type Entry = {
+  slowExtra: number;
+  stepDiscount: number;
+  bigSail: boolean;
+  energyMult: MoveMult;
+  costs: PathCosts;
+};
 
 const cache = new WeakMap<PathGrid, Entry>();
 
@@ -53,17 +63,20 @@ export function pathCosts(
    *  на свободное большое. Его морской «пол» дешевле — иначе оценка остатка
    *  ЗАВЫСИЛА бы её, и «самый дешёвый» морской маршрут перестал бы им быть. */
   bigSail = false,
+  /** Множитель хода (island/energy и погода — ноги/судно). Входит в ключ кэша. */
+  energyMult: MoveMult = 1,
 ): PathCosts {
   const hit = cache.get(grid);
   if (
     hit &&
     hit.slowExtra === slowExtra &&
     hit.stepDiscount === stepDiscount &&
-    hit.bigSail === bigSail
+    hit.bigSail === bigSail &&
+    sameMoveMult(hit.energyMult, energyMult)
   )
     return hit.costs;
-  const costs = build(grid, slowExtra, stepDiscount, bigSail);
-  cache.set(grid, { slowExtra, stepDiscount, bigSail, costs });
+  const costs = build(grid, slowExtra, stepDiscount, bigSail, energyMult);
+  cache.set(grid, { slowExtra, stepDiscount, bigSail, energyMult, costs });
   return costs;
 }
 
@@ -82,7 +95,7 @@ function spread(grid: PathGrid, land: Float64Array, sea: number): Uint8Array {
   const { cols, rows } = grid;
   let tail = 0;
   for (let i = 0; i < grid.size; i++) {
-    if (!grid.walk[i] || grid.water[i] || land[i] >= sea) continue;
+    if (!grid.walk[i] || (grid.water[i] && !grid.bridgeDeck[i]) || land[i] >= sea) continue;
     run[i] = 0;
     queue[tail++] = i;
   }
@@ -113,16 +126,20 @@ function build(
   slowExtra: number,
   stepDiscount: number,
   bigSail: boolean,
+  mult: MoveMult,
 ): PathCosts {
-  const sail = stepEnergyCost({ sailing: true, slowExtra });
-  const sailBig = stepEnergyCost({ sailing: true, bigShip: true, slowExtra });
-  const board = stepEnergyCost({ boarding: true, slowExtra });
+  // Множитель острова — во ВСЕ цены разом: оценка остатка остаётся допустимой
+  // (scaleEnergy не ломает порядок цен — дороже клетка не становится дешевле).
+  // Погода (ноги × step, судно × ship) — тоже: оценка строится из тех же цен.
+  const sail = stepEnergyCost({ sailing: true, slowExtra, mult });
+  const sailBig = stepEnergyCost({ sailing: true, bigShip: true, slowExtra, mult });
+  const board = stepEnergyCost({ boarding: true, slowExtra, mult });
   // В воду входят только гребком или посадкой — дешевле в неё не входят. На
   // большом корабле гребок дешевле, и «пол» оценки обязан это учесть — в том
   // числе когда на большое судно маршрут только ещё сядет с берега.
   const sea = Math.min(bigSail ? sailBig : sail, board);
   const priceOf = (cellCost: number) =>
-    stepEnergyCost({ cellCost, slowExtra, heroStepDiscountPct: stepDiscount });
+    stepEnergyCost({ cellCost, slowExtra, heroStepDiscountPct: stepDiscount, mult });
 
   // Цен у клеток десяток на всю карту (столько типов местности), поэтому
   // формула зовётся по РАЗЛИЧНЫМ ценам, а не по каждой из 16 384 клеток.
@@ -156,6 +173,8 @@ function build(
     sail,
     sailBig,
     board,
+    jump: JUMP_ENERGY,
+    minStep,
     goalBound: (q, r) => ({ q, r, run: runAt(q, r) }),
     /**
      * Почему оценка не завышает остаток (иначе «самый дешёвый» маршрут перестал

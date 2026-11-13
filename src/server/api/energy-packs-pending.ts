@@ -1,11 +1,12 @@
 // Оплата энергии «в пути»: перевод подписан on-chain, покупка ещё не записана.
 //
-// Живой случай 24.08 (player12.tg): серверный вызов после подписи не докрутил,
+// Живой случай 24.08 (жалоба игрока): серверный вызов после подписи не докрутил,
 // энергия появилась только через 4 минуты (крон-догон), и игрок за это время
 // заплатил второй раз. Пока оплата не зачтена, кнопки покупки должны быть
 // закрыты, а зачёт — идти сразу, не дожидаясь получаса до крона.
 import { createServerFn } from "@tanstack/react-start";
 import { fetchAdminFtTransferHistory } from "@/server/sendler";
+import { isEnergyTransferAccepted } from "@/lib/energyPayAllowed";
 import { requireWallet } from "./energy-packs-shared";
 import { readTopUpMemo } from "./lost-payments-account-memo";
 import {
@@ -24,9 +25,10 @@ export type PendingEnergyPayment = {
   symbol: string;
   amount: number;
   ageSec: number;
-  /** Служебные: метка и подписант из записи Sendler. Клиенту не отдаём. */
+  /** Служебные: метка, подписант и время блока из записи Sendler. Клиенту не отдаём. */
   memo: string;
   signer: string;
+  blockMs: number;
 };
 
 /** Свои переводы на приёмник с memo энергии, по которым покупки ещё нет. */
@@ -47,6 +49,8 @@ async function unsettledOf(wallets: string[]): Promise<PendingEnergyPayment[]> {
       if (t.receiver && t.receiver !== ENERGY_RECEIVER) continue;
       const ts = t.blockTimestampNs ? Number(t.blockTimestampNs) / 1e6 : NaN;
       if (!Number.isFinite(ts) || now - ts > WINDOW_MS) continue;
+      // Токен после среза §8.61 не зачтётся — не держим из-за него покупку закрытой.
+      if (!isEnergyTransferAccepted(String(t.symbol ?? ""), ts)) continue;
 
       // Метка — ИЗ ЗАПИСИ Sendler. Прежде на каждый перевод уходил запрос в
       // цепь: до девяноста подряд на один заход игрока в экран энергии.
@@ -61,6 +65,7 @@ async function unsettledOf(wallets: string[]): Promise<PendingEnergyPayment[]> {
         ageSec: Math.max(0, Math.round((now - ts) / 1000)),
         memo: head.memo,
         signer: head.signer,
+        blockMs: ts,
       });
     }
   }
@@ -112,6 +117,7 @@ export const settleMyEnergyPayments = createServerFn({ method: "POST" }).handler
       packs,
       memo: p.memo,
       signer: p.signer,
+      blockMs: p.blockMs,
     }).catch(() => null);
     if (res?.ok) {
       settled++;

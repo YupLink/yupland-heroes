@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
@@ -20,31 +20,18 @@ import { myClaimHistory } from "@/server/api/user-claim-history";
 import { redeemDropMany } from "@/server/api/user-claim-redeem-many";
 import { withdrawMyNfts } from "@/server/api/user-claim-withdraw-nft";
 import {
-  claimAllTicketEvents,
-  claimTicketEvent,
-  listMyTicketEvents,
-  listMyLikeEvents,
-  claimLikeEvent,
-  claimAllLikeEvents,
-} from "@/server/api/user-tickets";
-import {
   refreshMyInventory,
   listAllActiveDrops,
   hideCampaign,
   unhideCampaign,
   listMyNfts,
 } from "@/server/api/user-drops";
-import { getMyTickets } from "@/server/api/user-tickets-cache";
+import { useResources } from "@/lib/hooks/useResources";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import {
-  getMyTicketHistory,
   getMySubscription,
-  getShopGlobalStats,
   getYuplandStatus,
-  listMyShopOffers,
   mySisterWalletsBalances,
-  purchaseTicketsViaToken,
-  recoverMyTicketPurchase,
-  purchaseTicketsViaEnergy,
   unlinkYupland,
 } from "@/server/api/user-shop";
 import { listMySisterWallets } from "@/server/api/user-sisters";
@@ -68,7 +55,6 @@ import {
   Lock,
   Coins,
   Inbox,
-  Ticket,
   Gift,
   UserPlus,
   Send,
@@ -149,7 +135,6 @@ import { TicketsPanel, LikesMiningPanel } from "@/components/drops/TicketsPanel"
 import { HiddenDropsSection } from "@/components/drops/HiddenDropsSection";
 import { PaidClaimConfirmModal } from "@/components/drops/PaidClaimConfirmModal";
 import { WithdrawSplitModal } from "@/components/drops/WithdrawSplitModal";
-import { ShopModal } from "@/components/drops/ShopModal";
 import { ClaimHistorySection, PendingNftsSection } from "@/components/drops/ClaimHistory";
 import { formatFractional, fmtClaim } from "@/components/drops/shop-shared";
 import { humanError } from "@/lib/humanError";
@@ -167,7 +152,6 @@ export {
   HiddenDropsSection,
   PaidClaimConfirmModal,
   WithdrawSplitModal,
-  ShopModal,
   ClaimHistorySection,
   PendingNftsSection,
   formatFractional,
@@ -181,24 +165,10 @@ function MyNFTsPage() {
   const [walletOpen, setWalletOpen] = useState(false);
   // Окно входа гостя — отдельно от выбора кошелька: после входа тот не должен открыться сам.
   const [tgLoginOpen, setTgLoginOpen] = useState(false);
+  // Вкладка «tickets» — холд NFT, с 20.10.2026 копит золото (ПРАВИЛА §8.61).
   const [tab, setTab] = useState<"drops" | "tickets" | "likes">("drops");
-  const [shopOpen, setShopOpen] = useState(false);
   const [likesBuyOpen, setLikesBuyOpen] = useState(false);
   const [payoutOpen, setPayoutOpen] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const sp = new URLSearchParams(window.location.search);
-    if (sp.get("shop") === "open") {
-      setShopOpen(true);
-      sp.delete("shop");
-      const newSearch = sp.toString();
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname + (newSearch ? "?" + newSearch : ""),
-      );
-    }
-  }, []);
   const [fanfare, setFanfare] = useState(0);
   const qc = useQueryClient();
 
@@ -211,12 +181,8 @@ function MyNFTsPage() {
     gcTime: 10 * 60_000,
   });
 
-  const tickets = useQuery({
-    queryKey: ["my-tickets", walletConnected],
-    queryFn: () => getMyTickets(),
-    enabled: walletConnected,
-    staleTime: 60_000,
-  });
+  // Билетов нет: платный клейм стоит золото ×500 (goldForTicketPrice).
+  const resources = useResources();
 
   const likeBal = useQuery({
     queryKey: ["my-like-balance"],
@@ -237,6 +203,8 @@ function MyNFTsPage() {
     queryFn: () => getSession(),
   });
   const needsTg = !!sessionQ.data?.wallet && !sessionQ.data.telegramLinked;
+  // Белый список вывода (§8.127): новым аккаунтам кнопки вывода нет.
+  const canWithdraw = sessionQ.data?.canWithdraw === true;
 
   const pendingNfts = useQuery({
     queryKey: ["my-pending-nfts", walletConnected],
@@ -342,13 +310,6 @@ function MyNFTsPage() {
         toast.success(`🎉 ${t("mynfts.molodec")}!`);
         setFanfare((n) => n + 1);
       }
-      const spent = (res as { ticketsSpent?: number }).ticketsSpent ?? 0;
-      if (spent > 0) {
-        qc.setQueryData(["my-tickets"], (old: { available?: number } | undefined) => {
-          if (!old || typeof old.available !== "number") return old;
-          return { ...old, available: Math.max(0, old.available - spent) };
-        });
-      }
       const claimedTokenIds = (res as { claimedTokenIds?: string[] }).claimedTokenIds ?? [];
       const claimedDropId = (res as { claimedDropId?: string }).claimedDropId;
       if (claimedTokenIds.length > 0 && claimedDropId) {
@@ -393,9 +354,10 @@ function MyNFTsPage() {
         });
       }
       qc.invalidateQueries({ queryKey: ["my-nfts"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       qc.invalidateQueries({ queryKey: ["my-payouts"] });
       qc.invalidateQueries({ queryKey: ["my-claim-history"] });
+      qc.invalidateQueries({ queryKey: ["my-gifts"] }); // награда-товар лежит в «Подарках»
     },
     onError: (e: Error) => toast.error(humanError(e)),
   });
@@ -464,6 +426,7 @@ function MyNFTsPage() {
       toast.success(t("mynfts.toast_rewards_received", { n: res.claimed, summary }));
       qc.invalidateQueries({ queryKey: ["my-nfts"] });
       qc.invalidateQueries({ queryKey: ["my-payouts"] });
+      qc.invalidateQueries({ queryKey: ["my-gifts"] });
     },
     onError: (e: Error) => toast.error(humanError(e)),
   });
@@ -517,10 +480,8 @@ function MyNFTsPage() {
   }
   const totalReady = freeReadyCount + paidReadyCount;
   const totalClaimed = myNfts.data?.totalClaimed ?? 0;
-  const ticketsAvailable = tickets.data?.available ?? 0;
-  const ticketsAvailableRaw =
-    (tickets.data as { availableRaw?: number } | undefined)?.availableRaw ?? ticketsAvailable;
-  const noTickets = ticketsAvailable === 0;
+  const goldAvailable = Math.floor(resources.data?.gold ?? 0);
+  const noTickets = resources.isSuccess && goldAvailable === 0;
 
   return (
     <AppShell>
@@ -616,7 +577,7 @@ function MyNFTsPage() {
                                 </span>
                               )}
                             </div>
-                            <button
+                            {canWithdraw && <button
                               onClick={() =>
                                 setWithdrawModal({
                                   symbol: p.symbol,
@@ -632,7 +593,7 @@ function MyNFTsPage() {
                                 <ExternalLink className="h-3.5 w-3.5" />
                               )}
                               {isPending ? "…" : t("mynfts.withdraw")}
-                            </button>
+                            </button>}
                           </div>
                         );
                       })}
@@ -645,7 +606,7 @@ function MyNFTsPage() {
           <div className="mt-4 grid grid-cols-4 divide-x divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.01] shadow-card">
             <div className={cn("px-2.5 py-2.5", noTickets && "bg-destructive/5")}>
               <div className="flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <Ticket className="h-2.5 w-2.5" /> {t("mynfts.stat_tickets")}
+                <Coins className="h-2.5 w-2.5" /> {t("mynfts.stat_tickets")}
               </div>
               <div className="mt-1.5 flex items-center justify-between gap-1">
                 <span
@@ -657,19 +618,12 @@ function MyNFTsPage() {
                   {/* Пока баланс перезагружается — спиннер вместо устаревшего
                       числа: раньше 3-5 секунд показывалось «утреннее» значение
                       и игрок думал, что фарм не начислился (жалоба). */}
-                  {tickets.isFetching ? (
+                  {resources.isFetching ? (
                     <Loader2 className="h-4 w-4 animate-spin opacity-70" />
                   ) : (
-                    formatFractional(ticketsAvailableRaw)
+                    goldAvailable.toLocaleString("ru-RU")
                   )}
                 </span>
-                <button
-                  onClick={() => setShopOpen(true)}
-                  title={t("mynfts.buy_tickets")}
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold transition hover:bg-gold/30"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
               </div>
             </div>
 
@@ -772,7 +726,7 @@ function MyNFTsPage() {
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Ticket className="h-3.5 w-3.5" />
+            <Coins className="h-3.5 w-3.5" />
             {t("mynfts.tab_tickets")}
           </button>
           <button
@@ -818,6 +772,7 @@ function MyNFTsPage() {
                 sessionWallet={walletAddress}
                 onWithdraw={(recipient) => withdrawNfts.mutate(recipient)}
                 isPending={withdrawNfts.isPending}
+                canWithdraw={canWithdraw}
               />
             )}
 
@@ -884,7 +839,7 @@ function MyNFTsPage() {
                           <DropOfferCard
                             key={g.dropId}
                             group={g}
-                            ticketsAvailable={ticketsAvailable}
+                            goldAvailable={goldAvailable}
                             claiming={
                               claimMany.isPending && claimMany.variables?.dropId === g.dropId
                             }
@@ -897,7 +852,7 @@ function MyNFTsPage() {
                               const isCombo = g.mode === "combo";
                               const ticketCost = g.ticketCost ?? 1;
                               const affordable = Math.floor(
-                                ticketsAvailable / Math.max(1, ticketCost),
+                                goldAvailable / Math.max(1, goldForTicketPrice(ticketCost)),
                               );
                               const maxCount = isCombo
                                 ? Math.min(g.availableClaims ?? 0, affordable)
@@ -934,7 +889,7 @@ function MyNFTsPage() {
                           <div key={g.dropId} className="w-72 shrink-0 sm:w-80">
                             <ComboOfferCard
                               group={g}
-                              ticketsAvailable={ticketsAvailable}
+                              goldAvailable={goldAvailable}
                               claiming={false}
                               onClaim={() => {
                                 /* noop */
@@ -1033,14 +988,13 @@ function MyNFTsPage() {
           </>
         )}
       </div>
-      <ShopModal open={shopOpen} onClose={() => setShopOpen(false)} />
       <BuyLikesModal
         open={likesBuyOpen}
         onClose={() => setLikesBuyOpen(false)}
         currentLikes={Number(likeBal.data?.available ?? 0)}
       />
       <WalletModal open={walletOpen} onClose={() => setWalletOpen(false)} />
-      {withdrawModal && (
+      {withdrawModal && canWithdraw && (
         <WithdrawSplitModal
           symbol={withdrawModal.symbol}
           totalAmount={withdrawModal.amount}

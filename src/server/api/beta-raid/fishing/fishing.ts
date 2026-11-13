@@ -26,6 +26,8 @@ import { FISH_MINUTES_MAX, IDLE_FISH, type FishView } from "@/lib/raid/fishing";
 import { loadFishingConfig } from "@/server/api/beta-raid/fishing/fishing-config";
 import { fishBonusOf, fishBonusPlan } from "@/server/api/beta-raid/fishing/fishing-bonus";
 import { chancePlanOf } from "@/lib/raid/fishChanceSteps";
+import { weatherChancePlan } from "@/lib/raid/fishWeather";
+import { mapWeatherCoefs } from "@/server/api/beta-raid/weather/weather-read";
 import {
   fishingPlan,
   planTriesFor,
@@ -59,7 +61,7 @@ export const getFishingPlan = createServerFn({ method: "GET" }).handler(
     const cfg = await loadFishingConfig();
     const bp = await resolveBackpack(wallet).catch(() => null);
     if (!bp) return { rodTries: 0, bonusPct: 0, maxMinutes: 0, intervalMin: cfg.intervalMin };
-    return fishingPlan(bp.heroId, cfg.intervalMin, await fishBonusOf(wallet));
+    return fishingPlan(bp.heroId, cfg.intervalMin, (await fishBonusOf(wallet)).bonusPct);
   },
 );
 
@@ -109,12 +111,17 @@ export const startFishing = createServerFn({ method: "POST" })
     // забрасываем на сорок пять, а не обещаем лишнего.
     const planTries = planTriesFor(data.minutes, cfg.intervalMin, await rodTriesOf(bp.heroId));
     if (planTries <= 0) throw new Error(NEED_ROD);
-    // Шанс заброса — база мира с бонусом героя (артефакты + удача), и он
+    // Шанс заброса — база мира (рыбаку +3, fisherBaseAdd) с бонусом героя
+    // (артефакты + удача), и он
     // фиксируется в строке: снял артефакт посреди часа — заброс доживает с
     // обещанным шансом. Кроме временной удачи: истёк бафф удачи — с его срока
     // попытки идут без него (ступени chance_steps, владелец 14.10, вечер).
     const bonus = await fishBonusPlan(a.wallet);
-    const chance = chancePlanOf(cfg.chancePct, bonus.bonusPct, bonus.steps);
+    // Погода карты заброса (26.10.2026) — последним множителем, фиксируется с шансом.
+    const chance = weatherChancePlan(
+      chancePlanOf(cfg.chancePct + bonus.addPct, bonus.bonusPct, bonus.steps),
+      (await mapWeatherCoefs(a.mapId)).fish,
+    );
     // Рыбачит основной инструмент (§8.24): удочка — в руки (под локом героя).
     const held = sqlRow<{ set: boolean }>(
       (await mcpExec(setMainSql(bp.heroId, pick.key))) as unknown[],

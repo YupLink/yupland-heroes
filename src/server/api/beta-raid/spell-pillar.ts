@@ -77,7 +77,7 @@ export async function requirePillar(
   wallet: string,
   q: number,
   r: number,
-): Promise<{ cfg: SpellPillarConfig } | { reasonKey: string }> {
+): Promise<{ cfg: SpellPillarConfig; mapId: string } | { reasonKey: string }> {
   const mapId = await myMapId(wallet);
   requireAdjacent(await playerCell(wallet), q, r);
   await requireNotVoid(wallet, mapId, q, r);
@@ -87,7 +87,7 @@ export async function requirePillar(
   const cfg = spellPillarConfig(b.config, b.meta);
   if (!cfg) return { reasonKey: "spell.pillar_not_here" };
   if (cfg.learnPrices.length === 0) return { reasonKey: "spell.pillar_no_price" };
-  return { cfg };
+  return { cfg, mapId };
 }
 
 export type PillarSpell = {
@@ -144,6 +144,12 @@ export const getSpellPillarOffer = createServerFn({ method: "GET" })
     ]);
     const total = spellbookSlots({ spec: hero.spec, rarity: hero.rarity });
     const free = Math.max(0, total - known.length);
+    if (gate.mapId.startsWith("isle_")) {
+      await import("./island/island-spell-progress")
+        .then(({ noteIslandPillarOffer }) => noteIslandPillarOffer(wallet, gate.mapId, data.q, data.r,
+          hero.heroId, catalog.filter((s) => known.includes(s.id)).map((s) => s.id)))
+        .catch((e) => console.warn("[island] pillar offer progress:", e));
+    }
     return {
       hero,
       slots: { total, used: known.length, free },
@@ -190,3 +196,4 @@ const priceView = (cfg: SpellPillarConfig) => ({
   learnPrices: cfg.learnPrices,
   forgetPrices: cfg.forgetPrices,
 });
+

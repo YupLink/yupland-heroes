@@ -36,6 +36,17 @@ export function heroFishBonus(o: {
   return Math.round((arts + luckFishBonus(o.luck)) * 10) / 10;
 }
 
+/**
+ * Рыбак (способность героя, владелец 09.11.2026): «к основной рыбалке +3 %, там
+ * основной 7 % — с рыбаком в общем 10 %». Прибавка — к базе мира в пунктах;
+ * артефакты и удача считаются уже от неё.
+ */
+export const FISHER_BASE_ADD = 3;
+
+/** Прибавка к базе шанса по способности героя: рыбак — +3, иначе 0. */
+export const fisherBaseAdd = (ability: string | null | undefined): number =>
+  ability === "fisher" ? FISHER_BASE_ADD : 0;
+
 /** Шанс с бонусом: база × (1 + бонус / 100), с точностью до сотых и не выше 100 %. */
 export function fishChanceWith(basePct: number, bonusPct: number): number {
   const base = Math.max(0, num(basePct));

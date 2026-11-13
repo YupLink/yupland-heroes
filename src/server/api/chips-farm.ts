@@ -247,41 +247,24 @@ export async function claimCollectionFarmCore(wallet: string, collectionId: stri
       st.collections[data.collectionId] = entry;
       await saveCollFarmState(wallet, st);
       throw new Error(
-        `Фарм запущен. Возвращайся через ${fmtRemain(COLLECTION_FARM_COOLDOWN_MS)} за билетами`,
+        `Фарм запущен. Возвращайся через ${fmtRemain(COLLECTION_FARM_COOLDOWN_MS)} за золотом`,
       );
     }
 
-    {
-      // Ключ — слот кулдауна ПЛЮС аккаунт. Слот один на всех, поэтому без
-      // аккаунта первый собравший в этом окне забирал ключ себе, а остальным
-      // четырнадцати леджер отвечал «уже собрано». Аккаунт, а не кошелёк:
-      // билеты общие на все sister-кошельки, и по кошельку слот обходился бы
-      // переключением.
-      const { moveTickets, ticketAccountId } = await import("./tickets-ledger");
-      const account = (await ticketAccountId(wallet)) ?? wallet;
-      const slot = Math.floor(now / COLLECTION_FARM_COOLDOWN_MS);
-      const ref = `collfarm:${data.collectionId}:${account}:${slot}`;
-      const res = await moveTickets({
-        wallet,
-        delta: Math.round(payout * 1e4) / 1e4,
-        kind: "collection_farm",
-        ref,
-      });
-      // Состояние пишем ТОЛЬКО после удачного начисления. Раньше «собрано
-      // сейчас» записывалось первым, и если билеты не начислялись, накопленное
-      // сгорало вместе с записью.
-      //
-      // applied=false — НЕ отказ. Строка леджера с этим ref уже есть, а ref
-      // включает аккаунт и окно: значит билеты на этот счёт начислены — либо
-      // слепым повтором этого же запроса из транспорта (см. контракт ретрая в
-      // mcpClient), либо параллельным кликом с сестринского кошелька, у
-      // которого баланс общий. Прежнее «Уже собрано» было враньём вдвойне:
-      // игрок читал отказ на успешное начисление, а состояние не писалось — и
-      // в следующем окне тот же период оплачивался второй раз.
-      if (!res.applied) {
-        console.warn(`[collfarm] начисление уже было, дописываем состояние: ${ref}`);
-      }
-    }
+    // Музей платит золотом — 100 за прежний билет (§8.61); копится по-прежнему в
+    // билетах (ставка коллекции). Ключ — слот кулдауна ПЛЮС аккаунт: слот один
+    // на всех, аккаунт — чтобы sister-кошелёк не обходил окно. Состояние пишем
+    // ТОЛЬКО после начисления (иначе накопленное сгорало бы). Повтор того же
+    // ключа (ретрай транспорта, клик с сестры) база второй раз не проводит.
+    const account = await accountOf(wallet);
+    const slot = Math.floor(now / COLLECTION_FARM_COOLDOWN_MS);
+    const { creditGoldForTickets } = await import("./gold-earn");
+    const gold = await creditGoldForTickets({
+      account,
+      tickets: Math.round(payout * 1e4) / 1e4,
+      kind: "museum",
+      ref: `collfarm:${data.collectionId}:${account}:${slot}`,
+    });
     const newEntry: CollFarmEntry = {
       lastClaimAtMs: now,
       totalClaimed: entry.totalClaimed + accrued,
@@ -295,6 +278,8 @@ export async function claimCollectionFarmCore(wallet: string, collectionId: stri
 
     return {
       claimedTickets: Math.round(payout * 1e4) / 1e4,
+      /** Сколько золота начислено (100 за билет накопления). */
+      claimedGold: gold,
       totalClaimed: Math.round(newEntry.totalClaimed * 1e4) / 1e4,
       minLevel: info.minLevel,
       ratePerDay: rate,

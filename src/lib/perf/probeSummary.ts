@@ -52,6 +52,7 @@ export type Device = {
   mem: number | null;
   conn: string | null;
   screen: string;
+  build?: string;
 };
 
 /** Свернуть окно в пробу. Топ функций режем по весу: 16 имён хватает. */

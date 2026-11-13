@@ -20,10 +20,14 @@ import {
   type MarketItem,
   type MarketSide,
 } from "@/lib/marketItem";
+import { recipeHasPrize, type RecipeOutcome } from "@/lib/marketRecipe";
+import { useBuildingShop } from "@/components/beta-raid/building-sale/buildingShopContext";
 import { invalidateMarketCell } from "./invalidateMarket";
 import { MarketGoodFields } from "./MarketGoodFields";
 import { MarketPriceFields } from "./MarketPriceFields";
 import { MarketExtraFields } from "./MarketExtraFields";
+import { MarketPriceMoreFields } from "./MarketPriceMoreFields";
+import { needsPriceToken } from "@/lib/marketPrices";
 
 type Draft = MarketDraft;
 
@@ -45,8 +49,20 @@ export function MarketItemForm({
   // Количество правим прямо на входе: позиции, которым дробь досталась от
   // прежнего типа товара, чинятся первым же сохранением — редактировать это
   // поле у пака/арта нечем, а сервер такую сделку не проводит.
+  // В лавке построек новая позиция сразу — постройка (другого там не продают).
+  const buildingShop = useBuildingShop();
   const [draft, setDraft] = useState<Draft>(() => {
-    const base = initial ?? emptyMarketItem(q, r, side);
+    const empty = emptyMarketItem(q, r, side);
+    const base =
+      initial ??
+      (buildingShop
+        ? {
+            ...empty,
+            kind: "building" as const,
+            refId: null,
+            building: { skinId: null, config: null },
+          }
+        : empty);
     return { ...base, giveAmount: normalizeGiveAmount(base.kind, base.giveAmount) };
   });
   const isSell = side === "sell";
@@ -57,6 +73,7 @@ export function MarketItemForm({
   const safe = withoutUsdt(tokens);
   const isRes = draft.kind === "resource";
   const isCustom = draft.kind === "custom";
+  const isRecipe = draft.kind === "recipe";
 
   const save = useMutation({
     mutationFn: () =>
@@ -92,6 +109,11 @@ export function MarketItemForm({
           buyerMode: "all",
           buyerRaces: [],
           buyerSpecs: [],
+          outcomes: isRecipe ? (draft.outcomes ?? []) : null,
+          // Постройка: облик и настройка — как у постройки на карте.
+          building: draft.kind === "building" ? (draft.building ?? null) : null,
+          // Ещё ингредиенты — только у покупки и только после второй цены.
+          priceMore: isSell || !draft.price2Resource ? [] : (draft.priceMore ?? []),
         },
       }),
     onSuccess: () => {
@@ -122,20 +144,26 @@ export function MarketItemForm({
   const canSave =
     // Имя вводят только у кастомного; ресурсу оно = подпись ресурса, шаблонным
     // (пак/герой/арт/босс) = имя шаблона (refId ниже гарантирует, что выбран).
-    (!isCustom || draft.name.trim().length > 0) &&
+    (!(isCustom || isRecipe) || draft.name.trim().length > 0) &&
     draft.priceAmount > 0 &&
     (draft.priceResource !== "token" || !!draft.priceToken) &&
     // Предметная цена (пак/герой/арт/босс/кастом) — тоже нужен выбранный шаблон.
     (!["pack", "hero", "art", "boss", "custom"].includes(draft.priceResource) ||
       !!draft.priceToken) &&
     price2Ok &&
+    // Ещё ингредиенты: у каждого сумма и выбранный шаблон/токен.
+    (draft.priceMore ?? []).every(
+      (l) => l.amount > 0 && (!needsPriceToken(l.resource) || !!l.token),
+    ) &&
     // Количество нужно любому типу, даже когда поля для него нет: у предметных
     // оно обязано быть целой штукой, иначе сервер откажет уже на покупке.
     draft.giveAmount === normalizeGiveAmount(draft.kind, draft.giveAmount) &&
     (!isRes ||
       (draft.refId && draft.giveAmount > 0 && (draft.refId !== "token" || !!draft.giveToken))) &&
     // custom теперь тоже ссылается на шаблон (refId) — как пак/герой/босс.
-    (isRes || !!draft.refId);
+    (isRes || isRecipe || !!draft.refId) &&
+    // Рецепт: хоть один приз и у каждого — количество.
+    (!isRecipe || recipeReady(draft.outcomes ?? []));
 
   return (
     <div className="space-y-2 rounded-xl border border-gold/30 bg-gold/5 p-2.5">
@@ -171,13 +199,21 @@ export function MarketItemForm({
           set(
             on
               ? { price2Resource: "diamonds", price2Amount: 1, price2Token: null }
-              : { price2Resource: null, price2Amount: null, price2Token: null },
+              : { price2Resource: null, price2Amount: null, price2Token: null, priceMore: [] },
           )
         }
         onPrice2Resource={(v) => set({ price2Resource: v })}
         onPrice2Amount={(v) => set({ price2Amount: v })}
         onPrice2Token={(v) => set({ price2Token: v })}
       />
+
+      {!isSell && draft.price2Resource != null && (
+        <MarketPriceMoreFields
+          lines={draft.priceMore ?? []}
+          tokens={tokens}
+          onChange={(v) => set({ priceMore: v })}
+        />
+      )}
 
       <div className="flex gap-2 pt-1">
         <button
@@ -203,3 +239,6 @@ export function MarketItemForm({
     </div>
   );
 }
+
+const recipeReady = (list: readonly RecipeOutcome[]): boolean =>
+  recipeHasPrize(list) && list.every((o) => o.kind === "none" || o.amount > 0);

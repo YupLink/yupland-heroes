@@ -23,8 +23,10 @@ function table(spec: Partial<Record<EconKindGroup, string[]>>): Record<string, E
 
 /** Префикс ref в acc_ledger → куда ушли/откуда пришли деньги. */
 const ACC_BY_PREFIX = table({
-  trade_buy: ["mkt", "shop", "cpack", "epack", "esub", "town-buy"],
-  trade_sell: ["mkt-sell", "town-sell"],
+  // gshop — покупка золота со счёта (§8.66): деньги ушли в магазин игры.
+  // hmkt / hmkt-sell — рынок героев за DARAI (§8.67): покупатель / выплата продавцу.
+  trade_buy: ["mkt", "shop", "cpack", "epack", "esub", "town-buy", "gshop", "hmkt"],
+  trade_sell: ["mkt-sell", "town-sell", "hmkt-sell"],
   sink: [
     "portal",
     "gate",
@@ -46,7 +48,8 @@ const ACC_BY_PREFIX = table({
 });
 
 const ACC_BY_KIND = table({
-  reward: ["acc_reward"],
+  // ref_sub — 10 % USDT с подписки друга, забранные в «Друзьях» (ref-01).
+  reward: ["acc_reward", "ref_sub"],
   mine: ["mine"],
   deposit: ["acc_deposit", "acc_stars"],
   withdraw: ["acc_withdraw"],
@@ -57,17 +60,67 @@ const ACC_BY_KIND = table({
 // 'mob' — добыча с моба, 'reward' — прочие награды, 'field' — грядка. Прежние
 // строки этих источников остались видом 'mine'.
 const RES_BY_KIND = table({
-  trade_buy: ["market_buy"],
-  trade_sell: ["market_sell"],
-  other: ["wh_take"],
+  // chip_market_* — маркет фишек за золото (с 21.10); hero_market_* — рынок героев (§8.67).
+  trade_buy: ["market_buy", "chip_market_buy", "hero_market_buy"],
+  trade_sell: ["market_sell", "chip_market_sale", "hero_market_sale"],
+  // mine_dismantle — 30 % цены заготовки за разборку шахты сразу на счёт (§8.70,
+  // с 25.10; раньше — мешочком, вид bag_take, тоже «прочее»): не доход шахты.
+  other: ["wh_take", "mine_dismantle"],
   // tour_fee — плата за запись на турнир (цена у турнира своя), сгорает;
   // tour_fee_refund — её откат, когда запись сорвалась (как portal_refund).
   // bank_stake_back — золото, возвращённое за снятие вклада раньше срока (§8.51)
-  sink: ["portal", "portal_refund", "tour_fee", "tour_fee_refund", "bank_stake_back"],
+  // craft — золото за улучшение фишки (с 20.10 вместо билетов); craft_undo — его
+  // возврат, когда крафт сорвался (та же группа: сальдо честное).
+  // mine_repair — починка шахты v2 (§8.59), ресурсы сгорают.
+  // debt_pay — золото в счёт долга за дыру грядки (§8.129), сгорает.
+  sink: [
+    "debt_pay",
+    "portal",
+    "portal_refund",
+    "tour_fee",
+    "tour_fee_refund",
+    "bank_stake_back",
+    "craft",
+    "craft_undo",
+    "mine_repair",
+    // Комиссия рынка героев 9 % в золоте — сгорает (§8.67).
+    "hero_market_fee",
+    // Ремонт артефактов в кузнице: золото и алмазы сгорают (§8.72).
+    "art_repair",
+    // Траты золотом вместо билетов (с 20.10, §8.61): дроп, пак фишек, энергопак,
+    // лайки, постройка (дерево, покои), место в университете, переселение замка;
+    // *_undo — их возвраты, когда выдача сорвалась (та же группа: сальдо честное).
+    "drop_claim",
+    "drop_claim_undo",
+    "chip_pack",
+    "energy_pack",
+    "like_purchase",
+    "like_purchase_undo",
+    "building",
+    "university_slot",
+    "university_slot_undo",
+    "home_castle",
+  ],
   gift: ["gift"],
-  // bank_stake — золото стейкинга банка
-  reward: ["mob", "reward", "bank_stake"],
+  // bank_stake — золото стейкинга банка. Дальше — золото вместо билетов-наград
+  // (с 20.10, §8.61): холд NFT, босс, мистик-бокс, обмен тренировочных фишек,
+  // рефералы, задания, музей. Подарок билетами — вид gift, шахта — mine.
+  reward: [
+    "mob",
+    "reward",
+    "bank_stake",
+    "nft_claim",
+    "boss",
+    "mystic",
+    "hallway",
+    "referral",
+    "task",
+    "museum",
+  ],
   mine: ["mine", "mine_refund", "field"],
+  // Разовый перевод остатков билетов в золото по 100 (миграция tix-gold-04, 20.10);
+  // gold_shop — золото, купленное за USDT / DARAI / звёзды (§8.66).
+  deposit: ["tickets_convert", "gold_shop"],
 });
 
 const TICKET_BY_KIND = table({
@@ -75,7 +128,16 @@ const TICKET_BY_KIND = table({
   trade_sell: ["market_sale"],
   trade_buy: ["market_buy"],
   reward: ["raid_reward", "nft_claim", "mining", "collection_farm", "referral", "task"],
-  sink: ["chip_pack", "energy_pack", "like_purchase", "craft", "building", "mint_fee"],
+  // gold_convert — разовый перевод остатков билетов в золото (tix-gold-04, 20.10).
+  sink: [
+    "chip_pack",
+    "energy_pack",
+    "like_purchase",
+    "craft",
+    "building",
+    "mint_fee",
+    "gold_convert",
+  ],
   gift: ["admin_grant"],
 });
 // Слоты и платные розыгрыши — тоже сток; отдельной строкой, чтобы читалось.

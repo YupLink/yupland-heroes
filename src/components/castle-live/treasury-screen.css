@@ -1,12 +1,12 @@
 @font-face {
   font-family: "Treasury Russo";
-  src: url("../../assets/tavern/RussoOne.ttf") format("truetype");
+  src: url("../../assets/tavern/RussoOne.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: "Treasury Golos";
-  src: url("../../assets/tavern/GolosText.ttf") format("truetype");
+  src: url("../../assets/tavern/GolosText.woff2") format("woff2");
   font-weight: 400 900;
   font-display: swap;
 }
@@ -51,7 +51,7 @@
   width: 100%;
   min-height: 60px;
   margin-bottom: -60px;
-  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+  padding: max(8px, var(--app-top,env(safe-area-inset-top,0px))) 12px 8px;
   background: transparent;
 }
 .treasury-header--scrolled { background: #081521; box-shadow: 0 3px 12px #0006; }
@@ -154,6 +154,7 @@
 .treasury-currency { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 66px; padding: 7px 3px; border: 0; background: transparent; color: #f3eee6; text-align: left; cursor: pointer; }
 .treasury-currency__icon { display: grid; place-items: center; flex: none; width: 39px; height: 39px; border: 1px solid #b5945e; border-radius: 50%; background: #213c59; color: #edc36b; font: 400 13px/1 "Treasury Russo", sans-serif; letter-spacing: -.04em; }
 .treasury-currency__icon svg { width: 22px; height: 22px; }
+.treasury-currency__icon img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .treasury-currency__symbol { min-width: 0; flex: 1; overflow: hidden; font-size: 16px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .treasury-currency strong { overflow: hidden; font-size: 17px; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 .treasury-currency__empty { color: #b0a99e; }

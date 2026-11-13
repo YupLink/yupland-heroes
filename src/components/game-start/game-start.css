@@ -1,0 +1,27 @@
+/* Меню входа новичка на заставке (GameLoadState, слот menu): над рамкой полоски
+   загрузки, там, где у заставки подпись; «Сложность» (один вариант, выбран) — над
+   кнопкой. Кнопка и окно выбора — рецепт окон Ангелины (castle-gate-dialog):
+   золотая кнопка, Russo One, тёмная панель. */
+.game-start{position:absolute;left:50%;bottom:calc(15.5% + 4px);width:min(78%,340px);transform:translateX(-50%);pointer-events:auto}
+.game-load-state .game-start__go{min-height:50px;border:1px solid #f4ce74;border-radius:12px;background:linear-gradient(180deg,#f2cd77,#ca963d);color:#20170d;font:400 clamp(18px,5vw,22px)/1.2 "Game Load Russo",sans-serif;box-shadow:0 5px 22px #000c}
+.game-load-state .game-start__go:active{transform:translateY(1px)}
+.game-load-state .game-start__difficulty{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px;padding:5px 5px 5px 14px;border-radius:12px;background:#000b;color:#e7decf;font:400 15px/1.2 "Game Load Russo",sans-serif}
+.game-load-state .game-start__level{width:auto;min-height:0;padding:5px 14px;border:1px solid #f4ce74;border-radius:9px;background:#2b2516;color:#f2cd77;font:inherit;cursor:default}
+.game-load-state .game-start__note{margin:0 0 10px;padding:8px 12px;border-radius:10px;background:#000a;color:#e7decf;font:400 14px/1.35 "Game Load Russo",sans-serif;text-align:center}
+@media(min-aspect-ratio:3/4),(min-width:600px) and (min-aspect-ratio:3/5){.game-start{bottom:calc(14% + 6px);width:min(30%,380px)}}
+
+/* Окно выбора целиком влезает в экран телефона 360×640 без прокрутки: картинка героя
+   ужимается по высоте экрана (3 ряда по 2; от 420 px ширины — 2 ряда по 3). */
+.game-start-pick__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}
+.game-start-pick__card{display:grid;justify-items:center;gap:6px;padding:10px 8px;border:1px solid #736448;border-radius:14px;background:#171a1c;color:#e7decf;font:400 15px/1.2 "Castle Gate Russo",sans-serif}
+.game-start-pick__card img{width:100%;max-width:clamp(56px,calc((100dvh - 380px) / 3),110px);aspect-ratio:1;object-fit:contain}
+@media(min-width:420px){.game-start-pick__grid{grid-template-columns:repeat(3,minmax(0,1fr))}.game-start-pick__card img{max-width:clamp(56px,calc((100dvh - 330px) / 2),110px)}}
+.game-start-pick__card:focus-visible{outline:2px solid #f4c45e;outline-offset:2px}
+.game-start-pick .castle-gate-dialog__actions button:disabled{opacity:.6}
+.game-start-pick__description{margin-top:12px;color:#d8cdb9;font-size:14px;line-height:1.45}
+.game-start-pick__detail{display:grid;grid-template-columns:minmax(0,112px) minmax(0,1fr);align-items:center;gap:14px;margin-top:16px}
+.game-start-pick__detail:not(:has(img)){grid-template-columns:1fr}
+.game-start-pick__detail img{width:100%;aspect-ratio:1;object-fit:contain}
+.game-start-pick__detail strong{color:#f2cd77}
+.game-start-pick__detail p{font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.game-start-pick__hero-name{margin-bottom:8px;font-weight:700}

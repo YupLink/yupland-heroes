@@ -1,0 +1,54 @@
+/* Fit the live square-cell board into the remaining viewport height. */
+html,body,#app{height:100%;min-height:0;overflow:hidden}
+.shell{height:100dvh;max-height:100dvh;min-height:0;padding:6px 8px 10px;display:flex;flex-direction:column;align-items:center;overflow:clip}
+.masthead{flex:none}
+.game-panel{width:100%;flex:1;min-height:0;padding-bottom:0;display:flex;flex-direction:column}
+.mission-row{flex:none}
+.journey-strip{flex:none;margin-bottom:4px}
+.board-area{flex:1;min-height:0;width:100%;padding:23px 0;display:flex;justify-content:center;align-items:flex-start;container-type:size}
+.board-frame{width:min(100cqw,80cqh);max-width:100%;height:auto;aspect-ratio:4/5;flex:none;padding:15px 12px}
+.board{width:100%;aspect-ratio:8/10}
+.route-layer{position:absolute;inset:15px 12px;z-index:6;pointer-events:none}
+.route-marker{position:absolute;left:calc(var(--col)*12.5%);width:12.5%;height:22px;display:flex;justify-content:center;pointer-events:none}
+.entry-route{bottom:calc(100% + 2px);align-items:center}
+.exit-route{top:calc(100% + 2px);align-items:center}
+.route-marker svg{width:58%;height:100%;max-width:22px;max-height:22px;filter:drop-shadow(0 2px 2px #170c05);overflow:visible}
+.route-marker path{fill:#ffda60;stroke:#794315;stroke-width:2;stroke-linejoin:round}
+.entry-route svg{margin-top:0;opacity:.95}
+.exit-route svg{margin-bottom:0;filter:drop-shadow(0 0 5px #ffb12f) drop-shadow(0 2px 2px #170c05)}
+.exit-route path{fill:#ffe479;stroke:#723114}
+.cell.entry{box-shadow:inset 0 0 0 1px #c89b4f,inset 0 12px 14px #d3a43522}
+.cell.exit{background:linear-gradient(#5a2c19,#3c2014);box-shadow:inset 0 0 0 2px #e6b653,inset 0 -15px 18px #d58c293d}
+.crown-pop{top:82%}
+@media(max-height:500px){.dialog{padding:12px 18px}.dialog-crown{width:48px;height:48px;margin:0 auto}.dialog h2{font-size:22px;margin:5px 0}.dialog p{font-size:12px;line-height:1.4;margin:7px 0}.entry-price{font-size:12px;margin:8px 0 12px}.entry-price span{font-size:10px;margin-top:4px}.primary{padding:9px;font-size:15px}}
+@media(min-width:600px){.shell{padding-top:10px}.board-frame{padding:15px 12px}.journey-strip{margin-bottom:4px}}
+@media(orientation:landscape) and (max-height:500px){
+  .shell{width:min(100%,900px);max-width:900px;display:grid;grid-template-columns:minmax(190px,.9fr) minmax(0,1fr);grid-template-rows:1fr auto 1fr;gap:8px 12px;padding:10px 16px}
+  .game-panel{display:contents}
+  .masthead{grid-column:1;grid-row:1;align-self:end;width:100%;margin:0}
+  .masthead h1{font-size:clamp(11px,2.3vw,19px)}
+  .mission-row{grid-column:1;grid-row:2;margin-inline:0;grid-template-columns:minmax(0,1fr) 58px}
+  .mission-plaque p{font-size:clamp(10px,1.8vw,14px)}
+  .mission-plaque>.icon{width:27px;height:27px;flex-basis:27px}
+  .journey-strip{grid-column:1;grid-row:3;align-self:start;margin:4px 0 0;padding-inline:10px}
+  .board-area{grid-column:2;grid-row:1/span 3;height:100%;padding:14px 0}
+}
+
+/* Keep lettering inside the illustrated plaques at every shell width. */
+.masthead{container-type:inline-size}
+.masthead h1{top:38%;bottom:10%;left:20%;right:20%;display:flex;align-items:center;justify-content:center;font-size:clamp(10px,4.4cqw,20px);line-height:1.05}
+.moves-stat{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:4px;padding:6px 4px}
+.moves-stat .stat-label{font-size:9px;line-height:1.2;flex:none}
+.moves-stat strong{font-size:20px;line-height:1.2;margin:0;flex:none}
+
+.mission-row{grid-template-columns:minmax(0,1fr) 80px}
+
+.cell.stone,.cell.edge-chest{border:0;border-radius:0;background:none;box-shadow:none;z-index:2}
+.cell.stone .rock,.cell.edge-chest .chest{display:block;position:relative;width:100%;height:100%;background:center/100% 100% no-repeat;filter:drop-shadow(0 1px 1px #100a07)}
+.cell.stone .rock{background-image:url('/art/chained-stone-full.webp')}
+.cell.edge-chest .chest{background-image:url('/art/wooden-chest.webp')}
+
+.bag-link{display:block;margin:14px auto 0;padding:5px 9px;border:0;background:none;color:#6d3b1d;font:700 14px Georgia,serif;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.bag-link:focus-visible{outline:2px solid #713d1b;outline-offset:3px}
+.inventory-count{font-size:24px!important;font-weight:700}
+.bag-overlay{z-index:41}

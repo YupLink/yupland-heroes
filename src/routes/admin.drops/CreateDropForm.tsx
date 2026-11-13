@@ -8,7 +8,9 @@ import { KindToggle } from "./KindToggle";
 import { PackPicker } from "./PackPicker";
 import { PackQtyInput } from "./PackQtyInput";
 import { TiersEditor } from "./TiersEditor";
+import { GoodsPicker, type GoodsPick } from "./GoodsPicker";
 import { RequiredTokensHint } from "./RequiredTokensHint";
+import { snapClaimGold, ticketCostFromGold } from "./goldCost";
 import type { TierDraft, LikeLaunchItem } from "./types";
 
 export function CreateDropForm({
@@ -16,6 +18,7 @@ export function CreateDropForm({
   reward, setReward, token, setToken,
   simpleKind, setSimpleKind, simpleNftTitle, setSimpleNftTitle,
   simplePackId, setSimplePackId, simplePackQty, setSimplePackQty,
+  simpleItem, setSimpleItem,
   freeClaim, setFreeClaim,
   recurring, setRecurring, ticketCost, setTicketCost,
   useTiers, setUseTiers, tiers, setTiers,
@@ -29,10 +32,11 @@ export function CreateDropForm({
   setSelectedTitles: (v: any) => void;
   reward: string; setReward: (v: string) => void;
   token: string; setToken: (v: string) => void;
-  simpleKind: "ft" | "nft" | "pack" | "energy"; setSimpleKind: (v: any) => void;
+  simpleKind: "ft" | "nft" | "pack" | "energy" | "custom"; setSimpleKind: (v: any) => void;
   simpleNftTitle: string; setSimpleNftTitle: (v: string) => void;
   simplePackId: string; setSimplePackId: (v: string) => void;
   simplePackQty: string; setSimplePackQty: (v: string) => void;
+  simpleItem: GoodsPick | null; setSimpleItem: (v: GoodsPick) => void;
   freeClaim: boolean; setFreeClaim: (v: boolean) => void;
   recurring: boolean; setRecurring: (v: boolean) => void;
   ticketCost: string; setTicketCost: (v: string) => void;
@@ -48,12 +52,12 @@ export function CreateDropForm({
 }) {
   const rewardParsed = parseRewardSpec(reward);
   const parsedTiers = useTiers
-    ? tiers.map((t) => ({ weight: Number(t.weight), kind: t.kind, rewardMin: Math.floor(Number(t.rewardMin)), rewardMax: Math.floor(Number(t.rewardMax)), rewardToken: t.rewardToken, nftTitle: t.nftTitle, packId: t.packId, packQty: t.kind === "pack" ? parsePackQty(t.packQty) : undefined }))
-        .filter((t) => { if (!Number.isFinite(t.weight) || t.weight <= 0) return false; if (t.kind === "nft") return !!t.nftTitle && t.nftTitle.trim().length > 0; if (t.kind === "pack") return !!t.packId && t.packId.trim().length > 0; return Number.isFinite(t.rewardMin) && t.rewardMin >= 0 && Number.isFinite(t.rewardMax) && t.rewardMax >= t.rewardMin && !!t.rewardToken; })
+    ? tiers.map((t) => ({ weight: Number(t.weight), kind: t.kind, rewardMin: Math.floor(Number(t.rewardMin)), rewardMax: Math.floor(Number(t.rewardMax)), rewardToken: t.rewardToken, nftTitle: t.nftTitle, packId: t.packId, packQty: t.kind === "pack" ? parsePackQty(t.packQty) : undefined, ...(t.kind === "custom" ? { itemId: t.itemId ?? "", itemName: t.itemName ?? "", itemImage: t.itemImage ?? undefined } : {}) }))
+        .filter((t) => { if (!Number.isFinite(t.weight) || t.weight <= 0) return false; if (t.kind === "custom") return !!t.itemId?.startsWith("cst_") && t.rewardMin >= 1 && t.rewardMax >= t.rewardMin; if (t.kind === "nft") return !!t.nftTitle && t.nftTitle.trim().length > 0; if (t.kind === "pack") return !!t.packId && t.packId.trim().length > 0; return Number.isFinite(t.rewardMin) && t.rewardMin >= 0 && Number.isFinite(t.rewardMax) && t.rewardMax >= t.rewardMin && !!t.rewardToken; })
     : [];
   const tiersValid = useTiers ? parsedTiers.length > 0 && parsedTiers.length === tiers.length : true;
   const tiersTotalWeight = parsedTiers.reduce((s, t) => s + t.weight, 0);
-  const simpleValid = useTiers ? true : simpleKind === "nft" ? simpleNftTitle.trim().length > 0 : simpleKind === "pack" ? simplePackId.trim().length > 0 : simpleKind === "energy" ? !!rewardParsed : !!rewardParsed && !!token;
+  const simpleValid = useTiers ? true : simpleKind === "nft" ? simpleNftTitle.trim().length > 0 : simpleKind === "pack" ? simplePackId.trim().length > 0 : simpleKind === "energy" ? !!rewardParsed : simpleKind === "custom" ? !!simpleItem && !!rewardParsed && rewardParsed.min >= 1 : !!rewardParsed && !!token;
   const canSubmit = selectedTitles.length > 0 && (useTiers ? tiersValid && parsedTiers.length > 0 : simpleValid);
 
   const onSubmit = () => {
@@ -62,6 +66,7 @@ export function CreateDropForm({
     if (!useTiers && simpleKind === "nft" && !simpleNftTitle.trim()) { toast.error("Выбери NFT-приз"); return; }
     if (!useTiers && simpleKind === "pack" && !simplePackId.trim()) { toast.error("Выбери пак"); return; }
     if (!useTiers && simpleKind === "energy" && !rewardParsed) { toast.error('Энергия: целое число "10" или диапазон "1-10"'); return; }
+    if (!useTiers && simpleKind === "custom" && !(simpleItem && rewardParsed && rewardParsed.min >= 1)) { toast.error('Товар: выбери его и количество "1" или "1-10"'); return; }
     if (useTiers && parsedTiers.length === 0) { toast.error("Заполни хотя бы один ярус"); return; }
     const fallbackTokenSym = token || (tokens[0]?.symbol ?? "HOPE");
     const simpleSpecialTier = !useTiers && simpleKind === "nft"
@@ -70,7 +75,9 @@ export function CreateDropForm({
         ? [{ weight: 100, kind: "pack" as const, rewardMin: 0, rewardMax: 0, rewardToken: fallbackTokenSym, nftTitle: "", packId: simplePackId.trim(), packQty: parsePackQty(simplePackQty) }]
         : !useTiers && simpleKind === "energy"
           ? [{ weight: 100, kind: "energy" as const, rewardMin: rewardParsed?.min ?? 0, rewardMax: rewardParsed?.max ?? rewardParsed?.min ?? 0, rewardToken: "energy", nftTitle: "", packId: "", packQty: undefined }]
-          : null;
+          : !useTiers && simpleKind === "custom" && simpleItem
+            ? [{ weight: 100, kind: "custom" as const, rewardMin: rewardParsed?.min ?? 1, rewardMax: rewardParsed?.max ?? rewardParsed?.min ?? 1, rewardToken: "custom", nftTitle: "", packId: "", packQty: undefined, itemId: simpleItem.id, itemName: simpleItem.name, itemImage: simpleItem.image ?? undefined }]
+            : null;
     const tiersOut = useTiers && parsedTiers.length > 0 ? parsedTiers : simpleSpecialTier;
     const firstFt = (tiersOut ?? []).find((t) => t.kind === "ft");
     const firstNumeric = (tiersOut ?? []).find((t) => t.kind === "ft" || t.kind === "energy");
@@ -78,9 +85,10 @@ export function CreateDropForm({
       ? { min: firstNumeric ? firstNumeric.rewardMin : 0, max: firstNumeric ? Math.max(firstNumeric.rewardMax, firstNumeric.rewardMin) : 0, token: (firstFt && firstFt.rewardToken) || tiersOut[0].rewardToken || fallbackTokenSym }
       : rewardParsed ? { min: rewardParsed.min, max: rewardParsed.max, token } : null;
     if (!fallback) { toast.error("Не задана награда"); return; }
-    const effectiveTicketCost = freeClaim ? 1 : Math.max(0.01, Math.round((Number(ticketCost) || 0.01) * 100) / 100);
+    // Поле — золото; в базу прежний ticket_cost в билетах (золото / 500, §8.61).
+    const effectiveTicketCost = freeClaim ? 1 : ticketCostFromGold(ticketCost);
     const rewardLine = tiersOut && tiersOut.length > 0
-      ? tiersOut.map((t) => { const k = (t as any).kind ?? "ft"; if (k === "nft") return `🎁 ${(t as any).nftTitle ?? "?"}`; if (k === "pack") { const q = parsePackQty((t as any).packQty); return `📦 пак ${(t as any).packId ?? "?"}${q > 1 ? ` ×${q}` : ""}`; } if (k === "energy") return `⚡ ${(t as any).rewardMin}-${(t as any).rewardMax} энергии`; return `${(t as any).rewardMin}-${(t as any).rewardMax} ${(t as any).rewardToken}`; }).join(" · ")
+      ? tiersOut.map((t) => { const k = (t as any).kind ?? "ft"; if (k === "nft") return `🎁 ${(t as any).nftTitle ?? "?"}`; if (k === "pack") { const q = parsePackQty((t as any).packQty); return `📦 пак ${(t as any).packId ?? "?"}${q > 1 ? ` ×${q}` : ""}`; } if (k === "energy") return `⚡ ${(t as any).rewardMin}-${(t as any).rewardMax} энергии`; if (k === "custom") return `🎒 ${(t as any).itemName || (t as any).itemId} ×${(t as any).rewardMin}-${(t as any).rewardMax}`; return `${(t as any).rewardMin}-${(t as any).rewardMax} ${(t as any).rewardToken}`; }).join(" · ")
       : `${fallback.min}-${fallback.max} ${fallback.token}`;
     if (mode === "combo") {
       const requirements = selectedTitles.map((t) => ({ title: t.title, count: Math.floor(Number(comboCounts[t.title] ?? "0")) })).filter((r) => r.count > 0);
@@ -162,6 +170,15 @@ export function CreateDropForm({
                 <div className="mt-1.5 text-[11px] text-muted-foreground">Юзер выиграет коробку с призами — внутри NFT/FT с шансами.</div>
                 <PackQtyInput value={simplePackQty} onChange={setSimplePackQty} />
               </div>
+            ) : simpleKind === "custom" ? (
+              <div className="space-y-3">
+                <GoodsPicker itemId={simpleItem?.id ?? ""} onPick={setSimpleItem} />
+                <div className="max-w-[240px]">
+                  <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted-foreground">Сколько штук</label>
+                  <input value={reward} onChange={(e) => setReward(e.target.value)} placeholder='"1" или "1-3"' className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-gold/50" />
+                  {reward && !rewardParsed && <div className="mt-1.5 text-[11px] text-destructive">Формат: число или диапазон</div>}
+                </div>
+              </div>
             ) : (
               <div className="max-w-[240px]">
                 <label className="mb-1.5 flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-muted-foreground"><Layers className="h-3.5 w-3.5 text-gold" /> Энергия</label>
@@ -183,7 +200,7 @@ export function CreateDropForm({
       </div>
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-secondary/30 p-3">
         <input type="checkbox" checked={freeClaim} onChange={(e) => setFreeClaim(e.target.checked)} className="mt-0.5 h-4 w-4 accent-gold" />
-        <div className="flex flex-1 items-center gap-1.5 text-sm font-medium"><Gift className="h-3.5 w-3.5 text-gold" /> Бесплатно (без билетов)</div>
+        <div className="flex flex-1 items-center gap-1.5 text-sm font-medium"><Gift className="h-3.5 w-3.5 text-gold" /> Бесплатно (без золота)</div>
       </label>
       <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-secondary/30 p-3">
         <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="mt-0.5 h-4 w-4 accent-neon" />
@@ -195,10 +212,10 @@ export function CreateDropForm({
       {!freeClaim && (
         <div className="rounded-xl border border-border bg-secondary/30 p-3">
           <label className="flex items-center justify-between gap-3 text-sm">
-            <span className="font-medium">Стоимость в билетах за {mode === "combo" ? "1 комбо-сет" : "1 клейм"}</span>
-            <input type="number" min={0.01} step={0.01} value={ticketCost} placeholder="0.01" onChange={(e) => setTicketCost(e.target.value)} className="w-20 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm outline-none focus:border-gold/50" />
+            <span className="font-medium">Стоимость в золоте за {mode === "combo" ? "1 комбо-сет" : "1 клейм"}</span>
+            <input type="number" min={500} step={500} value={ticketCost} placeholder="500" onChange={(e) => setTicketCost(e.target.value)} onBlur={(e) => setTicketCost(snapClaimGold(e.target.value))} className="w-20 rounded-md border border-border bg-background px-2 py-1 text-right font-mono text-sm outline-none focus:border-gold/50" />
           </label>
-          <p className="mt-1.5 text-[11px] text-muted-foreground">Сколько билетов спишется с юзера за один клейм. По умолчанию 1. При стирании поля используется 1.</p>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">Сколько золота спишется с игрока за один клейм, кратно 500 (300 → 500, 800 → 1000). По умолчанию 500. При стирании поля — 500.</p>
         </div>
       )}
       {selectedTitles.length > 0 && rewardParsed && selectedBalance && (

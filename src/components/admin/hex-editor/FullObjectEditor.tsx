@@ -18,6 +18,7 @@ import { FullObjectEditorTemplates as Templates } from "@/components/admin/hex-e
 import { FullObjectEditorFields as Fields } from "@/components/admin/hex-editor/FullObjectEditorFields";
 import { FullObjectEditorFooter as Footer } from "@/components/admin/hex-editor/FullObjectEditorFooter";
 import { FleeToggle } from "@/components/admin/hex-editor/FleeToggle";
+import { MobDuelStats } from "@/components/admin/hex-editor/MobDuelStats";
 import { makeImageUploader } from "@/components/admin/hex-editor/uploadObjectImage";
 import { useObjectFormSync } from "@/components/admin/hex-editor/useObjectFormSync";
 import { createChangeObjectTypeHandler } from "@/components/admin/hex-editor/changeObjectType";
@@ -191,7 +192,6 @@ export function FullObjectEditor({ sub, refId, cellKey, onClose, onUpdated, onSa
 
         {/* Body */}
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          {/* Шаблоны */}
           <Templates
             templates={bossTpls.data?.templates ?? []}
             show={showTpl}
@@ -228,8 +228,8 @@ export function FullObjectEditor({ sub, refId, cellKey, onClose, onUpdated, onSa
             onInteractionCostBlur={() => { if (!interactionCost || interactionCost < 1) setInteractionCost(10); }}
           />
 
-          {/* «Убегает» — свойство шаблона, а не клетки (см. FleeToggle). */}
           <FleeToggle value={flees} onChange={setFlees} disabled={sub === "mine"} />
+          {sub === "boss" && refId && refId !== "new" && <MobDuelStats templateId={refId} />}
           {/* Способности — босс/сундук/шахта настраиваются одинаково; можно оставить пустым */}
           <AbilitiesEditor value={abilities} onChange={setAbilities} />
 

@@ -2,6 +2,7 @@
 //
 // Три состояния — свободен, занят другим, твой — показываются той же картинкой,
 // что и на карте: игрок видит в окне ровно то судно, по которому тапнул.
+// Подбитый синим динамитом (dynamite-08) — без действий, только срок до уборки.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Anchor, Loader2, LogOut, X, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +16,8 @@ import { ShipPicker } from "./ShipPicker";
 import { usePickedShip } from "./useShipsAtCell";
 import { useShipBoard } from "./useShipBoard";
 import { ShipAshoreButton } from "./ShipAshoreButton";
+import { useBlastedLeft } from "./useBlastedLeft";
+import { useMoveMult } from "@/components/beta-raid/useMoveMult";
 
 /**
  * Цена хода на кнопке. Печатает её общий форматтер из shipRules — тот же, что
@@ -71,6 +74,8 @@ export function ShipModal({
   // покажет его тем, что оно есть, — свободным или занятым.
   const mark = aboard ? ship : { ...ship, mine: false };
   const state = shipLook(mark);
+  // Подбитый: «исчезнет через N мин» — вместо подсказки и всех кнопок.
+  const blastedLeft = useBlastedLeft(state === "blasted" ? mark.blastedAt : null);
   // Куда сойдём с борта и почём. Клетку схода выбирает сервер (ships.landAround)
   // — второго источника истины не заводим, иначе подпись и списание опять
   // разъедутся. Спрашиваем только со своего борта: в общий опрос причалов этот
@@ -87,11 +92,14 @@ export function ShipModal({
   // окно выходила дешевле, чем шаг на ту же клетку по карте.
   // На борт скидку героя не даём сознательно: там забирается судно, а не ноги,
   // и сервер (ship-action.stepTo) при посадке её тоже игнорирует.
-  const boardCost = underfoot ? 0 : stepEnergyCost({ boarding: true, slowExtra });
+  // На острове посадка и сход в 10 раз дешевле, погода: посадка × «ход корабля», сход —
+  // × «ход героя» — тот же множитель, что у сервера (move-weather).
+  const mult = useMoveMult();
+  const boardCost = underfoot ? 0 : stepEnergyCost({ boarding: true, slowExtra, mult });
   // Сход стоит по клетке берега — той самой, на которую сервер и высадит, и
   // это уже шаг ногами: скидка режет клетку вместе с замедлением (как сервер).
   const leaveCost = ashore
-    ? stepEnergyCost({ cellCost: ashore.cost, slowExtra, heroStepDiscountPct: stepDiscount })
+    ? stepEnergyCost({ cellCost: ashore.cost, slowExtra, heroStepDiscountPct: stepDiscount, mult })
     : null;
   /**
    * В каком состоянии цена схода. Она приезжает отдельным ленивым запросом, и
@@ -135,7 +143,9 @@ export function ShipModal({
                   ? t("braid.ship_other_title")
                   : state === "dead"
                     ? t("braid.ship_dead_title")
-                    : t("braid.ship_free")}
+                    : state === "blasted"
+                      ? t("braid.ship_blasted_title")
+                      : t("braid.ship_free")}
             </h3>
           </div>
           <button
@@ -157,12 +167,14 @@ export function ShipModal({
                 ? t("braid.ship_other_hint")
                 : state === "dead"
                   ? t("braid.ship_dead_hint")
-                  : t("braid.ship_free_hint")}
+                  : state === "blasted"
+                    ? blastedLeft
+                    : t("braid.ship_free_hint")}
           </p>
 
           {/* Запас хода видимого борта: то же число, что подписано под кораблём
               на карте. Показываем и у разбитого — там это честный ноль. */}
-          {mark.hpMax > 0 && <ShipHpBar hp={mark.hp} hpMax={mark.hpMax} />}
+          {state !== "blasted" && mark.hpMax > 0 && <ShipHpBar hp={mark.hp} hpMax={mark.hpMax} />}
 
           {/* Починка живёт здесь же, в окне корабля: чинить можно и свой борт
               под ногами, и разбитый у причала. Блок сам исчезает, когда чинить
@@ -180,7 +192,7 @@ export function ShipModal({
               onLeave={() => leave.mutate()}
               onRetry={() => void ashoreQ.refetch()}
             />
-          ) : state === "dead" ? null : ( // на разбитый борт садиться нечем
+          ) : state === "dead" || state === "blasted" ? null : ( // на разбитый борт садиться нечем
             <button
               type="button"
               onClick={() => board.mutate()}

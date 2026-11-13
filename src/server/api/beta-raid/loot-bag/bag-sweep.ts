@@ -16,6 +16,7 @@ import { mcpExec } from "@/server/db/mcpClient";
 import { publishRaid } from "@/server/raidLive";
 import { sweepSql } from "@/server/api/beta-raid/loot-bag/bag-read-sql";
 import { backSql, staleTakesSql } from "@/server/api/beta-raid/loot-bag/bag-back-sql";
+import { burnArtSql } from "@/server/api/beta-raid/loot-bag/bag-take-art-sql";
 
 const EVERY_MS = 60_000;
 
@@ -69,6 +70,11 @@ export async function sweepLootBags(): Promise<number> {
     console.warn("[loot-bag] зависшие снятия:", e instanceof Error ? e.message : e),
   );
   const gone = rowsOf<GoneRow>((await mcpExec(sweepSql())) as unknown[]);
+  // Артефакт, чья порция сгорела, сгорает и сам (§8.73 п. 4).
+  // Без wrapJson: обёртка ставит DELETE в FROM, а это не запрос (находка ревью).
+  await mcpExec(burnArtSql()).catch((e) =>
+    console.warn("[loot-bag] снимки артефактов:", e instanceof Error ? e.message : e),
+  );
   for (const row of gone) {
     publishRaid({ mapId: row.map_id, type: "bags", cells: [`${Number(row.q)},${Number(row.r)}`] });
   }

@@ -5,15 +5,14 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { WalletModal } from "@/components/WalletModal";
-import { TelegramLoginButton } from "@/components/TelegramLoginButton";
+import { WalletBackdrop } from "@/components/WalletBackdrop";
 import { MyWalletSection } from "@/routes/admin.wallet";
 import { InstallAppBanner } from "@/components/Pwa";
 import { GoldParticles } from "@/components/GoldParticles";
 import { listLocalWallets } from "@/lib/embeddedWallet";
 import { useAppStore } from "@/lib/store";
 import { useT } from "@/lib/i18n";
-import { LangSwitch } from "@/components/LangSwitch";
-import { Shield, Wallet as WalletIcon, ChevronRight, Sparkles, Plug } from "lucide-react";
+import { Shield, ChevronRight, Sparkles, Plug } from "lucide-react";
 
 /** Локальные (встроенные) коши на этом устройстве. Только клиент:
  * IndexedDB нет на SSR — useQuery кэшировал бы серверную ошибку. */
@@ -41,35 +40,13 @@ function useHomeHref(): string {
   return "/home" + (searchStr || "");
 }
 
-/** Фон: глубокий тёмный + мягкие золотые свечения. */
-function WalletBackdrop({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
-      <div
-        className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[42rem] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
-        style={{
-          background: "radial-gradient(closest-side, oklch(0.83 0.16 88 / 0.55), transparent)",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-48 -right-32 h-96 w-96 rounded-full opacity-15 blur-3xl"
-        style={{
-          background: "radial-gradient(closest-side, oklch(0.86 0.13 200 / 0.5), transparent)",
-        }}
-      />
-      <div className="pointer-events-none absolute inset-0 bg-grid opacity-25" />
-      {children}
-    </div>
-  );
-}
-
 function WalletTopBar() {
   const homeHref = useHomeHref();
   const t = useT();
   return (
     <header className="relative z-10 mx-auto flex w-full max-w-lg items-center justify-between px-5 pt-5">
       <a href={homeHref} className="flex items-center gap-2.5">
-        <img src="/icons/icon-192-2.png" alt="" className="h-9 w-9 rounded-2xl shadow-gold" />
+        <img src="/icons/icon-192-2.webp" alt="" className="h-9 w-9 rounded-2xl shadow-gold" />
         <div className="leading-tight">
           <div className="font-display text-base font-bold">
             YupLink <span className="text-gradient-gold">{t("whome.wallet")}</span>
@@ -221,50 +198,5 @@ export function WalletHome() {
 /** Гость: ТОЛЬКО вход в кошелёк — без коша дальше не пускаем.
  * Минимум текста, mobile-first (эталон Xiaomi 13T): 100dvh, safe-area,
  * крупные тач-цели. */
-export function WalletWelcome() {
-  // Вход в YupLink — ТОЛЬКО через Telegram (курс: ТГ = личность). Кошелёк —
-  // атрибут: привязывается уже ВНУТРИ приложения (WalletHome/«Добавить кошелёк»),
-  // а не как вход. Существующие коши-твинки без ТГ остаются в БД как есть.
-  const t = useT();
-  return (
-    <WalletBackdrop>
-      <GoldParticles count={18} />
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col items-center justify-center px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] text-center">
-        {/* Кош-орб */}
-        <div className="relative mb-6">
-          <div className="absolute inset-0 -m-7 animate-pulse rounded-full bg-gold/25 blur-2xl" />
-          <div
-            className="relative flex h-24 w-24 items-center justify-center rounded-[1.75rem] shadow-gold sm:h-28 sm:w-28"
-            style={{ background: "var(--gradient-gold)" }}
-          >
-            <WalletIcon className="h-11 w-11 text-gold-foreground sm:h-12 sm:w-12" />
-          </div>
-        </div>
 
-        <h1 className="font-display text-[2.4rem] font-bold leading-[1.05] tracking-tight sm:text-5xl">
-          YupLink
-          <span className="block text-gradient-gold">{t("whome.wallet")}</span>
-        </h1>
-        <p className="mt-2.5 text-sm text-muted-foreground">{t("whome.ecosystem_wallet")}</p>
-
-        {/* ОСНОВНОЙ вход — по Telegram, без кошелька (курс: ТГ = личность). */}
-        <div className="mt-9 w-full">
-          <TelegramLoginButton />
-        </div>
-
-        <div className="mt-6 text-xs text-muted-foreground/60">
-          {t("whome.built_with_community")}
-        </div>
-
-        {/* Язык — прямо здесь: приложение открывается на английском, и человек
-            должен суметь переключиться до входа, а не искать настройку внутри. */}
-        <LangSwitch variant="pill" className="mt-7" />
-
-        {/* Подвал — прижат к низу экрана */}
-        <div className="absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-0 right-0 text-center text-[11px] text-muted-foreground/50">
-          2026 YupLand
-        </div>
-      </div>
-    </WalletBackdrop>
-  );
-}
+export { WalletWelcome } from "@/components/WalletWelcome";

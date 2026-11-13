@@ -23,10 +23,12 @@ import {
 } from "./drawMergedBlocks";
 import type { Block } from "./mergeBlocks";
 import { COLOR, type DrawScene } from "./betaCanvasScene";
-import { drawGround, touchesSeen } from "./drawGround";
+import { drawGround } from "./drawGround";
+import { fogFilm } from "./fogFilm";
 import { drawMagicChest } from "./chest/drawMagicChest";
 import { drawDigHole } from "./tool/drawDigHole";
 import { frameStats } from "./frameStats";
+import { drawFogReach } from "./sight/fogReach";
 
 export type { DrawCell, DrawScene } from "./betaCanvasScene";
 export {
@@ -38,9 +40,11 @@ export {
 
 const EMPTY_IDX: Set<number> = new Set();
 /** Туман: лёгкая серая пелена для активной зоны (2-3 тона светлее основного). */
-const FOG_LIGHT = "rgba(10, 14, 22, 0.3)";
+export const FOG_LIGHT = "rgba(10, 14, 22, 0.3)";
 /** Туман: серая пелена для исторически разведанного (чуть темнее активной зоны). */
-const FOG_DARK = "rgba(10, 14, 22, 0.42)";
+export const FOG_DARK = "rgba(10, 14, 22, 0.42)";
+// Цвет пелены = COLOR.fogTile: пелена на неразведанной клетке у края разведанного
+// не меняет её цвет — граница существующих клеток не проступает.
 
 /**
  * Клетки: местность, дорога, объекты, туман войны. Под неразведанным пусто.
@@ -109,7 +113,7 @@ export function drawCells(scene: DrawScene, index: MapIndex): void {
       }
       return;
     }
-    if (!baked) drawGround(scene, c, hex);
+    if (!baked) drawGround(scene, c, hex, store);
     // Ямка — на земле, под всем, что стоит на клетке, и под плёнкой тумана.
     if (holes?.has(c.key)) drawDigHole(scene, c);
 
@@ -208,32 +212,13 @@ export function drawCells(scene: DrawScene, index: MapIndex): void {
   //  4. seen, но вне activeZone — тёмный туман.
   //  5. !seen — чёрный (проход 1, COLOR.fogTile).
   if (!revealAll) {
-    // Один fill на весь туман вместо fill на каждый гекс:
-    // GPU рисует единую фигуру — быстрее тысяч отдельных вызовов.
-    const fogLight = new Path2D();
-    const fogDark = new Path2D();
-    const hexTemplate = hexPath2D();
-    const m = new DOMMatrix();
-    const store = index.store;
-    const p = store.packed;
-    forEachVisible(index, scene.view, (c) => {
-      if (visible.has(c.i) || brightZone.has(c.i)) return;
-      if (!seen.hasIndex(c.i)) {
-        // Неразведанная клетка на границе с разведанной: сюда «свисают»
-        // картинки соседей (дерево вверх, постройка вширь). Без плёнки эта
-        // часть картинки оставалась яркой, и объект «светился по контуру»
-        // неразведанной области. Плёнка та же, что у соседа: чёрное под ней
-        // не меняется, свес приглушается вместе с картинкой.
-        if (!touchesSeen(store, seen, p.q[c.i], p.r[c.i])) return;
-      }
-      const target = activeZone.has(c.i) ? fogLight : fogDark;
-      m.e = c.x;
-      m.f = c.y;
-      target.addPath(hexTemplate, m);
-    });
+    // Две фигуры на весь туман (fogFilm): собираются по смене тумана/зон, не каждый кадр.
+    const film = fogFilm(scene, index, activeZone, brightZone);
     g.fillStyle = FOG_LIGHT;
-    g.fill(fogLight);
+    g.fill(film.light);
     g.fillStyle = FOG_DARK;
-    g.fill(fogDark);
+    g.fill(film.dark);
+    // Неразведанное в досягаемости — на тон светлее (10 клеток, бинокль 20).
+    drawFogReach(scene, index.store);
   }
 }

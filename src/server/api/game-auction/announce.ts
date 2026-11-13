@@ -1,19 +1,22 @@
-// Анонс аукциона АДМИНА в Telegram-боте (владелец, 14.10.2026): картинка приза
+// Анонс аукциона АДМИНА в Telegram (владелец, 14.10.2026): картинка приза
 // и коротко — что это, (у артефакта) что даёт, стартовая цена, сколько идёт.
+// 21.10 владелец: «коротко и внятно» — 4–5 строк, без длинных пояснений.
 // Лоты игроков не анонсируются. Рассылка всем — только когда включена
 // настройка ANNOUNCE_SETTING ('on'): сначала владелец смотрит тест (только ему).
+// С 20.10 шлёт игровой бот @yupland_heroes_bot, кнопка ведёт в игру: кошельковый
+// бот в игру больше не пускает. Дойдёт тем, кто запустил игрового бота.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { WEBAPP_URL, tgSendMessage, tgSendPhoto } from "../../tg";
+import { WEBAPP_URL } from "../../tg";
+import { GAME_URL, gameBotSend, gameBotSendPhoto, type GameButton } from "../../tgGameBot";
+import { AUCTION_LINK_PARAM } from "@/lib/auctionBus";
 import { pg } from "../../db/pg";
 import { currencyLabel } from "@/lib/auctionCurrency";
-import { STATS_SECTION } from "@/components/params-guide/data/guideStats";
 import { metaLabel } from "@/components/heroMeta";
 import { rarityLabel } from "@/components/chips/auctions/auctionFormat";
 import { resolvePrizeMeta, type PrizeInfo } from "./prize-meta";
+import { teamOwnerTg } from "../../team";
 
-/** Владелец (owner.example.tg) — получатель тестового анонса. */
-export const ANNOUNCE_TEST_TG = 100000001;
 /** yuplink.settings: 'on' — анонс новых лотов админа всем игрокам. */
 export const ANNOUNCE_SETTING = "auction:announce";
 
@@ -24,18 +27,19 @@ const KIND: Record<string, string> = {
   artifact: "Артефакт",
   resource: "Ресурс",
 };
-const GUIDE_ID: Record<string, string> = {
-  attack: "atk",
-  damage: "atk",
-  strength: "atk",
-  health: "hp",
-  hp: "hp",
-  armor: "arm",
-  luck: "luck",
-  speed: "spd",
-  intellect: "int",
-  trade: "trade",
-  alchemy: "alchemy",
+/** Что даёт характеристика — коротко (по справочнику параметров, guideStats). */
+const STAT_SHORT: Record<string, string> = {
+  attack: "урон отряда",
+  damage: "урон отряда",
+  strength: "урон отряда",
+  health: "здоровье фишек",
+  hp: "здоровье фишек",
+  armor: "шанс промаха врага",
+  luck: "шанс доп. урона",
+  speed: "шаг дешевле по энергии",
+  intellect: "энергия и заклинания",
+  trade: "ячейки рюкзака",
+  alchemy: "ячейки сумки зелий",
 };
 
 type Lot = {
@@ -63,32 +67,29 @@ function duration(startAt: string, endAt: string): string {
   return `${d} ${one ? "день" : few ? "дня" : "дней"}`;
 }
 
-/** Первая фраза справочника «что делает характеристика». */
-function statWhat(statType: string | null): string | null {
-  const id = GUIDE_ID[(statType ?? "").trim().toLowerCase()];
-  const text = STATS_SECTION.entries.find((e) => e.id === id)?.what[0];
-  return text ? (text.match(/^[^.]*\./)?.[0] ?? text) : null;
-}
-
+/** Артефакт: «Артефакт · Легендарный · Карманы», «+10 Броня — шанс промаха врага»,
+ *  «Бонус: Ассасин +10, Кабан +10», «Иммунитет: Оглушение». */
 function artifactLines(info: PrizeInfo): string[] {
   const out: string[] = [];
   const head = [rarityLabel(info.rarity, false), info.slot ? metaLabel(info.slot, "ru") : null]
     .filter(Boolean)
     .join(" · ");
-  if (head) out.push(`Артефакт · ${esc(head)}`);
+  out.push(`Артефакт${head ? ` · ${esc(head)}` : ""}`);
   if (info.statType) {
-    const stat = metaLabel(info.statType, "ru");
-    out.push(`✨ <b>+${info.statAmount ?? 0} ${esc(stat)}</b>`);
-    const what = statWhat(info.statType);
-    if (what) out.push(`<i>${esc(what)}</i>`);
-    const extra: Array<[string, string | null | undefined, number | null | undefined]> = [
-      ["Класс", info.spec, info.specAmount],
-      ["Раса", info.race, info.raceAmount],
-      ["Земля", info.land, info.landAmount],
-    ];
-    for (const [t, v, n] of extra) {
-      if (v) out.push(`${t} ${esc(metaLabel(v, "ru"))}: +${n ?? 0} ${esc(stat)}`);
-    }
+    const what = STAT_SHORT[info.statType.trim().toLowerCase()];
+    out.push(
+      `<b>+${info.statAmount ?? 0} ${esc(metaLabel(info.statType, "ru"))}</b>${what ? ` — ${what}` : ""}`,
+    );
+    const bonus = (
+      [
+        [info.spec, info.specAmount],
+        [info.race, info.raceAmount],
+        [info.land, info.landAmount],
+      ] as Array<[string | null | undefined, number | null | undefined]>
+    )
+      .filter(([v]) => v)
+      .map(([v, n]) => `${esc(metaLabel(v!, "ru"))} +${n ?? 0}`);
+    if (bonus.length) out.push(`Бонус: ${bonus.join(", ")}`);
   }
   if (info.immunities?.length) {
     out.push(`Иммунитет: ${esc(info.immunities.map((i) => metaLabel(i, "ru")).join(", "))}`);
@@ -100,7 +101,7 @@ function artifactLines(info: PrizeInfo): string[] {
 export async function buildAnnounce(lot: Lot): Promise<{ photo: string | null; caption: string }> {
   const meta = (await resolvePrizeMeta([lot]).catch(() => new Map())).get(lot.prize_ref);
   const name = `${meta?.name || lot.title || lot.prize_ref}${lot.prize_qty > 1 ? ` ×${Number(lot.prize_qty).toLocaleString("ru-RU")}` : ""}`;
-  const lines = [`🔨 <b>Аукцион открыт!</b>`, "", `<b>${esc(name)}</b>`];
+  const lines = [`🔨 <b>Аукцион: ${esc(name)}</b>`];
   if (lot.prize_kind === "artifact" && meta?.info) lines.push(...artifactLines(meta.info));
   else if (lot.prize_kind === "hero" && meta?.info) {
     const i = meta.info;
@@ -109,12 +110,12 @@ export async function buildAnnounce(lot: Lot): Promise<{ photo: string | null; c
       `Герой · ${esc([rarityLabel(i.rarity, false), i.race, i.spec].filter(Boolean).join(" · "))}`,
     );
   } else lines.push(KIND[lot.prize_kind] ?? lot.prize_kind);
-  lines.push("");
+  const price = `${Number(lot.start_price).toLocaleString("ru-RU")} ${esc(currencyLabel(lot.currency, false))}`;
+  const lots = (lot.series_total ?? 1) > 1 ? ` · лотов <b>${lot.series_total}</b>` : "";
   lines.push(
-    `💰 Старт: <b>${Number(lot.start_price).toLocaleString("ru-RU")} ${esc(currencyLabel(lot.currency, false))}</b>`,
+    "",
+    `💰 Старт <b>${price}</b> · ⏳ <b>${duration(lot.start_at, lot.end_at)}</b>${lots}`,
   );
-  lines.push(`⏳ Идёт: <b>${duration(lot.start_at, lot.end_at)}</b>`);
-  if ((lot.series_total ?? 1) > 1) lines.push(`📦 Лотов: <b>${lot.series_total}</b>`);
   const img = meta?.image ?? null;
   const photo = img
     ? img.startsWith("http")
@@ -124,8 +125,11 @@ export async function buildAnnounce(lot: Lot): Promise<{ photo: string | null; c
   return { photo, caption: lines.join("\n") };
 }
 
-const button = {
-  inline_keyboard: [[{ text: "🔨 К аукциону", web_app: { url: WEBAPP_URL } }]],
+const button: GameButton = {
+  // Сразу в окно аукционов (AuctionOverlay ловит метку в адресе).
+  inline_keyboard: [
+    [{ text: "🔨 К аукциону", web_app: { url: `${GAME_URL}?${AUCTION_LINK_PARAM}=1` } }],
+  ],
 };
 
 /** Одному получателю: фото с подписью, не вышло — текстом. */
@@ -133,9 +137,8 @@ async function sendOne(
   chatId: number,
   a: { photo: string | null; caption: string },
 ): Promise<boolean> {
-  if (a.photo && (await tgSendPhoto(chatId, a.photo, a.caption, { replyMarkup: button })))
-    return true;
-  return tgSendMessage(chatId, a.caption, { replyMarkup: button });
+  if (a.photo && (await gameBotSendPhoto(chatId, a.photo, a.caption, button))) return true;
+  return gameBotSend(chatId, a.caption, button);
 }
 
 async function loadLot(auctionId: string): Promise<Lot | null> {
@@ -164,7 +167,10 @@ export async function announceTest(
   if (!id) return { sent: false, id: null };
   const lot = await loadLot(id);
   if (!lot) return { sent: false, id };
-  return { sent: await sendOne(ANNOUNCE_TEST_TG, await buildAnnounce(lot)), id };
+  // Тест — только владельцу (TG id из env, server/team); не задан — не шлём.
+  const testTg = teamOwnerTg();
+  if (testTg == null) return { sent: false, id };
+  return { sent: await sendOne(testTg, await buildAnnounce(lot)), id };
 }
 
 /** Новый лот админа — всем с уведомлениями, если рассылка включена. Фоном. */
@@ -185,9 +191,9 @@ export async function announceNewLot(auctionId: string): Promise<void> {
   // Картинку Telegram не взял, а текст прошёл — дальше шлём текстом, без двойных запросов.
   let photo = a.photo;
   for (const chatId of ids) {
-    let ok = !!photo && (await tgSendPhoto(chatId, photo, a.caption, { replyMarkup: button }));
+    let ok = !!photo && (await gameBotSendPhoto(chatId, photo, a.caption, button));
     if (!ok) {
-      ok = await tgSendMessage(chatId, a.caption, { replyMarkup: button });
+      ok = await gameBotSend(chatId, a.caption, button);
       if (ok && photo) photo = null;
     }
     if (ok) sent++;

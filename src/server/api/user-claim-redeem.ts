@@ -8,7 +8,9 @@ import { parseRewardTiers, pickWeightedReward, rollReward } from "../random";
 import { fetchSendlerNftsByTitle } from "../sendler";
 import { requireLinkedTelegram } from "./user-claims-inventory";
 import { getSisterWallets, tryReserveNftPrize } from "./user-claims-core";
-import { computeTickets, invalidateTicketsCache } from "./user-claims-tickets";
+import { invalidateTicketsCache } from "./user-claims-tickets";
+import { claimBudget, debitClaim, refundClaim } from "./claim-ticket-debit";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import { creditDropEnergy } from "./user-claims-energy";
 
 export const redeemNft = createServerFn({ method: "POST" })
@@ -50,19 +52,14 @@ export const redeemNft = createServerFn({ method: "POST" })
       );
     }
 
+    // Цена дропа в билетах, платится золотом ×500 (§8.61, claim-ticket-debit).
     const ticketCost = campaign.free_claim ? 0 : (campaign.ticket_cost ?? 1);
-    if (!campaign.free_claim) {
-      const tickets = await computeTickets(wallet);
-      if (tickets.available < ticketCost) {
-        throw new Error(
-          ticketCost === 1
-            ? "Нет доступных клеймов. Пригласи друга — после его клейма получишь +1 билет."
-            : `Нужно ${ticketCost} билетов, у тебя ${tickets.available}.`
-        );
-      }
-    }
+    if (!campaign.free_claim) await claimBudget(wallet, ticketCost);
 
     const tiers1 = parseRewardTiers(campaign.reward_tiers);
+    // Товар выдаёт только погашение со страницы NFT (user-claims-goods).
+    if (tiers1?.some((t) => t.kind === "custom"))
+      throw new Error("Этот дроп гасится на странице «Мои NFT»");
     const picked1 = tiers1
       ? pickWeightedReward(tiers1)
       : {
@@ -72,17 +69,22 @@ export const redeemNft = createServerFn({ method: "POST" })
     let reward = picked1?.amount ?? 0;
 
     if (picked1 && picked1.tier?.kind === "nft" && picked1.tier.nftTitle) {
+      // Приз занимается необратимо — сначала золото, потом бронь (§8.61).
+      const redId = nanoid();
+      const payRef = `redeem:${redId}`;
+      if (!(await debitClaim({ wallet, cost: ticketCost, ref: payRef })))
+        throw new Error(`Не хватает золота: нужно ${goldForTicketPrice(ticketCost)}`);
       const reserved = await tryReserveNftPrize({
         contractId: picked1.tier.nftContract ?? campaign.contract_id,
         nftTitle: picked1.tier.nftTitle,
         userWallet: wallet,
         campaignId: campaign.id,
-      });
+      }).catch(() => null);
       if (!reserved) {
+        await refundClaim({ wallet, cost: ticketCost, ref: payRef });
         throw new Error("Приз закончился — нет свободных NFT этого title");
       }
       try {
-        const redId = nanoid();
         await pg.redemptions.insert({
           id: redId,
           contract_id: campaign.contract_id,
@@ -98,17 +100,8 @@ export const redeemNft = createServerFn({ method: "POST" })
           ticket_cost: ticketCost,
           redeemed_at: new Date().toISOString().replace("T", " ").slice(0, 16),
         });
-        // Платный розыгрыш: списываем в леджер (ref — id участия).
-        if (ticketCost > 0) {
-          const { moveTickets } = await import("./tickets-ledger");
-          await moveTickets({
-            wallet: wallet,
-            delta: -ticketCost,
-            kind: "redemption",
-            ref: `redeem:${redId}`,
-          });
-        }
       } catch {
+        await refundClaim({ wallet, cost: ticketCost, ref: payRef });
         throw new Error("NFT уже погашен (гонка запросов)");
       }
       return {
@@ -171,26 +164,16 @@ export const redeemNft = createServerFn({ method: "POST" })
         ticket_cost: ticketCost,
         redeemed_at: new Date().toISOString().replace("T", " ").slice(0, 16),
       });
-      // Платный розыгрыш: списываем в леджер (ref — id участия). Проверка
-      // «хватает билетов» выше читает пятисекундный кэш, поэтому настоящий
-      // отказ приходит только отсюда. Если билетов не хватило — заявка на
-      // выплату не должна остаться: снимаем её. Раньше ошибка глоталась и
-      // подменялась «NFT уже погашен», а награда оставалась в очереди.
-      if (ticketCost > 0) {
-        const { moveTickets } = await import("./tickets-ledger");
-        const paid = await moveTickets({
-          wallet: wallet,
-          delta: -ticketCost,
-          kind: "redemption",
-          ref: `redeem:${redId}`,
-        }).catch(() => ({ applied: false }) as { applied: boolean });
-        if (!paid.applied) {
-          await pg.redemptions.delete({ id: redId }).catch(() => undefined);
-          throw new Error("Не хватило билетов — попробуй ещё раз");
-        }
+      // Платный розыгрыш: списываем золото (ref — id участия). Проверка
+      // «хватает» выше — подсказка, настоящий отказ приходит только отсюда.
+      // Не хватило — заявка на выплату не должна остаться: снимаем её. Раньше
+      // ошибка глоталась и подменялась «NFT уже погашен», а награда оставалась.
+      if (!(await debitClaim({ wallet, cost: ticketCost, ref: `redeem:${redId}` }))) {
+        await pg.redemptions.delete({ id: redId }).catch(() => undefined);
+        throw new Error(`Не хватает золота: нужно ${goldForTicketPrice(ticketCost)}`);
       }
     } catch (e) {
-      if (e instanceof Error && e.message.startsWith("Не хватило билетов")) throw e;
+      if (e instanceof Error && e.message.startsWith("Не хватает золота")) throw e;
       throw new Error("NFT уже погашен (гонка запросов)");
     }
 

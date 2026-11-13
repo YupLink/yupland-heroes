@@ -1,15 +1,19 @@
-// Стейкинг банка (владелец + Архан, 16.10.2026, ПРАВИЛА §8.51) — пока только админам.
+// Стейкинг банка (владелец + Архан, 16.10.2026, ПРАВИЛА §8.51) — открыт игрокам
+// 20.10.2026: у кого построен банк (bank-access.ts); отмена своего вывода холдеров — игроку.
 // Вклад DARAI со счёта на выбранный срок (lib/bankStake.ts: % и золото в сутки),
-// снятие (в локе раньше срока — вернуть 50 % начисленного золота), метка DARAI
-// холдеров на счёте и их выводы, ждущие срок. Деньги двигают функции базы
-// (migrations/bank-06, bank-07): bank_stake_open / bank_stake_close / holder_withdraw_cancel.
+// снятие (в локе раньше срока — сначала списать 50 % начисленного золота, ту сумму,
+// что игрок подтвердил в окне, потом вернуть DARAI), метка DARAI холдеров на счёте
+// и их выводы, ждущие срок. Деньги двигают функции базы (migrations/bank-06, bank-07,
+// tix-gold-03): bank_stake_open / bank_stake_close / holder_withdraw_cancel.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { sb } from "../../db/pg";
 import { mcpExec } from "../../db/mcpClient";
-import { requireAdmin, requireWallet } from "../../auth";
+import { requireWallet } from "../../auth";
+import { moneyGate } from "../../rateGate";
 import { sqlStr } from "../raid-shared";
 import { accAccountId, accBalance, humanizeAccError } from "../currency/move";
+import { bankAccount } from "./bank-access";
 import {
   STAKE_PLANS,
   goldPerDay,
@@ -24,10 +28,19 @@ async function account(wallet: string): Promise<string> {
   return acc;
 }
 
-function humanStakeError(raw: string): string {
+/** Окно подтверждения показало меньше золота, чем нужно сейчас. */
+export const STAKE_GOLD_CHANGED = "Сумма изменилась — открой окно заново";
+
+export function humanStakeError(raw: string): string {
+  if (/bank_stake_gold_changed/.test(raw)) return STAKE_GOLD_CHANGED;
+  // Вклад NFT-холдера до срока не снимается вовсе (bank-10, §8.51 п. 3).
+  const held = raw.match(/bank_stake_holder_lock:(\d+)/);
+  if (held) {
+    const at = new Date(Number(held[1])).toLocaleDateString("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" });
+    return `Вклад холдера снимается не раньше ${at}`;
+  }
   const gold = raw.match(/bank_stake_gold:([\d.]+)/);
-  if (gold)
-    return `Не хватает золота: чтобы снять раньше срока, нужно вернуть ${Number(gold[1]).toLocaleString("ru-RU")}`;
+  if (gold) return `Не хватает золота: нужно ${Number(gold[1]).toLocaleString("ru-RU")}`;
   if (/bank_stake_not_found/.test(raw)) return "Вклад не найден";
   return humanizeAccError(raw);
 }
@@ -78,6 +91,7 @@ type StakeRow = {
   gold_day: number | string;
   gold_paid: number | string;
   lock_until: string | null;
+  hold_until: string | null;
   created_at: string;
   nft_title: string | null;
 };
@@ -85,7 +99,8 @@ type StakeRow = {
 async function stakesOf(acc: string): Promise<MyStake[]> {
   const rows = (await mcpExec(
     `SELECT id, source, plan, pct, amount, holder7 + holder30 AS holder, gold_day, gold_paid,
-            lock_until, created_at, nft_title
+            lock_until, created_at, nft_title,
+            yuplink.bank_stake_holder_until(source, created_at, holder30) AS hold_until
        FROM yuplink.bank_stake WHERE account_id = ${sqlStr(acc)} AND status = 'active'
       ORDER BY created_at DESC LIMIT 100;`,
     { wrapJson: true },
@@ -100,14 +115,15 @@ async function stakesOf(acc: string): Promise<MyStake[]> {
     goldDay: Number(r.gold_day),
     goldPaid: Number(r.gold_paid),
     lockUntil: r.lock_until,
+    holdUntil: r.hold_until,
     createdAt: r.created_at,
     nftTitle: r.nft_title,
   }));
 }
 
 export const getBankStake = createServerFn({ method: "GET" }).handler(async () => {
-  const wallet = requireAdmin();
-  const acc = await account(wallet);
+  const wallet = requireWallet();
+  const acc = await bankAccount(wallet);
   // Начисление идёт обходом раз в 5 минут; окно открыли — свои сутки догоняем сразу.
   await mcpExec(
     `SELECT yuplink.bank_stake_accrue(id) FROM yuplink.bank_stake
@@ -132,8 +148,9 @@ export const openBankStake = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    const wallet = requireAdmin();
-    const acc = await account(wallet);
+    const wallet = requireWallet();
+    await moneyGate("bank-stake-open", wallet);
+    const acc = await bankAccount(wallet);
     const plan = stakePlan(data.plan)!;
     const amount = Math.floor(data.amount * 1e8) / 1e8;
     const { error, data: rows } = await sb.rpc("bank_stake_open", {
@@ -152,14 +169,25 @@ export const openBankStake = createServerFn({ method: "POST" })
   });
 
 export const closeBankStake = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ stakeId: z.string().min(4).max(40) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        stakeId: z.string().min(4).max(40),
+        // Сколько золота показали игроку в подтверждении; старое окно без суммы — 0.
+        confirmGold: z.number().min(0).max(1e13).default(0),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
-    const wallet = requireAdmin();
-    const acc = await account(wallet);
+    const wallet = requireWallet();
+    await moneyGate("bank-stake-close", wallet);
+    const acc = await bankAccount(wallet);
+    // База сама считает золото возврата; больше подтверждённого — отказ без движений.
     const { error, data: rows } = await sb.rpc("bank_stake_close", {
       p_stake: data.stakeId,
       p_account: acc,
       p_wallet: wallet,
+      p_max_gold: data.confirmGold,
     });
     if (error) throw new Error(humanStakeError(String(error.message ?? "")));
     const r = (rows as Array<{ darai: number; gold_back: number }> | null)?.[0];
@@ -169,7 +197,9 @@ export const closeBankStake = createServerFn({ method: "POST" })
 export const cancelHolderWithdraw = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ holdId: z.string().min(4).max(40) }).parse(d))
   .handler(async ({ data }) => {
-    const wallet = requireAdmin();
+    // Своя заявка: база отменяет только вывод этого аккаунта (account_id = p_account).
+    const wallet = requireWallet();
+    await moneyGate("holder-withdraw-cancel", wallet);
     const acc = await account(wallet);
     const { error, data: rows } = await sb.rpc("holder_withdraw_cancel", {
       p_id: data.holdId,

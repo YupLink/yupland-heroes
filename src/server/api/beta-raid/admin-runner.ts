@@ -10,16 +10,15 @@ import { mcpExec } from "../../db/mcpClient";
 import { requireAdmin } from "../../auth";
 import { sqlStr } from "../raid-shared";
 import { publishRaid } from "../../raidLive";
-import { godMapId } from "./god-map";
 import { dropFleeCache } from "./flee-cells";
 import { dropRunnerSql, runnerAt } from "./runners";
 import { readDaraiHold, settleDaraiHold } from "./map-darai-hold";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 export const adminRemoveRunner = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ q: z.number().int(), r: z.number().int() }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     const runner = await runnerAt(mapId, data.q, data.r);
     if (!runner) throw new Error("Беглеца здесь нет");
 

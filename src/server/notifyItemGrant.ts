@@ -13,7 +13,7 @@
 //   - Ничего не бросаем наружу: предметы уже выданы, телеграм — побочный эффект.
 
 import { pg } from "./db/pg";
-import { tgSendMessage } from "./tg";
+import { gameBotSend, gamePlayButton } from "./tgGameBot";
 import { getUserLang } from "./userLang";
 import { tFor } from "@/lib/i18n";
 import { metaLabel } from "@/components/heroMeta";
@@ -121,7 +121,12 @@ export async function notifyItemGrant(
     let sent = 0;
     for (const r of await resolveGrantRecipients(grants)) {
       const lang = await getUserLang(r.telegramId);
-      const ok = await tgSendMessage(r.telegramId, buildGrantMessage(item, r.count, lang));
+      // Это тоже письмо о подарке — от игрового бота с кнопкой в игру (владелец 20.10).
+      const ok = await gameBotSend(
+        r.telegramId,
+        buildGrantMessage(item, r.count, lang),
+        gamePlayButton(tFor(lang, "bot.game_play")),
+      );
       if (ok) sent++;
       // Telegram даёт ~30 msg/sec — тот же интервал, что у остальных рассылок.
       await new Promise((r2) => setTimeout(r2, 50));

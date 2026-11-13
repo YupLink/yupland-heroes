@@ -1,0 +1,50 @@
+{
+  "baseBuildingCount": 8,
+  "levels": [
+    {
+      "level": 1,
+      "purchaseLimit": 8,
+      "priceId": "capacity:1"
+    },
+    {
+      "level": 2,
+      "purchaseLimit": 15,
+      "priceId": "capacity:2"
+    },
+    {
+      "level": 3,
+      "purchaseLimit": 22,
+      "priceId": "capacity:3"
+    },
+    {
+      "level": 4,
+      "purchaseLimit": 29,
+      "priceId": "capacity:4"
+    },
+    {
+      "level": 5,
+      "purchaseLimit": 36,
+      "priceId": "capacity:5"
+    },
+    {
+      "level": 6,
+      "purchaseLimit": 43,
+      "priceId": "capacity:6"
+    },
+    {
+      "level": 7,
+      "purchaseLimit": 50,
+      "priceId": "capacity:7"
+    },
+    {
+      "level": 8,
+      "purchaseLimit": 57,
+      "priceId": "capacity:8"
+    },
+    {
+      "level": 9,
+      "purchaseLimit": 64,
+      "priceId": "capacity:9"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import { fetchSendlerNftsByOwner } from "../sendler";
 import { requireLinkedTelegram } from "./user-claims-inventory";
 import { getSisterWallets } from "./user-claims-core";
 import { NFT_PRIZE_OWNER } from "./user-claims-types";
+import { assertNotGoogleWithdraw } from "./google-login/noWithdraw";
 
 export const withdrawMyNfts = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -19,9 +20,13 @@ export const withdrawMyNfts = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     assertNotMaintenance();
+    assertNotGoogleWithdraw();
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Кошелёк не подключён");
     await requireLinkedTelegram(wallet);
+    // Новым аккаунтам вывода нет — только списку (§8.127).
+    const { assertWithdrawListed } = await import("./withdraw-list/withdrawList");
+    await assertWithdrawListed(wallet);
     const sisters = await getSisterWallets(wallet);
 
     const recipient = data.recipient.trim().toLowerCase();

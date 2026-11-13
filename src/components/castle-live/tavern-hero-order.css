@@ -1,8 +1,10 @@
-[data-tavern-style] [data-hero-order-heading] { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px; }
+[data-tavern-style] [data-hero-order-heading] { display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px; }
 [data-tavern-style] [data-hero-order-heading] h2 { margin:0;font:400 clamp(20px,5vw,27px)/1.2 var(--font-display);color:#f1ebe2; }
 [data-tavern-style] [data-hero-order-heading] h2 span { color:#aab6c8;font-family:var(--font-sans);font-size:.75em; }
+[data-tavern-style] [data-hero-view-actions] { display:flex;align-items:center;flex:none;gap:2px; }
+[data-tavern-style] [data-hero-grid-toggle] { display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:#d7bb7a;cursor:pointer; }
 [data-tavern-style] [data-hero-order-edit] { display:grid;place-items:center;flex:none;width:44px;height:44px;border:0;border-radius:8px;background:transparent;color:#d7bb7a; }
-[data-tavern-style] [data-hero-order-edit]:focus-visible,[data-tavern-style] [data-hero-order-actions] button:focus-visible { outline:2px solid #f2c02a;outline-offset:2px; }
+[data-tavern-style] [data-hero-order-edit]:focus-visible,[data-tavern-style] [data-hero-grid-toggle]:focus-visible,[data-tavern-style] [data-hero-order-actions] button:focus-visible { outline:2px solid #f2c02a;outline-offset:2px; }
 [data-tavern-style] [data-hero-order-grid] [data-hero-order-tile] { position:relative;min-width:0;border-radius:9px;touch-action:none;cursor:grab; }
 [data-tavern-style] [data-hero-order-grid] [data-hero-order-tile] > button { width:100%;height:100%;pointer-events:none; }
 [data-tavern-style] [data-hero-order-grid] [data-hero-order-tile][data-dragging] { z-index:10;cursor:grabbing;filter:drop-shadow(0 12px 14px #000c);will-change:transform; }
@@ -15,3 +17,61 @@
 [data-tavern-style] [data-hero-order-actions] button:last-child [data-hero-order-action-icon] { border-color:var(--game-button-gold-border,#efd081);background:var(--game-button-gold,linear-gradient(180deg,#edc976,#bd913e));color:var(--game-button-ink,#18150f);box-shadow:inset 0 1px #fff4,0 4px 14px #000b; }
 [data-tavern-style] [data-hero-order-action-label] { text-shadow:0 1px 3px #000,0 2px 8px #000; }
 [data-tavern-style] [data-hero-order-error] { margin-top:10px;color:#f4b7a7;font:400 13px var(--font-sans); }
+[data-tavern-style] [data-hero-race-trigger] { position:relative;display:grid;place-items:center;flex:none;width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:#d7bb7a;box-shadow:none;cursor:pointer; }
+[data-tavern-style] [data-hero-race-trigger] > span { display:none; }
+[data-tavern-style] [data-hero-race-trigger] > svg:last-child { display:none; }
+[data-tavern-style] [data-hero-race-trigger][data-filter-active] { color:#ffdd83; }
+[data-tavern-style] [data-hero-race-trigger][data-filter-active]::after { content:"";position:absolute;right:6px;top:6px;width:6px;height:6px;border-radius:50%;background:#f3c54f;box-shadow:0 0 6px #f3c54faa; }
+[data-tavern-style] [data-hero-race-trigger]:focus-visible { outline:2px solid #f2c02a;outline-offset:2px; }
+.tavern-race-menu { z-index:1000!important;min-width:160px!important;max-height:min(300px,var(--radix-select-content-available-height))!important;border:1px solid #536477!important;border-radius:9px!important;background:#0b1119!important;color:#eee8dc!important;box-shadow:0 12px 30px #000b!important; }
+.tavern-race-menu [data-radix-select-viewport] { height:auto!important;max-height:290px!important; }
+.tavern-race-option { min-height:40px;padding:7px 32px 7px 12px!important;border-radius:5px!important;color:#eee8dc!important;font:400 14px var(--font-sans); }
+.tavern-race-option[data-highlighted] { background:#252b31!important;color:#fff3d2!important; }
+.tavern-race-option[data-state="checked"] { background:#443520!important;color:#f4ce6f!important; }
+.tavern-race-option[data-state="checked"]::before { content:"";position:absolute;left:0;top:4px;bottom:4px;width:3px;border-radius:2px;background:#e5b544; }
+[data-tavern-style] [data-hero-pin-card] { position:relative;min-width:0; }
+[data-tavern-style] [data-hero-pin-card] > [data-compact-hero] { grid-template-columns:clamp(48px,10vw,72px) minmax(0,1fr);padding-right:43px; }
+[data-tavern-style] [data-hero-pin-card] [data-compact-chevron] { position:absolute;right:16px;bottom:8px;display:block;width:14px;height:14px; }
+[data-tavern-style] [data-hero-pin] { position:absolute;top:2px;right:2px;display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:8px;background:transparent;color:#9daab8;cursor:pointer; }
+[data-tavern-style] [data-hero-pin] svg { filter:drop-shadow(0 1px 1px #000); }
+[data-tavern-style] [data-hero-pin][data-pinned] { color:#f3c54f; }
+[data-tavern-style] [data-hero-pin][data-pinned] svg { filter:drop-shadow(0 0 5px #f4c641bb); }
+[data-tavern-style] [data-hero-pin]:hover { color:#ffe18a; }
+[data-tavern-style] [data-hero-pin]:focus-visible,[data-tavern-style] [data-hero-race-empty] button:focus-visible { outline:2px solid #f2c02a;outline-offset:-2px; }
+[data-tavern-style] [data-hero-race-empty] { margin:10px 0;color:#d3d7db;font:400 13px var(--font-sans); }
+[data-tavern-style] [data-hero-race-empty] button { min-height:44px;padding:0 4px;border:0;background:none;color:#f4ce6f;text-decoration:underline;text-underline-offset:3px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="1"] { grid-template-columns:minmax(0,1fr); }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] { grid-template-columns:repeat(2,minmax(0,1fr)); }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] { grid-template-columns:repeat(3,minmax(0,1fr));gap:6px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-compact-hero] { grid-template-columns:minmax(0,1fr);grid-template-rows:42px minmax(0,1fr);align-content:start;gap:5px;min-height:119px;height:100%;padding:7px 8px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-art-wrap] { width:42px;height:42px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-text] { align-content:start;min-height:0;gap:2px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-text] > strong,
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-text] > small:first-of-type { display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-text] > strong { font-size:12px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-text] > small { font-size:10px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-hero-pin-card] > [data-compact-hero] { padding-right:8px; }
+[data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-compact-chevron] { display:none; }
+@media (min-width:760px) {
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-compact-hero] { grid-template-columns:48px minmax(0,1fr);grid-template-rows:1fr;align-items:center;gap:7px;min-height:74px;padding:6px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-art-wrap] { width:48px;height:48px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-hero-pin-card] > [data-compact-hero] { padding-right:43px; }
+}
+@media (max-width:500px) {
+  [data-tavern-style] [data-hero-order-heading] h2 { font-size:clamp(17px,4.5vw,20px); }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] [data-compact-hero] { grid-template-columns:minmax(0,1fr);grid-template-rows:42px minmax(0,1fr);align-content:start;gap:5px;min-height:113px;height:100%;padding:7px 8px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] [data-tavern-card-art-wrap] { width:42px;height:42px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] [data-tavern-card-text] { align-content:start;min-height:0;gap:2px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] [data-tavern-card-text] > strong { display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;font-size:12px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] [data-tavern-card-text] > small { font-size:10px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] [data-hero-pin-card] > [data-compact-hero] { padding-right:8px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="2"] [data-compact-chevron] { display:none; }
+}
+@media (max-width:360px) {
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] { gap:5px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-compact-hero] { grid-template-rows:32px minmax(0,1fr);min-height:117px;gap:4px;padding:5px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-art-wrap] { width:32px;height:32px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-text] > strong { font-size:11px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-tavern-card-text] > small { font-size:10px; }
+  [data-tavern-style] [data-other-heroes-grid][data-grid-columns="3"] [data-hero-pin-card] > [data-compact-hero] { padding-right:5px; }
+}

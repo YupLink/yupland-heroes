@@ -11,13 +11,14 @@ import { toRoleOptions } from "@/lib/raid/zonegen/town/roles";
 import { themesOf } from "@/lib/raid/zonegen/town/theme";
 import type { CatalogItem } from "./catalog";
 import { loadBuildingOptions, loadRoadOptions } from "./catalog-buildings";
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
 
 export type ZoneBuildingsOutput = { buildings: BuildingOption[]; roads: CatalogItem[] };
 
 /** Постройки и дороги для панели «Генератор зоны» — под гардом админа. */
 export const adminZoneBuildings = createServerFn({ method: "GET" }).handler(
   async (): Promise<ZoneBuildingsOutput> => {
-    requireAdmin();
+    await requireDesigner();
     const [buildings, roads] = await Promise.all([loadBuildingOptions(), loadRoadOptions()]);
     return { buildings, roads };
   },
@@ -33,7 +34,7 @@ export type ZoneThemesOutput = { themes: Array<{ theme: string; coverage: number
  */
 export const adminZoneThemes = createServerFn({ method: "GET" }).handler(
   async (): Promise<ZoneThemesOutput> => {
-    requireAdmin();
+    await requireDesigner();
     return { themes: themesOf(toRoleOptions(await loadBuildingOptions())) };
   },
 );

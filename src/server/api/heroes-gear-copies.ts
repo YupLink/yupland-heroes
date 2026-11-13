@@ -6,10 +6,13 @@
 // экземпляр: первый по id из списка, лучший по счёту или записанный в комплекте.
 // Если он надет на другого героя (батрачит, отдыхает или просто не основной),
 // его снимали с того героя, даже когда у игрока лежала свободная такая же.
-// Теперь такой экземпляр меняется на свободную копию того же шаблона; снимать
-// с другого героя — только если свободных копий нет.
+// Теперь такой экземпляр меняется на свободную копию того же шаблона и той же
+// прочности (износ, 22.10.2026: иначе вместо целого надевался бы сломанный)
+// и того же зачарования (лавка зачарования, 28.10.2026);
+// снимать с другого героя — только если свободных копий нет.
 import { mcpExec } from "../db/mcpClient";
 import { sqlStr } from "./raid-shared";
+import { enchantPctSql } from "@/server/api/beta-raid/enchant/enchant-sql";
 
 /** Что база знает про экземпляр набора: занят ли другим героем и чем заменить. */
 export type CopyInfo = { key: string; item: string; taken: boolean; free: string[] };
@@ -59,7 +62,8 @@ export function freeCopiesSql(
             EXISTS (SELECT 1 FROM others o WHERE o.item = w.item) AS taken,
             COALESCE((SELECT json_agg(f.id ORDER BY f.id) FROM yuplink.user_game_item f
                        WHERE f.account_id = ${acc} AND f.kind = 'artifact'
-                         AND f.template_id = u.template_id
+                         AND f.template_id = u.template_id AND f.wear = u.wear
+                         AND ${enchantPctSql("f")} IS NOT DISTINCT FROM ${enchantPctSql("u")}
                          AND f.id NOT IN (SELECT item FROM others)
                          AND f.id NOT IN (SELECT item FROM want)), '[]'::json) AS free
        FROM want w JOIN yuplink.user_game_item u ON u.id = w.item;`;

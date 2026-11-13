@@ -4,6 +4,10 @@
 // соседней клетке с плашкой «<дело> · N шагов ⚡X» (энергия пути и 2 за лопату),
 // и по приходу дело делается само. Своя клетка без маршрута — плашка из одной
 // кнопки. Лопаты в руках нет — кнопок нет: тап работает как раньше.
+// 12.11.2026 (тестер: «два раза два тыка, хотя лопата уже в руках»): «Копать»
+// издалека ведёт героя сразу, без второй плашки «Копать · N шагов» (дверь на
+// пути — плашка, как у walkTo); двойной тап по клетке — то же, что «Копать»,
+// одним жестом (как земля и динамит в руке, DOUBLE_TAP_MS).
 //
 // Вызывается из useLootBags (экран рейда за лимитом строк — туда ни строки):
 // тап проходит через него первым; прибытие маршрута с делом лопаты (kind
@@ -14,11 +18,15 @@ import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
 import { invalidateBackpack } from "@/lib/query";
+import { HARVEST_KEY } from "@/components/beta-raid/hud/useHarvest";
+import { resPriceText } from "@/components/beta-raid/market/priceLabel";
+import { numText } from "@/components/beta-raid/market/num";
 import { newOpId } from "@/lib/opId";
 import { serverErrorText } from "@/lib/serverErrorText";
 import { DIG_ENERGY, type LootBagMarks } from "@/lib/lootBag";
 import type { ChestMarks } from "@/lib/magicChest";
 import { digGround } from "@/server/api/beta-raid/main-tool/ground-dig";
+import { buryHole } from "@/server/api/beta-raid/main-tool/hole-bury";
 import { buryChest } from "@/server/api/beta-raid/plain-chest/pchest-dig";
 import { getLootBagsAt } from "@/server/api/beta-raid/loot-bag/bag-read";
 import { DIRS, isWaterCell } from "@/components/beta-raid/usePathfinding";
@@ -40,6 +48,8 @@ import {
 import { shovelActAt } from "@/components/beta-raid/tool/shovelAct";
 import { inBuildingBlock } from "@/components/beta-raid/mergeBlocks";
 import { storeOf } from "@/components/beta-raid/mapStore";
+import { getHand } from "@/components/beta-raid/hand/handStore";
+import { DOUBLE_TAP_MS } from "@/components/beta-raid/hand/handTap";
 
 type At = { q: number; r: number };
 
@@ -49,7 +59,17 @@ export function useShovel(o: {
   bags: LootBagMarks;
   chests: ChestMarks | undefined;
   ships: Map<string, ShipMark>;
-  approachCell: (q: number, r: number, action?: PendingAction | null) => void;
+  /** Ямки («q,r»): там «Копать» нет, только «Закопать» её в кучку (§8.24 п. 6б). */
+  holes: ReadonlySet<string>;
+  approachCell: (
+    q: number,
+    r: number,
+    action?: PendingAction | null,
+    failKey?: string,
+    anySide?: boolean,
+    go?: boolean,
+  ) => Promise<boolean> | void;
+  clearPending: () => void;
 }) {
   const qc = useQueryClient();
   const t = useT();
@@ -61,9 +81,30 @@ export function useShovel(o: {
   };
   const ground = useMutation({
     mutationFn: (v: At) => digGround({ data: { ...v, op: newOpId() } }),
-    onSuccess: () => {
-      toast(t("dig.nothing"));
+    onSuccess: (res) => {
+      // Клад дня (§8.117) — в «Добычу», приз по «Забрать»; находка — мешочком в ямке,
+      // что внутри — при «Открыть» (§8.24 п. 6б).
+      const tr = res.treasure;
+      if (tr) {
+        // Полученный токен — токеном (resPriceText звездочнику пишет цену DARAI в звёздах).
+        const prize =
+          tr.resource === "token"
+            ? `${numText(tr.amount)} ${tr.token ?? ""}`
+            : resPriceText(t, tr.amount, tr.resource, tr.token, tr.name);
+        toast.success(t("treasure.found", { prize }));
+        void qc.invalidateQueries({ queryKey: HARVEST_KEY });
+      } else if (res.found > 0) toast.success(t("dig.found_bag"));
+      else toast(t("dig.nothing"));
       // Ямка на клетке (02.10) — сразу, не дожидаясь события.
+      invalidateBags(qc);
+    },
+    onError: (e: Error) => toast.error(humanError(e)),
+    onSettled: settle,
+  });
+  const hole = useMutation({
+    mutationFn: (v: At) => buryHole({ data: { ...v, op: newOpId() } }),
+    onSuccess: () => {
+      toast.success(t("dig.hole_buried"));
       invalidateBags(qc);
     },
     onError: (e: Error) => toast.error(humanError(e)),
@@ -93,6 +134,7 @@ export function useShovel(o: {
       ship: o.ships.has(key),
       water: isWaterCell(cell, terrains),
       inBuilding: inBuildingBlock(storeOf(o.cells), q, r),
+      hole: o.holes.has(key),
     });
   };
   const near = (c: At) =>
@@ -108,7 +150,10 @@ export function useShovel(o: {
     const act = actAt(c.q, c.r);
     if (!act || act !== want) return void toast(t("braid.target_gone"));
     if (act === "dig") return void ground.mutate(c);
-    if (!o.bags[`${c.q},${c.r}`]) return void chest.mutate(c);
+    const key = `${c.q},${c.r}`;
+    // Пустая ямка — закопать её саму (кучка); мешочек и сундук — как раньше.
+    if (!o.bags[key] && !o.chests?.[key] && o.holes.has(key)) return void hole.mutate(c);
+    if (!o.bags[key]) return void chest.mutate(c);
     // Мешочек или бугорок: какой именно — окно клетки (сервер отдаёт его вплотную).
     const view = await getLootBagsAt({ data: c }).catch((e: unknown) => {
       toast.error(humanError(e));
@@ -133,9 +178,18 @@ export function useShovel(o: {
       return true;
     }
     heading.current = { key: `${c.q},${c.r}`, act: offer.act };
-    shovelOffer.set({ ...offer, near: false, here: false });
-    o.approachCell(c.q, c.r, { kind: "dig", q: c.q, r: c.r, extraCost: DIG_ENERGY });
-    return false;
+    const action = { kind: "dig" as const, q: c.q, r: c.r, extraCost: DIG_ENERGY };
+    const walk = o.approachCell(c.q, c.r, action, undefined, undefined, true);
+    if (!walk) {
+      shovelOffer.set({ ...offer, near: false, here: false });
+      return false;
+    }
+    void walk.then((ok) => {
+      if (ok) return arriveRef.current(c);
+      heading.current = null;
+      shovelOffer.set(null);
+    });
+    return true;
   };
   // Пришли маршрутом: делаем ровно то дело, что подтвердили на плашке.
   const arriveRef = useRef<(c: At) => void>(() => {});
@@ -168,10 +222,21 @@ export function useShovel(o: {
    * Любой тап: запомнить, что лопата сделает с клеткой. Своя пустая клетка —
    * тап обработан здесь (плашка из одной кнопки), иначе — идёт дальше как был.
    */
+  const last = useRef<{ key: string; at: number } | null>(null);
   return (q: number, r: number): boolean => {
-    const act = inHand ? actAt(q, r) : null;
+    // В руке земля или динамит — лопата в слоте не предлагает своего дела.
+    const act = inHand && !getHand() ? actAt(q, r) : null;
     const here = !!o.pos && o.pos.q === q && o.pos.r === r && act === "dig";
-    shovelOffer.set(act ? { q, r, act, near: near({ q, r }), here } : null);
-    return here;
+    const offer = act ? { q, r, act, near: near({ q, r }), here } : null;
+    shovelOffer.set(offer);
+    const [key, now] = [`${q},${r}`, Date.now()];
+    const prev = last.current;
+    const double = !!offer && prev?.key === key && now - prev.at < DOUBLE_TAP_MS;
+    last.current = double ? null : { key, at: now };
+    if (!double || !offer) return here;
+    // Второй тап по той же клетке: плашку первого тапа долой, дело — сразу.
+    o.clearPending();
+    goRef.current(offer);
+    return true;
   };
 }

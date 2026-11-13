@@ -12,9 +12,10 @@ import {
   WEAK_BOSSES,
 } from "@/lib/raid/island/catalog";
 import { currentStep, parsePlaces, stepTarget, ISLAND_STEP_IDS } from "@/lib/raid/island/steps";
-import { WATER } from "@/test/worldSpec";
+import { TEST_CATALOG, WATER } from "@/test/worldSpec";
+import { generateIsland } from "@/lib/raid/island/generate";
 import type { Cell } from "@/lib/raid/worldgen/geo";
-import { MANY, SEEDS, isWater, make, reach } from "@/lib/raid/island/island.fixture";
+import { MANY, SEEDS, isWater, make, reach, spec } from "@/lib/raid/island/island.fixture";
 
 describe("остров новичка", () => {
   it(`рамка ${ISLAND_SIZE} × ${ISLAND_SIZE}, по краю — вода, суша посередине`, () => {
@@ -27,14 +28,15 @@ describe("остров новичка", () => {
       });
       expect(edge.every((c) => isWater(c.terrainId))).toBe(true);
       const land = isl.cells.filter((c) => !isWater(c.terrainId)).length;
-      // Было ~150 клеток суши на рамке 20; теперь ~245 (17.10: «побольше»).
-      expect(land).toBeGreaterThan(200);
-      expect(land).toBeLessThan(320);
+      // Рамка 20 — ~150 клеток суши, 26 — ~245, 64 (19.10) — ~1450.
+      expect(land).toBeGreaterThan(1200);
+      expect(land).toBeLessThan(1800);
     }
   });
 
   it("тот же сид — тот же остров, другой сид — другой", () => {
-    expect(make(11)).toEqual(make(11));
+    // Мимо кэша фикстуры: два честных прогона генератора.
+    expect(generateIsland(spec, TEST_CATALOG, 11)).toEqual(generateIsland(spec, TEST_CATALOG, 11));
     expect(make(11).cells).not.toEqual(make(222).cells);
   });
 
@@ -47,6 +49,7 @@ describe("остров новичка", () => {
         p.chest,
         p.workshop,
         p.mine,
+        ...p.mines,
         p.treasure,
         p.portal,
         ...p.trees,
@@ -54,7 +57,11 @@ describe("остров новичка", () => {
         ...p.crystals,
         ...p.digs,
       ];
-      expect(new Set(all.map(keyOf)).size).toBe(all.length);
+      // Клады под дубами и камнями делят клетку с декором — остальное врозь.
+      const decor = new Set([...p.trees, ...p.crystals].map(keyOf));
+      const under = p.digs.filter((d) => decor.has(keyOf(d)));
+      expect(under.length).toBe(ISLAND_COUNTS.digsUnderDecor);
+      expect(new Set(all.map(keyOf)).size).toBe(all.length - under.length);
       expect(p.trees.length).toBe(ISLAND_COUNTS.trees);
       expect(p.crystals.length).toBe(ISLAND_COUNTS.crystals);
       expect(p.digs.length).toBe(ISLAND_COUNTS.digs);
@@ -62,7 +69,7 @@ describe("остров новичка", () => {
       for (const c of all) expect(isWater(at.get(keyOf(c))?.terrainId ?? WATER)).toBe(false);
       expect(at.get(keyOf(p.chest))?.objectId).toBe(ISLAND_OBJECTS.chest);
       for (const t of p.trees) expect(at.get(keyOf(t))?.decorationId).toBe(ISLAND_DECOR.oak);
-      for (const c of p.crystals) expect(at.get(keyOf(c))?.decorationId).toBe(ISLAND_DECOR.crystal);
+      for (const c of p.crystals) expect(at.get(keyOf(c))?.decorationId).toBe(ISLAND_DECOR.stone);
       expect(at.get(keyOf(p.monsters[0]))?.objectId).toBe(ISLAND_OBJECTS.slime);
       const weak: string[] = WEAK_BOSSES.map((b) => b.id);
       for (const m of p.monsters) expect(weak).toContain(at.get(keyOf(m))?.objectId);
@@ -74,8 +81,10 @@ describe("остров новичка", () => {
       expect(at.get(keyOf(p.portal))).toMatchObject({
         buildingId: ISLAND_BUILDINGS.portal,
         tier: 0,
+        // Проход в мир — герою от 5 уровня (19.10).
+        buildingConfig: { portal: { levelFromOn: true, levelFrom: 5, levelToOn: false } },
       });
-      for (const c of [p.spawn, p.treasure, ...p.digs])
+      for (const c of [p.spawn, p.treasure, ...p.digs.filter((d) => !decor.has(keyOf(d)))])
         expect(at.get(keyOf(c))).toMatchObject({
           decorationId: null,
           objectId: null,
@@ -100,6 +109,7 @@ describe("остров новичка", () => {
         p.chest,
         p.workshop,
         p.mine,
+        ...p.mines,
         p.treasure,
         p.portal,
         ...p.trees,
@@ -118,17 +128,26 @@ describe("остров новичка", () => {
     }
   });
 
-  it("город один: ратуша с настройкой и привязанные к ней лавки", () => {
-    const isl = make(11);
-    expect(isl.halls.length).toBeLessThanOrEqual(1);
-    for (const s of isl.shops) expect([s.hallQ, s.hallR]).toEqual([isl.halls[0].q, isl.halls[0].r]);
+  it("городов три (21.10): у каждого ратуша с настройкой, лавки привязаны к своей", () => {
+    for (const seed of SEEDS) {
+      const isl = make(seed);
+      expect(isl.halls.length, `${seed}`).toBe(3);
+      const halls = new Set(isl.halls.map((h) => `${h.q},${h.r}`));
+      expect(halls.size).toBe(3);
+      for (const h of isl.halls) expect(h.config).toBeTruthy();
+      for (const s of isl.shops) expect(halls.has(`${s.hallQ},${s.hallR}`)).toBe(true);
+      // Ратуша главного города — замок задания.
+      expect(isl.places.hall).toEqual({ q: isl.halls[0].q, r: isl.halls[0].r });
+    }
   });
 });
 
 describe("шаги задания", () => {
   it("текущий — первый незасчитанный, всё засчитано — null", () => {
     expect(currentStep(new Set())).toBe("hello");
-    expect(currentStep(new Set(["hello", "walk", "axe"]))).toBe("chest");
+    // Герой выбирается сразу после приветствия (25.10).
+    expect(currentStep(new Set(["hello", "walk", "axe"]))).toBe("hero_pick");
+    expect(currentStep(new Set(["hello", "hero_pick", "walk", "axe"]))).toBe("chest");
     expect(currentStep(new Set(ISLAND_STEP_IDS))).toBeNull();
   });
 
@@ -159,6 +178,7 @@ describe("снос острова", () => {
       "raid_field_worker",
       "raid_fishing",
       "raid_mob_spawn",
+      "raid_mine_op",
     ])
       expect(sql).toMatch(new RegExp(`DELETE FROM yuplink\\.${t}\\s`));
     // Только по карте острова.
@@ -180,6 +200,14 @@ describe("остров после выхода", () => {
     expect(sql).toContain("ON CONFLICT (account_id) DO UPDATE");
     expect(sql).toContain("WHERE yuplink.raid_island.map_id IS NULL");
     expect(sql).toContain("finished_at = NULL");
+  });
+
+  it("карта острова без строки задания — для демо-острова", async () => {
+    const { islandMapSql, islandSql } = await import("@/server/api/beta-raid/island/island-write");
+    const o = { mapId: "isle_demo", name: "Демо-остров", account: "acc_1", seed: 11, island: make(11), by: "w" };
+    const map = islandMapSql(o);
+    expect(islandSql(o)).toEqual([...map, islandSql(o).at(-1)]);
+    expect(map.some((q) => q.includes("yuplink.raid_island "))).toBe(false);
   });
 });
 

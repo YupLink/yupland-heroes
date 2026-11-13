@@ -30,9 +30,11 @@ const AGG: Record<string, "sum" | "count" | "max"> = {
   weak_arm: "max",
   weak_luck: "max",
   weak_int: "max",
+  // Снятие иммунитетов: сервер шлёт минуты, на которые сняты; по логу — сумма.
+  strip_immune: "sum",
 };
 
-const BADGE: Record<string, (n: number) => string> = {
+const BADGE: Record<string, (n: number, t: TFn) => string> = {
   poison: (n) => `×${n}`,
   // Энергия дробная: без формата в значок лез «−12.600000000000001».
   burn_energy: (n) => `−${formatEnergyCost(n)}`,
@@ -45,6 +47,7 @@ const BADGE: Record<string, (n: number) => string> = {
   weak_arm: (n) => `−${n}`,
   weak_luck: (n) => `−${n}`,
   weak_int: (n) => `−${n}`,
+  strip_immune: (n, t) => t("braid.strip_badge", { n }),
 };
 
 /**
@@ -74,6 +77,8 @@ function detailText(kind: string, n: number, t: TFn, lang: Lang): string {
     case "weak_luck":
     case "weak_int":
       return t(`braid.eff_${kind}`, { n });
+    case "strip_immune":
+      return t("braid.sum_strip", { n });
     default:
       return String(n);
   }
@@ -167,7 +172,7 @@ export function BetaFightSummary({
                 style={{ color }}
               >
                 <Icon className="h-3.5 w-3.5" />
-                {(BADGE[kind] ?? String)(n)}
+                {BADGE[kind] ? BADGE[kind](n, t) : String(n)}
               </button>
             );
           })}

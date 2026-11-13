@@ -6,6 +6,7 @@
 // платное. Повторы, гонки и отказы — pass-race.test.
 // Ручка настоящая; база — фейк сундука (pchest.fake) и входа (pass.fake).
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { energyOf, f } from "@/server/api/beta-raid/plain-chest/pchest.fake";
 import { BAG, MIN, fill, notes, passKit, resetPass } from "./pass.fake-mocks";
 
@@ -32,15 +33,15 @@ describe("цена: max(1, занятые ячейки), мешочек — 1", 
     expect(notes).toEqual([["w1", 1, "chest_open"]]);
   });
 
-  it("три занятые ячейки (20 + 20 + 1) — 3 энергии, причина chest_open", async () => {
-    fill([20, 20, 1]);
+  it(`три занятые ячейки (${CELL_SIZE} + ${CELL_SIZE} + 1) — 3 энергии, причина chest_open`, async () => {
+    fill([CELL_SIZE, CELL_SIZE, 1]);
     await expect(open()).resolves.toMatchObject({ paid: 3 });
     expect(energyOf("w1")).toBe(97);
     expect(notes).toEqual([["w1", 3, "chest_open"]]);
   });
 
   it("полный сундук (10 ячеек) — 10 энергии", async () => {
-    fill(Array(10).fill(20));
+    fill(Array(10).fill(CELL_SIZE));
     await expect(open()).resolves.toMatchObject({ paid: 10 });
     expect(energyOf("w1")).toBe(90);
   });
@@ -54,7 +55,7 @@ describe("цена: max(1, занятые ячейки), мешочек — 1", 
   it("чужой магический — по ячейкам сети хозяина; пустая сеть — 1", async () => {
     f.chests.clear();
     f.magic.set("5,6", { owner: "acc2", buried: false });
-    f.net.set("acc2", new Map([["custom:ore", 45]]));
+    f.net.set("acc2", new Map([["custom:ore", 2 * CELL_SIZE + 5]]));
     await expect(open()).resolves.toMatchObject({ paid: 3 });
     expect(await alive("mc:map1:5:6")).toBe(true);
     f.net.set("acc2", new Map());
@@ -66,7 +67,7 @@ describe("цена: max(1, занятые ячейки), мешочек — 1", 
 
 describe("каждое открытие платит, продления нет", () => {
   it("закрыл окно и открыл снова — снова платно", async () => {
-    fill([20]);
+    fill([CELL_SIZE]);
     await open({}, "press-one");
     await close({ ops: ["press-one"] });
     expect(await alive("pc:pc_1")).toBe(false);
@@ -75,7 +76,7 @@ describe("каждое открытие платит, продления нет"
   });
 
   it("тап при живом входе (окно ещё не перечитано) — без платы и БЕЗ продления", async () => {
-    fill([20, 20]);
+    fill([CELL_SIZE, CELL_SIZE]);
     await open();
     f.clock += 9 * MIN;
     await expect(open()).resolves.toMatchObject({ paid: 0 });
@@ -87,7 +88,7 @@ describe("каждое открытие платит, продления нет"
   });
 
   it("прошло 10 минут — вход закрыт; новое открытие снова платное", async () => {
-    fill([20]);
+    fill([CELL_SIZE]);
     await open();
     f.clock += 10 * MIN + 1;
     expect(await alive("pc:pc_1")).toBe(false);
@@ -96,7 +97,7 @@ describe("каждое открытие платит, продления нет"
   });
 
   it("сошёл с клетки — вход закрыт; вернулся — снова платно", async () => {
-    fill([20, 20]);
+    fill([CELL_SIZE, CELL_SIZE]);
     await open();
     f.ver.set("acc1", 1);
     expect(await alive("pc:pc_1")).toBe(false);
@@ -122,7 +123,7 @@ describe("закрыть окно", () => {
   });
 
   it("окно закрывает только свои входы: опоздавшее закрытие старого окна не гасит оплаченный новым", async () => {
-    fill([20]);
+    fill([CELL_SIZE]);
     await open({}, "press-old-win");
     await close({ ops: ["press-old-win"] });
     await expect(open({}, "press-new-win")).resolves.toMatchObject({ paid: 1 });

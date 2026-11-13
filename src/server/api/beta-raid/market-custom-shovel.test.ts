@@ -38,8 +38,8 @@ describe("лопата — галочка своего товара", () => {
     expect(
       (await call(mod.createCustomItem, { ...base, isShovel: true, toolWear: 25 })).isShovel,
     ).toBe(true);
-    expect(s.sql[0]).toContain("magic_chest, is_shovel, tool_wear)");
-    expect(s.sql[0]).toMatch(/, true, 25\);$/);
+    expect(s.sql[0]).toContain("magic_chest, is_shovel, tool_wear, is_binocular, is_ladder)");
+    expect(s.sql[0]).toMatch(/, true, 25,\n\s+false, false\);$/);
   });
 
   it("правка: задана — пишется; старая вкладка без поля — колонку не трогаем", async () => {

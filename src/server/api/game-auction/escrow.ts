@@ -4,7 +4,7 @@
 // не удвоит:
 //   ресурс   — res_move, виды auction_escrow / auction_return;
 //   артефакт — takeArtifacts / restoreArtifacts: вернутся те же экземпляры (по
-//              памятке в raid_backpack_op); надетые не берутся;
+//              памятке в raid_backpack_op) с их износом; надетые не берутся;
 //   товар    — takeItemOnce / returnItemOnce из рюкзака того героя, у кого взяли
 //              (с метками происхождения — собранное останется собранным).
 // Возврат смотрит на улики (строка журнала / памятка / ключ списания): что не
@@ -23,6 +23,10 @@ export type EscrowInfo = {
   stackKey?: string;
   image?: string | null;
   snap?: BackpackTakeSnapshot;
+  /** Артефакт: износ выставленных (lib/hero/artWear) — в залог ровно такие. */
+  wear?: number;
+  /** Артефакт: зачарование группы (lot-arts); null — только обычные; нет поля (старые лоты) — любые. */
+  enchant?: number | null;
 };
 
 export type EscrowLot = {
@@ -37,7 +41,8 @@ export type EscrowLot = {
 };
 
 const lotKey = (id: string): string => `gauclot:${id}`;
-const artMemo = (id: string): string => `art:${lotKey(id)}#`;
+/** Памятка взятых в залог артефактов лота (по ней — возврат и зачарование победителю). */
+export const artMemo = (id: string): string => `art:${lotKey(id)}#`;
 
 async function exists(sql: string): Promise<boolean> {
   const rows = (await mcpExec(sql, { wrapJson: true })) as Array<{ n: number | string }>;
@@ -67,7 +72,14 @@ export async function takeEscrow(
       account: lot.seller_account_id,
       wallet: lot.seller_wallet,
       qty,
-      pick: { templateId: lot.prize_ref },
+      // Износ задан пикером (house-lot); у лотов до износа его нет — любые.
+      pick: {
+        templateId: lot.prize_ref,
+        wear: lot.escrow?.wear ?? null,
+        ...(lot.escrow && "enchant" in lot.escrow
+          ? { enchantPct: lot.escrow.enchant ?? null }
+          : {}),
+      },
       op: key,
     });
     return { ok: !!taken };

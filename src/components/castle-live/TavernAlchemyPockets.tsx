@@ -16,6 +16,7 @@ import {invalidateBackpack,invalidateHeroQueries} from '@/lib/query';
 import {ChevronLeft,ChevronRight} from 'lucide-react';
 import './tavern-alchemy.css';
 
+import { thumb } from '@/lib/image';
 export function TavernAlchemyPockets({data,loading,allowUse=false,beforeUse,batchPreview=true}:{data?:Castle['backpack']['data'];loading:boolean;allowUse?:boolean;beforeUse?:()=>Promise<void>;batchPreview?:boolean}){
  const ru=useLang()!=='en';
  const t=useT();
@@ -61,9 +62,9 @@ export function TavernAlchemyPockets({data,loading,allowUse=false,beforeUse,batc
    await beforeUse();
    return applyItemBoost({data:{stackKey,op:newOpId()}});
   },
-  onSuccess:res=>{
+  onSuccess:(res,stackKey)=>{
    const line=res.rolls.map(r=>boostEffectText({stat:r.stat,value:String(r.amount),minutes:String(r.minutes)},ru?'ru':'en')).join(' · ');
-   toast.success(t('braid.boost_item_done',{hero:res.heroName??'',line}));
+   toast.success(t('braid.boost_item_done',{item:data?.stacks.find(s=>s.stackKey===stackKey)?.name??'',line}));
    invalidateBackpack(qc);
    invalidateHeroQueries(qc,['beta-raid-state']);
   },
@@ -76,9 +77,9 @@ export function TavernAlchemyPockets({data,loading,allowUse=false,beforeUse,batc
    await beforeUse();
    return applyItemBoosts({data:{items:stacks.map(({stackKey,qty})=>({stackKey,qty})),op:newOpId()}});
   },
-  onSuccess:res=>{
-   const used=res.items.reduce((sum,item)=>sum+item.qty,0);
-   toast.success(res.repeat?(ru?'Зелья уже использованы.':'Potions were already used.'):(ru?`Использовано зелий: ${used}`:`Potions used: ${used}`));
+  onSuccess:(res,stacks)=>{
+   const names=stacks.map(s=>`${s.name} ×${s.qty}`).join(', ');
+   toast.success(res.repeat?(ru?'Зелья уже использованы.':'Potions were already used.'):`${ru?'Активировано':'Activated'}: ${names}`);
    setQuantities({});invalidateBackpack(qc);invalidateHeroQueries(qc,['beta-raid-state']);
   },
   onError:(error:Error)=>{setQuantities({});invalidateBackpack(qc);invalidateHeroQueries(qc,['beta-raid-state']);toast.error(humanError(error))},
@@ -101,7 +102,7 @@ export function TavernAlchemyPockets({data,loading,allowUse=false,beforeUse,batc
      <div className={`alchemy-detail-copy${batchPreview&&selectedStacks.length?' has-selection':''}`}>
      {batchPreview&&selectedStacks.length?<div className="alchemy-selected-list" data-overflow={selectedStacks.length>3||undefined} aria-label={ru?'Выбранные зелья и эффекты':'Selected potions and effects'}>
       {selectedStacks.map(stack=><button key={stack.stackKey} type="button" className="alchemy-selected-row" data-active={chosen?.stackKey===stack.stackKey||undefined} aria-label={ru?`${stack.name}, ${stack.qty} шт., ${stack.effect}`:`${stack.name}, ${stack.qty} items, ${stack.effect}`} onClick={()=>{const index=cells.findIndex(item=>item?.stackKey===stack.stackKey);if(index>=0)setSelected(index)}}>
-       <img src={stack.image} alt="" onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src='/design-assets/gear-potion.webp'}}/>
+       <img src={thumb(stack.image, 96)} alt="" onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src='/design-assets/gear-potion.webp'}}/>
        <span className="alchemy-selected-text"><span className="alchemy-selected-name"><strong>{stack.name}</strong><b>×{stack.qty}</b></span><span className="alchemy-selected-effect">{stack.effect}</span></span>
       </button>)}
      </div>:<>

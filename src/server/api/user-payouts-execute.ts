@@ -34,7 +34,7 @@ export async function processPayment(
     const { notifyLowBalanceDaily } = await import("../tg");
     notifyLowBalanceDaily(g.symbol);
     // Раньше заявка молча висела pending, крон 30 мин безуспешно пробовал,
-    // игрок видел «повторите позже» и не понимал где деньги (player56 с
+    // игрок видел «повторите позже» и не понимал где деньги (жалоба игрока,
     // POLLEN 13.09). Владельца это возмутило: очевидно, что надо ВЕРНУТЬ
     // списанные средства на счёт сразу и написать понятное сообщение.
     // acc_withdraw_cancel идемпотентен и проверяет tx_hash/processing IS NULL —

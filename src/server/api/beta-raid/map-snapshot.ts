@@ -52,6 +52,16 @@ export function dropMapSnapshot(mapId?: string): void {
   else revSeen.clear();
 }
 
+/** Карты больше нет (снесённый остров) — снимки и сверки из памяти процесса. */
+export function forgetMapSnapshot(mapId: string): void {
+  for (const variant of ["player", "admin"] as const) {
+    snapshots.delete(key(mapId, variant));
+    building.delete(key(mapId, variant));
+  }
+  revSeen.delete(mapId);
+  purgeMapBase(mapId);
+}
+
 // Событие «map» — наше же или с соседнего процесса через NOTIFY.
 subscribeRaid((e) => {
   if (e.type !== "map") return;
@@ -59,7 +69,32 @@ subscribeRaid((e) => {
   // (кэш клеток на 15 с) — иначе собрали бы старые клетки под новой версией.
   purgeMapBase(e.mapId);
   dropMapSnapshot(e.mapId);
+  dropCellSetIfGrew(e);
 });
+
+/**
+ * Появились клетки, которых нет в снимке (земля мира строителей, кисть по
+ * пустоте), — снимок «какие клетки есть» устарел: туман отбросил бы новые
+ * клетки как несуществующие (getCellSetSnapshot держит снимок до 10 минут).
+ * Без списка клеток (большое событие) — тоже сбрасываем: не знаем, что там.
+ */
+function dropCellSetIfGrew(e: { mapId: string; full?: boolean; patches?: unknown }): void {
+  const patches = Array.isArray(e.patches)
+    ? (e.patches as Array<{ q: number; r: number; terrainId?: string | null }>)
+    : null;
+  if (patches && !patches.some((p) => p.terrainId)) return;
+  for (const variant of ["player", "admin"] as const) {
+    const snap = snapshots.get(key(e.mapId, variant));
+    if (!snap) continue;
+    const known = (p: { q: number; r: number }) => {
+      for (let i = 0; i < snap.q.length; i++)
+        if (snap.q[i] === p.q && snap.r[i] === p.r) return true;
+      return false;
+    };
+    if (!patches || patches.some((p) => p.terrainId && !known(p)))
+      snapshots.delete(key(e.mapId, variant));
+  }
+}
 
 export async function currentRevision(mapId: string): Promise<number> {
   const hit = revSeen.get(mapId);
@@ -100,6 +135,8 @@ async function build(
         runners: p.runners,
         voidFog: p.voidFog,
         townHalls: p.townHalls,
+        mines: p.mines,
+        ...(p.veins ? { veins: p.veins } : {}),
         groups: p.groups,
       },
       terrains: data.terrains,

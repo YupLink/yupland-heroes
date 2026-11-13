@@ -122,15 +122,23 @@ export function applyFled(qc: QueryClient, moves: FleeMove[] | undefined): FleeM
  * карты «map»: если запись в журнал не удалась (мост к базе моргнул), объект
  * иначе висел бы у всех живым до следующей перекачки. «Мёртв» — состояние
  * монотонное, дельта потом подтвердит то же самое.
+ *
+ * `runner` — погас беглец (слой 1), иначе объект клетки. Беглец, уже открытый
+ * на клетке (ответ удара или дельта успели раньше), от смерти объекта клетки
+ * не гаснет: это другой объект, и он жив (markDefeated).
  */
-export function applyDefeated(qc: QueryClient, cells: unknown[]): void {
-  const patches: CellPatch[] = [];
+export function applyDefeated(qc: QueryClient, cells: unknown[], runner = false): void {
+  const keys: Array<{ q: number; r: number }> = [];
   for (const k of cells) {
     const c = typeof k === "string" ? parseCellKey(k) : null;
-    if (c) patches.push({ ...c, alive: false });
+    if (c) keys.push(c);
   }
-  if (patches.length === 0) return;
-  qc.setQueryData(MAP_KEY, (old: MapLike | undefined) =>
-    old ? applyCellPatches(old, patches) : old,
-  );
+  if (keys.length === 0) return;
+  qc.setQueryData(MAP_KEY, (old: MapLike | undefined) => {
+    if (!old) return old;
+    const patches: CellPatch[] = keys
+      .filter((c) => runner || !readCellDetails(old, c.q, c.r).runner)
+      .map((c) => ({ ...c, alive: false }));
+    return patches.length ? applyCellPatches(old, patches) : old;
+  });
 }

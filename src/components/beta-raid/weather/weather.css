@@ -1,0 +1,50 @@
+@font-face{font-family:"Weather Russo";src:url("../../../assets/tavern/RussoOne.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Weather Golos";src:url('../../../assets/tavern/GolosText.woff2') format("woff2");font-weight:100 900;font-display:swap}
+.raid-weather{position:absolute;left:0;top:8px;z-index:30;pointer-events:none;color:#fff1d2;font-family:"Weather Golos",sans-serif}
+/* Leave the admin tools row clear; players align with the status bar. */
+.raid-weather[data-admin=true]{top:96px}
+.raid-hero-group ~ .raid-weather[data-admin=true]{top:74px}
+.raid-weather__drawer{position:relative;width:72px;height:48px;transform:translateX(-44px);transform-origin:top left;transition:transform .24s ease;pointer-events:auto}
+.raid-weather[data-open=true] .raid-weather__drawer{transform:translateX(0)}
+.raid-weather__glass{position:absolute;inset:0;background:linear-gradient(135deg,#302e267d,#171d1b9e);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+.raid-weather__outline{position:absolute;inset:0;width:72px;height:48px;fill:none;stroke:#bca25e;stroke-width:1;pointer-events:none}
+.raid-weather button{color:inherit;cursor:pointer;border:0;background:transparent;padding:0;font:inherit}
+.raid-weather button:focus-visible{outline:2px solid #fff2bb;outline-offset:-2px;border-radius:8px}
+.raid-weather__contents{position:relative;width:44px;padding:5px 0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.raid-weather__contents button{width:44px;min-height:38px;display:flex;align-items:center;flex-direction:column;border-radius:9px}
+.raid-weather__contents button.is-selected{background:#f5d98a12;box-shadow:inset 0 0 0 1px #e4ca7760}
+.raid-weather__art{display:block;flex:none;width:24px;height:24px;background-size:200% 100%;background-position:left center;background-repeat:no-repeat}
+.raid-weather__contents strong{font-size:12px;line-height:14px;white-space:nowrap}
+.raid-weather .raid-weather__handle{position:absolute;left:44px;top:0;width:28px;height:48px;display:grid;place-items:center}
+.raid-weather__handle svg{width:16px;height:16px;stroke-width:1.8}
+/* The frame is not a scroller: in frost FrostHud puts a coating over its 1px border
+   (top/left −1px, full border-box size), and inside overflow:auto that 1px became
+   both scrollbars. Only the body below the header scrolls, and only when the screen is too short. */
+.raid-weather__details{position:absolute;top:0;left:80px;width:min(234px,calc(100vw - 90px));display:flex;flex-direction:column;max-height:calc(100vh - 138px);max-height:calc(100dvh - 138px);pointer-events:auto;border:1px solid #bca25e99;border-radius:12px;background:linear-gradient(135deg,#302e268c,#171d1ba8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:6px 9px 8px;box-shadow:0 3px 10px #0002}
+.raid-weather[data-admin=false] .raid-weather__details{top:64px;left:8px;width:min(234px,calc(100vw - 24px))}
+.raid-weather__body{min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+.raid-weather__details header{display:flex;flex:none;align-items:center;justify-content:space-between;gap:4px}
+.raid-weather__details h2{font:600 14px/1.25 "Weather Golos",sans-serif;margin:0;white-space:normal}
+.raid-weather .raid-weather__details h2,.raid-weather .raid-weather__contents strong{font-family:"Weather Golos",sans-serif!important}
+.raid-weather__details header button{display:grid;place-items:center;flex:none;width:30px;height:32px}
+.raid-weather__details header svg{width:16px;height:16px;stroke-width:1.8}
+.raid-weather__details p{font-size:11px;color:#d7c498;margin:0;padding:0 0 6px;border-bottom:1px solid #bca25e44}
+.raid-weather__details ul{padding:3px 0 0;margin:0;list-style:none}
+.raid-weather__details li{display:grid;grid-template-columns:23px minmax(0,1fr) auto;gap:5px;align-items:center;min-height:32px;font-size:11px;line-height:1.2}
+.raid-weather__details li img{width:23px;height:25px;object-fit:contain}
+.raid-weather__details li span:last-child{font-size:11px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce){.raid-weather__drawer{transition:none}}
+/* Match the existing Trade entry surfaces, scoped to the information card. */
+.raid-weather__details{border-color:#88713e;border-radius:16px;background:radial-gradient(ellipse at 50% 0,#1c1e1ed9 0,#121516d4 50%,#101213de 100%);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#f3edda;padding:8px 9px 10px;box-shadow:0 12px 30px #0005,inset 0 1px #ffffff0a}
+.raid-weather .raid-weather__details h2{font-family:"Weather Russo",sans-serif!important;font-size:15px;font-weight:400}
+.raid-weather__details header button{color:#b8b6a7}
+.raid-weather__details p{color:#b8bdc1;border:0;padding-bottom:5px}
+.raid-weather__details ul{display:flex;flex-direction:column;gap:5px}
+.raid-weather__details li{min-height:37px;padding:4px 6px;grid-template-columns:22px minmax(0,1fr) auto;gap:4px;border:1px solid #75633c80;border-radius:10px;background:linear-gradient(145deg,#171a1b99,#101314a6)}
+.raid-weather__details li img{width:22px;height:25px}
+.raid-weather__details li span:nth-child(2){font-weight:600}
+.raid-weather__details li span:last-child{color:#e6c36b;font-size:10px}
+
+/* Weather clears editor tools for admins, designers and island-god users. */
+[data-raid-editor-tools=true] .raid-weather[data-admin]{top:72px}
+@media(max-width:360px){[data-raid-editor-tools=true] .raid-weather[data-admin]{top:128px}}

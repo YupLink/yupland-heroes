@@ -2,7 +2,9 @@
 //
 // Вынесено из usePathfinding (правило ≤250 строк): там остался сам поиск, а
 // здесь — что клетка из себя представляет и почём в неё входить.
-import { isWaterName, isOceanName, stepEnergyCost } from "@/lib/shipRules";
+import { isWaterName, isOceanName, stepEnergyCost, type MoveMult } from "@/lib/shipRules";
+
+export type { MoveMult } from "@/lib/shipRules";
 
 export type CellInfo = {
   terrainId?: string;
@@ -16,6 +18,8 @@ export type CellInfo = {
   decorationId?: string | null;
   /** Клетка под глухим туманом — стена. У админа флага нет (см. unpackMap). */
   voidFog?: boolean;
+  /** На клетке шахта — стена для всех (§8.59 п. 9); сойти с неё можно. */
+  mine?: boolean;
 };
 
 export type TerrainInfo = {
@@ -97,6 +101,8 @@ export function stepCost(
   stepDiscountPct = 0,
   /** На борту большого корабля — гребок дешевле (2 вместо 3). */
   aboardBig = false,
+  /** Множитель хода (useMoveMult): остров — 0,1, мир — 1; погода — ноги/судно. */
+  energyMult: MoveMult = 1,
 ): number {
   return stepEnergyCost({
     boarding,
@@ -105,5 +111,6 @@ export function stepCost(
     cellCost: cellBaseCost(cell, terrains, roads),
     slowExtra,
     heroStepDiscountPct: stepDiscountPct,
+    mult: energyMult,
   });
 }

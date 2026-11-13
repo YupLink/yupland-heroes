@@ -1,5 +1,5 @@
-@font-face {font-family:"Castle Upgrade Russo";src:url("../../assets/tavern/RussoOne.ttf") format("truetype");font-weight:400;font-display:swap}
-@font-face {font-family:"Castle Upgrade Golos";src:url("../../assets/tavern/GolosText.ttf") format("truetype");font-weight:400 900;font-display:swap}
+@font-face {font-family:"Castle Upgrade Russo";src:url("../../assets/tavern/RussoOne.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face {font-family:"Castle Upgrade Golos";src:url("../../assets/tavern/GolosText.woff2") format("woff2");font-weight:400 900;font-display:swap}
 .barracks-main-chip-modal.is-upgrading>.barracks-detail-panel{visibility:hidden}
 .chip-upgrade-overlay{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:12px;background:transparent}
 .chip-upgrade-overlay.is-top-layer{z-index:130}
@@ -47,7 +47,7 @@
 .chip-upgrade__warning{display:flex;align-items:center;gap:7px;color:#e5b864;font-size:13px;line-height:1.4;margin:9px 0}
 .chip-upgrade__auto-entry{display:block;width:100%;min-height:42px;border:1px solid #836633;border-radius:12px;background:#241f16;color:#f3c456;font-weight:700;margin:4px 0 9px}
 .chip-upgrade__auto-entry:disabled{opacity:.5}
-.chip-upgrade__summary{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #765820;padding:13px 4px 10px;font-size:13px}
+.chip-upgrade__summary{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #765820;padding:13px 4px 10px;font-size:13px}
 .chip-upgrade__summary::before{content:"";position:absolute;top:-5px;left:50%;width:8px;height:8px;transform:translateX(-50%) rotate(45deg);border:1px solid #dfad2e;background:#0b1216}
 .chip-upgrade__currency{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .chip-upgrade__currency>span{color:#a7a9b1}

@@ -17,9 +17,11 @@
 .raid-lower-actions__item{--travel:-46px;position:relative;display:grid;place-items:center;width:44px;height:44px;flex:none;opacity:0;transform:translateX(var(--travel)) scale(.48);transition:opacity .2s ease,transform .32s cubic-bezier(.2,.8,.2,1)}
 .raid-lower-actions__item:nth-child(2){--travel:-95px}
 .raid-lower-actions__item:nth-child(3){--travel:-144px}
+.raid-lower-actions__item:nth-child(4){--travel:-193px}
 .raid-lower-actions--open .raid-lower-actions__item{opacity:1;transform:translateX(0)}
 .raid-lower-actions--open .raid-lower-actions__item:nth-child(2){transition-delay:.035s}
 .raid-lower-actions--open .raid-lower-actions__item:nth-child(3){transition-delay:.07s}
+.raid-lower-actions--open .raid-lower-actions__item:nth-child(4){transition-delay:.105s}
 .raid-lower-actions__context{position:absolute;z-index:36;left:calc(100% + 5px);bottom:0;width:max-content;transition:transform .26s cubic-bezier(.2,.8,.2,1)}
 .raid-lower-actions--open .raid-lower-actions__context{transform:translateY(-56px)}
 .raid-lower-actions__context .raid-fishing-cast{max-width:min(144px,calc(100vw - 80px))}

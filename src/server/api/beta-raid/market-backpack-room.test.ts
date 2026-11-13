@@ -6,6 +6,7 @@
 // насмерть, а «занято» читалось нулём, если ни одного нужного вида в рюкзаке
 // ещё не было.
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const state = vi.hoisted(() => ({
   rows: [] as Array<{ stackKey: string; count: number; potion?: boolean }>,
@@ -56,12 +57,12 @@ describe("свободный рюкзак", () => {
   });
 
   it("долив в неполную ячейку новых ячеек не требует", async () => {
-    state.rows = [{ stackKey: "custom:cst_apple", count: 14 }];
+    state.rows = [{ stackKey: "custom:cst_apple", count: CELL_SIZE - 6 }];
     await expect(assertBackpackRoom(caps(1), "custom:cst_apple", 5)).resolves.toBeUndefined();
   });
 
   it("перелив через край ячейки требует новую", async () => {
-    state.rows = [{ stackKey: "custom:cst_apple", count: 18 }];
+    state.rows = [{ stackKey: "custom:cst_apple", count: CELL_SIZE - 2 }];
     await expect(assertBackpackRoom(caps(1), "custom:cst_apple", 5)).rejects.toThrow(
       "market.backpack_need:1:0",
     );
@@ -144,12 +145,14 @@ describe("сумка зелий (галочка «зелье» у товара):
   it("зелье ложится в сумку, даже когда рюкзак полон", async () => {
     state.rows = [...fullBackpack];
     state.potions = ["cst_heal"];
-    await expect(assertBackpackRoom(caps(2, 3), "custom:cst_heal", 20)).resolves.toBeUndefined();
+    await expect(
+      assertBackpackRoom(caps(2, 3), "custom:cst_heal", CELL_SIZE),
+    ).resolves.toBeUndefined();
   });
 
   it("не влезшее в сумку зелье в рюкзак НЕ переливается — отказ ключом сумки", async () => {
     // Рюкзак пуст на все пять ячеек, сумка на одну — занята.
-    state.rows = [{ stackKey: "custom:cst_speed", count: 20, potion: true }];
+    state.rows = [{ stackKey: "custom:cst_speed", count: CELL_SIZE, potion: true }];
     state.potions = ["cst_heal"];
     await expect(assertBackpackRoom(caps(5, 1), "custom:cst_heal", 1)).rejects.toThrow(
       "market.potion_bag_need:1:0",
@@ -157,7 +160,7 @@ describe("сумка зелий (галочка «зелье» у товара):
   });
 
   it("сумка ровно полна — долив в неполную ячейку своего вида проходит", async () => {
-    state.rows = [{ stackKey: "custom:cst_heal", count: 14, potion: true }];
+    state.rows = [{ stackKey: "custom:cst_heal", count: CELL_SIZE - 6, potion: true }];
     await expect(assertBackpackRoom(caps(0, 1), "custom:cst_heal", 6)).resolves.toBeUndefined();
     await expect(assertBackpackRoom(caps(0, 1), "custom:cst_heal", 7)).rejects.toThrow(
       "market.potion_bag_need:1:0",
@@ -168,8 +171,8 @@ describe("сумка зелий (галочка «зелье» у товара):
     // Три ячейки зелий при сумке на одну (перебор до 29.09): свободно 0,
     // освободить надо две — тогда сумка снова по ёмкости.
     state.rows = [
-      { stackKey: "custom:cst_heal", count: 14, potion: true },
-      { stackKey: "custom:cst_speed", count: 20, potion: true },
+      { stackKey: "custom:cst_heal", count: CELL_SIZE - 6, potion: true },
+      { stackKey: "custom:cst_speed", count: CELL_SIZE, potion: true },
       { stackKey: "custom:cst_luck", count: 0.4, potion: true },
     ];
     await expect(assertBackpackRoom(caps(9, 1), "custom:cst_heal", 1)).rejects.toThrow(
@@ -179,31 +182,37 @@ describe("сумка зелий (галочка «зелье» у товара):
 
   it("рюкзак не считает зелья: перебор сумки не мешает обычному товару", async () => {
     state.rows = [
-      { stackKey: "custom:cst_speed", count: 20, potion: true },
-      { stackKey: "custom:cst_heal", count: 20, potion: true },
+      { stackKey: "custom:cst_speed", count: CELL_SIZE, potion: true },
+      { stackKey: "custom:cst_heal", count: CELL_SIZE, potion: true },
     ];
-    await expect(assertBackpackRoom(caps(1, 1), "custom:cst_apple", 20)).resolves.toBeUndefined();
+    await expect(
+      assertBackpackRoom(caps(1, 1), "custom:cst_apple", CELL_SIZE),
+    ).resolves.toBeUndefined();
   });
 
   it("зелья в сумке не занимают ячеек рюкзака", async () => {
     state.rows = [
-      { stackKey: "custom:cst_speed", count: 20, potion: true },
-      { stackKey: "custom:cst_heal", count: 20, potion: true },
+      { stackKey: "custom:cst_speed", count: CELL_SIZE, potion: true },
+      { stackKey: "custom:cst_heal", count: CELL_SIZE, potion: true },
     ];
-    await expect(assertBackpackRoom(caps(1, 2), "custom:cst_apple", 20)).resolves.toBeUndefined();
+    await expect(
+      assertBackpackRoom(caps(1, 2), "custom:cst_apple", CELL_SIZE),
+    ).resolves.toBeUndefined();
   });
 
-  it("20 штук одного зелья — одна ячейка, 21 — уже две", async () => {
+  it(`${CELL_SIZE} штук одного зелья — одна ячейка, ${CELL_SIZE + 1} — уже две`, async () => {
     state.potions = ["cst_heal"];
-    await expect(assertBackpackRoom(caps(0, 1), "custom:cst_heal", 20)).resolves.toBeUndefined();
-    await expect(assertBackpackRoom(caps(0, 1), "custom:cst_heal", 21)).rejects.toThrow(
+    await expect(
+      assertBackpackRoom(caps(0, 1), "custom:cst_heal", CELL_SIZE),
+    ).resolves.toBeUndefined();
+    await expect(assertBackpackRoom(caps(0, 1), "custom:cst_heal", CELL_SIZE + 1)).rejects.toThrow(
       "market.potion_bag_need:2:1",
     );
   });
 
   it("две выплаты — зелье и товар: каждую судит своё хранилище", async () => {
     // Рюкзак: ячейка свободна. Сумка: полна.
-    state.rows = [{ stackKey: "custom:cst_speed", count: 20, potion: true }];
+    state.rows = [{ stackKey: "custom:cst_speed", count: CELL_SIZE, potion: true }];
     state.potions = ["cst_heal"];
     const both = [
       { stackKey: "custom:cst_heal", qty: 1 },
@@ -213,7 +222,7 @@ describe("сумка зелий (галочка «зелье» у товара):
       "market.potion_bag_need:1:0",
     );
     // Сумка свободна, рюкзак полон — отказ уже рюкзака.
-    state.rows = [{ stackKey: "custom:cst_milk", count: 20 }];
+    state.rows = [{ stackKey: "custom:cst_milk", count: CELL_SIZE }];
     await expect(assertBackpackRoomFor(caps(1, 1), both)).rejects.toThrow(
       "market.backpack_need:1:0",
     );

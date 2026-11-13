@@ -1,8 +1,8 @@
 // Выдача яруса-«NFT-приз» в клейме: одна дорога для простого и комбо-дропа.
 //
 // Порядок здесь неслучаен. Резерв приза занимает штуку в пуле и вернуть её
-// нельзя, поэтому билеты уходят ПЕРЕД резервом, а не после выдачи: раньше
-// оплата шла последней, её ошибка глоталась, и приз доставался бесплатно.
+// нельзя, поэтому оплата (золото, §8.61) уходит ПЕРЕД резервом, а не после
+// выдачи: раньше она шла последней, её ошибка глоталась, и приз доставался бесплатно.
 import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
 import { tryReserveNftPrize } from "./user-claims-core";
@@ -35,7 +35,7 @@ export async function awardNftTier(opts: {
     nftTitle: opts.nftTitle,
     userWallet: opts.ownerWallet,
     campaignId: opts.dropId,
-  });
+  }).catch(() => null);
   if (!reserved) {
     await refundClaim({ wallet: opts.payerWallet, cost: opts.ticketDebit, ref });
     return false;
@@ -65,7 +65,7 @@ export async function awardNftTier(opts: {
     }
     return true;
   } catch {
-    // Гонка: часть строк уже была. Снимаем свои и возвращаем билеты —
+    // Гонка: часть строк уже была. Снимаем свои и возвращаем золото —
     // приз останется зарезервированным, это видно в админке пула.
     await Promise.all(rows.map((id) => pg.redemptions.delete({ id }).catch(() => undefined)));
     await refundClaim({ wallet: opts.payerWallet, cost: opts.ticketDebit, ref });

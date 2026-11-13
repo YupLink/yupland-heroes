@@ -2,10 +2,13 @@
 // по загрузке просим перерисовку. Картинки мира качаются, когда кадр их
 // впервые попросил (LazyImages): сначала видимое, а не весь мир разом.
 import { useEffect, useRef } from "react";
+import { isMapEnchanterSource, enchanterImageKey, ENCHANTER_KINDS, ENCHANTER_ASSET_VERSION } from "./mapEnchanter";
 import { queueImage } from "./imageQueue";
 import { LazyImages } from "./lazyImages";
 import { thumb } from "@/lib/image";
-import { MAP_PRELOAD, heroSpriteSrc } from "@/lib/gameArt";
+import { MAP_PRELOAD, heroFootAtlas, heroSpriteSrc } from "@/lib/gameArt";
+import { mountTier } from "@/lib/hero/mount";
+import { GUARD_IMG_PREFIX, guardImageKey } from "@/components/beta-raid/mine/guardArt";
 
 export function useImageCache(
   terrains: Record<string, { imageUrl: string | null }>,
@@ -17,10 +20,12 @@ export function useImageCache(
   heroSprite?: string | null,
   /** Постройки: у каждой свой набор картинок по тирам. */
   buildings?: Record<string, { tiers?: Array<{ imageUrl?: string | null }> }>,
-  /** Боссы-охранники шахт: "q,r" → картинка, рисуется поверх шахты. */
+  /** Боссы-охранники шахт: "q,r" → картинка. Ключ кэша — по адресу (guardArt). */
   guards?: Record<string, { image: string | null }>,
   /** Магические сундуки: "q,r" → картинка. Ключ кэша — по адресу: вид один. */
   chests?: Record<string, { image: string | null }>,
+  /** Конь выбранного героя из состояния рейда. */
+  heroMount?: string | null,
 ) {
   const cacheRef = useRef(new LazyImages());
   // Какой спрайт героя уже загружен: ключ в кэше один ("hero"), поэтому при
@@ -33,9 +38,13 @@ export function useImageCache(
 
   useEffect(() => {
     const cache = cacheRef.current;
-    const heroKey = heroSprite ?? "knight";
+    const visualMount = mountTier(heroMount);
+    const visualVariant = visualMount === "none" ? "foot" : visualMount;
+    const heroKey = `${heroSprite ?? "knight"}:${visualVariant}`;
     if (heroKeyRef.current !== heroKey) {
-      cache.delete("hero");
+      for (const key of cache.keys()) {
+        if (key === "hero" || key.startsWith("hero:")) cache.delete(key);
+      }
       heroKeyRef.current = heroKey;
     }
 
@@ -55,6 +64,30 @@ export function useImageCache(
     };
 
     collect("", heroSpriteSrc(heroSprite), "hero");
+    const animatedHero = heroSprite
+      ? (["knight", "bee", "boar", "dracat", "dragon", "unicorn", "yupik"].includes(heroSprite) ? heroSprite : null)
+      : "knight";
+    if (animatedHero) {
+      // Версия только пешего PNG: браузер не подставляет старые 3 фазы из кэша.
+      const footSrc = heroFootAtlas(animatedHero);
+      collect("gallop", visualVariant === "foot" ? footSrc : `/hero-mounts/${animatedHero}/${visualVariant}.webp`, "hero:");
+      if (visualVariant !== "foot") collect("foot", footSrc, "hero:");
+      // Action atlases are visual-only and loaded after the initial map art.
+      eager = false;
+      for (const action of ["wood", "stone", "hand", "fish"]) {
+        for (const direction of ["right-down", "left-down", "right-up", "left-up"]) {
+          collect(`${action}:${direction}`, `/hero-actions/${animatedHero}/${action}/${direction}.webp`, "hero:action:");
+        }
+      }
+      for (const direction of ["right-down", "left-down", "right-up", "left-up"]) {
+        collect(direction, `/hero-actions/${animatedHero}/fishing-hold/${direction}.webp`, "hero:hold:");
+      }
+      // Only the selected hero's front/back waiting atlases. Left is mirrored
+      // by canvas; other heroes never enter this cache.
+      for (const direction of ["front", "back"]) {
+        collect(direction, `/hero-fishing-idle/${animatedHero}/${direction}.webp`, "hero:fishing-idle:");
+      }
+    }
     for (const art of MAP_PRELOAD) {
       eager = art.eager === true;
       collect("", art.src, art.key);
@@ -75,11 +108,22 @@ export function useImageCache(
     }
     for (const [id, item] of Object.entries(buildings ?? {})) {
       (item.tiers ?? []).forEach((tier, index) => {
-        if (tier?.imageUrl) collect(`${id}:${index}`, thumb(tier.imageUrl, 160, "black"), "b:");
+        if (tier?.imageUrl) {
+          collect(`${id}:${index}`, thumb(tier.imageUrl, 160, "black"), "b:");
+          if (isMapEnchanterSource(tier.imageUrl)) {
+            for (const kind of ENCHANTER_KINDS) {
+              collect("", `/map-enchanter/${kind}-${ENCHANTER_ASSET_VERSION}.webp`, enchanterImageKey(`b:${id}:${index}`, kind));
+            }
+          }
+        }
       });
     }
-    for (const [key, item] of Object.entries(guards ?? {})) {
-      if (item.image) collect(key, thumb(item.image, 160, "black"), "mg:");
+    // Охрана — по адресу картинки, как сундуки (mine/guardArt): новый охранник
+    // на той же клетке не наследует картинку убитого.
+    for (const item of Object.values(guards ?? {})) {
+      if (item.image && !needed.has(guardImageKey(item.image))) {
+        collect(item.image, thumb(item.image, 160, "black"), GUARD_IMG_PREFIX);
+      }
     }
     // Сундуков на карте много, а картинка у вида одна — грузим её один раз.
     for (const item of Object.values(chests ?? {})) {
@@ -119,7 +163,11 @@ export function useImageCache(
     }
     // Новые записи словаря видны кадру только после перерисовки.
     onLoaded();
-  }, [terrains, objects, decorations, roads, buildings, guards, chests, onLoaded, heroSprite]);
+  }, [terrains, objects, decorations, roads, buildings, guards, chests, onLoaded, heroSprite, heroMount]);
 
   return cacheRef;
 }
+
+
+
+

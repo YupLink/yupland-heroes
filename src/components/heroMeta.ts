@@ -93,6 +93,7 @@ const META_LABELS: Record<string, { ru: string; en: string }> = {
   rare: { ru: "Редкий", en: "Rare" },
   epic: { ru: "Эпический", en: "Epic" },
   legendary: { ru: "Легендарный", en: "Legendary" },
+  unique: { ru: "Уникальный", en: "Unique" },
   // характеристики
   Attack: { ru: "Атака", en: "Attack" },
   Armor: { ru: "Броня", en: "Armor" },
@@ -105,6 +106,8 @@ const META_LABELS: Record<string, { ru: string; en: string }> = {
   Luck: { ru: "Удача", en: "Luck" },
   Trade: { ru: "Торговля", en: "Trade" },
   Alchemy: { ru: "Алхимия", en: "Alchemy" },
+  // строка «рыбалка, %» в статах лавки зачарования (lib/enchant/enchantGear)
+  Fishing: { ru: "Рыбалка, %", en: "Fishing, %" },
   // расы
   Пчелы: { ru: "Пчела", en: "Bees" },
   Кабаны: { ru: "Кабан", en: "Boars" },
@@ -128,6 +131,7 @@ const META_LABELS: Record<string, { ru: string; en: string }> = {
   Руки: { ru: "Руки", en: "Hands" },
   Ноги: { ru: "Ноги", en: "Legs" },
   Карманы: { ru: "Карманы", en: "Pockets" },
+  Конь: { ru: "Конь", en: "Mount" },
   // земли (локации)
   Mystical: { ru: "Мистическая", en: "Mystical" },
   Горы: { ru: "Горы", en: "Mountains" },

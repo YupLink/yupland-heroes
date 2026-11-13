@@ -140,7 +140,7 @@ describe("бугорок сундука и магический", () => {
     expect(p).toContain("FROM yuplink.raid_magic_chest x WHERE x.buried_at IS NOT NULL");
     expect(p).toContain("true AS buried, 315360000000::bigint AS \"leftMs\"");
     expect(p).toContain("s.owner = 'a1' AND s.map_id = m.map_id AND s.cell = m.q || ',' || m.r");
-    expect(p).toContain("(abs(m.q - p.q) + abs(m.r - p.r) + abs(m.q + m.r - p.q - p.r)) / 2 <= 20");
+    expect(p).toContain("(abs(m.q - p.q) + abs(m.r - p.r) + abs(m.q + m.r - p.q - p.r)) / 2 <= (CASE WHEN EXISTS (SELECT 1 FROM yuplink.beta_raid_player_effects se WHERE se.account_id = 'a1' AND se.kind = 'sight' AND se.kind NOT LIKE 'buff_%' AND se.expires_at > now()) THEN 40 ELSE 20 END)");
     const c = flat(cellSql({ mapId: "m", q: 1, r: 2, account: "a1" }));
     expect(c).toContain("'[]'::json AS items, false AS open FROM yuplink.raid_plain_chest x WHERE x.map_id = 'm' AND x.q = 1 AND x.r = 2 AND x.buried_at IS NOT NULL");
   });

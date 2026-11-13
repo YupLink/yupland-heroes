@@ -8,6 +8,7 @@
 // («… зелье»), и без картинки их не различить (жалоба админа). Раскрываемся
 // ИНЛАЙНОМ под кнопкой, а не оверлеем: строка цены живёт в узкой панели
 // редактора со своей прокруткой, и абсолютный список она бы обрезала.
+// ru=false — подписи по-английски (окно Архитектора в замке, en).
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ImageOff, Loader2 } from "lucide-react";
@@ -35,9 +36,11 @@ function Icon({ image }: { image: string | null }) {
 export function PriceItemPicker({
   itemKey,
   onPick,
+  ru = true,
 }: {
   itemKey: string | null | undefined;
   onPick: (key: string | null, name: string | null) => void;
+  ru?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const q = useQuery({
@@ -57,7 +60,7 @@ export function PriceItemPicker({
       >
         <Icon image={selected?.image ?? null} />
         <span className={`flex-1 truncate text-left ${selected ? "" : "text-muted-foreground"}`}>
-          {selected ? selected.name : "— выбери товар —"}
+          {selected ? selected.name : ru ? "— выбери товар —" : "— pick an item —"}
         </span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
@@ -68,10 +71,12 @@ export function PriceItemPicker({
         <div className="mt-1 max-h-56 overflow-y-auto rounded-lg border border-border bg-card">
           {q.isLoading ? (
             <div className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Загрузка…
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> {ru ? "Загрузка…" : "Loading…"}
             </div>
           ) : items.length === 0 ? (
-            <div className="px-2 py-3 text-xs text-muted-foreground">Нет товаров</div>
+            <div className="px-2 py-3 text-xs text-muted-foreground">
+              {ru ? "Нет товаров" : "No items"}
+            </div>
           ) : (
             <>
               <button
@@ -82,7 +87,7 @@ export function PriceItemPicker({
                 }}
                 className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-secondary/40"
               >
-                — убрать —
+                {ru ? "— убрать —" : "— remove —"}
               </button>
               {items.map((it) => (
                 <button

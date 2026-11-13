@@ -16,7 +16,9 @@ import { cn } from "@/lib/utils";
 import { metaLabel } from "@/components/heroMeta";
 import { StatBadge } from "@/components/itemStat";
 import { fishBonusText } from "@/lib/raid/fishBonus";
+import { artDisabled, shownArtPct } from "@/lib/hero/artWear";
 import type { GearItemView } from "@/server/api/heroes-gear";
+import { MountLine } from "./MountLine";
 
 /** Строка словаря для условной части. base считается отдельно — там нет label. */
 const PART_KEY: Record<string, string> = {
@@ -44,10 +46,16 @@ export function GearItemLines({ item }: { item: GearItemView }) {
   // (база + раса + спека), но растят они рюкзак и сумку зелий, а не силу в
   // бою — говорим об этом подписью под разбором.
   const extraHint = EXTRA_HINT[(item.statType ?? "").trim().toLowerCase()];
+  // Выключенный поломкой (artDisabled) иммунитетов и рыбалки не даёт — строки
+  // гаснут. Пока ремонта нет — сломанный горит, как целый.
+  const off = artDisabled(100 - shownArtPct(item.durability));
+  const live = off ? "text-muted-foreground" : "text-success";
 
   return (
     <div className="space-y-0.5 text-[10px] leading-tight">
-      {item.parts.length === 0 && immun.length === 0 && (
+      {/* Зачарование коня множит его скорость (03.11.2026) — строка уже с ним. */}
+      <MountLine mount={item.mount} pct={Number(item.enchantPct) || 0} />
+      {item.parts.length === 0 && immun.length === 0 && !item.mount && (
         <div className="text-muted-foreground">{t("braid.gear_no_stat")}</div>
       )}
       {item.parts.map((p) => {
@@ -71,14 +79,14 @@ export function GearItemLines({ item }: { item: GearItemView }) {
         );
       })}
       {immun.length > 0 && (
-        <div className="text-success">
+        <div className={live}>
           {t("braid.gear_immune_line", {
             list: immun.map((i) => metaLabel(i, lang)).join(", "),
           })}
         </div>
       )}
       {/* Бонус к рыбалке — проценты к шансу поимки; нет его — строки нет. */}
-      {fish && <div className="text-success">{t("braid.gear_fish_line", { n: fish })}</div>}
+      {fish && <div className={live}>{t("braid.gear_fish_line", { n: fish })}</div>}
       {/* Итог. Предмет с одними иммунитетами не «пустой» — про него молчим. */}
       {item.total > 0 || fish ? (
         item.total > 0 ? (
@@ -86,7 +94,7 @@ export function GearItemLines({ item }: { item: GearItemView }) {
             {t("braid.gear_total_for_hero", { n: item.total, stat })}
           </div>
         ) : null
-      ) : immun.length === 0 ? (
+      ) : immun.length === 0 && !item.mount ? (
         <div className="text-muted-foreground">{t("braid.gear_total_zero")}</div>
       ) : null}
       {extraHint && <div className="text-muted-foreground">{t(extraHint)}</div>}

@@ -34,8 +34,8 @@ vi.mock("../../near", () => ({
 
 const { sendDevOnce, USDT_FT } = await import("./batch-steps");
 const wallets = [
-  { wallet: "owner.example.tg", share: 0.5 },
-  { wallet: "admin2.example.tg", share: 0.5 },
+  { wallet: "owner.tg", share: 0.5 },
+  { wallet: "partner.tg", share: 0.5 },
 ];
 
 beforeEach(() => {
@@ -47,7 +47,7 @@ beforeEach(() => {
 describe("шаг «dev» сорвался", () => {
   it("«sending» с хэшем, nonce и байтами; в ошибке — кошельки, причина и хэш", async () => {
     await expect(sendDevOnce("mb_1", [], USDT_FT, wallets, 71)).rejects.toThrow(
-      "Шаг «dev»: перевод не подтвердился — owner.example.tg, admin2.example.tg: не подтверждено (tx TX1)",
+      "Шаг «dev»: перевод не подтвердился — owner.tg, partner.tg: не подтверждено (tx TX1)",
     );
     const all = sqls.join(" ");
     expect(all).toContain('"state":"sending"');

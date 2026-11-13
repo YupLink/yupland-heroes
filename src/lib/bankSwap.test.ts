@@ -1,11 +1,19 @@
 // Обмен в банке: формула пула, комиссия 80/20, наполнение в пропорции.
 import { describe, expect, it } from "vitest";
-import { fundPair, poolPrice, quote } from "./bankSwap";
+import { dpOf, floorTo, fundPair, poolPrice, quote } from "./bankSwap";
 import type { BankPool } from "./castleBank";
 
 const pool = (over: Partial<BankPool> = {}): BankPool => ({
-  id: "bp", tokenA: "gold", tokenB: "Darai", weightA: 1, weightB: 200,
-  reserveA: 500_000, reserveB: 100_000_000, feePct: 10, createdAt: "", ...over,
+  id: "bp",
+  tokenA: "gold",
+  tokenB: "Darai",
+  weightA: 1,
+  weightB: 200,
+  reserveA: 500_000,
+  reserveB: 100_000_000,
+  feePct: 10,
+  createdAt: "",
+  ...over,
 });
 
 describe("обмен в банке", () => {
@@ -39,5 +47,41 @@ describe("обмен в банке", () => {
     expect(fundPair(pool({ reserveA: 0, reserveB: 0 }), 500_000)).toBe(100_000_000);
     expect(fundPair(pool({ reserveA: 400_000, reserveB: 100_000_000 }), 1_000)).toBe(250_000);
     expect(poolPrice(pool({ reserveA: 0, reserveB: 0, weightB: 150 }))).toBe(150);
+  });
+
+  it("монеты счёта: знаки — как у монеты, комиссия без пула карты остаётся в пуле (bank-12)", () => {
+    // USDT 6 знаков, звёзды — целые; у USDT пула карты нет — 20 % тоже в пул.
+    const p = pool({
+      tokenA: "USDT",
+      tokenB: "STARS",
+      reserveA: 100,
+      reserveB: 10_000,
+      dpA: 6,
+      dpB: 0,
+    });
+    const q = quote(p, "USDT", 1)!;
+    expect([q.fee, q.feeMap, q.feePool]).toEqual([0.1, 0, 0.1]);
+    expect(q.out).toBe(Math.floor((10_000 * 0.9) / 100.9));
+    expect(Number.isInteger(q.out)).toBe(true);
+    const back = quote(p, "STARS", 50)!;
+    expect(back.feeMap).toBe(0);
+    expect(back.out).toBe(Math.floor(((100 * 45) / 10_045) * 1e6) / 1e6);
+    expect(dpOf(p, "USDT")).toBe(6);
+    expect(dpOf(pool(), "Darai")).toBe(8); // старый ответ без dp — как раньше
+    expect(floorTo(12.3456789, 0)).toBe(12);
+    expect(
+      fundPair(
+        pool({
+          tokenA: "HOPE",
+          tokenB: "Darai",
+          weightA: 1,
+          weightB: 3.33333333,
+          reserveA: 0,
+          reserveB: 0,
+          dpB: 8,
+        }),
+        3,
+      ),
+    ).toBe(9.99999999);
   });
 });

@@ -50,6 +50,17 @@ export type UniversityAccount = {
  * (первый заход), поэтому INSERT … ON CONFLICT DO UPDATE. Повтор запроса
  * безвреден — за прошедшие миллисекунды добавится примерно ноль.
  */
+/**
+ * Доход в сутки — только первых фишек по числу мест (по времени постановки).
+ * Аудит 11.11.2026: параллельные «Оставить» обходили проверку мест, а доход
+ * считался со всех фишек; теперь лишняя фишка просто ничего не приносит.
+ */
+const paidRateSql = (acc: string, slots: string) =>
+  `COALESCE((SELECT SUM(x.rate_per_day) FROM (
+       SELECT s.rate_per_day, row_number() OVER (ORDER BY s.staked_at, s.chip_id) AS n
+         FROM yuplink.chip_university_stake s WHERE s.account_id = ${acc}) x
+     WHERE x.n <= ${slots}), 0)`;
+
 export async function settleUniversity(accountId: string): Promise<void> {
   const acc = sqlStr(accountId);
   const capSec = Math.floor(UNI_ACCRUAL_CAP_MS / 1000);
@@ -58,8 +69,7 @@ export async function settleUniversity(accountId: string): Promise<void> {
      VALUES (${acc}, 0, 0, now())
      ON CONFLICT (account_id) DO UPDATE
         SET pending = yuplink.chip_university_acc.pending
-              + COALESCE((SELECT SUM(s.rate_per_day) FROM yuplink.chip_university_stake s
-                           WHERE s.account_id = ${acc}), 0)
+              + ${paidRateSql(acc, "yuplink.chip_university_acc.slots")}
                 * LEAST(
                     EXTRACT(EPOCH FROM (now() - yuplink.chip_university_acc.settled_at)),
                     ${capSec}
@@ -74,8 +84,7 @@ export async function universityAccount(accountId: string): Promise<UniversityAc
   const acc = sqlStr(accountId);
   const rows = (await mcpExec(
     `SELECT a.pending, a.lifetime, a.slots, a.claimed_at,
-            COALESCE((SELECT SUM(s.rate_per_day) FROM yuplink.chip_university_stake s
-                       WHERE s.account_id = ${acc}), 0) AS rate
+            ${paidRateSql(acc, "a.slots")} AS rate
        FROM yuplink.chip_university_acc a WHERE a.account_id = ${acc} LIMIT 1;`,
     { wrapJson: true },
   )) as Array<{

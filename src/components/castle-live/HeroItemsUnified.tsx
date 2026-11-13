@@ -12,8 +12,13 @@ import { newOpId } from "@/lib/opId";
 import { invalidateBackpack, invalidateHeroQueries } from "@/lib/query";
 import { humanError } from "@/lib/humanError";
 import { useLang } from "@/lib/i18n";
+import { plantOfStack } from "@/lib/treePlant";
+import { isDynamiteKey } from "@/lib/dynamite";
+import { isDaraiMineKey } from "@/lib/daraiMine";
+import { DaraiMineTimer } from "@/components/beta-raid/dmine/DaraiMineTimer";
 import "./hero-items-unified.css";
 
+import { thumb } from "@/lib/image";
 type PocketData = BackpackView & { potionCapacity?: number; potionOccupied?: number; alchemy?: number };
 type Selection = Record<string, number>;
 export type HeroItemActions = {
@@ -152,8 +157,8 @@ function HeroItemsContent({ data, allowUse, beforeUse, previewUse, actions }: {
       }
       return { used, effects };
     },
-    onSuccess: ({ used, effects }) => {
-      toast.success(`${ru ? `Использовано: ${used}` : `Used: ${used}`}${effects.length ? ` · ${effects.join(" · ")}` : ""}`);
+    onSuccess: ({ effects }, rows) => {
+      toast.success(`${ru ? "Активировано" : "Activated"}: ${rows.map(r => `${stackFor(r.key)?.name ?? ""} ×${r.qty}`).join(", ")}${effects.length ? ` · ${effects.join(" · ")}` : ""}`);
       setSelection({}); setSelectionOpen(false); setSheet(null);
       invalidateBackpack(qc);
       invalidateHeroQueries(qc, ["beta-raid-state"]);
@@ -161,9 +166,10 @@ function HeroItemsContent({ data, allowUse, beforeUse, previewUse, actions }: {
     onError: (error: Error) => { setSelection({}); setSheet(null); toast.error(humanError(error)); },
   });
   const renderCells = (cells: (Cell | null)[], kind: "potions" | "backpack") => {
-    const visible = desktopColumns ? (() => {
+    // Backpack capacity is the number of usable cells, so show every cell on wider screens.
+    const visible = kind === "backpack" && desktopColumns ? cells : desktopColumns ? (() => {
       const occupied = cells.filter((cell): cell is Cell => cell !== null);
-      const columns = kind === "backpack" && desktopColumns === 5 ? 3 : kind === "backpack" ? 2 : desktopColumns;
+      const columns = desktopColumns;
       const emptyCount = Math.min(cells.length - occupied.length, occupied.length ? (columns - occupied.length % columns) % columns : columns);
       return [...occupied, ...Array<Cell | null>(emptyCount).fill(null)];
     })() : expanded[kind] ? cells : cells.slice(0, previewCount);
@@ -172,7 +178,7 @@ function HeroItemsContent({ data, allowUse, beforeUse, previewUse, actions }: {
         {visible.map((cell, index) => {
           if (!cell) return <div key={`empty-${kind}-${index}`} className="hero-items-cell is-empty" aria-label={ru ? "Пустая ячейка" : "Empty slot"} />;
           const shownQty = qtyText(cell.units, ru ? "ru" : "en", 2);
-          const contents = <>{cell.image && <img src={cell.image} alt="" loading="lazy" />}<span className="hero-items-cell-name">{cell.name}</span>{cell.main && <span className="hero-items-main-tool">{ru ? "В руках" : "Equipped"}</span>}{cell.durability != null && <span className="hero-items-durability">{Math.min(100, Math.max(1, Math.round(Number(cell.durability) || 0)))}%</span>}<b>×{shownQty}</b></>;
+          const contents = <>{cell.image && <img src={thumb(cell.image, 128)} alt="" loading="lazy" />}<span className="hero-items-cell-name">{cell.name}</span>{cell.main && <span className="hero-items-main-tool">{ru ? "В руках" : "Equipped"}</span>}{cell.durability != null && <span className="hero-items-durability">{Math.min(100, Math.max(1, Math.round(Number(cell.durability) || 0)))}%</span>}{isDaraiMineKey(cell.stackKey) && <DaraiMineTimer stackKey={cell.stackKey} heroId={data.heroId} className="hero-items-timer" />}<b>×{shownQty}</b></>;
           if (cell.boost?.length && (stackFor(cell.stackKey)?.count ?? 0) >= 1) return <div key={cell.key} className="hero-items-cell" data-selected={!!selection[cell.stackKey] || undefined} data-stack-key={cell.stackKey}>
             <button type="button" className="hero-items-cell-main" aria-label={`${cell.name}, ${shownQty} ${ru ? "шт. Показать свойства" : "items. Show effects"}`} onClick={() => openSheet("item", cell.stackKey)}>{contents}</button>
             <button type="button" className="hero-items-check" disabled={useItems.isPending} aria-label={ru ? `${selection[cell.stackKey] ? "Убрать из выбора" : "Выбрать"} ${cell.name}` : `${selection[cell.stackKey] ? "Deselect" : "Select"} ${cell.name}`} aria-pressed={!!selection[cell.stackKey]} onClick={() => toggleItem(cell.stackKey)}>{selection[cell.stackKey] ? "✓" : ""}</button>
@@ -201,14 +207,14 @@ function HeroItemsContent({ data, allowUse, beforeUse, previewUse, actions }: {
       </div>
       {selectionOpen && <div id="hero-items-selected-items" className="hero-items-selection-details" role="region" aria-label={ru ? "Выбранные предметы и эффекты" : "Selected items and effects"}>
         {chosen.length ? chosen.map(({ stack, qty }) => <div className="hero-items-selected-row" key={stack.stackKey}>
-          <div className="hero-items-selected-icon">{stack.image && <img src={stack.image} alt="" />}</div><div><strong>{stack.name}</strong><small>{boostListText(stack.boost ?? [], ru ? "ru" : "en").replace(ru ? " на 0 мин" : " for 0 min", "")}</small></div>
+          <div className="hero-items-selected-icon">{stack.image && <img src={thumb(stack.image, 128)} alt="" />}</div><div><strong>{stack.name}</strong><small>{boostListText(stack.boost ?? [], ru ? "ru" : "en").replace(ru ? " на 0 мин" : " for 0 min", "")}</small></div>
           <div className="hero-items-stepper"><button type="button" disabled={useItems.isPending} onClick={() => change(stack.stackKey, -1)} aria-label={ru ? `Уменьшить количество: ${stack.name}` : `Decrease quantity: ${stack.name}`}>−</button><QuantityInput value={qty} max={Math.min(maxUseQuantity, Math.floor(stack.count))} disabled={useItems.isPending} label={ru ? `Количество: ${stack.name}` : `Quantity: ${stack.name}`} onChange={value => setSelection(current => ({ ...current, [stack.stackKey]: value }))} /><button type="button" onClick={() => change(stack.stackKey, 1)} disabled={useItems.isPending || qty >= Math.min(maxUseQuantity, Math.floor(stack.count))} aria-label={ru ? `Увеличить количество: ${stack.name}` : `Increase quantity: ${stack.name}`}>+</button><button type="button" className="hero-items-all" disabled={useItems.isPending || qty >= Math.min(maxUseQuantity, Math.floor(stack.count))} onClick={() => setSelection(current => ({ ...current, [stack.stackKey]: Math.min(maxUseQuantity, Math.floor(stack.count)) }))}>{ru ? "Все" : "All"}</button></div>
           <small className="hero-items-quantity-stock">{ru ? `В наличии: ${Math.floor(stack.count)} · Останется: ${Math.floor(stack.count) - qty}` : `Available: ${Math.floor(stack.count)} · Remaining: ${Math.floor(stack.count) - qty}`}</small>
         </div>) : <p className="hero-items-selection-empty">{ru ? "Предметы пока не выбраны" : "No items selected"}</p>}
       </div>}
     </section>
     <section className="hero-items-section" aria-label={ru ? "Рюкзак" : "Backpack"}>
-      <header><h3>{ru ? "Рюкзак" : "Backpack"}</h3><span>{data.occupied}/{data.capacity}</span></header>
+      <header data-backpack-header><h3>{ru ? "Рюкзак" : "Backpack"}</h3><span>{data.occupied}/{data.capacity}</span></header>
       {renderCells(layout.backpack, "backpack")}
     </section>
     <Dialog.Root open={!!sheet} onOpenChange={open => { if (!open && !useItems.isPending) setSheet(null); }}>
@@ -220,12 +226,14 @@ function HeroItemsContent({ data, allowUse, beforeUse, previewUse, actions }: {
             {chosen.map(({ stack, qty }) => <div key={stack.stackKey} className="hero-items-confirm-row"><strong>{stack.name} ×{qty}</strong><small>{ru ? `Останется: ${Math.floor(stack.count) - qty}` : `Remaining: ${Math.floor(stack.count) - qty}`}</small></div>)}
             <div className="hero-items-item-actions"><button type="button" disabled={useItems.isPending} onClick={() => setSheet(null)}>{ru ? "Назад" : "Back"}</button><button data-game-button="primary" type="button" disabled={!total || (!allowUse && !previewUse) || useItems.isPending} onClick={() => useItems.mutate(chosen.map(({ stack, qty }) => ({ key: stack.stackKey, qty })))}>{useItems.isPending ? pendingText : `${actionText} ${total}`}</button></div>
           </> : item && <>
-            <div className="hero-items-item-head" data-stack-key={item.stackKey}>{item.image && <img src={item.image} alt="" />}<div><Dialog.Title>{item.name}</Dialog.Title><p>{ru ? `В наличии: ${Math.floor(item.count)}` : `Available: ${Math.floor(item.count)}`}</p></div></div>
+            <div className="hero-items-item-head" data-stack-key={item.stackKey}>{item.image && <img src={thumb(item.image, 128)} alt="" />}<div><Dialog.Title>{item.name}</Dialog.Title><p>{ru ? `В наличии: ${Math.floor(item.count)}` : `Available: ${Math.floor(item.count)}`}</p></div></div>
             {item.boost?.length ? <p className="hero-items-effect">{boostListText(item.boost, ru ? "ru" : "en").replace(ru ? " на 0 мин" : " for 0 min", "")}</p> : <p className="hero-items-effect">{ru ? "Предмет в рюкзаке" : "Item in backpack"}</p>}
-            <div className="hero-items-item-actions"><Dialog.Close>{ru ? "Закрыть" : "Close"}</Dialog.Close>{!!item.boost?.length && item.count >= 1 && <button data-game-button="primary" type="button" disabled={useItems.isPending} onClick={() => { change(item.stackKey, 1); setSelectionOpen(true); setSheet(null); }}>{ru ? "Выбрать 1" : "Select 1"}</button>}{actions?.canUseTool(item) && <button type="button" onClick={() => { setSheet(null); actions.useTool(item); }}>{ru ? "Инструмент" : "Tool"}</button>}{actions?.canPlace(item) && <button type="button" onClick={() => { setSheet(null); actions.place(item); }}>{ru ? "Поставить" : "Place"}</button>}{actions?.canDiscard(item) && <button className="hero-items-discard" type="button" onClick={() => { setSheet(null); actions.discard(item); }}>{ru ? "Выбросить…" : "Discard…"}</button>}</div>
+            <div className="hero-items-item-actions"><Dialog.Close>{ru ? "Закрыть" : "Close"}</Dialog.Close>{!!item.boost?.length && item.count >= 1 && <button data-game-button="primary" type="button" disabled={useItems.isPending} onClick={() => { change(item.stackKey, 1); setSelectionOpen(true); setSheet(null); }}>{ru ? "Выбрать 1" : "Select 1"}</button>}{actions?.canUseTool(item) && <button type="button" onClick={() => { setSheet(null); actions.useTool(item); }}>{item.binocular || item.ladder ? (ru ? "Применить" : "Use") : ru ? "Инструмент" : "Tool"}</button>}{actions?.canPlace(item) && <button type="button" onClick={() => { setSheet(null); actions.place(item); }}>{plantOfStack(item.stackKey)?.kind === "tree" ? (ru ? "Использовать" : "Use") : isDynamiteKey(item.stackKey) ? (ru ? "Бросить" : "Throw") : ru ? "Поставить" : "Place"}</button>}{actions?.canDiscard(item) && <button className="hero-items-discard" type="button" onClick={() => { setSheet(null); actions.discard(item); }}>{ru ? "Выбросить…" : "Discard…"}</button>}</div>
           </>}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   </div>;
 }
+
+

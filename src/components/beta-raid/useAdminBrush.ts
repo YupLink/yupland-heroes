@@ -34,6 +34,7 @@ import { hexArea, paintArea } from "./brushArea";
 import { blockLayerHolder, routeBlockPatch, stripBlockedLayers } from "./mergeSelect";
 import { isGenBrush, isVoidBrush, patchFor, type Brush, type BrushKind } from "./brushPatch";
 import { brushText } from "./adminBrushText";
+import { erasePatch, type EraseTarget } from "./eraseTarget";
 import { useAdminPublish } from "./useAdminPublish";
 
 export type { Brush, BrushKind } from "./brushPatch";
@@ -248,7 +249,7 @@ export function useAdminBrush(
    * снимает всё, кроме местности, и это уже правка (её выгружать).
    */
   const eraseOne = useCallback(
-    (q: number, r: number) => {
+    (q: number, r: number, target: EraseTarget = "top") => {
       if (!enabled) return false;
       const key = `${q},${r}`;
       const draft = readDraft();
@@ -264,30 +265,15 @@ export function useAdminBrush(
         return true;
       }
 
-      // Купол ластик НЕ снимает: у него свой инструмент в палитре. Иначе мазок
-      // ластиком по площади сносил бы зону молча — вместе с тем, ради чего её
-      // и ставили.
-      //
-      // Стираем ПО ОДНОМУ СЛОЮ за тап: сверху вниз. Раньше один тап уносил
-      // и объект, и декор, и дорогу разом — пользователь стирал объект и
-      // обнаруживал, что дорога тоже исчезла (жалоба владельца). Теперь
-      // порядок «объект → декор → постройка → дорога»: пока сверху что-то
-      // лежит, следующий слой не трогаем.
-      // В блоке декор и постройка — одни на весь блок и стоят на своих клетках:
-      // ластик по любой клетке блока стирает их там (иначе «не удаляется»).
+      // Купол ластик НЕ снимает: у него свой инструмент в палитре. Что именно
+      // снимает тап — режим ластика (eraseTarget.ts): по слою сверху, один
+      // слой или клетку целиком с местностью (только мир креатора).
       const before = read(q, r);
       const map = qc.getQueryData(["beta-raid-map"]) as MapLike;
       const held = (f: "buildingId" | "decorationId") =>
         before.groupId ? blockLayerHolder(map, before.groupId, f) : null;
-      const decor = before.decorationId ? { q, r } : held("decorationId");
-      const bld = before.buildingId ? { q, r } : held("buildingId");
-      let patch: CellPatch;
-      if (before.objectId) patch = { q, r, objectId: null };
-      else if (decor) patch = { ...decor, decorationId: null };
-      else if (bld) patch = { ...bld, buildingId: null };
-      // Дорога — не местность, лежит поверх; земля под ней остаётся нетронутой.
-      else if (before.roadId) patch = { q, r, roadId: null };
-      else return false;
+      const patch = erasePatch(before, target, q, r, held);
+      if (!patch) return false;
       enqueue(patch, read(patch.q, patch.r));
       return true;
     },
@@ -296,12 +282,12 @@ export function useAdminBrush(
 
   /** Ластик по области при size>1 (как в редакторе карт), иначе одна клетка. */
   const erase = useCallback(
-    (q: number, r: number) => {
+    (q: number, r: number, target: EraseTarget = "top") => {
       if (!enabled) return false;
-      if (size <= 1) return eraseOne(q, r);
+      if (size <= 1) return eraseOne(q, r, target);
       let any = false;
       for (const c of paintArea(q, r, size)) {
-        if (eraseOne(c.q, c.r)) any = true;
+        if (eraseOne(c.q, c.r, target)) any = true;
       }
       return any;
     },

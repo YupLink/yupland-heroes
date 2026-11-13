@@ -34,6 +34,7 @@ export const KIND_LABELS: Record<SpellKind, string> = {
   summon_ship: "Призыв корабля",
   teleport_town: "Телепорт к замку",
   create_ship: "Создание корабля",
+  create_big_ship: "Создание большого корабля",
   repair_ship: "Ремонт корабля",
 };
 

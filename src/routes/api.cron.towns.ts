@@ -5,18 +5,14 @@
 // не обязательно, но полезно держать: даёт возможность запустить руками.
 import { createFileRoute } from "@tanstack/react-router";
 import { runTownDailyTick } from "@/server/api/beta-raid/town-cron";
+import { cronDenied } from "@/server/cronAuth";
 
 export const Route = createFileRoute("/api/cron/towns")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         try {
           const res = await runTownDailyTick();
           const out = { ok: true, ...res, at: new Date().toISOString() };

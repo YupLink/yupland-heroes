@@ -140,6 +140,10 @@ export type WorldCell = {
   tier: number | null;
   objectId: string | null;
   objectConfig: unknown;
+  /** Блок клеток (объединение режима бога): у шаблонов городов острова. */
+  groupId?: string | null;
+  /** Масштаб картинки блока, %. */
+  iconScale?: number | null;
   /**
    * Как писать клетку поверх уже лежащей: base — только в пустое место (чанк
    * пишет свои клетки целиком, повтор ничего не меняет); clear — снять декор с

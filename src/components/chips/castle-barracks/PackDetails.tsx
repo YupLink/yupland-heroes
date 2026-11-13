@@ -7,6 +7,7 @@ import type { listChipPacksPublic } from "@/server/api/chips-pack";
 import type { listChipCollectionsPublic } from "@/server/api/chips-stake";
 import "./pack-details.css";
 
+import { thumb } from "@/lib/image";
 export type OwnedPackStack = { id: string; name: string; imageUrl: string | null; count: number; kind: "chips" | "mystic" | "nft-ft" };
 type PublicPack = Awaited<ReturnType<typeof listChipPacksPublic>>[number];
 type Collection = Awaited<ReturnType<typeof listChipCollectionsPublic>>[number];
@@ -93,7 +94,7 @@ export function PackDetails({ stack, pack, collections, detailsLoading, detailsE
       </header>
       <div className="pack-detail-scroll">
         <div className="pack-detail-summary">
-          {stack.imageUrl ? <img src={stack.imageUrl} alt="" /> : <div className="pack-detail-image-empty">{ru ? "Арт пака недоступен" : "Pack art unavailable"}</div>}
+          {stack.imageUrl ? <img src={thumb(stack.imageUrl, 400)} alt="" /> : <div className="pack-detail-image-empty">{ru ? "Арт пака недоступен" : "Pack art unavailable"}</div>}
           <div className="pack-detail-summary-copy">
             {typeLabel && <strong className="pack-detail-type">{typeLabel}</strong>}
             <span className="pack-detail-owned">{ru ? `×${stack.count} в наличии` : `×${stack.count} owned`}</span>
@@ -107,7 +108,7 @@ export function PackDetails({ stack, pack, collections, detailsLoading, detailsE
           <div className="pack-detail-odds-content">
           {detailsLoading ? <p role="status">{ru ? "Загружаем состав…" : "Loading contents…"}</p>
             : detailsError ? <div role="alert" className="pack-detail-unavailable"><p>{ru ? "Не удалось загрузить состав пака." : "Could not load pack contents."}</p><button type="button" onClick={onRetryDetails}>{ru ? "Повторить" : "Retry"}</button></div>
-              : training ? <p>{ru ? "Тренировочные фишки 1–3★: бьются вполсилы, за билеты не продаются." : "Training chips 1–3★: half strength, not sold for tickets."}</p>
+              : training ? <p>{ru ? "Тренировочные фишки 1–3★: бьются вполсилы, на рынке не продаются." : "Training chips 1–3★: half strength, can't be sold on the market."}</p>
               : !isChips ? <p>{ru ? "Состав и вероятности этого пака сейчас недоступны." : "Contents and chances are currently unavailable for this pack."}</p>
               : !pack || !oddsAvailable ? <p>{ru ? "Состав и вероятности этого пака сейчас недоступны." : "Contents and chances are currently unavailable for this pack."}</p>
               : <>

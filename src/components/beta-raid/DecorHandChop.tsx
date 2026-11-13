@@ -1,6 +1,6 @@
 // «Срубить руками» (владелец, 17.10.2026, §8.56) — вторая кнопка окна рубки:
-// инструмента нет, а декор берёт деревянный или каменный топор — рубить без
-// него за 10 энергии и 30 сытости героя. Цена — значками, как у окна: молния
+// декор берёт деревянный или каменный топор — рубить без него (с 29.10 — и
+// когда топор есть) за энергию ×2 и 30 сытости героя. Цена — значками, как у окна: молния
 // энергии, яблоко сытости (SatietyBar). Мало сытости или энергии — кнопка
 // неактивна, причина строкой под ней; решает всё равно сервер.
 //
@@ -9,24 +9,34 @@
 import { Apple, Hand, Loader2, Zap } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { useEnergy } from "@/lib/hooks/useEnergy";
-import { HAND_CHOP_ENERGY, HAND_CHOP_SATIETY, handChopBlock } from "@/lib/raid/handChop";
+import { HAND_CHOP_SATIETY, handChopBlock } from "@/lib/raid/handChop";
+import { scaleSatiety } from "@/lib/raid/island/satiety";
 import { useSatiety } from "./SatietyBar";
+import { useSatietyMult } from "./useEnergyMult";
+import { ChopWalkCost } from "./ChopWalkCost";
 
 export type DecorHandChopProps = {
   busy: boolean;
   onChop: () => void;
+  /** Цена энергией на карте игрока: на острове в 10 раз (useDecorInteract). */
+  /** Цена энергией руками на этой карте (handChopEnergy × множитель карты). */
+  cost: number;
+  /** Энергия на дорогу к дереву (окно открыто издалека); 0 / null — не пишем. */
+  walk?: number | null;
 };
 
-export function DecorHandChop({ busy, onChop }: DecorHandChopProps) {
+export function DecorHandChop({ busy, onChop, cost, walk }: DecorHandChopProps) {
   const t = useT();
   const energy = useEnergy().data?.energy;
   const satiety = useSatiety()?.now;
-  const block = handChopBlock({ energy, satiety });
+  // На острове сытость тратится в 10 раз меньше (island/satiety).
+  const satNeed = scaleSatiety(HAND_CHOP_SATIETY, useSatietyMult());
+  const block = handChopBlock({ energy, satiety, need: cost, satNeed });
   const why =
     block === "satiety"
-      ? t("braid.decor_hand_low_satiety", { n: HAND_CHOP_SATIETY })
+      ? t("braid.decor_hand_low_satiety", { n: satNeed })
       : block === "energy"
-        ? t("braid.decor_hand_low_energy", { n: HAND_CHOP_ENERGY })
+        ? t("braid.decor_hand_low_energy", { n: cost })
         : null;
   return (
     <>
@@ -39,11 +49,12 @@ export function DecorHandChop({ busy, onChop }: DecorHandChopProps) {
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hand className="h-4 w-4" />}
         {t("braid.decor_hand")}
         <span className="ml-1 flex items-center gap-0.5 tabular-nums">
-          <Zap className="h-4 w-4" />−{HAND_CHOP_ENERGY}
+          <Zap className="h-4 w-4" />−{cost}
         </span>
         <span className="flex items-center gap-0.5 tabular-nums">
-          <Apple className="h-4 w-4" />−{HAND_CHOP_SATIETY}
+          <Apple className="h-4 w-4" />−{satNeed}
         </span>
+        <ChopWalkCost cost={walk} />
       </button>
       {why && <p className="mt-1.5 text-center text-xs text-muted-foreground">{why}</p>}
     </>

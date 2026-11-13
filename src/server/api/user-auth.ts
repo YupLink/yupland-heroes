@@ -6,13 +6,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import * as ed25519 from "@noble/ed25519";
-import { base58, base64 } from "@scure/base";
 import { nanoid } from "nanoid";
-import { buildNep413Hash } from "@/lib/nep413";
+import { issueLoginChallenge, verifyConnectOwnership } from "./nep413-login";
 import { pg, type PgUser } from "../db/pg";
 import { clearCurrentWallet, getCurrentWallet, getSessionTgId } from "../auth";
-import { mcpExec } from "../db/mcpClient";
+import { islandTesterAccess } from "../islandTester";
+import { requestEntry } from "../entryHost";
 
 // ─── Environment flags ──────────────────────────────────────────────
 
@@ -43,10 +42,21 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
     inHallway: false,
     onboarding: false,
     telegramId: null as number | null,
+    /** Кнопки вывода грузить (белый список, §8.127). */
+    canWithdraw: false,
+    /** Вход этого домена (§8.127): tg. — Telegram, near. — кошелёк, иначе Google. */
+    entry: requestEntry(),
     notificationsEnabled: true,
     raidMode: "legacy" as const,
     isAdmin: false,
     isCastleEditor: false,
+    canGodMap: false,
+    canPromoSoft: false,
+    islandGod: false,
+    creator: false,
+    canCatalogs: false,
+    canBuckwheat: false,
+    isIslandTester: false,
     isPayoutsAdmin: false,
     isTreasury: false,
     /** Ресурсный счёт открыт этому игроку (раскатка в settings). */
@@ -119,9 +129,13 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
     inHallway,
     onboarding: !!u?.hallway_onboarding,
     isAdmin: isAdminWallet(wallet),
-    /** Редактор внутрянки замка: админы + дизайнер интерьера (@designer_example).
+    /** Редактор внутрянки замка: админы + дизайнер интерьера.
      *  Опознание по TG-юзернейму — у неё кошелёк называется иначе. */
     isCastleEditor: isCastleEditor(wallet, u?.telegram_username ?? null),
+    // Права по одному (admin-rights): god_map, promo_soft, island_god, creator, catalogs.
+    ...(await (await import("@/server/admin-rights")).sessionRights(u?.account_id ?? null)),
+    /** Тест острова новичка: админы, дизайнер, право island_tester; без остальной админки. */
+    isIslandTester: await islandTesterAccess(wallet, getSessionTgId()),
     isPayoutsAdmin: isPayoutsAdminWallet(wallet),
     /** Казначейство: статистика лута и обмен USDT→DARAI, без рассылки дохода. */
     isTreasury: isTreasuryWallet(wallet),
@@ -137,6 +151,10 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
     telegramLinked: linked,
     telegramUsername: u?.telegram_username ?? (bypass ? "test bypass" : null),
     telegramId: u?.telegram_id ?? null,
+    entry: requestEntry(),
+    canWithdraw: await (
+      await import("./withdraw-list/withdrawList")
+    ).sessionCanWithdraw(u?.account_id ?? null, u?.telegram_id ?? null),
     notificationsEnabled: u?.notifications_enabled ?? true,
     tgError,
     lang,
@@ -220,82 +238,16 @@ export const connectWallet = createServerFn({ method: "POST" })
 export { deriveWalletKind } from "./wallet-link";
 
 // ─── NEP-413 signed login ───────────────────────────────────────────
-
-const CONNECT_MESSAGE = "Sign in to YupLink Golden Drop";
-const CONNECT_RECIPIENT = process.env.CONNECT_RECIPIENT || "yupland.io";
-const CHALLENGE_TTL_MS = 5 * 60 * 1000;
-let chWindowStart = 0;
-let chCount = 0;
-const CH_MAX_PER_MIN = 120;
+// Вызов и проверка подписи — nep413-login.ts (общие со входом по кошельку).
 
 export const createLoginChallenge = createServerFn({ method: "POST" }).handler(async () => {
   // Подписывать имеет смысл только в Telegram-сессии (18.10.2026): отказываем ДО
   // подписи, а не после — игрок не подписывает впустую.
-  if (!getSessionTgId()) throw new Error("Сначала войди через Telegram — кошелёк добавляется к нему");
-  const now = Date.now();
-  if (now - chWindowStart > 60_000) {
-    chWindowStart = now;
-    chCount = 0;
-  }
-  if (++chCount > CH_MAX_PER_MIN) throw new Error("Слишком много запросов — подожди минуту");
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  const nonce = base64.encode(bytes);
-  await mcpExec(
-    `INSERT INTO yuplink.login_challenges(nonce, expires_at)
-         VALUES('${nonce.replace(/'/g, "''")}', now() + interval '${CHALLENGE_TTL_MS} milliseconds');`,
-  );
-  mcpExec(
-    `DELETE FROM yuplink.login_challenges WHERE expires_at < now() - interval '1 hour';`,
-  ).catch(() => {});
-  return { nonce, message: CONNECT_MESSAGE, recipient: CONNECT_RECIPIENT };
+  if (!getSessionTgId())
+    throw new Error("Сначала войди через Telegram — кошелёк добавляется к нему");
+  (await import("./wallet-link")).assertWalletLinkAllowed(getSessionTgId());
+  return issueLoginChallenge();
 });
-
-function pubBytesToImplicit(pub: Uint8Array): string {
-  let s = "";
-  for (const b of pub) s += b.toString(16).padStart(2, "0");
-  return s;
-}
-
-async function verifyConnectOwnership(args: {
-  accountId: string;
-  publicKey: string;
-  signature: string;
-  nonce: string;
-}): Promise<void> {
-  const consumed = (await mcpExec(
-    `UPDATE yuplink.login_challenges SET consumed=true
-       WHERE nonce='${args.nonce.replace(/'/g, "''")}' AND consumed=false AND expires_at > now()
-       RETURNING nonce;`,
-    { wrapJsonCte: true },
-  )) as Array<{ nonce: string }>;
-  if (!consumed[0]) throw new Error("Челлендж истёк или уже использован — начни вход заново");
-
-  const nonceBytes = base64.decode(args.nonce);
-  if (nonceBytes.length !== 32) throw new Error("Некорректный nonce");
-  const hash = buildNep413Hash({
-    message: CONNECT_MESSAGE,
-    recipient: CONNECT_RECIPIENT,
-    nonce: nonceBytes,
-  });
-  const pubBytes = base58.decode(args.publicKey.replace(/^ed25519:/i, ""));
-  const sigBytes = base64.decode(args.signature);
-  const ok = await ed25519.verifyAsync(sigBytes, hash, pubBytes);
-  if (!ok) throw new Error("Подпись неверна");
-
-  if (args.accountId.toLowerCase() === pubBytesToImplicit(pubBytes).toLowerCase()) return;
-  const { nearRpc } = await import("../rpc");
-  const j = await nearRpc<{
-    permission?: "FullAccess" | { FunctionCall: unknown };
-  }>("query", {
-    request_type: "view_access_key",
-    finality: "final",
-    account_id: args.accountId,
-    public_key: args.publicKey,
-  });
-  if (j.error) throw new Error("Не удалось проверить ключ на блокчейне");
-  if (j.result?.permission !== "FullAccess")
-    throw new Error("Этот ключ не FullAccess — вход отклонён");
-}
 
 export const connectWalletSigned = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -319,6 +271,7 @@ export const connectWalletSigned = createServerFn({ method: "POST" })
     // Кошелёк добавляется только к Telegram сессии (владелец, 18.10.2026).
     const tg = getSessionTgId();
     if (!tg) throw new Error("Сначала войди через Telegram — кошелёк добавляется к нему");
+    (await import("../walletOnlySession")).assertNotWalletOnly();
     await verifyConnectOwnership({
       accountId: data.accountId,
       publicKey: data.publicKey,
@@ -349,6 +302,8 @@ export const connectWalletSigned = createServerFn({ method: "POST" })
 // браузера (18.10.2026) — здесь осталось только проверить, что он есть.
 export const prepareAddWallet = createServerFn({ method: "POST" }).handler(async () => {
   if (!getSessionTgId()) throw new Error("Войди через Telegram, чтобы добавлять кошельки");
+  (await import("./wallet-link")).assertWalletLinkAllowed(getSessionTgId());
+  (await import("../walletOnlySession")).assertNotWalletOnly();
   return { ok: true };
 });
 
@@ -362,7 +317,7 @@ export const prepareAddWallet = createServerFn({ method: "POST" }).handler(async
  * «Выйти» (AppHeader) и авто-обработчик onSignOut в NearConnectorBridge —
  * который срабатывает САМ, когда коннектор разлогинился, — помечали кошелёк
  * отключённым. Он пропадал из списка, а переключиться обратно было нельзя
- * («Этот кошелёк отключён»). Жалоба player55: «отлетать начал основной кош,
+ * («Этот кошелёк отключён»). Жалоба игрока: «отлетать начал основной кош,
  * когда по ошибке вышел из него».
  *
  * Осознанная отвязка — отдельное действие с подтверждением: unlinkWallet

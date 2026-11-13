@@ -7,13 +7,15 @@
 // (darai-stars.ts). Пул карты пополняет только DARAI: за звёзды он не растёт.
 // Возврат (услуга сорвалась) — тем же, чем заплатили: по ключу списания.
 import { isWalletLinked } from "@/lib/walletLinked";
+import { googleOnlyWallet } from "@/lib/auth/entryRules";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { accAccountId, accBalance } from "./move";
 
 /** Сколько звёзд взять вместо `amount` DARAI; null — платить DARAI. */
 export async function starsInsteadOfDarai(wallet: string, amount: number): Promise<number | null> {
-  if (!(amount > 0) || isWalletLinked(wallet)) return null;
+  // «Только Google» (§8.127): звёзд нет — платит DARAI со счёта.
+  if (!(amount > 0) || isWalletLinked(wallet) || googleOnlyWallet(wallet)) return null;
   if ((await accBalance(wallet, "Darai")) >= amount) return null;
   const { daraiRate, starsFromDarai } = await import("../darai-stars");
   return starsFromDarai(amount, await daraiRate());

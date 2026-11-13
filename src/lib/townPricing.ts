@@ -54,7 +54,7 @@ export function isRush(c: TownCurve, stock: number, lowSince: string | null, now
 
 export function townCurve(
   good: Pick<TownGood, "marketPrice" | "consumePerResident"> &
-    Partial<Pick<TownGood, "producePerDay">>,
+    Partial<Pick<TownGood, "producePerDay" | "markupPct">>,
   residents: number,
   rules: TownRules,
 ): TownCurve {
@@ -63,7 +63,7 @@ export function townCurve(
     base: Math.max(0, good.marketPrice),
     norm,
     reserve: (norm * Math.max(0, rules.reservePct)) / 100,
-    markupPct: Math.max(0, rules.markupPct),
+    markupPct: Math.max(0, good.markupPct ?? rules.markupPct),
   };
 }
 

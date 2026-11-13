@@ -46,6 +46,13 @@ export type MapBlobHeader = {
     runners: number[];
     voidFog: number[];
     townHalls: number[];
+    /** Клетки с шахтой — сквозь них не пройти (packCells). Старый снимок — без поля. */
+    mines?: number[];
+    /**
+     * Жилы: тройки (клетка, вид 1 — золото / 2 — алмазы, поворот 0..5 × 60°),
+     * packCells. Старый снимок или база без таблицы жил — без поля.
+     */
+    veins?: number[];
     /** Тройки (клетка, индекс блока в groupIds, масштаб %) — см. packCells. */
     groups?: number[];
   };

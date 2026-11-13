@@ -12,9 +12,11 @@
 // ключ art:art_any_* не совпадает с ключом покупки art:<шаблон>.
 //
 // Best-effort, как весь журнал: ничего не бросает, сделку не трогает.
+import { allPrices } from "@/lib/marketPrices";
 import type { MarketItem, MarketPriceResource } from "@/lib/marketItem";
 import type { SpendReceipt } from "@/server/api/beta-raid/market-money";
 import { isArtAny } from "@/server/api/beta-raid/art-rarity";
+import { isHeroAny } from "@/server/api/beta-raid/hero-any";
 import { payoutAsGood } from "@/server/api/beta-raid/market-sell-good";
 import { payoutMeta, type Meta } from "@/server/api/beta-raid/market-payout-meta";
 import { noteTrades, type TradeNote } from "@/server/api/beta-raid/econ/trade-journal";
@@ -48,9 +50,10 @@ async function safe(build: () => Promise<TradeNote[]>): Promise<void> {
 }
 
 /** Снятые артефакты по шаблонам: шаблон → штук, по порядку id (как бэкфилл — номер в ref тот же). */
-function artsByTemplate(receipt: SpendReceipt | undefined): Map<string, number> {
+function artsByTemplate(receipt: SpendReceipt | undefined, heroes = false): Map<string, number> {
   const by = new Map<string, number>();
-  for (const a of receipt?.paidArts ?? []) by.set(a.templateId, (by.get(a.templateId) ?? 0) + 1);
+  const list = heroes ? (receipt?.paidHeroes ?? []) : (receipt?.paidArts ?? []);
+  for (const a of list) by.set(a.templateId, (by.get(a.templateId) ?? 0) + 1);
   return new Map([...by].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 }
 
@@ -105,9 +108,11 @@ export function noteMarketSell(o: {
   const { item } = o;
   const give = item.giveAmount > 0 ? item.giveAmount : 1;
   const units = o.qty * o.ratio;
+  // «Любой герой» ломбарда — так же, по шаблонам сданных копий (paidHeroes).
+  const hero = item.kind === "hero" && isHeroAny(item.refId);
   const arts =
-    item.kind === "art" && isArtAny(item.refId)
-      ? artsByTemplate(o.receipt)
+    (item.kind === "art" && isArtAny(item.refId)) || hero
+      ? artsByTemplate(o.receipt, hero)
       : new Map<string, number>();
   const given =
     arts.size > 0
@@ -130,7 +135,7 @@ export function noteMarketSell(o: {
           ...at(o),
           source: "market_sell",
           side: "sell",
-          itemKey: `art:${tpl}`,
+          itemKey: `${hero ? "hero" : "art"}:${tpl}`,
           itemName: item.name,
           qty: round3(n * o.ratio),
           priceUnit: round3(item.priceAmount / give),
@@ -169,7 +174,8 @@ export function noteMarketBuy(o: {
   /** Сколько оплачено штук позиции и сколько из них выдано. */
   qty: number;
   delivered: number;
-  receipts: readonly [SpendReceipt, SpendReceipt];
+  /** Квитанции по строкам цены — в порядке allPrices (до пяти ингредиентов). */
+  receipts: readonly SpendReceipt[];
   ref: string;
 }): Promise<void> {
   const { item } = o;
@@ -182,12 +188,11 @@ export function noteMarketBuy(o: {
     units,
     ref: o.ref,
   });
-  const lines: Array<GoodsLine | null> = [
-    { res: item.priceResource, token: item.priceToken, amount: item.priceAmount * units },
-    item.price2Resource && item.price2Amount
-      ? { res: item.price2Resource, token: item.price2Token, amount: item.price2Amount * units }
-      : null,
-  ];
+  const lines: Array<GoodsLine | null> = allPrices(item).map((l) => ({
+    res: l.resource,
+    token: l.token,
+    amount: l.amount * units,
+  }));
   const share = o.qty > 0 ? units / o.qty : 1;
   return got.then(() =>
     safe(async () => {

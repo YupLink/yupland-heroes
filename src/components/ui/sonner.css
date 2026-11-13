@@ -2,7 +2,7 @@
    классы Tailwind проигрывали встроенным стилям sonner, и тосты были белыми. */
 @font-face {
   font-family: "YupLink Toast Golos";
-  src: url("../../assets/tavern/GolosText.ttf") format("truetype");
+  src: url("../../assets/tavern/GolosText.woff2") format("woff2");
   font-weight: 400 900;
   font-display: swap;
 }
@@ -15,7 +15,7 @@
 
 /* Castle balances and active effects occupy the top edge of the map. */
 body:has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] {
-  top: max(120px, env(safe-area-inset-top)) !important;
+  top: max(120px, var(--app-top,env(safe-area-inset-top,0px))) !important;
 }
 
 .yuplink-toaster [data-sonner-toast][data-styled="true"] {
@@ -113,7 +113,7 @@ body:has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position
 
 @media (max-width: 600px) {
   body:has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] {
-    top: max(96px, env(safe-area-inset-top)) !important;
+    top: max(96px, var(--app-top,env(safe-area-inset-top,0px))) !important;
   }
 }
 
@@ -126,7 +126,7 @@ body:has(.raid-map-nav) [data-sonner-toaster].yuplink-toaster {
   transform: translateX(-50%);
 }
 body:has(.raid-map-nav) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] {
-  top: max(84px, env(safe-area-inset-top)) !important;
+  top: max(84px, var(--app-top,env(safe-area-inset-top,0px))) !important;
 }
 body:has(.raid-map-nav) .yuplink-toaster [data-sonner-toast][data-styled="true"] {
   width: 100%;
@@ -145,6 +145,19 @@ body:has(.raid-map-nav) .yuplink-toaster [data-description] { font-size: 12px !i
 body:has(.raid-map-nav) .yuplink-toaster [data-sonner-toast][data-styled="true"] [data-close-button] { width: 32px; height: 32px; right: 5px; border-color: transparent; background: none; }
 
 /* Preserve clearance while the legacy three-balance HUD is still mounted. */
-body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: max(120px, env(safe-area-inset-top)) !important; }
-@media(max-width:600px){body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: max(96px, env(safe-area-inset-top)) !important; }}
+body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: max(120px, var(--app-top,env(safe-area-inset-top,0px))) !important; }
+@media(max-width:600px){body:has(.raid-map-nav):has(.castle-main-hud) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] { top: max(96px, var(--app-top,env(safe-area-inset-top,0px))) !important; }}
 
+
+/* Tutorial only: reserve a separate lane below the quest panel for every game notice.
+   Outside the guided island flow the shared toaster keeps its normal position. */
+body:has(.island-quest[data-guiding="true"]) [data-sonner-toaster].yuplink-toaster {
+  --width: min(340px, calc(100vw - 72px));
+  width: min(340px, calc(100vw - 72px)) !important;
+  left: 8px !important;
+  right: auto !important;
+  transform: none !important;
+}
+body:has(.island-quest[data-guiding="true"]) [data-sonner-toaster].yuplink-toaster[data-y-position="top"] {
+  top: var(--island-tutorial-toast-top, 220px) !important;
+}

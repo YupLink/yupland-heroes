@@ -14,11 +14,13 @@
 // 'failed' — нет. Повтор того же нажатия отвечает прежним исходом и второй раз
 // ничего не делает — в том числе не закопает «даром» позже, когда износ лопаты
 // за это нажатие уже откатили.
+//
+// Кучка из пустой ямки (§8.24 п. 6б, hole-bury) — бугорок с порцией-меткой
+// DIG_EMPTY_KEY: выкопали — тот же оператор снимает метку (мешочек пуст, его
+// никто не видит), ответ empty — «ничего не нашлось», на клетке снова ямка.
 import { sqlStr } from "@/server/api/raid-shared";
-import {
-  bagLockSql,
-  livePortion,
-} from "@/server/api/beta-raid/loot-bag/bag-sql";
+import { DIG_EMPTY_KEY } from "@/lib/digHole";
+import { bagLockSql, livePortion } from "@/server/api/beta-raid/loot-bag/bag-sql";
 
 export type DigRow = {
   /** Исход этого ключа: 'done' / 'failed' (и прежний — на повторе). */
@@ -30,6 +32,8 @@ export type DigRow = {
   busy: boolean | null;
   /** Исход записан этим оператором (не повтор того же нажатия). */
   mine?: boolean | null;
+  /** Выкопали кучку из пустой ямки: внутри ничего. */
+  empty?: boolean | null;
 };
 
 /**
@@ -38,7 +42,12 @@ export type DigRow = {
  * увидит ключ и ничего не перевернёт — износ лопаты можно вернуть. Ответ —
  * исход ключа: 'done' — переворот всё-таки прошёл.
  */
-export function digFenceSql(o: { bagId: string; op: string; account: string; bury: boolean }): string {
+export function digFenceSql(o: {
+  bagId: string;
+  op: string;
+  account: string;
+  bury: boolean;
+}): string {
   const op = sqlStr(o.op);
   return `${bagLockSql(o.bagId)}
      INSERT INTO yuplink.raid_loot_bag_op (op, bag_id, account_id, kind, state)
@@ -87,6 +96,12 @@ export function digSql(o: {
         WHERE b.id = ${id} AND EXISTS (SELECT 1 FROM ok)
        RETURNING 1
      ),
+     empty AS (
+       UPDATE yuplink.raid_loot_bag_item x SET count = 0
+        WHERE x.bag_id = ${id} AND x.stack_key = ${sqlStr(DIG_EMPTY_KEY)} AND x.count > 0
+          AND ${o.bury ? "false" : "EXISTS (SELECT 1 FROM upd)"}
+       RETURNING 1
+     ),
      mark AS (
        INSERT INTO yuplink.raid_loot_bag_op (op, bag_id, account_id, kind, state, parts)
        SELECT ${op}, ${id}, ${acc}, ${sqlStr(o.bury ? "bury" : "dig")},
@@ -100,6 +115,7 @@ export function digSql(o: {
               (SELECT alive FROM cur) AS alive, (SELECT buried FROM cur) AS buried,
               (SELECT busy FROM cur) AS busy,
               (EXISTS (SELECT 1 FROM mark)
-               OR COALESCE((SELECT nonce FROM prior) = ${nonce}, false)) AS mine
+               OR COALESCE((SELECT nonce FROM prior) = ${nonce}, false)) AS mine,
+              EXISTS (SELECT 1 FROM empty) AS empty
      ) _t;`;
 }

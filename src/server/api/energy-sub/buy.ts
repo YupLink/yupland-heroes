@@ -40,6 +40,7 @@ export const buyEnergySub = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     assertNotMaintenance();
     const wallet = await requireAccountUser();
+    (await import("../xsolla/cardOnly")).assertNotCardOnly(data.token);
     if (!(await canUseSubs(wallet))) throw new Error("esub.unavailable");
     await moneyGate("esub", wallet);
 
@@ -53,10 +54,37 @@ export const buyEnergySub = createServerFn({ method: "POST" })
     if (amount == null || !(amount > 0)) throw new Error("esub.no_rate");
     if (priceMovedUp(data.expected, amount)) throw new Error("esub.price_changed");
 
-    const { createSubSql, prevPayment, settleEnergyBeforeShield, subExists, subIdOf } = await import("./buy-sql");
+    const { createSubSql, tierLocks, prevPayment, settleEnergyBeforeShield, subExists, subIdOf } =
+      await import("./buy-sql");
+    // Пригласивший и его доля — ДО денег, при любой монете (рефка золотом, §8.101).
+    const { refContextFor } = await import("../referral-gold/ref-context");
+    const { refGoldEq } = await import("@/lib/referralGold");
+    const ref = await refContextFor(account, wallet, refGoldEq("sub", tier.priceUsd));
     const payRef = `esub:${account}:${tier.id}:${data.token}:${data.opId}`;
     const subId = subIdOf(payRef);
-    const pay = await payFromAccount({ wallet, token: data.token, amount, ref: payRef, accountId: account });
+    // По одной каждого вида — до денег; одновременные нажатия ловит база (esub-10).
+    // Повтор нажатия, чья оплата прошла, а подписка не записалась, дописать её
+    // уже не сможет — деньги назад (ключ «-undo» второй раз не вернёт).
+    if ((await tierLocks(account, payRef))[tier.id]) {
+      const prev = await prevPayment(payRef, data.token);
+      if (prev.paid > 0 && !prev.undone && !(await subExists(payRef))) {
+        await refundToAccount({
+          wallet,
+          token: data.token,
+          amount: prev.paid,
+          ref: payRef,
+          accountId: account,
+        });
+      }
+      throw new Error("esub.one_active");
+    }
+    const pay = await payFromAccount({
+      wallet,
+      token: data.token,
+      amount,
+      ref: payRef,
+      accountId: account,
+    });
     let paid = amount;
     if (!pay.applied) {
       const prev = await prevPayment(payRef, data.token);
@@ -67,25 +95,60 @@ export const buyEnergySub = createServerFn({ method: "POST" })
     if (tier.noDecay) await settleEnergyBeforeShield(account);
     try {
       const res = firstRow<{ created: string | null; existing: string | null }>(
-        await mcpExec(createSubSql({ subId, account, wallet, tier, token: data.token, amount: paid, rate, payRef })),
+        await mcpExec(
+          createSubSql({
+            subId,
+            account,
+            wallet,
+            tier,
+            token: data.token,
+            amount: paid,
+            rate,
+            payRef,
+            ref,
+          }),
+        ),
       );
       if (!res?.created && !res?.existing && !(await subExists(payRef))) {
         throw new Error("Подписка не записалась");
       }
+      // Новая подписка — письмо админам (§8.111); повтор нажатия — без письма.
+      if (res?.created) {
+        const sale = { what: "sub" as const, title: tier.name, days: tier.days, amount: paid };
+        void import("../../salesNotify").then((m) =>
+          m.notifySale({ ...sale, currency: data.token, usd: tier.priceUsd, account, wallet }),
+        );
+      }
     } catch (e) {
       // Деньги сняты ЭТИМ вызовом, а подписки нет — возвращаем. Если списание
-      // было раньше (повтор), подписка либо есть, либо её допишет следующий повтор.
-      if (pay.applied && !(await subExists(payRef).catch(() => true))) {
-        await refundToAccount({ wallet, token: data.token, amount: paid, ref: payRef, accountId: account });
+      // было раньше (повтор), подписка либо есть, либо её допишет следующий повтор —
+      // кроме отказа «такая уже есть»: тогда не допишет никто, возвращаем и прежнее.
+      const oneActive = e instanceof Error && e.message.includes("esub_one_active");
+      if ((pay.applied || oneActive) && !(await subExists(payRef).catch(() => true))) {
+        await refundToAccount({
+          wallet,
+          token: data.token,
+          amount: paid,
+          ref: payRef,
+          accountId: account,
+        });
       }
+      if (oneActive) throw new Error("esub.one_active");
       throw e;
     }
 
     // День 1 — сразу в «Подарки»; корзины — пачкой, если набрали порог.
     const { grantDueForAccount } = await import("./grant");
-    await grantDueForAccount(account, { force: true }).catch((e) => console.warn("[esub] день 1:", subId, e));
+    await grantDueForAccount(account, { force: true }).catch((e) =>
+      console.warn("[esub] день 1:", subId, e),
+    );
     const { runDueBatches } = await import("./batch");
     void runDueBatches("auto").catch((e) => console.warn("[esub] пачки:", e));
+    // Друг потратил — пригласивший мог дорасти до боксов и «Много друзей» (§8.101).
+    if (ref) {
+      void import("../../referralQualify").then((m) => m.noteReferralPurchase(wallet));
+      if (data.token === "Darai") void import("../bank/license-money").then((m) => m.runBuyback());
+    }
 
     return {
       ok: true as const,

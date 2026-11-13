@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { Loader2, Sparkles, Box, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 
+import { thumb } from "@/lib/image";
 export function OpenPackConfirmModal({
   packName,
   imageUrl,
@@ -73,7 +74,7 @@ export function OpenPackConfirmModal({
           <div className="flex items-center gap-3">
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gold/30 bg-secondary/40">
               {imageUrl ? (
-                <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                <img src={thumb(imageUrl, 128)} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full items-center justify-center text-muted-foreground">
                   <Box className="h-6 w-6" />

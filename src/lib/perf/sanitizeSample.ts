@@ -75,6 +75,7 @@ export function sanitizeSample(input: unknown): ClientSample | null {
     mem: s.mem == null ? null : num(s.mem, 1024),
     conn: str(s.conn, 16),
     screen: str(s.screen, 16) ?? "",
+    build: str(s.build, 12) ?? undefined,
     frames: {
       n: cnt(frames.n),
       moving: cnt(frames.moving),

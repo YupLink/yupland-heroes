@@ -51,7 +51,7 @@ export function QuickCreatePanel({ onClose }: { onClose: () => void }) {
     <>
       {/* Выбор вида — над формой, отдельным слоем: сама форма перерисовывается
           целиком при смене вида (у неё своё состояние полей на каждый вид). */}
-      <div className="fixed inset-x-0 top-0 z-[151] flex justify-center px-3 pt-2">
+      <div className="fixed inset-x-0 top-0 z-[151] flex justify-center px-3 pt-[calc(8px+var(--app-top,0px))]">
         <div className="flex max-w-md flex-wrap items-center gap-1 rounded-2xl border border-gold/40 bg-background/95 p-1 backdrop-blur">
           {OBJECT_SUBS.map((s) => (
             <button

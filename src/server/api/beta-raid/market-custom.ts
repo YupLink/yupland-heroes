@@ -5,7 +5,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { getCurrentWallet, isAdminWallet } from "../../auth";
 import type { BoostEffect } from "@/lib/hero/boost";
 import { toolWearOf } from "@/lib/raid/toolWear";
 import {
@@ -20,6 +19,7 @@ import {
   explainChestClash,
   toolWearInput,
 } from "./market-custom-rules";
+import { requireCatalogEditor } from "@/server/api/catalog-auth";
 
 export type CustomItem = {
   id: string;
@@ -51,12 +51,10 @@ export type CustomItem = {
   isRod: boolean;
   /** Галочка «карта» (05.10): целая штука у выбранного героя открывает карту мира (§8.32). */
   isMap: boolean;
+  /** Галочки «бинокль» и «лестница» (08.11): «Применить» из рюкзака. */
+  isBinocular: boolean;
+  isLadder: boolean;
 };
-
-function requireAdmin(): void {
-  const w = getCurrentWallet();
-  if (!w || !isAdminWallet(w)) throw new Error("Только админ настраивает маркет");
-}
 
 const newId = () =>
   `cst_${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`;
@@ -65,7 +63,7 @@ export const listCustomItems = createServerFn({ method: "GET" }).handler(
   async (): Promise<CustomItem[]> => {
     const rows = (await mcpExec(
       `SELECT id, name, image, description, boost, is_potion, magic_chest, tool_wear, is_shovel,
-              plain_chest, category_id, is_rod, is_map
+              plain_chest, category_id, is_rod, is_map, is_binocular, is_ladder
          FROM yuplink.raid_custom_item
         ORDER BY created_at DESC;`,
       { wrapJson: true },
@@ -84,6 +82,8 @@ export const listCustomItems = createServerFn({ method: "GET" }).handler(
       categoryId: r.category_id != null ? String(r.category_id) : null,
       isRod: r.is_rod === true,
       isMap: r.is_map === true,
+      isBinocular: r.is_binocular === true,
+      isLadder: r.is_ladder === true,
     }));
   },
 );
@@ -104,11 +104,13 @@ export const createCustomItem = createServerFn({ method: "POST" })
         categoryId: z.string().min(1).nullable().default(null),
         isRod: z.boolean().default(false),
         isMap: z.boolean().default(false),
+        isBinocular: z.boolean().default(false),
+        isLadder: z.boolean().default(false),
       })
       .parse(d),
   )
   .handler(async ({ data }): Promise<CustomItem> => {
-    requireAdmin();
+    await requireCatalogEditor();
     assertWearFits(data.magicChest, data.toolWear, data.plainChest);
     assertShovelFits(data);
     assertRodFits(data);
@@ -119,10 +121,11 @@ export const createCustomItem = createServerFn({ method: "POST" })
     const boost = boostOf(data.boost);
     const toolWear = toolWearOf(data.toolWear);
     await mcpExec(
-      `INSERT INTO yuplink.raid_custom_item(id, name, image, description, is_map, category_id, boost, is_rod, is_potion, plain_chest, magic_chest, is_shovel, tool_wear)
+      `INSERT INTO yuplink.raid_custom_item(id, name, image, description, is_map, category_id, boost, is_rod, is_potion, plain_chest, magic_chest, is_shovel, tool_wear, is_binocular, is_ladder)
        VALUES (${sqlStr(id)}, ${sqlStr(data.name)}, ${data.image ? sqlStr(data.image) : "NULL"},
                ${data.description ? sqlStr(data.description) : "NULL"}, ${data.isMap === true}, ${cat}, ${boostSql(boost)}, ${data.isRod === true},
-               ${data.isPotion}, ${data.plainChest === true}, ${data.magicChest}, ${data.isShovel === true}, ${toolWear ?? "NULL"});`,
+               ${data.isPotion}, ${data.plainChest === true}, ${data.magicChest}, ${data.isShovel === true}, ${toolWear ?? "NULL"},
+               ${data.isBinocular === true}, ${data.isLadder === true});`,
     ).catch((e) => explainChestClash(e, data.magicChest));
     // Галочки и тексты — как пришли (zod уже отрезал лишнее); буст и износ — разобранные.
     return { ...data, id, boost, toolWear };
@@ -155,11 +158,16 @@ export const updateCustomItem = createServerFn({ method: "POST" })
         isRod: z.boolean().optional(),
         // И «карта» (05.10): нет поля — колонку не трогаем.
         isMap: z.boolean().optional(),
+        isBinocular: z.boolean().optional(),
+        isLadder: z.boolean().optional(),
       })
       .parse(d),
   )
   .handler(async ({ data }): Promise<CustomItem> => {
-    requireAdmin();
+    // Право «справочники» товары только создаёт; менять существующий — только админ
+    // (владелец 04.11.2026: «может только выставлять — менять нельзя»).
+    const actor = await requireCatalogEditor();
+    if (!actor.money) throw new Error("Менять свой товар — только админ");
     assertWearFits(data.magicChest, data.toolWear, data.plainChest);
     assertShovelFits(data);
     assertRodFits(data);
@@ -177,14 +185,18 @@ export const updateCustomItem = createServerFn({ method: "POST" })
         ? ""
         : `, category_id=${data.categoryId ? sqlStr(data.categoryId) : "NULL"}`;
     const rodSet = data.isRod === undefined ? "" : `, is_rod=${data.isRod === true}`;
-    const mapSet = data.isMap === undefined ? "" : `, is_map=${data.isMap === true}`;
+    const mapSet =
+      (data.isMap === undefined ? "" : `, is_map=${data.isMap === true}`) +
+      (data.isBinocular === undefined ? "" : `, is_binocular=${data.isBinocular === true}`) +
+      (data.isLadder === undefined ? "" : `, is_ladder=${data.isLadder === true}`);
     const rows = (await mcpExec(
       `UPDATE yuplink.raid_custom_item
           SET name=${sqlStr(data.name)}, image=${data.image ? sqlStr(data.image) : "NULL"},
               description=${data.description ? sqlStr(data.description) : "NULL"},
               boost=${boostSql(boost)}, is_potion=${data.isPotion}${chestSet}${wearSet}${shovelSet}${plainSet}${catSet}${rodSet}${mapSet}
         WHERE id=${sqlStr(data.id)}
-        RETURNING magic_chest, tool_wear, is_shovel, plain_chest, category_id, is_rod, is_map;`,
+        RETURNING magic_chest, tool_wear, is_shovel, plain_chest, category_id, is_rod, is_map,
+                  is_binocular, is_ladder;`,
       { wrapJsonCte: true },
     ).catch((e) => explainChestClash(e, data.magicChest))) as Array<{
       magic_chest: boolean;
@@ -194,6 +206,8 @@ export const updateCustomItem = createServerFn({ method: "POST" })
       category_id: string | null;
       is_rod?: boolean;
       is_map?: boolean;
+      is_binocular?: boolean;
+      is_ladder?: boolean;
     }>;
     // Кэш канона держит имя и картинку шаблона — после правки он устарел.
     const { invalidateAliases } = await import("./item-alias");
@@ -217,6 +231,8 @@ export const updateCustomItem = createServerFn({ method: "POST" })
       categoryId: rows?.[0]?.category_id ?? null,
       isRod: rows?.[0]?.is_rod === true,
       isMap: rows?.[0]?.is_map === true,
+      isBinocular: rows?.[0]?.is_binocular === true,
+      isLadder: rows?.[0]?.is_ladder === true,
     };
   });
 
@@ -224,7 +240,11 @@ export const updateCustomItem = createServerFn({ method: "POST" })
 export const deleteCustomItem = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    // Удаление стирает товар у всех, у кого он лежит (рюкзаки, склады, лавки) —
+    // это трогает игроков: право catalogs создаёт и правит, удаляет только админ.
+    const actor = await requireCatalogEditor();
+    if (!actor.money)
+      throw new Error("Удалить свой товар — только админ: он может лежать у игроков");
     await mcpExec(`DELETE FROM yuplink.raid_custom_item WHERE id=${sqlStr(data.id)};`);
     return { ok: true as const };
   });

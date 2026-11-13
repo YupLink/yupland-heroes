@@ -11,6 +11,10 @@ export const dict: Record<string, Entry> = {
   "tags.race": { ru: "Раса", en: "Race" },
   "tags.auto": { ru: "авто", en: "auto" },
   "tags.any": { ru: "любая", en: "any" },
+  // Природа декора (шахты v2, §8.59.8): лесопилке нужны деревья, каменной — горы.
+  "tags.nature": { ru: "Природа", en: "Nature" },
+  "tags.nature.tree": { ru: "Дерево", en: "Tree" },
+  "tags.nature.mountain": { ru: "Гора", en: "Mountain" },
   "tags.race.Пчела": { ru: "Пчела", en: "Bee" },
   "tags.race.Кабан": { ru: "Кабан", en: "Boar" },
   "tags.race.ДраКошка": { ru: "ДраКошка", en: "Dragon Cat" },

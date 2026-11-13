@@ -1,0 +1,28 @@
+/* Reel motion ships with its component, including in the isolated preview. */
+/* Лента барабана (ReelColumn): сдвиг ставит JS каждый кадр. На полном ходу —
+   лёгкое размытие, в торможении символы чёткие: видно, что приезжает. */
+.slot-reel-band {
+  will-change: transform;
+}
+.slot-reel-band[data-stage="run"] .slot-symbol {
+  filter: blur(0.9px);
+}
+.slot-reel-column::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(#0c101475, transparent 12%, transparent 88%, #0c101475);
+}
+.slot-reel-anticipating {
+  animation: casino-reel-wait 450ms ease-in-out infinite;
+}
+@keyframes casino-reel-wait {
+  0%, 100% { box-shadow: inset 0 0 12px #f5b30159; }
+  50% { box-shadow: inset 0 0 28px #f5b301e6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slot-reel-anticipating {
+    animation: none;
+  }
+}

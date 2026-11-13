@@ -124,7 +124,7 @@ export const recallHeroFromField = createServerFn({ method: "POST" })
     let removed: boolean;
     try {
       // Как окно грядки рядом: целые единицы — на склад, чтобы к снятию остался
-      // только дробный хвост (его отдаст leaveFieldWork).
+      // только дробный хвост (он остаётся в строке работника, §8.16).
       if (cfg) await settleFieldPayout(work.mapId, work.q, work.r, cfg).catch(() => {});
       const { mapId, q, r } = work;
       const restMs = rested ? FIELD_RECALL_REST_MS : 0;

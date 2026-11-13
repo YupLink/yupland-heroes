@@ -19,6 +19,9 @@
 // hp, и такой борт мог разобрать любой сосед — и сам капитан из своего окна,
 // где «Починить» и «Разобрать» стоят рядом: «починил корабль — и он испарился»
 // (20.09, бурст разборов 15:35Z; на проде двое плыли с hp −4187 и −382).
+//
+// Подбитый синим динамитом (blasted_at, dynamite-08) не разбирается: про разбор
+// владелец не говорил, обломок инертен — стоит час и исчезает (ship-sweep).
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { nanoid } from "nanoid";
@@ -30,12 +33,15 @@ import { areNeighbors } from "./helpers";
 import { resolveBackpack } from "./market-backpack";
 import { depositToBackpack } from "./market-backpack-write";
 import { payForHit } from "./encounter-pay";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 import { publishRaid } from "../../raidLive";
 // Вид доски (имя, картинка, шаблон) — из одного места с починкой: три формы
 // стека «Доска» на проде выросли из того, что разборка собирала его сама.
 import { plankItem } from "./plank-item";
 
 const SCRAP_COST = 1; // энергия
+/** Цена разборки на карте: на острове в 10 раз (island/energy) — показ = списание. */
+const scrapCost = (mapId: string): number => scaleEnergy(SCRAP_COST, energyMultOf(mapId));
 const PLANK_YIELD: Record<"small" | "big", number> = { small: 1, big: 2 };
 
 type ShipRow = { id: string; kind: "small" | "big"; hp: number; owner: string };
@@ -50,7 +56,7 @@ async function scrappableShipAt(
     `SELECT id, COALESCE(kind, 'small') AS kind, hp, owner
        FROM yuplink.beta_raid_ship
       WHERE map_id = ${sqlStr(mapId)} AND q = ${q} AND r = ${r}
-        AND hp <= 0 AND crew_account IS NULL
+        AND hp <= 0 AND crew_account IS NULL AND blasted_at IS NULL
         ${shipId ? `AND id = ${sqlStr(shipId)}` : ""}
       ORDER BY hp, created_at LIMIT 1;`,
     { wrapJson: true },
@@ -78,7 +84,7 @@ export const getShipScrap = createServerFn({ method: "GET" })
     return {
       shipKind: ship.kind,
       planks: PLANK_YIELD[ship.kind],
-      cost: SCRAP_COST,
+      cost: scrapCost(mapId),
     };
   });
 
@@ -110,6 +116,7 @@ export const scrapShip = createServerFn({ method: "POST" })
     const gone = (await mcpExec(
       `DELETE FROM yuplink.beta_raid_ship
         WHERE id = ${sqlStr(ship.id)} AND hp <= 0 AND crew_account IS NULL
+          AND blasted_at IS NULL
         RETURNING id;`,
       { wrapJsonCte: true },
     )) as Array<{ id: string }>;
@@ -120,7 +127,7 @@ export const scrapShip = createServerFn({ method: "POST" })
     //    Не удалось оплатить — восстанавливаем судно INSERT'ом назад с hp=0.
     let pay: { refund: () => Promise<void> };
     try {
-      pay = await payForHit(wallet, SCRAP_COST, "ship");
+      pay = await payForHit(wallet, scrapCost(mapId), "ship");
     } catch (e) {
       // Восстанавливаем судно: BUY-back — простой INSERT назад, hp=0. `owner`
       // в таблице NOT NULL: без него откат молча падал, и судно пропадало.
@@ -165,6 +172,6 @@ export const scrapShip = createServerFn({ method: "POST" })
       ok: true as const,
       planks,
       shipKind: ship.kind,
-      spent: SCRAP_COST,
+      spent: scrapCost(mapId),
     };
   });

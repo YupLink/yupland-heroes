@@ -3,9 +3,13 @@
 // внутри редкости нет. Счёт ведёт сервер по сделанному в игре. Пороги и
 // награды — ЧИСЛА ВЛАДЕЛЬЦА (17.10, вечер), своих не придумывать.
 import type { HeroStatKey } from "@/lib/heroStats";
+import { REF_FRIEND_TIERS, REF_SPEND_TIERS, REF_TIER_PCTS } from "@/lib/referralGold";
 
-/** Что растит ачивка: шесть характеристик героя плюс торговля и алхимия. */
-export type AchStat = HeroStatKey | "trade" | "alchemy";
+/**
+ * Что растит ачивка: шесть характеристик героя плюс торговля и алхимия; refpct —
+ * не герою: доля пригласившего с покупок друзей, % (рефка золотом, §8.101).
+ */
+export type AchStat = HeroStatKey | "trade" | "alchemy" | "refpct";
 
 export const ACH_TRACK_IDS = [
   "lumber",
@@ -16,9 +20,17 @@ export const ACH_TRACK_IDS = [
   "sailor",
   "explorer",
   "minelord",
+  "gambler",
+  "friends",
+  "friendbuy",
 ] as const;
 
 export type AchTrackId = (typeof ACH_TRACK_IDS)[number];
+
+/** Занятия острова новичка (портал острова и список на острове): без казино и друзей. */
+export const ISLAND_TRACK_IDS: readonly AchTrackId[] = ACH_TRACK_IDS.filter(
+  (id) => id !== "gambler" && id !== "friends" && id !== "friendbuy",
+);
 
 export type AchTrack = {
   id: AchTrackId;
@@ -26,6 +38,10 @@ export type AchTrack = {
   targets: readonly [number, number, number, number, number, number];
   /** Какую характеристику растит. */
   stat: AchStat;
+  /** false — награда ещё не включена (владелец решит): счёт и редкость идут, прибавки нет. */
+  active?: boolean;
+  /** Своя лестница наград вместо RARITY_BONUS (итог на редкости). */
+  bonuses?: readonly [number, number, number, number, number, number];
 };
 
 const X10 = [30, 100, 250, 750, 2000, 5000] as const;
@@ -35,13 +51,38 @@ export const ACH_TRACKS: Record<AchTrackId, AchTrack> = {
   lumber: { id: "lumber", targets: [60, 200, 500, 1500, 4000, 10000], stat: "hp" },
   miner: { id: "miner", targets: [60, 200, 500, 1500, 4000, 10000], stat: "arm" },
   hunter: { id: "hunter", targets: X10, stat: "atk" },
-  digger: { id: "digger", targets: X10, stat: "luck" },
+  /**
+   * Копка лопатой (с 08.11 — и земля с находкой): владелец 08.11 — мифическая 15 000,
+   * легендарная ×2, эпическая ×1,5 от прежних 2 000 и 750.
+   */
+  digger: { id: "digger", targets: [30, 100, 250, 1125, 4000, 15000], stat: "luck" },
   fisher: { id: "fisher", targets: X10, stat: "alchemy" },
   /** Пройденные клетки воды на борту; клетка моря (океана) — за две. */
   sailor: { id: "sailor", targets: CELLS, stat: "spd" },
   /** Пройденные клетки пешком. */
   explorer: { id: "explorer", targets: CELLS, stat: "int" },
+  /** Собранное с шахт, шт.; DARAI — очко за 1 000 (achievements/minelord). */
   minelord: { id: "minelord", targets: [100, 1000, 2500, 6000, 14000, 30000], stat: "trade" },
+  /**
+   * «Лудоман» (владелец, 21.10.2026): оборот в казино — сколько золота поставлено
+   * в автомате. Пороги — 10к/50к/100к/500к ×3 и 1 млн/5 млн ×10. Награда
+   * +1…+24 удачи — включена (21.10: «включай все»).
+   */
+  gambler: {
+    id: "gambler",
+    targets: [30_000, 150_000, 300_000, 1_500_000, 10_000_000, 50_000_000],
+    stat: "luck",
+  },
+  /**
+   * «Много друзей» (рефка золотом, Ярослав 31.10 / владелец 02.11): друзья, что
+   * потратили в игре от $10 — 1/3/5/10/50/100 → торговля +1…+24.
+   */
+  friends: { id: "friends", targets: REF_FRIEND_TIERS, stat: "trade" },
+  /**
+   * «Покупки друзей»: сколько золота купили все друзья (подписка — $1 = 1 000) —
+   * доля пригласившего 11/12/14/16/18/20 % (без ачивки — 10 %).
+   */
+  friendbuy: { id: "friendbuy", targets: REF_SPEND_TIERS, stat: "refpct", bonuses: REF_TIER_PCTS },
 };
 
 export const RARITIES = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
@@ -62,9 +103,10 @@ export function stepTarget(track: AchTrackId, step: number): number {
   return ACH_TRACKS[track].targets[i];
 }
 
-/** Прибавка при взятой редкости step (0 — ничего не взято). */
-export function trackBonus(step: number): number {
-  return step < 1 ? 0 : RARITY_BONUS[Math.min(step, MAX_STEP) - 1];
+/** Прибавка при взятой редкости step (0 — ничего не взято); у ачивки бывает своя лестница. */
+export function trackBonus(step: number, track?: AchTrackId): number {
+  const ladder = (track && ACH_TRACKS[track].bonuses) || RARITY_BONUS;
+  return step < 1 ? 0 : ladder[Math.min(step, MAX_STEP) - 1];
 }
 
 /** Какая редкость взята при счёте count (0 — никакой). */
@@ -87,7 +129,8 @@ export type AchBonus = Partial<Record<AchStat, number>>;
 export function achievementBonus(counts: AchCounts): AchBonus {
   const out: AchBonus = {};
   for (const id of ACH_TRACK_IDS) {
-    const add = trackBonus(stepOf(id, counts[id] ?? 0));
+    if (ACH_TRACKS[id].active === false || ACH_TRACKS[id].stat === "refpct") continue;
+    const add = trackBonus(stepOf(id, counts[id] ?? 0), id);
     if (add > 0) out[ACH_TRACKS[id].stat] = (out[ACH_TRACKS[id].stat] ?? 0) + add;
   }
   return out;
@@ -113,10 +156,10 @@ export function parseAchCounts(raw: unknown): AchCounts {
 export const ISLAND_GATE_STEP = 1;
 
 export function islandGateOk(counts: AchCounts): boolean {
-  return ACH_TRACK_IDS.every((id) => stepOf(id, counts[id] ?? 0) >= ISLAND_GATE_STEP);
+  return ISLAND_TRACK_IDS.every((id) => stepOf(id, counts[id] ?? 0) >= ISLAND_GATE_STEP);
 }
 
 /** Сколько занятий уже открыли портал. */
 export function islandGateDone(counts: AchCounts): number {
-  return ACH_TRACK_IDS.filter((id) => stepOf(id, counts[id] ?? 0) >= ISLAND_GATE_STEP).length;
+  return ISLAND_TRACK_IDS.filter((id) => stepOf(id, counts[id] ?? 0) >= ISLAND_GATE_STEP).length;
 }

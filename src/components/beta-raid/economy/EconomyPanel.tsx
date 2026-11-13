@@ -1,4 +1,4 @@
-// Панель «$ Экономика»: восемь вкладок + общий переключатель периода.
+// Панель «$ Экономика»: девять вкладок + общий переключатель периода.
 // Раскрывается ПОД КАРТОЙ (BetaRaidScreen), выше нижних панелей (Турнир,
 // Корабль). Не блокирует карту — она работает в штатном режиме, тап по
 // клетке в этой панели центрирует карту, но панель НЕ закрывает.
@@ -26,6 +26,10 @@ import { EconDeltaTab } from "./EconDeltaTab";
 import { EconResourceTab } from "./EconResourceTab";
 import { EconTradesTab } from "./EconTradesTab";
 import { EconLoopholesTab } from "./EconLoopholesTab";
+import { EconNewsTab } from "./EconNewsTab";
+import { EconRefsTab } from "./EconRefsTab";
+import { EconChainTab } from "./EconChainTab";
+import { EconTreasureTab } from "./EconTreasureTab";
 
 export function EconomyPanel() {
   const t = useT();
@@ -104,6 +108,14 @@ export function EconomyPanel() {
             <EconResourceTab range={range} />
           ) : tab === "trades" ? (
             <EconTradesTab range={range} />
+          ) : tab === "news" ? (
+            <EconNewsTab range={range} />
+          ) : tab === "refs" ? (
+            <EconRefsTab />
+          ) : tab === "chain" ? (
+            <EconChainTab />
+          ) : tab === "treasure" ? (
+            <EconTreasureTab />
           ) : (
             <EconLoopholesTab range={range} />
           )

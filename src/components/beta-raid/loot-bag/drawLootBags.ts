@@ -7,7 +7,8 @@
 // мешочки видно во «втором обзоре» (круг активной зоны на разведанном), как
 // бейдж склада. Правила кадра (ПРАВИЛА §9): без shadowBlur и свечений, спрайт
 // печётся один раз под зум, без save/restore. Издалека (LOD) — квадрат цвета
-// мешочка с обводкой: видно на любом зуме.
+// мешочка с обводкой: видно на любом зуме. Рыба от красного динамита (30.10.2026) —
+// тот же мешочек, только спрайт рыбы (и синий квадрат издалека).
 import { R } from "@/components/beta-raid/hexGeometry";
 import type { DrawScene } from "@/components/beta-raid/betaCanvasScene";
 import type { MapStore } from "@/components/beta-raid/mapStore";
@@ -16,8 +17,8 @@ import type { LootBagCell, LootBagMarks } from "@/lib/lootBag";
 
 /** Ниже этого зума деталей не видно (ПРАВИЛА §9.2): квадрат вместо картинки. */
 export const BAG_LOD_SCALE = 0.5;
-const W = { bag: R * 0.8, mound: R * 0.95 };
-const FILL = { bag: "#b27b3c", mound: "#7c5232" };
+const W = { bag: R * 0.8, mound: R * 0.95, fish: R * 0.9 };
+const FILL = { bag: "#b27b3c", mound: "#7c5232", fish: "#3d6f9e" };
 const EDGE = "#2e1b0c";
 /** Где стоит значок: правее центра гекса, низом у нижнего края. */
 const DX = R * 0.42;
@@ -49,7 +50,7 @@ export function drawLootBags(
 
 function drawOne(scene: DrawScene, x: number, bottom: number, cell: LootBagCell): void {
   const { g } = scene;
-  const kind = cell.buried ? "mound" : "bag";
+  const kind = cell.buried ? "mound" : cell.fish ? "fish" : "bag";
   if (scene.scale < BAG_LOD_SCALE) {
     const s = R * 0.55;
     g.fillStyle = FILL[kind];

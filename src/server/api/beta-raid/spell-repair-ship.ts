@@ -17,13 +17,16 @@ import { myMapId, ownCell } from "./encounter-where";
 import { getNeighbors } from "./helpers";
 import { shipMaxHp } from "@/lib/shipHealth";
 import type { SpellEffectResult } from "./spell-effects";
+import { BLASTED_NO_REPAIR } from "./ship-blasted";
 
-type Target = { id: string; q: number; r: number; kind: "small" | "big" };
+/** blasted — подбит синим динамитом (dynamite-08): не чинится и заклинанием. */
+type Target = { id: string; q: number; r: number; kind: "small" | "big"; blasted: boolean };
 
 /**
  * Что чинить. Своё судно — где бы оно ни стояло: на нём плывут, и ремонт на
  * ходу — главный смысл заклинания. Иначе — самое разбитое свободное в клетке
  * героя или соседней (как у досок: чинит тот, кто рядом). Целые не берём.
+ * Подбитый — последним: рядом нет другого — отказ BLASTED_NO_REPAIR (энергию вернёт каст).
  */
 async function repairTarget(mapId: string, account: string, pos: { q: number; r: number }) {
   const cells = [pos, ...getNeighbors(pos.q, pos.r)].map((c) => `(${c.q}, ${c.r})`).join(",");
@@ -32,14 +35,16 @@ async function repairTarget(mapId: string, account: string, pos: { q: number; r:
   // голое сравнение даёт NULL, а в DESC Postgres ставит NULL ПЕРВЫМ. Без этого
   // порядок переворачивался — капитан платил, а чинился обломок у причала.
   const rows = (await mcpExec(
-    `SELECT s.id, s.q, s.r, COALESCE(s.kind, 'small') AS kind
+    `SELECT s.id, s.q, s.r, COALESCE(s.kind, 'small') AS kind,
+            s.blasted_at IS NOT NULL AS blasted
        FROM yuplink.beta_raid_ship s
       WHERE s.map_id = ${sqlStr(mapId)}
         AND s.hp < (CASE WHEN s.kind = 'big' THEN ${shipMaxHp("big")} ELSE ${shipMaxHp("small")} END)
         AND (${mine} OR (s.crew_account IS NULL AND (s.q, s.r) IN (${cells})))
-      ORDER BY COALESCE(${mine}, false) DESC, s.hp, s.created_at LIMIT 1;`,
+      ORDER BY COALESCE(${mine}, false) DESC, (s.blasted_at IS NOT NULL), s.hp, s.created_at
+      LIMIT 1;`,
     { wrapJson: true },
-  )) as Array<{ id: string; q: number; r: number; kind: string }>;
+  )) as Array<{ id: string; q: number; r: number; kind: string; blasted?: boolean }>;
   const row = rows?.[0];
   if (!row) return null;
   const t: Target = {
@@ -47,6 +52,7 @@ async function repairTarget(mapId: string, account: string, pos: { q: number; r:
     q: Number(row.q),
     r: Number(row.r),
     kind: row.kind === "big" ? "big" : "small",
+    blasted: row.blasted === true,
   };
   return t;
 }
@@ -58,13 +64,14 @@ export async function repairShipNearHero(wallet: string): Promise<SpellEffectRes
   const account = await raidOwner(wallet);
   const ship = await repairTarget(mapId, account, pos);
   if (!ship) return { ok: false, reasonKey: "spell.no_ship_to_repair" };
+  if (ship.blasted) return { ok: false, reasonKey: BLASTED_NO_REPAIR };
 
   // Условие только по id: повтор моста после удачной записи снова найдёт
   // строку и отдаст её, а не «ноль строк», которые каст прочёл бы как отказ.
   const rows = (await mcpExec(
     `UPDATE yuplink.beta_raid_ship
         SET hp = ${shipMaxHp(ship.kind)}, hp_zero_at = NULL, updated_at = now()
-      WHERE id = ${sqlStr(ship.id)}
+      WHERE id = ${sqlStr(ship.id)} AND blasted_at IS NULL
       RETURNING id;`,
     { wrapJsonCte: true },
   )) as Array<{ id: string }>;

@@ -20,7 +20,6 @@ import {
   Loader2,
   Lock,
   Sparkles,
-  Ticket,
   Gift,
   Coins,
   AlertTriangle,
@@ -34,6 +33,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import { NftImage } from "@/components/NftImage";
 import { useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
@@ -285,11 +285,10 @@ function LookupPage() {
               </section>
             )}
 
-            {/* Билет-события */}
             {data.ticketEventsUsing.length > 0 && (
               <section>
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  <Ticket className="h-4 w-4 text-gold" />
+                  <Coins className="h-4 w-4 text-gold" />
                   {t("lookup.ticket_events")}
                   <span className="text-xs text-muted-foreground">
                     · {data.ticketEventsUsing.length}
@@ -303,7 +302,7 @@ function LookupPage() {
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/5 px-2 py-0.5 text-[10px] font-medium text-gold">
-                          <Ticket className="h-3 w-3" />+{e.rewardTickets}
+                          <Coins className="h-3 w-3" />+{goldForEarnedTickets(e.rewardTickets)}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
                           {t("lookup.cooldown_hours", { n: e.cooldownHours })}
@@ -571,10 +570,10 @@ function ListingRow({ item }: { item: StatsListing }) {
               className="flex items-center gap-1.5 text-[11px]"
             >
               <span className="rounded bg-secondary px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
-                ticket
+                gold
               </span>
               <span className="text-foreground">
-                {t("lookup.tickets_plus", { n: e.rewardTickets })}
+                {t("lookup.tickets_plus", { n: goldForEarnedTickets(e.rewardTickets) })}
               </span>
               <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
                 {t("lookup.need_have", {

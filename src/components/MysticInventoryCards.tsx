@@ -13,6 +13,8 @@ import { getSession } from "@/server/api/user-auth";
 import { useLang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { RESTING_CLASS, type HeroRestView } from "@/components/heroes/heroRestView";
+import { ArtWearBar } from "@/components/ArtWearBar";
+import { EnchantMark } from "@/components/EnchantMark";
 
 export type Item = Awaited<ReturnType<typeof listMyItems>>[number];
 
@@ -74,6 +76,7 @@ export function ItemSquare({
             {it.kind === "hero" ? "♞" : "◆"}
           </div>
         )}
+        {it.kind === "artifact" && <ArtWearBar durability={it.durability} />}
         {/* редкость (у героя — из звёзд авто) */}
         {badgeOf(it, lang) && (
           <span
@@ -81,6 +84,7 @@ export function ItemSquare({
             style={{ background: ring + "22", color: ring }}
           >
             {badgeOf(it, lang)}
+            {it.kind === "artifact" && <EnchantMark pct={it.enchantPct} className="ml-1" />}
           </span>
         )}
         {/* Правый-верхний: артефакт → характеристика (щит/меч + число);
@@ -169,6 +173,7 @@ export function ItemDetail({ it, onClose }: { it: Item; onClose: () => void }) {
               {it.kind === "hero" ? "♞" : "◆"}
             </div>
           )}
+          {it.kind === "artifact" && <ArtWearBar durability={it.durability} className="h-1.5" />}
           <button
             onClick={onClose}
             className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white"
@@ -187,6 +192,7 @@ export function ItemDetail({ it, onClose }: { it: Item; onClose: () => void }) {
             </span>
           </div>
           <div className="text-lg font-bold">{stripStatSuffix(it.name)}</div>
+          {it.kind === "artifact" && <EnchantMark pct={it.enchantPct} show="text" className="text-sm" />}
           {it.kind === "hero" && (it.race || it.specialization) && (
             <div className="text-sm text-foreground/80">
               {[it.race, it.specialization]

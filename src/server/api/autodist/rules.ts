@@ -8,7 +8,7 @@
 //   sub_darai  — DARAI-оплаты подписок, порог по сумме оплат (корзины
 //                «Сжечь» 15 % + «Разработчикам» 25 %);
 //   darai_free — «Раздача DARAI» из «К распределению»: 50 % дупло, 12,5 %
-//                Ярославу, 12,5 % Мише, 25 % держателям legendary;
+//                партнёру, 12,5 % владельцу, 25 % держателям legendary;
 //   auc_darai / auc_usd — выигрыши аукционов админа в DARAI / USDT: целиком
 //                разработчикам по долям, порог по самой корзине (14.10).
 //
@@ -16,6 +16,7 @@
 // умолчанию, поэтому сломать рассылку правкой настроек нельзя.
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
+import { teamOwnerWallet, teamPartnerWallet } from "../../team";
 
 export const RULE_KEYS = ["sub_usd", "sub_darai", "darai_free", "auc_darai", "auc_usd"] as const;
 export type RuleKey = (typeof RULE_KEYS)[number];
@@ -39,10 +40,14 @@ export const DEFAULT_DIST: DistSettings = {
     auc_darai: { mode: "auto", threshold: 1_000_000_000 },
     auc_usd: { mode: "auto", threshold: 100 },
   },
-  devWallets: [
-    { wallet: "owner.example.tg", share: 0.5 },
-    { wallet: "admin2.example.tg", share: 0.5 },
-  ],
+  // Владелец и партнёр пополам — кошельки из env (server/team). Пустой кошелёк
+  // перевод не пропустит: devItems (energy-sub/batch-steps) остановит пачку.
+  get devWallets() {
+    return [
+      { wallet: teamOwnerWallet(), share: 0.5 },
+      { wallet: teamPartnerWallet(), share: 0.5 },
+    ];
+  },
 };
 
 function parseRule(raw: unknown, legacy: { mode?: unknown; threshold?: unknown }, d: AutoRule): AutoRule {

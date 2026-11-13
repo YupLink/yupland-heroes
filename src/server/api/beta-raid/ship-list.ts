@@ -25,6 +25,8 @@ export type ShipAtCell = {
   busy: boolean;
   /** Жизни кончились и экипаж сошёл: сперва починить. */
   broken: boolean;
+  /** Подбит синим динамитом (dynamite-08): не чинится, через час исчезнет. */
+  blasted: boolean;
 };
 
 export const shipsAtCell = createServerFn({ method: "GET" })
@@ -33,13 +35,20 @@ export const shipsAtCell = createServerFn({ method: "GET" })
     const wallet = await requireBetaRaid();
     const [mapId, account] = await Promise.all([myMapId(wallet), raidOwner(wallet)]);
     const rows = (await mcpExec(
-      `SELECT s.id, COALESCE(s.kind, 'small') AS kind, s.hp, s.crew_account AS crew
+      `SELECT s.id, COALESCE(s.kind, 'small') AS kind, s.hp, s.crew_account AS crew,
+              s.blasted_at IS NOT NULL AS blasted
          FROM yuplink.beta_raid_ship s
         WHERE s.map_id = ${sqlStr(mapId)} AND s.q = ${data.q} AND s.r = ${data.r}
         ORDER BY (s.crew_account = ${sqlStr(account)}) DESC NULLS LAST,
-                 (s.kind = 'big') DESC, s.created_at, s.id;`,
+                 (s.blasted_at IS NOT NULL), (s.kind = 'big') DESC, s.created_at, s.id;`,
       { wrapJson: true },
-    ).catch(() => [])) as Array<{ id: string; kind: string; hp: number; crew: string | null }>;
+    ).catch(() => [])) as Array<{
+      id: string;
+      kind: string;
+      hp: number;
+      crew: string | null;
+      blasted?: boolean;
+    }>;
     return {
       ships: (rows ?? []).map((s) => {
         const kind = s.kind === "big" ? ("big" as const) : ("small" as const);
@@ -53,6 +62,7 @@ export const shipsAtCell = createServerFn({ method: "GET" })
           mine: !!crew && crew === account,
           busy: !!crew,
           broken: shipBroken(hp, !!crew),
+          blasted: s.blasted === true,
         };
       }),
     };

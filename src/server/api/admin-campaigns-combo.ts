@@ -38,7 +38,7 @@ export const createComboDropEvent = createServerFn({ method: "POST" })
         rewardToken: z.string().min(1),
         rewardTiers: z.array(rewardTierSchema).optional().nullable(),
         freeClaim: z.boolean().optional().default(false),
-        ticketCost: z.number().positive().optional().default(1),
+        ticketCost: z.number().int().positive().optional().default(1), // колонка integer: дробь округлилась бы до 0 (бесплатный дроп)
         recurring: z.boolean().optional().default(false),
       })
       .parse(d)
@@ -50,6 +50,8 @@ export const createComboDropEvent = createServerFn({ method: "POST" })
     assertCampaignNoUsdt(data.rewardToken, data.rewardTiers);
     await assertTokenExists(data.rewardToken);
     await validateTiers(data.rewardTiers);
+    if (data.rewardTiers?.some((t) => t.kind === "custom"))
+      throw new Error("Товар — только в обычном дропе");
 
     // Все title'ы должны быть в кэше коллекции
     for (const r of data.requirements) {

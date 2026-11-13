@@ -9,7 +9,9 @@ import { collectGoals } from "./pathGoals";
 import { pathGrid } from "./pathGrid";
 import { pathCosts, type GoalBound } from "./pathCosts";
 import { DIRS, type ShipMap } from "./hexPassable";
-import type { CellInfo, TerrainInfo } from "./hexStepCost";
+import { shipMasks } from "./pathShips";
+import { hexDistance } from "./hexGeometry";
+import type { CellInfo, MoveMult, TerrainInfo } from "./hexStepCost";
 
 // Цена клетки и признаки воды/тумана живут в hexStepCost, правила прохода — в
 // hexPassable; тут только поиск. Реэкспорт — чтобы экраны и хуки по-прежнему
@@ -24,6 +26,7 @@ type SearchOpts = {
   cells: Record<string, CellInfo>;
   terrains: Record<string, TerrainInfo>;
   roads?: Record<string, TerrainInfo>;
+  decorations?: Record<string, { bridge?: unknown }>;
   onShip?: boolean;
   /** Игрок уже на борту БОЛЬШОГО корабля — только ему открыт океан. */
   aboardBig?: boolean;
@@ -37,6 +40,9 @@ type SearchOpts = {
   stepDiscount: number;
   /** Клетки-двери «q,r»: маршрут их обходит, плата берётся только осознанно. */
   doors?: ReadonlySet<string>;
+  energyMult: MoveMult; // множитель хода (useMoveMult): остров — 0,1; погода — ноги/судно
+  /** Пегас (§8.84): прыжок на 2 клетки по прямой через любую, 10 энергии. */
+  jump?: boolean;
 };
 
 /**
@@ -61,6 +67,9 @@ export function findWalkablePath(
   stepDiscount = 0,
   doors?: ReadonlySet<string>,
   aboardBig = false,
+  energyMult: MoveMult = 1,
+  jump = false,
+  decorations?: Record<string, { bridge?: unknown }>,
 ): Step[] | null {
   if (fromQ === toQ && fromR === toR) return [];
   return search(fromQ, fromR, [{ q: toQ, r: toR }], {
@@ -73,6 +82,9 @@ export function findWalkablePath(
     slowExtra,
     stepDiscount,
     doors,
+    energyMult,
+    jump,
+    decorations,
   });
 }
 
@@ -98,6 +110,9 @@ export function findWalkablePathToAny(
   stepDiscount = 0,
   doors?: ReadonlySet<string>,
   aboardBig = false,
+  energyMult: MoveMult = 1,
+  jump = false,
+  decorations?: Record<string, { bridge?: unknown }>,
 ): Step[] | null {
   return search(fromQ, fromR, goals, {
     cells,
@@ -109,6 +124,9 @@ export function findWalkablePathToAny(
     slowExtra,
     stepDiscount,
     doors,
+    energyMult,
+    jump,
+    decorations,
   });
 }
 
@@ -126,36 +144,15 @@ function search(
   goals: Array<{ q: number; r: number }>,
   o: SearchOpts,
 ): Step[] | null {
-  const grid = pathGrid(o.cells, o.terrains, o.roads);
+  const grid = pathGrid(o.cells, o.terrains, o.roads, o.decorations);
   const { cols, rows } = grid;
   const startSlot = grid.slot(fromQ, fromR);
   if (startSlot < 0) return null;
 
-  // Причалы — тоже по номерам клеток: их на карте единицы, а спрашивают о них
-  // на каждый шаг. free — «можно на борт», block — занятое судно, оно не
-  // пускает никого (кроме тех, кто уже плывёт).
-  //
-  // Свободно ровно то, что сервер назвал свободным. Прежнее исключение для
-  // своего судна (`else if (!mark.mine)`) держало проход туда, где сидит
-  // сестринский кошелёк того же аккаунта: маршрут строился, а сервер его
-  // отбивал. Клетка под собственным героем в счёт не идёт — это старт поиска,
-  // и он от проверок освобождён отдельно.
-  const shipFree = new Uint8Array(grid.size);
-  const shipBlock = new Uint8Array(grid.size);
-  // Свободный целый большой (freeBig, не арт-флаг big) — посадка в него открывает океан.
-  const shipBig = new Uint8Array(grid.size);
-  if (o.ships) {
-    for (const [key, mark] of o.ships) {
-      const comma = key.indexOf(",");
-      const slot = grid.slot(Number(key.slice(0, comma)), Number(key.slice(comma + 1)));
-      if (slot < 0) continue;
-      if (mark.free > 0) {
-        shipFree[slot] = 1;
-        if (mark.freeBig) shipBig[slot] = 1;
-      } else shipBlock[slot] = 1;
-    }
-  }
-  const costs = pathCosts(grid, o.slowExtra, o.stepDiscount, !!o.aboardBig || shipBig.includes(1));
+  // Причалы по номерам клеток (pathShips).
+  const { free: shipFree, block: shipBlock, big: shipBig, wreck } = shipMasks(grid, o.ships);
+  const bigSail = !!o.aboardBig || shipBig.includes(1);
+  const costs = pathCosts(grid, o.slowExtra, o.stepDiscount, bigSail, o.energyMult);
 
   // Двери маршрут обходит стороной: каждая берёт плату за вход, и один клик по
   // дальней клетке иначе провёл бы героя через платный шлагбаум молча. Прийти
@@ -171,8 +168,12 @@ function search(
   });
   if (targets.length === 0) return null;
 
+  // С прыжками (пегас) морская надбавка оценки не годится — прыжок перелетает воду:
+  // берём «гексов по прямой × дешевле шага или полпрыжка» (не больше настоящего).
+  const perHex = Math.min(costs.minStep, costs.jump / 2);
   /** Оценка остатка до ближайшей из целей. */
   const rest = (q: number, r: number) => {
+    if (o.jump) return Math.min(...targets.map((g) => hexDistance(q, r, g.q, g.r))) * perHex;
     let best = costs.rest(q, r, targets[0]);
     for (let i = 1; i < targets.length; i++) {
       const v = costs.rest(q, r, targets[i]);
@@ -212,10 +213,37 @@ function search(
     const x = (slot / rows) | 0;
     const y = slot - x * rows;
     for (let d = 0; d < 6; d++) {
-      const nx = x + dq[d];
-      const ny = y + dr[d];
+      let nx = x + dq[d];
+      let ny = y + dr[d];
       if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
-      const ns = nx * rows + ny;
+      let ns = nx * rows + ny;
+      const axis = (d >> 1) + 1;
+      let sailSegments = 1;
+      // Под настилом нет остановки: проплываем все секции одним шагом до
+      // первой свободной водной клетки. Стоимость — за каждую пройденную соту.
+      if (aboard && grid.bridgeChannel[ns]) {
+        if (grid.bridgeChannel[ns] !== axis) continue;
+        let valid = true;
+        while (grid.bridgeChannel[ns] && sailSegments <= 12) {
+          if (grid.bridgeChannel[ns] !== axis || !grid.water[ns] || !grid.walk[ns] ||
+              shipFree[ns] || shipBlock[ns] || grid.ocean[ns] && !big) {
+            valid = false;
+            break;
+          }
+          nx += dq[d];
+          ny += dr[d];
+          sailSegments++;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) { valid = false; break; }
+          ns = nx * rows + ny;
+        }
+        if (!valid || sailSegments > 13 || grid.bridgeChannel[ns] || !grid.water[ns] ||
+            shipFree[ns] || shipBlock[ns]) continue;
+      }
+      if (!aboard && (grid.bridgeDeck[slot] || grid.bridgeDeck[ns])) {
+        if (grid.bridgeDeck[slot] && grid.bridgeDeck[slot] !== axis) continue;
+        if (grid.bridgeDeck[ns] && grid.bridgeDeck[ns] !== axis) continue;
+        if (grid.bridgeDeck[slot] && grid.water[ns] && !grid.bridgeDeck[ns]) continue;
+      }
       // Идти можно только по доступным клеткам (старт — исключение: с воды
       // без корабля надо как-то выбраться).
       if (ns !== startSlot) {
@@ -223,20 +251,20 @@ function search(
         // Дверь проходима, но платная: сквозь неё маршрут не ведём, а вот
         // прийти В неё можно — если игрок ткнул именно в дверь, она цель.
         if (doorSlot[ns] && !goalSlots.has(ns)) continue;
-        // Судно — на одного: чужое занятое не пускает никого.
-        if (!aboard && shipBlock[ns]) continue;
+        // Судно — на одного: занятое не пускает пеших; подбитое (dynamite-08) — плывущих.
+        if (aboard ? wreck[ns] : shipBlock[ns]) continue;
         // Вплавь по воде не ходят — только на борту или шагом на свободное судно.
-        if (grid.water[ns] && !aboard && !shipFree[ns]) continue;
+        if (grid.water[ns] && !aboard && !grid.bridgeDeck[ns] && !shipFree[ns]) continue;
         // Океан — глубокая вода: на борту нужен большой, с берега — посадка в
         // свободный большой (обычный корабль сюда не идёт).
-        if (grid.ocean[ns]) {
+        if (grid.ocean[ns] && !(!aboard && grid.bridgeDeck[ns])) {
           if (aboard) {
             if (!big) continue;
           } else if (!shipBig[ns]) continue;
         }
       }
       // Шаг на свободный корабль — посадка: дальше идём уже по воде на борту.
-      const boarding = !aboard && shipFree[ns] === 1;
+      const boarding = !aboard && !grid.bridgeDeck[ns] && shipFree[ns] === 1;
       // Пока идём по воде — плывём; шаг на сушу высаживает на берег.
       const sailing = aboard && grid.water[ns] === 1;
       // Вид судна: сел — по тому, в кого сел; плывём — прежний; на суше не важен.
@@ -244,12 +272,26 @@ function search(
       const next = ns * 4 + (boarding || sailing ? 2 : 0) + (newBig ? 1 : 0);
       const newCost =
         done +
-        (boarding ? costs.board : sailing ? (big ? costs.sailBig : costs.sail) : costs.land[ns]);
+        (boarding ? costs.board : sailing ? (big ? costs.sailBig : costs.sail) * sailSegments : costs.land[ns]);
       if (newCost < spent[next]) {
         spent[next] = newCost;
         cameFrom[next] = current;
         heap.push(newCost + rest(nx + grid.minQ, ny + grid.minR), next);
       }
+    }
+    // Пегас (§8.84): 2 клетки по прямой на сушу без судна (дверь — только цель); 10 + клетка.
+    for (let d = 0; o.jump && !aboard && !grid.bridgeDeck[slot] && d < 6; d++) {
+      const nx = x + 2 * dq[d];
+      const ny = y + 2 * dr[d];
+      const ns = nx * rows + ny;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || ns === startSlot) continue;
+      if (!grid.walk[ns] || grid.water[ns] || shipBlock[ns] || shipFree[ns]) continue;
+      if (doorSlot[ns] && !goalSlots.has(ns)) continue;
+      const newCost = done + costs.jump + costs.land[ns];
+      if (newCost >= spent[ns * 4]) continue;
+      spent[ns * 4] = newCost;
+      cameFrom[ns * 4] = current;
+      heap.push(newCost + rest(nx + grid.minQ, ny + grid.minR), ns * 4);
     }
   }
 
@@ -263,17 +305,13 @@ function search(
     const wasAboard = (prev & 2) === 2;
     const boarding = !wasAboard && shipFree[slot] === 1;
     const sailing = wasAboard && grid.water[slot] === 1;
-    path.unshift({
-      q: grid.q(slot),
-      r: grid.r(slot),
-      cost: boarding
-        ? costs.board
-        : sailing
-          ? big
-            ? costs.sailBig
-            : costs.sail
-          : costs.land[slot],
-    });
+    const from = prev >> 2;
+    const distance = hexDistance(grid.q(from), grid.r(from), grid.q(slot), grid.r(slot));
+    const jumped = !wasAboard && distance === 2;
+    const sea = big ? costs.sailBig : costs.sail;
+    const land = costs.land[slot];
+    const cost = jumped ? costs.jump + land : boarding ? costs.board : sailing ? sea * distance : land;
+    path.unshift({ q: grid.q(slot), r: grid.r(slot), cost });
     cur = prev;
   }
   return path;

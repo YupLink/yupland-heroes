@@ -18,7 +18,7 @@ import { parseRewardConfig } from "../raid-shared";
 import { prizesByPlace } from "./encounter-prizes";
 import { prizeNames } from "./encounter-prize-names";
 import { mcpExec } from "../../db/mcpClient";
-import { sqlStr } from "../raid-shared";
+import { accountNamesSql } from "@/server/api/player-name/player-name-sql";
 
 /**
  * Показываем ВЕСЬ список: игрок должен видеть и себя, и соседей по местам,
@@ -47,23 +47,14 @@ export const getEncounterTop = createServerFn({ method: "GET" })
 
     const board = await objectLeaderboard(hp.id, hp.generation);
 
-    // Имя игрока — его ТГ (@username, иначе кошелёк), а не внутренний acc_-id:
+    // Имя игрока — своё имя из профиля, иначе ТГ (@username, иначе кошелёк), а не acc_-id:
     // «acc_fnO…QU_x» в доске урона игрокам ничего не говорил.
     const accs = Array.from(new Set(board.map((r) => r.account).filter(Boolean)));
     const nameByAcc = new Map<string, string>();
     if (accs.length > 0) {
-      const nrows = (await mcpExec(
-        `SELECT account_id,
-                COALESCE(
-                  '@' || min(telegram_username) FILTER (WHERE COALESCE(telegram_username,'') <> ''),
-                  'id' || (min(telegram_id) FILTER (WHERE telegram_id IS NOT NULL))::text,
-                  min(wallet)
-                ) AS name
-           FROM yuplink.users
-          WHERE account_id IN (${accs.map((a) => sqlStr(a)).join(",")})
-          GROUP BY account_id;`,
-        { wrapJson: true },
-      ).catch(() => [])) as Array<{ account_id: string; name: string | null }>;
+      const nrows = (await mcpExec(accountNamesSql(accs), { wrapJson: true }).catch(
+        () => [],
+      )) as Array<{ account_id: string; name: string | null }>;
       // Имя уже готово на сервере: @username, иначе id<telegram_id>, иначе
       // кошелёк (только у совсем старых записей без ТГ).
       for (const r of nrows ?? []) {

@@ -26,20 +26,19 @@
 // Ещё один источник «нет числа» — непрогретый кэш балансов: usePlayerFunds
 // отдаёт null, пока баланс не приехал. Кнопка в этот момент не показывается,
 // иначе она успевала соврать «Макс 0» и через мгновение прыгнуть на правду.
-import { useQuery } from "@tanstack/react-query";
-import { getMyBackpack } from "@/server/api/beta-raid/market-backpack-read";
+import { useMyBackpack } from "./useMyBackpack";
 import type { MarketItemView } from "@/lib/buildingEffect";
-import type { MarketPriceResource } from "@/lib/marketItem";
+import { isPlantKind, type MarketPriceResource } from "@/lib/marketItem";
 import { costKey, goodAsPrice } from "./cartCost";
 import { usePlayerFunds, type HaveFn } from "./usePlayerFunds";
 import { useFreeArtCounts } from "./useFreeArts";
 import { artAnyRarity } from "./artAnyIcon";
-import { backpackRoomFor } from "@/lib/hero/backpackCells";
-import { bagCellsOf, roomFor } from "@/lib/hero/potionBag";
+import { heroAnyRarity } from "./heroAny";
+import { backpackPaid, maxFitUnits, priceLines, tradeRoomError } from "@/lib/hero/backpackTrade";
 import { listingUnits, maxBuyUnits } from "@/lib/townPricing";
 
 /** Кап количества — как на сервере (market-qty.QTY_CAP): выше он не примет. */
-export const QTY_CAP = 99;
+export const QTY_CAP = 999;
 
 type Stack = { stackKey: string; count: number };
 
@@ -87,6 +86,10 @@ function unitsOf(
   return n != null && Number.isFinite(n) ? n / perUnit : null;
 }
 
+/** Артефакт и «любой герой» платятся штучно из инвентаря — рюкзак не освобождают. */
+const fromInventory = (res: MarketPriceResource, token: string): boolean =>
+  res === "art" || heroAnyRarity(token) != null;
+
 /** Цена за ОДНУ единицу, сведённая по валютам (две цены в одном золоте — плюсом). */
 function unitCosts(it: MarketItemView): UnitCost[] {
   const map = new Map<string, UnitCost>();
@@ -100,6 +103,7 @@ function unitCosts(it: MarketItemView): UnitCost[] {
   };
   add(it.priceResource, it.priceToken, it.priceAmount);
   if (it.price2Resource && it.price2Amount) add(it.price2Resource, it.price2Token, it.price2Amount);
+  for (const l of it.priceMore ?? []) add(l.resource, l.token, l.amount);
   return Array.from(map.values());
 }
 
@@ -112,21 +116,18 @@ function namedArtToken(it: MarketItemView): string | null {
 
 export function useMarketMax(
   items: MarketItemView[],
-): (it: MarketItemView, pickCount: number | null) => number | null {
+): (it: MarketItemView, pickCount: number | null, room?: boolean) => number | null {
   const have = usePlayerFunds();
   // Свободные артефакты по шаблонам спрашиваем, только если на витрине есть
   // именная позиция: у остальных кнопке хватает пикера.
   const freeArt = useFreeArtCounts(items.some((it) => namedArtToken(it) != null));
-  // Тот же ключ, что у рюкзака в замке и на складе — общий кэш, лишнего запроса
-  // маркет не делает. Сделка его сбрасывает (useMarketCheckout).
-  const bp = useQuery({
-    queryKey: ["my-hero-backpack"],
-    queryFn: () => getMyBackpack(),
-    staleTime: 30_000,
-  });
+  // Общий кэш рюкзака (useMyBackpack); сделка его сбрасывает (useMarketCheckout).
+  const bp = useMyBackpack();
   const stacks = bp.data?.stacks;
 
-  return (it, pickCount) => {
+  // room=false — потолок только по деньгам, без места в рюкзаке: им режется «+»
+  // плитки. Полный рюкзак «+» не гасит — сервер внятно скажет, сколько ячеек нужно.
+  return (it, pickCount, room = true) => {
     const f: Funds = { have, stacks, pickCount, freeArt };
     let units: number;
     if (it.side === "sell") {
@@ -152,26 +153,37 @@ export function useMarketMax(
       }
       units = best;
     }
-    // Рюкзак: сервер (market-buy GOES_TO_BACKPACK) не даст купить больше, чем
-    // влезет. Показываем честное число сразу, а не «Макс 99 → ошибка».
-    if (it.side === "buy" && bp.data && (it.kind === "boss" || it.kind === "custom")) {
-      const stackKey = it.refId ? `${it.kind}:${it.refId}` : null;
-      const cur = stackKey ? (bp.data.stacks.find((s) => s.stackKey === stackKey)?.count ?? 0) : 0;
-      // Зелье — только в сумку, прочее — в рюкзак: та же формула, что у сервера.
-      const room = backpackRoomFor({
-        ...roomFor({
-          ...bagCellsOf(bp.data.stacks),
-          potion: !!it.potion,
-          capacity: bp.data.capacity,
-          potionCapacity: bp.data.potionCapacity,
-        }),
-        cur,
-      });
-      units = Math.min(units, room);
-    }
-
     // Вниз: половину единицы сервер не примет, а у старых позиций остаток
     // бывает дробным (7,2).
-    return Math.max(0, Math.floor(Math.min(units, it.remaining ?? QTY_CAP, QTY_CAP)));
+    let upTo = Math.min(units, it.remaining ?? QTY_CAP, QTY_CAP);
+    // Рюкзак: сервер (market-buy-room) не даст купить больше, чем влезет, и
+    // считает место ПОСЛЕ оплаты товаром из этого же рюкзака — та же формула
+    // (lib/hero/backpackTrade). Показываем честное число сразу, а не «Макс 99 →
+    // ошибка» и не «Макс 0», когда последняя ячейка уходит в цену.
+    const toBackpack = it.kind === "boss" || it.kind === "custom" || isPlantKind(it.kind);
+    const data = bp.data;
+    if (room && it.side === "buy" && data && toBackpack) {
+      const stackKey = `${it.kind}:${it.refId ?? it.id}`;
+      upTo = maxFitUnits(
+        upTo,
+        (u) =>
+          tradeRoomError({
+            stacks: data.stacks,
+            want: [{ stackKey, qty: u }],
+            // Лавка города платит золотом по кривой — рюкзак не трогает.
+            pay: it.town
+              ? []
+              : backpackPaid(priceLines(it, u), fromInventory).map((l) => ({
+                  stackKey: `${l.res}:${l.token}`,
+                  qty: l.amount,
+                })),
+            capacity: data.capacity,
+            potionCapacity: data.potionCapacity,
+            // Зелье — только в сумку, прочее — в рюкзак.
+            isPotion: () => !!it.potion,
+          }) == null,
+      );
+    }
+    return Math.max(0, Math.floor(upTo));
   };
 }

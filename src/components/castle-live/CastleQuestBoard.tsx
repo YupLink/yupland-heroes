@@ -6,6 +6,7 @@ import frog from "@/assets/quests/runaway-frog.webp";
 import scroll from "@/assets/quests/scroll-v2.webp";
 import "./castle-quest-board.css";
 
+import { thumb } from "@/lib/image";
 type Localized = { ru: string; en: string };
 type QuestStep = { id: string; title: Localized; how: Localized; done: boolean };
 type QuestStatus = "active" | "locked" | "done";
@@ -192,7 +193,7 @@ export function CastleQuestBoard({ ru, onClose, onBarracks, onWorld, progressByQ
     <div ref={content} className="quest-review__content" key={activeId ?? "list"}>
       {activeQuest ? <div className="quest-review__detail">
         <div className="quest-review__summary">
-          <div className={`quest-review__summary-art ${activeQuest.imageKind === "resource" ? "quest-review__summary-art--resource" : ""}`}><img src={activeQuest.image} alt="" /></div>
+          <div className={`quest-review__summary-art ${activeQuest.imageKind === "resource" ? "quest-review__summary-art--resource" : ""}`}><img src={thumb(activeQuest.image, 320)} alt="" /></div>
           <div>
             <p><strong>{ru ? "Что:" : "Goal:"}</strong> {copy(activeQuest.summary, ru)}</p>
             <p><strong>{ru ? "Зачем:" : "Why:"}</strong> {copy(activeQuest.why, ru)}</p>

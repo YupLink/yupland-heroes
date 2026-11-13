@@ -8,11 +8,38 @@
 // content-type (перезапуск приложения за Caddy, обрезанный ответ прокси или
 // телеграм-вебвью). Библиотека на таком ответе звала invariant(), и в проде
 // игрок читал «Invariant failed». Подробности — в src/lib/serverFnTransport.ts.
-import { createStart } from "@tanstack/react-start";
+import { createMiddleware, createStart } from "@tanstack/react-start";
+import { cspHeaders, hasCsp, newNonce } from "@/lib/csp/cspPolicy";
+import { oversizedBody } from "@/lib/http/bodyLimit";
 import { serverFnFetch } from "@/lib/serverFnTransport";
 import { serverFnPerf } from "@/server/perf/fnMiddleware";
 
+// Потолок размера запроса (lib/http/bodyLimit.ts): тяжёлое отбивается по
+// заголовку, тело не читается. Стоит первым — до любой другой работы.
+const bodyLimitMiddleware = createMiddleware({ type: "request" }).server(({ next, request }) => {
+  const refused = oversizedBody(request.method, new URL(request.url).pathname, request.headers);
+  if (refused) throw refused;
+  return next();
+});
+
+// Защитный заголовок страницы (lib/csp/cspPolicy.ts): своя метка на каждый ответ,
+// она же уходит в разметку встроенных скриптов (router.tsx → ssr.nonce).
+const cspMiddleware = createMiddleware({ type: "request" }).server(async ({ next }) => {
+  const nonce = newNonce();
+  const result = await next({ context: { cspNonce: nonce } });
+  const type = result.response.headers.get("content-type") ?? "";
+  if (type.includes("text/html") && !hasCsp(result.response.headers)) {
+    try {
+      for (const [k, v] of Object.entries(cspHeaders(nonce))) result.response.headers.set(k, v);
+    } catch {
+      // Заголовки ответа заморожены (редкий путь) — страница уходит как раньше.
+    }
+  }
+  return result;
+});
+
 export const startInstance = createStart(() => ({
+  requestMiddleware: [bodyLimitMiddleware, cspMiddleware],
   serverFns: { fetch: serverFnFetch },
   // Секундомер на каждую server-функцию (perf/fnMiddleware): имя и время в
   // общий отчёт /api/perf. Одно место — и ни одну функцию оборачивать не надо.

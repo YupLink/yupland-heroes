@@ -16,7 +16,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "@/server/db/mcpClient";
 import { publishRaid } from "@/server/raidLive";
-import type { LootBagPut } from "@/lib/lootBag";
+import { BAG_RES_PREFIX, type LootBagPut } from "@/lib/lootBag";
 import { moveQty } from "@/lib/warehouseCells";
 import { resolveBackpack } from "@/server/api/beta-raid/market-backpack";
 import { movableStackCount } from "@/server/api/beta-raid/tool-wear";
@@ -26,6 +26,7 @@ import { putFenceSql, putSql, type PutRow } from "@/server/api/beta-raid/loot-ba
 import { noteBagPut } from "@/server/api/beta-raid/loot-bag/bag-note";
 import { requirePass } from "@/server/api/beta-raid/open-pass/pass";
 import { bagTarget } from "@/server/api/beta-raid/open-pass/pass-sql";
+import { isDaraiMineKey } from "@/lib/daraiMine";
 
 const input = z.object({
   bagId: z.string().regex(/^lb_[0-9a-f]{32}$/),
@@ -40,6 +41,11 @@ const num = (v: unknown): number => (Number.isFinite(Number(v)) ? Number(v) : 0)
 export const putToLootBag = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => input.parse(d))
   .handler(async ({ data }): Promise<LootBagPut> => {
+    // DARAI-шахту только размещают: через мешочек она ушла бы другому со
+    // свежим часом (lib/daraiMine).
+    if (isDaraiMineKey(data.stackKey)) throw new Error("dmine.stays");
+    // Ресурс счёта в мешочек не кладут: он появляется там только разборкой шахты (§8.70).
+    if (data.stackKey.startsWith(BAG_RES_PREFIX)) throw new Error("bag.res_no_put");
     const a = await bagActor("bag-put");
     const bag = await bagNear(a, data.bagId);
     if (bag.buried) throw new Error("bag.buried");

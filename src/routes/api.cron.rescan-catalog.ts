@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DEFAULT_CONTRACT, runFullRescan } from "@/server/likes-rescan";
+import { cronDenied } from "@/server/cronAuth";
 
 // Cron: раз в сутки полный пересчёт каталога → upsert pg.nfts (источник
 // NFT-владений для приложения и лотореи). Защита: Bearer CRON_SECRET.
@@ -14,13 +15,8 @@ export const Route = createFileRoute("/api/cron/rescan-catalog")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         // Не ждём завершения — иначе cron-curl (-m 120) оборвёт длинный скан.
         // runFullRescan дедупит конкурентные запуски через inflight внутри себя.
         void runFullRescan(DEFAULT_CONTRACT)

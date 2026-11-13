@@ -1,0 +1,7 @@
+Approved weather music: owner-selected Suno arrangements copied without re-encoding.
+Cool storm wind: tbsound101, Freesound 487542, CC0. Existing processed loop from public HQ preview.
+https://freesound.org/people/tbsound101/sounds/487542/
+Hot sandstorm: blackatomproductions, SandstormMix.mp3, Freesound 565015, CC0. Public HQ preview, excerpt from 30s, filters 55-10000 Hz, 1s crossfade, WAV loop.
+https://freesound.org/people/blackatomproductions/sounds/565015/
+Hot ground-rain loop: existing local listening-room layer, unchanged.
+Glass rain and thunder reuse already released assets.

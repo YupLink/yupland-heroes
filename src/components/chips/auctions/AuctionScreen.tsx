@@ -10,6 +10,7 @@ import { AuctionsPlayerPanel } from "./AuctionsPlayerPanel";
 import { AuctionHouseBar } from "./AuctionHouseBar";
 import { AuctionsAdminPanel } from "@/components/admin/AuctionsAdminPanel";
 import "./auction-house.css";
+import "./auction-approved.css";
 
 type Tab = "game" | "player";
 
@@ -51,3 +52,4 @@ export function AuctionScreen({ initialTab = "game" }: { initialTab?: Tab }) {
     </>
   );
 }
+

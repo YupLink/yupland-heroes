@@ -4,6 +4,7 @@
 // под локом: сверяет снимок и делает всё или ничего. Дополнение №3 владельца
 // (29.09): у последнего сундука не влезшее не пропадает — мешочком на клетке.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { count, inBags, resetPickup, s } from "@/test/chestPickupFake";
 
 const M = vi.hoisted(() => "@/test/chestPickupFake");
@@ -49,7 +50,7 @@ describe("не последний сундук", () => {
   });
 
   it("нет места под сундук и охрану — отказ с числами, ничего не тронуто", async () => {
-    s.bag = [20, 20, 20].map((c, i) => ({ stackKey: `custom:x${i}`, count: c, potion: false }));
+    s.bag = [0, 1, 2].map((i) => ({ stackKey: `custom:x${i}`, count: CELL_SIZE, potion: false }));
     await expect(pick("op1abc")).rejects.toThrow("market.backpack_need:2:1");
     expect(s.writes).toBe(0);
     expect(s.chests["1,2"]).toBe("acc_o");
@@ -83,22 +84,23 @@ describe("последний сундук", () => {
   });
 
   it("не влезло — ровно остаток мешочком на клетке с меткой, ничего не пропало", async () => {
-    s.bag = [{ stackKey: "custom:x0", count: 20, potion: false }];
+    s.net = [{ stackKey: ORE, count: CELL_SIZE + 10 }];
+    s.bag = [{ stackKey: "custom:x0", count: CELL_SIZE, potion: false }];
     const res = await pick("op1abc", true);
-    expect(res.taken).toEqual([{ stackKey: ORE, qty: 20 }]);
+    expect(res.taken).toEqual([{ stackKey: ORE, qty: CELL_SIZE }]);
     expect(res.bagged).toEqual([{ stackKey: ORE, qty: 10 }]);
     expect(res.lost).toEqual([]);
-    expect(count(ORE) + inBags(ORE)).toBe(30);
+    expect(count(ORE) + inBags(ORE)).toBe(CELL_SIZE + 10);
     expect(s.bags).toEqual([{ key: expect.stringContaining("mcpick:"), items: [{ k: ORE, n: 10, loot: 10 }] }]);
     expect(s.net).toEqual([]);
     expect(s.published).toEqual(["built", "bags"]);
   });
 
   it("дробный остаток — до девятого знака: рюкзак + мешочек = сеть", async () => {
-    s.net = [{ stackKey: ORE, count: 24.123456789 }];
-    s.bag = [{ stackKey: "custom:x0", count: 20, potion: false }];
+    s.net = [{ stackKey: ORE, count: CELL_SIZE + 4.123456789 }];
+    s.bag = [{ stackKey: "custom:x0", count: CELL_SIZE, potion: false }];
     const res = await pick("op1abc", true);
-    expect(res.taken).toEqual([{ stackKey: ORE, qty: 20 }]);
+    expect(res.taken).toEqual([{ stackKey: ORE, qty: CELL_SIZE }]);
     expect(res.bagged).toEqual([{ stackKey: ORE, qty: 4.123456789 }]);
   });
 
@@ -111,12 +113,12 @@ describe("последний сундук", () => {
   it("окно показывает цифры с отпечатком; подтверждение по старому отпечатку — снова окно", async () => {
     const v = await view();
     expect(v).toMatchObject({ taken: [{ stackKey: ORE, qty: 30 }], bagged: [], lost: [] });
-    s.net = [{ stackKey: ORE, count: 40 }];
+    s.net = [{ stackKey: ORE, count: 2 * CELL_SIZE }];
     await expect(pick("op1abc", true, v.sig)).rejects.toThrow("chest.last_confirm");
     expect(s.writes).toBe(0);
     const fresh = await view();
     await expect(pick("op1abc", true, fresh.sig)).resolves.toMatchObject({
-      taken: [{ stackKey: ORE, qty: 40 }],
+      taken: [{ stackKey: ORE, qty: 2 * CELL_SIZE }],
     });
   });
 
@@ -148,21 +150,22 @@ describe("последний сундук", () => {
 describe("повторы", () => {
   it("повтор того же нажатия — тот же итог из журнала (и мешочек), второй записи нет", async () => {
     delete s.chests["5,5"];
-    s.bag = [{ stackKey: "custom:x0", count: 20, potion: false }];
+    s.net = [{ stackKey: ORE, count: CELL_SIZE + 10 }];
+    s.bag = [{ stackKey: "custom:x0", count: CELL_SIZE, potion: false }];
     const first = await pick("op1abc", true);
     const again = await pick("op1abc", true);
     expect(again).toEqual(first);
     expect(s.writes).toBe(1);
     expect(s.bags).toHaveLength(1);
-    expect(count(ORE) + inBags(ORE)).toBe(30);
+    expect(count(ORE) + inBags(ORE)).toBe(CELL_SIZE + 10);
   });
 
   it("рюкзак поменялся под рукой — план заново: не влезшее — мешочком", async () => {
     delete s.chests["5,5"];
     s.beforeWrite = () =>
       s.bag.push(
-        { stackKey: "custom:y", count: 20, potion: false },
-        { stackKey: "custom:z", count: 20, potion: false },
+        { stackKey: "custom:y", count: CELL_SIZE, potion: false },
+        { stackKey: "custom:z", count: CELL_SIZE, potion: false },
       );
     const res = await pick("op1abc", true);
     // Ёмкость 4: две ячейки заняли под рукой, две — сундук и охрана.

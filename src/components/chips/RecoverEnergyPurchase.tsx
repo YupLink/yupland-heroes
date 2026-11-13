@@ -10,32 +10,16 @@ export function RecoverEnergyPurchase() {
     queryKey: ["energy-packs-public"],
     queryFn: () => listEnergyPacksPublic(),
   });
-  // Восстановить можно всё, что оплачивается on-chain: DARAI, старая цена в
-  // токене и любая валюта из лестницы (её раньше тут вообще не было видно).
+  // Восстановить можно только оплату DARAI: за токен (USDT, magicdust, RF…)
+  // энергопак не продаётся (§8.61, lib/energyPayAllowed).
   const packs = (q.data?.packs ?? []).filter(
-    (p) =>
-      p.priceDarai != null ||
-      p.token != null ||
-      (p.offers ?? []).some((o) => o.kind === "token" || o.kind === "darai"),
+    (p) => p.priceDarai != null || (p.offers ?? []).some((o) => o.kind === "darai"),
   );
   const [open, setOpen] = useState(false);
   const [packId, setPackId] = useState("");
-  const [tokenSymbol, setTokenSymbol] = useState("");
-  // Валюты выбранного пака: старое одиночное поле + все из лестницы.
-  const chosen = packs.find((p) => p.id === packId);
-  const tokenChoices = Array.from(
-    new Set(
-      [chosen?.token?.symbol, ...(chosen?.offers ?? []).map((o) => o.symbol ?? undefined)].filter(
-        (x): x is string => !!x,
-      ),
-    ),
-  );
   const [txHash, setTxHash] = useState("");
   const recover = useMutation({
-    mutationFn: () =>
-      recoverMyEnergyPurchase({
-        data: { packId, txHash: txHash.trim(), tokenSymbol: tokenSymbol || undefined },
-      }),
+    mutationFn: () => recoverMyEnergyPurchase({ data: { packId, txHash: txHash.trim() } }),
     onSuccess: (r) => {
       toast.success(r.already ? "Этот платёж уже начислен" : `Зачтено: +${r.energyAdded}⚡`);
       setOpen(false);
@@ -82,24 +66,6 @@ export function RecoverEnergyPurchase() {
         </select>
       </label>
 
-      {/* Чем платили: у пака с лестницей валют без этого не сойдётся сумма. */}
-      {tokenChoices.length > 0 && (
-        <label className="mt-2 block">
-          <span className="text-[10px] text-muted-foreground">чем платил</span>
-          <select
-            value={tokenSymbol}
-            onChange={(e) => setTokenSymbol(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs"
-          >
-            <option value="">$DARAI</option>
-            {tokenChoices.map((sym) => (
-              <option key={sym} value={sym}>
-                {sym}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
       <label className="mt-2 block">
         <span className="text-[10px] text-muted-foreground">tx hash</span>
         <input

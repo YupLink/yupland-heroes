@@ -86,12 +86,14 @@ export async function deliverOrDrop(o: {
   toQueue: (item: DropItem, key: string) => Promise<void>;
   /** Ничего не выдано и мешочек не упал — бросить (декор откатится), а не в «Добычу». */
   strict?: boolean;
+  /** Мимо рюкзака — всё мешочком (находка лопатой: «открывать самому», §8.24 п. 6б). */
+  bagOnly?: boolean;
 }): Promise<DropResult> {
   const result: DropResult = { items: [], bagId: null };
   const { groups, bad } = await groupItems(o.items);
-  const bp = groups.length > 0 ? await resolveBackpack(o.owner) : null;
+  const bp = groups.length > 0 && !o.bagOnly ? await resolveBackpack(o.owner) : null;
   // «Героя нет» — только проверенное: сбой чтения бросает, пока ничего не выдано.
-  if (groups.length > 0 && !bp && !(await heroless(o.account))) {
+  if (groups.length > 0 && !bp && !o.bagOnly && !(await heroless(o.account))) {
     throw new Error("loot-bag: hero unreadable");
   }
   // Снимок рюкзака для расчёта места; не прочитался — кладём целиком, место

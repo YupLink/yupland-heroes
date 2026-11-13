@@ -9,6 +9,7 @@ import {
   type ArcVariant,
 } from "@/components/ChipImage";
 
+import { thumb } from "@/lib/image";
 interface ChipPreview {
   imageUrl: string;
   templateName: string;
@@ -38,7 +39,7 @@ function VariantCard({
     >
       <div className="relative p-2">
         <ChipImage
-          src={chip.imageUrl}
+          src={thumb(chip.imageUrl, 400)}
           level={chip.level}
           alt={chip.templateName}
           className="w-full"

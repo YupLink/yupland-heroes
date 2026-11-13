@@ -11,6 +11,7 @@ import { nanoid } from "nanoid";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { requireAdmin } from "../../auth";
+import { assertPackMoneyRight } from "../mystic-money";
 import { daraiPerUsd } from "../energy-sub/rate";
 import { kitError, type KitAdminRow, type KitFields } from "@/lib/kits";
 import { kitSelect, toAdminRow, type KitRow } from "./kit-rows";
@@ -65,6 +66,7 @@ export const adminKitSave = createServerFn({ method: "POST" })
     requireAdmin();
     const f = fieldsOf(data);
     await assertBox(f.boxId);
+    await assertPackMoneyRight(f.boxId);
     const vals = {
       box: sqlStr(f.boxId),
       count: String(f.boxCount),

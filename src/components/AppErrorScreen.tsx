@@ -12,27 +12,12 @@
 // Что НЕ показываем: адрес страницы отдаём без query (в нём бывают коды входа
 // и токены), кошельки и ключи сюда не попадают вовсе.
 import { useEffect, useState } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { useRouter, type ErrorComponentProps } from "@tanstack/react-router";
 import { useT } from "@/lib/i18n";
 import { copyText } from "@/lib/copyText";
 import { BUILD_ID } from "@/lib/buildId";
-
-/**
- * Признак того, что упал не сценарий, а подгрузка чанка после нового выката:
- * старый файл больше не лежит на сервере (мы больше не держим прошлые сборки).
- * Такое лечится одной перезагрузкой — свежая страница возьмёт новые чанки.
- */
-function isStaleChunkError(msg: string): boolean {
-  const m = msg.toLowerCase();
-  return (
-    m.includes("dynamically imported module") ||
-    m.includes("importing a module script failed") ||
-    m.includes("failed to fetch") ||
-    m.includes("is not a valid javascript mime type") ||
-    m.includes("error loading") ||
-    m.includes("chunkloaderror")
-  );
-}
+import { forceReloadBustCache } from "@/lib/versionCheck";
+import { isStaleChunkError, reloadForStaleChunk } from "@/lib/staleReload";
 
 /** Сколько строк стека показываем и копируем: дальше идёт шум рантайма. */
 const STACK_LINES = 8;
@@ -56,23 +41,26 @@ function details(error: Error): string {
     .join("\n");
 }
 
-export function AppErrorScreen({ error, reset }: { error: Error; reset: () => void }) {
+export function AppErrorScreen(props: ErrorComponentProps) {
+  // С роутера 1.170 error в типах — unknown (раньше Error). Код ниже тот же:
+  // приведение только для типов, поведение экрана не меняется.
+  const error = props.error as Error;
+  const { reset } = props;
   const router = useRouter();
   const t = useT();
   const [copied, setCopied] = useState(false);
-
-  // Ошибка загрузки чанка = вышла новая версия, старый файл удалён. Тихо
-  // перезагружаемся один раз (флаг в sessionStorage не даёт зациклиться).
+  // Safari запоминает несостоявшийся импорт до перезагрузки страницы: reset()
+  // повторил бы тот же сбой, поэтому «Попробовать снова» — полная перезагрузка.
+  const stale = isStaleChunkError(error);
+  // Не подгрузился кусок кода — тихая перезагрузка (раз в 30 с, lib/staleReload);
+  // пока она идёт, экран ошибки не мелькает.
+  const [reloading, setReloading] = useState(stale);
   useEffect(() => {
-    if (typeof window === "undefined" || !isStaleChunkError(error?.message ?? "")) return;
-    // Не чаще раза в 30с: одиночная перезагрузка помогает, петля — нет.
-    const last = Number(sessionStorage.getItem("chunk-reload-at") ?? 0);
-    if (Date.now() - last < 30_000) return;
-    sessionStorage.setItem("chunk-reload-at", String(Date.now()));
-    window.location.reload();
-  }, [error]);
+    if (!stale || !reloadForStaleChunk()) setReloading(false);
+  }, [error, stale]);
 
   const stack = shortStack(error);
+  if (reloading) return <div className="min-h-screen bg-background" />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -118,6 +106,10 @@ export function AppErrorScreen({ error, reset }: { error: Error; reset: () => vo
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <button
             onClick={() => {
+              if (stale) {
+                void forceReloadBustCache();
+                return;
+              }
               router.invalidate();
               reset();
             }}

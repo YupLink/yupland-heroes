@@ -7,6 +7,7 @@ import type { Cell } from "./unpackMap";
 import type { ShipMark } from "./drawShips";
 import type { SpriteCache } from "./spriteCache";
 import type { ChestMarks } from "@/lib/magicChest";
+import type { MineBarsFrame } from "./mine-life/drawMineLifeBars";
 
 export type DrawCell = Cell;
 
@@ -25,7 +26,7 @@ export type DrawScene = {
   /** Кэш типов объектов: objectId → kind. Считается раз на карту. */
   objectKinds?: Map<string, string>;
   /** Зоны тумана — кэшируются, чтобы не пересчитывать каждый кадр. */
-  fogZones?: { active: Set<number>; bright: Set<number> };
+  fogZones?: { active: { has(i: number): boolean }; bright: Set<number>; reach?: { q: number; r: number; radius: number } | null };
   /** Готовые гекс-тайлы местности — кадр не режет картинки заново. */
   tiles: HexTileCache;
   /** Готовые спрайты дорожных лент — кадр не выкладывает их линиями. */
@@ -57,6 +58,8 @@ export type DrawScene = {
    * к сбору читалось издалека, а bright-зона у складов красила чужие поля.
    */
   deferredBadges?: Array<{ key: string; x: number; top: number }>;
+  /** Полосы службы шахт v2 этого кадра (mine-life/drawMineLifeBars); null — не рисуем. */
+  mineLife?: MineBarsFrame | null;
   /**
    * Побеги для вспышки: «q,r» клетки, ОТКУДА убежал беглец → клетка, КУДА он
    * убежал. Красную стрелку рисуем МЕЖДУ ними (в середине отрезка, остриём на
@@ -82,6 +85,8 @@ export type DrawScene = {
   voidCells: Set<string>;
   /** Где стоят игроки: "q,r" → сколько человек. */
   players: Map<string, number>;
+  /** Из них сейчас в игре: "q,r" → сколько (лагерь онлайн, 09.11). Нет — все офлайн. */
+  playersOnline?: Map<string, number>;
   /** Корабли на воде: "q,r" → занят ли и мой ли. */
   ships: Map<string, ShipMark>;
   /** Клетки, изменённые админом и ждущие выгрузки: обводим их золотом. */
@@ -108,7 +113,10 @@ export type DrawScene = {
 
 /** Палитра карты — те же токены, что в теме приложения. */
 export const COLOR = {
-  fogTile: "#10141c",
+  // Неразведанное = пустота: тот же цвет, что фон холста (drawFrame) и пелена
+  // тумана (betaCanvasDraw, rgb 10,14,22). Иначе туман рисовал гексы там, где
+  // клетки есть, и выдавал построенное в мире строителей (Архан, 29.10.2026).
+  fogTile: "#0a0e16",
   fogEdge: "#171d28",
   emptyTile: "#131822",
   grass: "#3a5238",

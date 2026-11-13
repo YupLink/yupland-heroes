@@ -25,6 +25,9 @@ import {
   BIG_SHIP_ITEM_NAME,
 } from "@/lib/shipRules";
 import type { CurrentHero } from "./hero-current";
+import { getSessionTgId } from "../../auth";
+import { isGoogleOnlyTg } from "@/lib/auth/googleTg";
+import { buckwheatOpenForSession as buckwheatOpen } from "../buckwheat/bwAccess";
 
 // Вынесено в свой модуль, ре-экспорт — старые импорты отсюда не меняются.
 export { buildingUsed } from "./building-used";
@@ -58,6 +61,7 @@ export async function buildingExtra(opts: {
     return spellPillarExtra({ built, meta: opts.meta, cellConfig: opts.cellConfig });
   }
   if (effect === "oblivion") return (await import("./oblivion-extra")).oblivionExtra(opts);
+  if (effect === "art_gen") return (await import("../art-gen/art-gen-extra")).artGenExtra(opts);
 
   // Табличка ничего не стоит и ничего не требует: подошёл — прочитал.
   if (effect === "sign") return { kind: "sign", text: signText(opts.cellConfig) };
@@ -103,8 +107,18 @@ export async function buildingExtra(opts: {
   // постройку, тир не важен; «игрок рядом» проверяют ручки окна (tour-read.ts).
   if (effect === "tournament") return { kind: "tournament" };
 
-  // Казино: окно слота на золото, игра и деньги — server/api/slot.
-  if (effect === "casino") return { kind: "casino" };
+  // Казино: окно слота на золото, игра и деньги — server/api/slot. Входу через
+  // Google казино не показываем вовсе (владелец, 06.11.2026) — постройка без действия.
+  if (effect === "casino") return isGoogleOnlyTg(getSessionTgId()) ? null : { kind: "casino" };
+
+  // «Корона гречневого королевства»: всем, кто вошёл (08.11; не админам — на
+  // фантики, server/api/buckwheat).
+  if (effect === "buckwheat") return (await buckwheatOpen()) ? { kind: "buckwheat" } : null;
+
+  // Лавка зачарования: только вход. Заклинания, артефакты и «герой рядом» —
+  // ручки окна (enchant/), как у турнира.
+  if (effect === "enchant") return { kind: "enchant" };
+  if (effect === "hero_enchant") return { kind: "hero_enchant" };
 
   if (effect === "shipyard") {
     const tier = opts.tier ?? 0;
@@ -166,6 +180,7 @@ export async function buildingExtra(opts: {
       gateDone: built
         ? await (await import("../achievements/gate")).islandGateBlock(wallet, mapId)
         : null,
+      demo: await (await import("./island/demo-map")).isDemoMap(mapId),
     });
   }
 
@@ -176,10 +191,13 @@ export async function buildingExtra(opts: {
   if (effect === "warehouse") {
     const { warehouseCellsUsed } = await import("./warehouse-store");
     const used = built ? await warehouseCellsUsed(wallet, mapId, q, r) : { own: 0, shared: 0 };
-    const { OWN_CELLS, SHARED_CELLS } = await import("@/lib/warehouseCells");
+    const { SHARED_CELLS } = await import("@/lib/warehouseCells");
+    const { ownCellsOf } = await import("./account-upgrade");
+    const { accAccountId } = await import("../currency/move");
+    const account = await accAccountId(wallet).catch(() => null);
     return {
       kind: "warehouse",
-      ownCells: OWN_CELLS,
+      ownCells: await ownCellsOf(account),
       sharedCells: SHARED_CELLS,
       ownUsed: used.own,
       sharedUsed: used.shared,
@@ -194,7 +212,8 @@ export async function buildingExtra(opts: {
     return fieldExtra(opts);
   }
 
-  if (effect === "market") return marketExtra(opts);
+  // Лавка построек — та же витрина, что у маркета (товар — постройка, lib/buildingSale).
+  if (effect === "market" || effect === "building_shop") return marketExtra(opts);
 
   // Покои: за плату снимают дебаффы игрока и оглушения/яды с его фишек.
   if (effect === "chambers") {

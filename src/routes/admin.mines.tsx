@@ -7,6 +7,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Pickaxe } from "lucide-react";
 import { getMinesReport } from "@/server/api/beta-raid/admin-mines-report";
+import { ArchitectAdminCard } from "@/components/admin/architect/ArchitectAdminCard";
+import { ShamanAdminCard } from "@/components/admin/shaman/ShamanAdminCard";
 
 export const Route = createFileRoute("/admin/mines")({
   component: MinesReportPage,
@@ -31,6 +33,11 @@ function MinesReportPage() {
         </div>
         <h1 className="font-display text-2xl font-bold">Сводный отчёт по шахтам</h1>
       </header>
+
+      <div className="mb-4 space-y-4">
+        <ArchitectAdminCard />
+        <ShamanAdminCard />
+      </div>
 
       {q.isLoading || !q.data ? (
         <div className="flex h-32 items-center justify-center">

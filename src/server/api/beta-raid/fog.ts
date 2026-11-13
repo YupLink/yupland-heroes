@@ -191,7 +191,10 @@ export const addBetaRaidFog = createServerFn({ method: "POST" })
     const admin = canIgnoreVoid(wallet);
     // Только клетки этой карты: разведанное другого этажа под её id (накладка
     // этажей, 07.10.2026) оседало бы туманом и открывало этаж, где не ходили.
-    const cells = await cellsOnMap(data.mapId, admin, data.cells);
+    const onMap = await cellsOnMap(data.mapId, admin, data.cells);
+    // Только рядом с тем, где герой был (fog-anchor.ts); админу — как раньше.
+    const { fogAnchors, nearAnchors } = await import("./fog-anchor");
+    const cells = admin ? onMap : nearAnchors(onMap, await fogAnchors(owner, data.mapId));
     const total = await mergeFogCells(owner, data.mapId, cells, admin);
     return { ok: true as const, total };
   });

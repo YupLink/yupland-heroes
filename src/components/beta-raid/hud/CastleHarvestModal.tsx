@@ -8,24 +8,21 @@ import { ChevronDown, Gift, HandCoins, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
-import { livePendingAmount } from "@/lib/minePending";
+import { mineRowReady } from "@/lib/mineLost";
 import { showClaimResult } from "@/lib/claimToast";
-import { getHarvestSummary } from "@/server/api/beta-raid/harvest-summary";
 import { claimAllMines } from "@/server/api/beta-raid/mine-claim";
 import { claimRaidRewards } from "@/server/api/raid-rewards";
 import { MINE_PENDINGS_KEY } from "@/lib/hooks/useMinePendings";
 import { RESOURCES_KEY } from "@/lib/hooks/useResources";
 import { ENERGY_KEY } from "@/lib/hooks/useEnergy";
 import { prizeIcon, prizeImage } from "@/lib/prizeIcon";
-import { rewardKindLabelKey } from "@/lib/rewardKinds";
+import { rewardKindLabelKey, rewardShownAmount } from "@/lib/rewardKinds";
 import { invalidateHeroQueries } from "@/lib/query";
 import { HudModal } from "./HudModal";
 import { HarvestIncomeStrip } from "./HarvestIncomeStrip";
-import { MineCaptureNotices } from "./MineCaptureNotices";
-import { HARVEST_KEY } from "./useHarvest";
-import pickaxeArt from "@/assets/harvest/pickaxe.png";
+import { fetchHarvest, HARVEST_KEY } from "./useHarvest";
+import pickaxeArt from "@/assets/harvest/pickaxe.webp";
 import trophyArt from "@/assets/harvest/trophy.webp";
-import ticketArt from "@/assets/harvest/ticket.webp";
 import packArt from "@/assets/harvest/pack-box.webp";
 import "./harvest-modal.css";
 
@@ -70,7 +67,7 @@ export function CastleHarvestModal({
     return translated === key ? source : translated;
   };
 
-  const q = useQuery({ queryKey: HARVEST_KEY, queryFn: () => getHarvestSummary() });
+  const q = useQuery({ queryKey: HARVEST_KEY, queryFn: fetchHarvest });
   const data = q.data;
   const mines = data?.mines ?? [];
   const fields = data?.fields ?? [];
@@ -88,7 +85,7 @@ export function CastleHarvestModal({
         })
         .join(" · ");
       if (line) toast.success(t("mine.collected_all_toast", { line }), { position: "top-center" });
-      else if (mines.some((m) => livePendingAmount(m.capturedAt, m.claimedHours, m.yield, Date.now(), m.maxHours) > 0))
+      else if (mines.some((m) => mineRowReady(m) > 0))
         toast.warning(t("harvest.collect_unconfirmed"), { position: "top-center" });
       else toast.info(t("mine.nothing_yet"), { position: "top-center" });
       for (const key of [HARVEST_KEY, MINE_PENDINGS_KEY, RESOURCES_KEY, ENERGY_KEY]) {
@@ -116,7 +113,6 @@ export function CastleHarvestModal({
       for (const key of [
         HARVEST_KEY,
         ["raid-pending-rewards"],
-        ["my-tickets"],
         ["my-like-balance"],
         ["my-chip-packs"],
         ENERGY_KEY,
@@ -168,8 +164,6 @@ export function CastleHarvestModal({
         <>
           <HarvestIncomeStrip mines={mines} fields={fields} now={now} onShowCell={onShowCell} action={collectButton} />
 
-          <MineCaptureNotices captures={data?.captures ?? []} onShowCell={onShowCell} />
-
           <section data-harvest-rewards className="rounded-[22px] border border-[#a37e4c]/70 bg-[#141618] p-2.5">
             <button data-game-button="row" type="button" onClick={() => setRewardsOpen((value) => !value)} aria-expanded={rewardsOpen}
               className="flex min-h-11 w-full items-center justify-between gap-2 px-1 text-left text-sm font-semibold text-[#e9e2d5]">
@@ -184,8 +178,8 @@ export function CastleHarvestModal({
                     {source.place != null && <span className="shrink-0 rounded-full border border-[#6d512b]/70 bg-[#5d421c]/35 px-2 py-0.5 text-[11px] text-[#f0c35c]">{t("braid.place_n", { n: source.place })}</span>}
                   </div>
                   <div className="divide-y divide-white/10">{source.rewards.map((reward, rewardIndex) => {
-                    const img = reward.kind === "tickets" ? ticketArt
-                      : reward.kind === "energy" ? "/resources/energy.png"
+                    // Награда билетами выдаётся золотом ×100 (ПРАВИЛА §8.61): спрайт и сумма — золота.
+                    const img = reward.kind === "energy" ? "/resources/energy.png"
                       : reward.kind === "likes" ? "/resources/likes.png"
                       : reward.kind === "pack" ? packArt
                       : prizeImage(reward.kind, reward.packId);
@@ -195,7 +189,7 @@ export function CastleHarvestModal({
                         {img ? <img src={img} alt="" className="h-5 w-5 shrink-0 object-contain" /> : <Icon aria-hidden className="h-5 w-5 shrink-0" color={color} strokeWidth={1.7} />}
                         <span className="min-w-0 break-words" style={{ overflowWrap: "anywhere" }}>{label(reward)}</span>
                       </span>
-                      <b className="shrink-0 tabular-nums text-[#f4c653]">{reward.kind === "pack" || reward.kind === "item" ? `×${reward.count}` : reward.amount}</b>
+                      <b className="shrink-0 tabular-nums text-[#f4c653]">{reward.kind === "pack" || reward.kind === "item" ? `×${reward.count}` : rewardShownAmount(reward.kind, reward.amount)}</b>
                     </div>;
                   })}</div>
                 </div>

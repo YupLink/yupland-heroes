@@ -1,0 +1,24 @@
+.np-calendar{padding:4px 0 12px;color:#ece8dd}
+.np-month{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.np-month h2{font-size:20px;font-weight:600;text-transform:capitalize;margin:8px 0;text-align:center}
+.np-month button{border:0;background:none;color:#f6cc69;min-width:44px;min-height:44px;font-size:34px;line-height:1}
+.np-month button:disabled{opacity:.3}
+.np-count{font-size:14px;text-align:center;color:#b9b7ae;margin:0 0 16px}
+.np-weekdays,.np-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.np-weekdays{font-size:13px;text-align:center;color:#b9b7ae;margin-bottom:8px}
+.np-days{--weeks:5;grid-auto-rows:clamp(44px,calc((100dvh - 390px)/var(--weeks)),70px)}
+.np-weeks-4{--weeks:4}.np-weeks-6{--weeks:6}
+.np-day{position:relative;border:1px solid #444741;border-radius:5px;background:#111415;color:#ece8dd;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px 0;font-size:16px;min-width:0}
+.np-day:disabled{opacity:1}.np-day.np-no-issue{color:#969894;border-color:#343735;background:transparent}
+.np-day.np-collected{background:linear-gradient(145deg,#302b1b,#24231c);border-color:#62583a}
+.np-day-mark{height:23px;display:flex;align-items:center;justify-content:center;font-size:25px;line-height:1}
+.np-collected .np-day-mark{color:#ffd329;font-weight:800}
+.np-box{display:inline-block;width:16px;height:16px;border:1.5px solid currentColor;border-radius:3px;flex-shrink:0}
+.np-unread{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#ffd329}
+.np-legend{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:#b9b7ae;margin:14px 0}
+.np-legend>span{display:flex;align-items:center;gap:5px;white-space:nowrap}.np-legend b{color:#ffd329;font-size:17px}.np-legend .np-box{width:12px;height:12px}.np-dot{width:6px;height:6px;background:#ffd329;border-radius:50%;display:inline-block}
+.np-calendar-hint{border-top:1px solid #62583a66;padding-top:12px;margin:0;text-align:center;color:#b9b7ae;font-size:12px;line-height:1.4}
+.np-kiosk .np-list [role=tab]{font-size:13px;white-space:nowrap;padding-inline:3px}
+@media(max-width:380px){.np-kiosk .np-list{padding-inline:10px}.np-kiosk .np-banner h1{font-size:19px}.np-kiosk .np-banner nav{gap:8px}}
+
+@media(min-width:600px){.np-days{grid-auto-rows:clamp(44px,calc((100dvh - 440px)/var(--weeks)),64px)}}

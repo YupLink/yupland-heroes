@@ -7,7 +7,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
-import { getCurrentWallet, isAdminWallet } from "../../auth";
 import { sqlStr } from "../raid-shared";
 import {
   amountRange,
@@ -21,11 +20,8 @@ import {
 } from "@/lib/raid/decorInteract";
 import { TOOLS_MAX, toolIdsOf } from "@/lib/raid/decorTools";
 import { dropInteractiveDecorCache } from "./decor-interact";
-
-function requireAdmin(): void {
-  const w = getCurrentWallet();
-  if (!w || !isAdminWallet(w)) throw new Error("Только админ настраивает декор");
-}
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
+import { requireCatalogEditor } from "@/server/api/catalog-auth";
 
 /** Все ли товары есть в справочнике — одним запросом. */
 async function customItemsExist(ids: readonly string[]): Promise<boolean> {
@@ -92,7 +88,7 @@ function draftLabel(v: unknown): DecorInteractDraft["label"] {
 export const adminGetDecorInteract = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => z.object({ id: z.string().min(1).max(80) }).parse(d))
   .handler(async ({ data }): Promise<DecorInteractDraft> => {
-    requireAdmin();
+    await requireDesigner();
     const rows = ((await mcpExec(
       `SELECT meta->'interact' AS interact FROM yuplink.mystic_item_template
         WHERE id = ${sqlStr(data.id)} AND kind = 'decoration' LIMIT 1;`,
@@ -139,7 +135,7 @@ export const adminSetDecorInteract = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     const range = amountRange(data.amount);
     if (data.on) {
       if (!data.itemId.startsWith("cst_")) throw new Error("Выбери товар, который даёт декор");

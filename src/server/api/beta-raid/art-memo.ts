@@ -19,14 +19,16 @@ export const atText = (col: string): string =>
 
 /**
  * Разобрать памятку операции обратно в экземпляры.
- * Формат: `<префикс>id=шаблон=когда получен`; третьей части нет у строк,
- * записанных до того, как откат научился беречь место в очереди FIFO.
+ * Формат: `<префикс>id=шаблон=когда получен=износ`; третьей части нет у строк,
+ * записанных до того, как откат научился беречь место в очереди FIFO,
+ * четвёртой — до износа артефактов (22.10.2026): тогда все были целыми, 0.
  */
-function parseMemo(ops: string[], prefix: string): ArtRef[] {
+export function parseMemo(ops: string[], prefix: string): ArtRef[] {
   const out: ArtRef[] = [];
   for (const op of ops) {
-    const [id, templateId, obtainedAt] = op.slice(prefix.length).split("=");
-    if (id && templateId) out.push({ id, templateId, obtainedAt: obtainedAt || null });
+    const [id, templateId, obtainedAt, wear] = op.slice(prefix.length).split("=");
+    if (id && templateId)
+      out.push({ id, templateId, obtainedAt: obtainedAt || null, wear: Number(wear) || 0 });
   }
   return out;
 }

@@ -1,6 +1,6 @@
 /* Castle Glory screen. The backplate contains no player data. */
-@font-face { font-family: 'Glory Russo'; src: url('../../assets/tavern/RussoOne.ttf') format('truetype'); font-weight: 400; font-display: swap; }
-@font-face { font-family: 'Glory Golos'; src: url('../../assets/tavern/GolosText.ttf') format('truetype'); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: 'Glory Russo'; src: url('../../assets/tavern/RussoOne.woff2') format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Glory Golos'; src: url('../../assets/tavern/GolosText.woff2') format("woff2"); font-weight: 400 900; font-display: swap; }
 section[aria-labelledby="castle-window-title"]:has(.glory-screen) {
   --glory-stage-width: min(74.535dvh, calc((100vw - 20px) * 1.6116));
   background: #17151a;

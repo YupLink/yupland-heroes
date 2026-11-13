@@ -8,15 +8,26 @@
 // Исключение — постройки: их палатка закрывала целиком, и на карте пропадали
 // шахты, лавки, порталы (жалоба владельца 06.09.2026). Там от лагеря остаётся
 // только флажок сбоку и та же цифра, а само строение видно как обычно.
+//
+// Онлайн (владелец, 09.11.2026): есть в клетке хоть один игрок в игре — лагерь
+// анимированный (campOnline), а счёт — «онлайн/офлайн» через черту, как у кораблей.
 import { R } from "./hexGeometry";
 import type { DrawScene } from "./betaCanvasScene";
+import { drawOnlineCamp } from "./campOnline";
 
 const CAMP_W = R * 1.6;
+type At = { x: number; y: number; key: string };
 
-export function drawPlayerCamp(scene: DrawScene, p: { x: number; y: number }, count: number): void {
+/** Сколько из `count` на клетке сейчас в игре. */
+const onlineAt = (scene: DrawScene, p: At, count: number): number =>
+  Math.min(count, scene.playersOnline?.get(p.key) ?? 0);
+
+export function drawPlayerCamp(scene: DrawScene, p: At, count: number): void {
   const { g, images } = scene;
   const img = images.get("camp");
-  if (img && img.complete && img.naturalWidth > 0) {
+  if (onlineAt(scene, p, count) > 0 && drawOnlineCamp(scene, p.x, p.y + R * 0.5, CAMP_W)) {
+    // Тот же размер и якорь, что у обычного лагеря.
+  } else if (img && img.complete && img.naturalWidth > 0) {
     const h = CAMP_W * (img.naturalHeight / img.naturalWidth);
     // Якорь снизу: лагерь «стоит» на гексе и выступает вверх, как и герой.
     g.drawImage(img, p.x - CAMP_W / 2, p.y + R * 0.5 - h, CAMP_W, h);
@@ -30,19 +41,17 @@ export function drawPlayerCamp(scene: DrawScene, p: { x: number; y: number }, co
 }
 
 /** Плашка с числом игроков — читается поверх любой местности. */
-export function drawPlayerCount(
-  scene: DrawScene,
-  p: { x: number; y: number },
-  count: number,
-): void {
-  // LOD: при мелком зуме — цветная точка вместо текста.
+export function drawPlayerCount(scene: DrawScene, p: At, count: number): void {
+  const online = onlineAt(scene, p, count);
+  // LOD: при мелком зуме — цветная точка вместо текста (онлайн — зелёная).
   if (scene.scale < 0.5) {
     scene.g.beginPath();
     scene.g.arc(p.x + R * 0.45, p.y - R * 0.35, R * 0.2, 0, Math.PI * 2);
-    scene.g.fillStyle = "#5ce0d8";
+    scene.g.fillStyle = online > 0 ? ONLINE : "#5ce0d8";
     scene.g.fill();
     return;
   }
+  if (online > 0) return drawOnlineCount(scene, p, online, count - online);
   const { g } = scene;
   const text = String(count);
   const rr = R * 0.3;
@@ -63,6 +72,46 @@ export function drawPlayerCount(
   g.textAlign = "center";
   g.textBaseline = "middle";
   g.fillText(text, cx, cy + 0.5);
+  g.restore();
+}
+
+const ONLINE = "#37d67a";
+const OFFLINE = "#ececf5";
+
+/** «онлайн/офлайн» на плашке: зелёным — кто в игре, светлым — остальные (как у кораблей). */
+function drawOnlineCount(scene: DrawScene, p: At, online: number, offline: number): void {
+  const { g } = scene;
+  const parts = [{ text: String(online), color: ONLINE }];
+  if (offline > 0) parts.push({ text: String(offline), color: OFFLINE });
+  const rr = R * 0.3;
+  const cx = p.x + R * 0.45;
+  const cy = p.y - R * 0.35;
+  g.save();
+  g.font = `bold ${Math.round(R * 0.42)}px system-ui, sans-serif`;
+  g.textBaseline = "middle";
+  g.textAlign = "left";
+  const slash = g.measureText("/").width;
+  const widths = parts.map((s) => g.measureText(s.text).width);
+  const textW = widths.reduce((a, b) => a + b, 0) + slash * (parts.length - 1);
+  const boxW = Math.max(rr * 2, textW + R * 0.3);
+  g.beginPath();
+  g.roundRect(cx - boxW / 2, cy - rr, boxW, rr * 2, rr);
+  g.fillStyle = "rgba(10, 13, 19, 0.92)";
+  g.fill();
+  g.strokeStyle = ONLINE;
+  g.lineWidth = 2;
+  g.stroke();
+  let x = cx - textW / 2;
+  parts.forEach((part, i) => {
+    if (i > 0) {
+      g.fillStyle = "#9a9aab";
+      g.fillText("/", x, cy + 0.5);
+      x += slash;
+    }
+    g.fillStyle = part.color;
+    g.fillText(part.text, x, cy + 0.5);
+    x += widths[i];
+  });
   g.restore();
 }
 

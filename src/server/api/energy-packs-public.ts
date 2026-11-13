@@ -9,6 +9,7 @@ import { requireFreshClient } from "../buildGate";
 import { parsePricing, nextPrice, totalTimes, payKey, payName, usdKeyOf } from "@/lib/energySteps";
 import { usdPrices } from "@/lib/usdTariff";
 import { priceIn } from "@/lib/energySub";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import {
   DARAI_FT_CONTRACT,
   DARAI_DECIMALS,
@@ -133,23 +134,29 @@ export const listEnergyPacksPublic = createServerFn({ method: "GET" }).handler(a
         // Цена с учётом подписки (билеты). DARAI/токены не скидочные (донат).
         effectivePriceTickets:
           p.price_tickets != null ? applyDiscountCeil(p.price_tickets, disc) : null,
-        // Оплата произвольным FT-токеном: symbol + сумма + контракт/decimals для tx.
-        token:
-          p.price_token_symbol && p.price_token_amount != null && tokMeta.has(p.price_token_symbol)
-            ? {
-                symbol: p.price_token_symbol,
-                amount: p.price_token_amount,
-                ftContract: tokMeta.get(p.price_token_symbol)!.ftContract,
-                decimals: tokMeta.get(p.price_token_symbol)!.decimals,
-              }
+        // Билетов нет (§8.61): та же цена в золоте ×500 — столько и спишется.
+        effectivePriceGold:
+          p.price_tickets != null
+            ? goldForTicketPrice(applyDiscountCeil(p.price_tickets, disc))
             : null,
+        // Оплата FT-токеном закрыта (§8.61): энергопак — только золото, DARAI, звёзды.
+        token: null as null | {
+          symbol: string;
+          amount: number;
+          ftContract: string;
+          decimals: number;
+        },
         dailyLimit: p.daily_limit,
         dailyUsed: dailyUsed.get(p.id) ?? 0,
         // Умное предложение: по каждой валюте — цена следующей покупки и
         // сколько уже взято сегодня. Валюты независимы: кончилась одна —
         // остальные остаются активными.
         offers: (() => {
-          const pricing = parsePricing(p.price_steps);
+          // Токены (magicdust, RF, GP, HOPE…) не продают энергию (§8.61); USDT-
+          // лесенка остаётся только якорем цены звёзд — окно её как оплату не кажет.
+          const pricing = parsePricing(p.price_steps).filter(
+            (o) => o.kind !== "token" || o.symbol === "USDT",
+          );
           if (pricing.length === 0) return null;
           const byCur = usedCur.get(p.id) ?? new Map<string, number>();
           const usdKey = usdKeyOf(pricing);
@@ -170,6 +177,11 @@ export const listEnergyPacksPublic = createServerFn({ method: "GET" }).handler(a
               ftContract: meta?.ftContract ?? null,
               decimals: meta?.decimals ?? null,
               price: nextPrice(opt, u),
+              // Билетная ступень платится золотом ×500 со скидкой подписки.
+              gold: (() => {
+                const step = opt.kind === "tickets" ? nextPrice(opt, u) : null;
+                return step == null ? null : goldForTicketPrice(applyDiscountCeil(step, disc));
+              })(),
               // Тариф в $: цена следующей ступени в USDT / DARAI / Stars.
               // Тариф в $: вид usd — все три валюты от ступени; USDT-лесенка
               // («если $ — от $») — к её цене добавляются звёзды.

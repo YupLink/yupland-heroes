@@ -14,6 +14,8 @@ import { isWaterName, isOceanName } from "@/lib/shipRules";
 import { walkable } from "./hexPassable";
 import { cellBaseCost, type CellInfo, type TerrainInfo } from "./hexStepCost";
 import { storeOf } from "./mapStore";
+import { fillFromColumns } from "./pathGridColumns";
+import { bridgeAxes } from "@/lib/raid/bridgeTransit";
 
 export type PathGrid = {
   /** Размер сетки: она накрывает все клетки карты с запасом в ноль. */
@@ -29,6 +31,8 @@ export type PathGrid = {
   water: Uint8Array;
   /** Океан — глубокая вода: пройдёт только большой корабль. */
   ocean: Uint8Array;
+  bridgeDeck: Uint8Array;
+  bridgeChannel: Uint8Array;
   /** Цена самой клетки (дорога или местность) — ДО скидок и надбавок. */
   base: Float64Array;
   /** Самая дешёвая клетка карты — нижняя граница для оценки остатка. */
@@ -40,7 +44,7 @@ export type PathGrid = {
   r(slot: number): number;
 };
 
-type Entry = { terrains: object; roads: object | undefined; grid: PathGrid };
+type Entry = { terrains: object; roads: object | undefined; decorations: object | undefined; grid: PathGrid };
 
 const cache = new WeakMap<object, Entry>();
 
@@ -48,11 +52,12 @@ export function pathGrid(
   cells: Record<string, CellInfo>,
   terrains: Record<string, TerrainInfo>,
   roads: Record<string, TerrainInfo> | undefined,
+  decorations?: Record<string, { bridge?: unknown }>,
 ): PathGrid {
   const hit = cache.get(cells);
-  if (hit && hit.terrains === terrains && hit.roads === roads) return hit.grid;
-  const grid = build(cells, terrains, roads);
-  cache.set(cells, { terrains, roads, grid });
+  if (hit && hit.terrains === terrains && hit.roads === roads && hit.decorations === decorations) return hit.grid;
+  const grid = build(cells, terrains, roads, decorations);
+  cache.set(cells, { terrains, roads, decorations, grid });
   return grid;
 }
 
@@ -60,6 +65,7 @@ function build(
   cells: Record<string, CellInfo>,
   terrains: Record<string, TerrainInfo>,
   roads: Record<string, TerrainInfo> | undefined,
+  decorations?: Record<string, { bridge?: unknown }>,
 ): PathGrid {
   // Имена местности прогоняем через регулярку ОДИН раз на словарь, а не на
   // каждую из 16 384 клеток.
@@ -106,24 +112,46 @@ function build(
   const cols = count ? maxQ - minQ + 1 : 1;
   const rows = count ? maxR - minR + 1 : 1;
   const size = cols * rows;
+  const slots = {
+    slot: (q: number, r: number) => {
+      const x = q - minQ;
+      const y = r - minR;
+      return x < 0 || y < 0 || x >= cols || y >= rows ? -1 : x * rows + y;
+    },
+    q: (slot: number) => ((slot / rows) | 0) + minQ,
+    r: (slot: number) => (slot % rows) + minR,
+  };
+  // Снимок карты — по колонкам, без объекта клетки на каждую (pathGridColumns).
+  if (store) {
+    const filled = fillFromColumns(store, terrains, roads, waterIds, oceanIds, decorations, { minQ, minR, rows, size });
+    const minBase = Number.isFinite(filled.minBase) ? filled.minBase : 1;
+    return { cols, rows, size, minQ, minR, ...filled, minBase, ...slots };
+  }
   const walk = new Uint8Array(size);
   const water = new Uint8Array(size);
   const ocean = new Uint8Array(size);
+  const bridgeDeck = new Uint8Array(size);
+  const bridgeChannel = new Uint8Array(size);
   const base = new Float64Array(size);
   let minBase = Infinity;
-  const scratch: CellInfo = {};
+  // Словарь без снимка (тесты, редактор) — по объектам клеток.
   for (let i = 0; i < count; i++) {
     const idx = (qs[i] - minQ) * rows + (rs[i] - minR);
-    const cell: CellInfo = store ? store.cellInto(i, scratch) : cells[keys![i]];
-    if (walkable(cell)) walk[idx] = 1;
+    const cell: CellInfo = cells[keys![i]];
     const isWater = waterIds.has(cell.terrainId ?? "");
+    const bridge = isWater && bridgeAxes(cell.decorationId ? decorations?.[cell.decorationId]?.bridge : null);
+    if (walkable(bridge ? { ...cell, decorationId: undefined } : cell)) walk[idx] = 1;
+    if (bridge) {
+      bridgeDeck[idx] = bridge.deckAxis + 1;
+      bridgeChannel[idx] = bridge.channelAxis + 1;
+    }
     if (isWater) water[idx] = 1;
     if (oceanIds.has(cell.terrainId ?? "")) ocean[idx] = 1;
     const cost = cellBaseCost(cell, terrains, roads);
     base[idx] = cost;
     // Вода в минимум не идёт: её цена — не цена клетки, а гребок, и он
     // учитывается отдельно (pathBounds).
-    if (!isWater && cost < minBase) minBase = cost;
+    if ((!isWater || bridge) && cost < minBase) minBase = cost;
   }
 
   return {
@@ -135,14 +163,10 @@ function build(
     walk,
     water,
     ocean,
+    bridgeDeck,
+    bridgeChannel,
     base,
     minBase: Number.isFinite(minBase) ? minBase : 1,
-    slot: (q, r) => {
-      const x = q - minQ;
-      const y = r - minR;
-      return x < 0 || y < 0 || x >= cols || y >= rows ? -1 : x * rows + y;
-    },
-    q: (slot) => ((slot / rows) | 0) + minQ,
-    r: (slot) => (slot % rows) + minR,
+    ...slots,
   };
 }

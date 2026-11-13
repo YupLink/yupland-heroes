@@ -15,6 +15,7 @@ import { ARTIFACT_SLOTS } from "@/components/heroMeta";
 // Редкость берём из heroLevels, а не объявляем заново: там же лежат потолки
 // уровня, и второй такой же union рано или поздно разошёлся бы с первым.
 import type { HeroRarity } from "@/lib/heroLevels";
+import { MOUNT_SLOT } from "./mount";
 
 export type { HeroRarity };
 
@@ -34,6 +35,7 @@ const EXTRA_SLOTS: Record<HeroRarity, Readonly<Record<string, number>>> = {
   rare: {},
   epic: { Карманы: 2, Руки: 1 },
   legendary: { Карманы: 4, Тело: 1, Руки: 1 },
+  unique: { Карманы: 4, Тело: 1, Руки: 1 }, // как у легендарного (владелец, 29.10.2026)
 };
 
 /**
@@ -54,6 +56,7 @@ export function normalizeHeroRarity(raw: string | null | undefined): HeroRarity 
   const r = String(raw ?? "")
     .trim()
     .toLowerCase();
+  if (r === "unique") return "unique";
   if (r === "legendary" || r === "leg") return "legendary";
   if (r === "epic") return "epic";
   if (r === "common") return "common";
@@ -91,12 +94,18 @@ export function heroSlots(rarity: string | null | undefined): HeroSlotDef[] {
       out.push({ key: heroSlotKey(slot, index), slot, index });
     }
   }
+  // Конь (§8.84) — одно место у героя любой редкости.
+  out.push({ key: MOUNT_SLOT, slot: MOUNT_SLOT, index: 1 });
   return out;
 }
 
+/** Сколько мест под артефакты (конь — своё место, в «N слотов» не входит). */
+export const artifactSlotCount = (slots: ReadonlyArray<{ slot: string }>): number =>
+  slots.filter((d) => d.slot !== MOUNT_SLOT).length;
+
 /** Тип слота известен? Индекс не проверяем — вопрос про сам ARTIFACT_SLOTS. */
 export const isKnownSlotType = (slot: string): boolean =>
-  (ARTIFACT_SLOTS as readonly string[]).includes(slot);
+  slot === MOUNT_SLOT || (ARTIFACT_SLOTS as readonly string[]).includes(slot);
 
 /**
  * Первое свободное место под предмет этого типа. Свободных нет — отдаём

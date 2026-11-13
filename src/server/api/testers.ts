@@ -17,6 +17,7 @@ export const TESTER_FEATURES = {
   hero_power_bosses: "Герои: бонусы работают и по боссам",
   solana_connect: "Solana: привязка кошелька",
   auctions: "Аукционы: ставки за призы",
+  builder_world: "Мир строителей: покупка и укладка земель",
 } as const;
 
 export type TesterFeature = keyof typeof TESTER_FEATURES;

@@ -98,7 +98,11 @@ export const adminSaveHexMap = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
-        mapId: z.string().optional(),
+        // id карты идёт в SQL как есть — только буквы, цифры, «_» и «-» (аудит 11.11.2026).
+        mapId: z
+          .string()
+          .regex(/^[A-Za-z0-9_-]{1,64}$/)
+          .optional(),
         name: z.string().min(1).max(100).optional(),
         /**
          * Версия карты, с которой начинали править. Пока редактор держал
@@ -126,6 +130,14 @@ export const adminSaveHexMap = createServerFn({ method: "POST" })
         .data as Array<{ id: string }> | null;
       if (existing && existing.length > 0) {
         mapId = existing[0].id;
+      }
+    }
+    // Мир строителей растёт руками игроков (lib/landPlace): сохранение редактора
+    // целиком снесло бы положенную землю. Его правят только в игре (режим бога).
+    if (mapId) {
+      const { isBuilderWorld } = await import("./beta-raid/land/builder-world");
+      if (await isBuilderWorld(mapId)) {
+        throw new Error("Мир строителей правится только в игре (режим бога)");
       }
     }
 
@@ -217,8 +229,9 @@ export const adminSaveHexMap = createServerFn({ method: "POST" })
             return `('${mapId}', ${q}, ${r}, ${terrain}, ${road}, ${obj}, ${cfg}, ${decor}, ${bld}, ${bcfg}, ${v.voidFog ? "true" : "false"}, '${stamp}')`;
           })
           .join(",");
+        // natureN — окружение шахты (§8.80, обход базы): той же постройке — из базы.
         await mcpExec(
-          `INSERT INTO yuplink.raid_map_cells AS c (map_id, q, r, terrain_id, road_id, object_id, object_config, decoration_id, building_id, building_config, void_fog, saved_at) VALUES ${values} ON CONFLICT (map_id, q, r) DO UPDATE SET terrain_id = EXCLUDED.terrain_id, road_id = EXCLUDED.road_id, object_id = EXCLUDED.object_id, object_config = EXCLUDED.object_config, decoration_id = EXCLUDED.decoration_id, building_id = EXCLUDED.building_id, building_config = CASE WHEN EXCLUDED.building_id IS NULL THEN NULL ELSE EXCLUDED.building_config END, building_skin_id = CASE WHEN EXCLUDED.building_id IS NULL OR EXCLUDED.building_id IS DISTINCT FROM c.building_id THEN NULL ELSE c.building_skin_id END, void_fog = EXCLUDED.void_fog, saved_at = EXCLUDED.saved_at;`,
+          `INSERT INTO yuplink.raid_map_cells AS c (map_id, q, r, terrain_id, road_id, object_id, object_config, decoration_id, building_id, building_config, void_fog, saved_at) VALUES ${values} ON CONFLICT (map_id, q, r) DO UPDATE SET terrain_id = EXCLUDED.terrain_id, road_id = EXCLUDED.road_id, object_id = EXCLUDED.object_id, object_config = EXCLUDED.object_config, decoration_id = EXCLUDED.decoration_id, building_id = EXCLUDED.building_id, building_config = CASE WHEN EXCLUDED.building_id IS NULL THEN NULL WHEN EXCLUDED.building_id IS NOT DISTINCT FROM c.building_id AND c.building_config ? 'natureN' THEN COALESCE(EXCLUDED.building_config, '{}'::jsonb) || jsonb_build_object('natureN', c.building_config->'natureN') ELSE EXCLUDED.building_config END, building_skin_id = CASE WHEN EXCLUDED.building_id IS NULL OR EXCLUDED.building_id IS DISTINCT FROM c.building_id THEN NULL ELSE c.building_skin_id END, void_fog = EXCLUDED.void_fog, saved_at = EXCLUDED.saved_at;`,
         );
       }
       // Клетки, которых в этом сохранении не было — стёртые: убираем их.

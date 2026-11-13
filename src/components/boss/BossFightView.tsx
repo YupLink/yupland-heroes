@@ -48,6 +48,7 @@ import type { Filler } from "@/components/admin/reward/rewardDraft";
 import { clampNum, DEF_CFG, toDraftCfg, fromDraftCfg } from "./boss-screen-types";
 import type { DraftConfig } from "./boss-screen-types";
 
+import { thumb } from "@/lib/image";
 export function fillerMeta(fl: Filler): { icon: string; label: string } {
   switch (fl.kind) {
     case "likes": return { icon: "❤️", label: "лайки" };
@@ -156,7 +157,7 @@ export function BossScreen({ onBack }: { onBack: () => void }) {
       qc.invalidateQueries({ queryKey: ["my-energy"] });
       qc.invalidateQueries({ queryKey: ["my-yupland-status"] });
       qc.invalidateQueries({ queryKey: ["yupland-status"] });
-      qc.invalidateQueries({ queryKey: ["my-tickets"] });
+      qc.invalidateQueries({ queryKey: ["my-resources"] });
       qc.invalidateQueries({ queryKey: ["my-like-balance"] });
       qc.invalidateQueries({ queryKey: ["my-chip-inventory"] });
     },
@@ -371,7 +372,7 @@ export function BossScreen({ onBack }: { onBack: () => void }) {
                   dead ? "border-gold shadow-[0_0_30px_rgba(212,175,55,0.5)]" : "border-red-500 glow-boss",
                 )}>
                   {b.imageUrl ? (
-                    <img src={b.imageUrl} alt="" className={cn("h-full w-full object-cover transition", dead && "grayscale")} />
+                    <img src={thumb(b.imageUrl, 128)} alt="" className={cn("h-full w-full object-cover transition", dead && "grayscale")} />
                   ) : (
                     <div className="grid h-full w-full place-items-center bg-gradient-to-b from-red-950/40 to-black/60">
                       <Skull className={cn("h-14 w-14", dead ? "text-gold" : "text-red-400/80 drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]")} />
@@ -456,7 +457,7 @@ export function BossScreen({ onBack }: { onBack: () => void }) {
                         >
                           {meta?.image ? (
                             <img
-                              src={meta.image}
+                              src={thumb(meta.image, 64)}
                               alt={meta.name ?? "pack"}
                               className="h-6 w-6 rounded-md object-cover ring-1 ring-neon/30"
                               loading="lazy"
@@ -549,7 +550,7 @@ export function BossScreen({ onBack }: { onBack: () => void }) {
                                       >
                                         {meta?.image ? (
                                           <img
-                                            src={meta.image}
+                                            src={thumb(meta.image, 64)}
                                             alt=""
                                             className="h-4 w-4 rounded object-cover"
                                           />
@@ -926,7 +927,7 @@ function BossBattle({
               "relative h-20 w-20 overflow-hidden rounded-2xl border-2 border-red-500 bg-secondary glow-boss transition",
               fx.phase === "players" && "animate-boss-hit",
             )}>
-              {img ? <img src={img} alt="" className="h-full w-full object-cover" />
+              {img ? <img src={thumb(img, 160)} alt="" className="h-full w-full object-cover" />
                 : <div className="grid h-full w-full place-items-center"><Skull className="h-8 w-8 text-red-400/80" /></div>}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/15" />
               {fx.phase === "players" && fx.hits.length > 0 && (
@@ -1544,7 +1545,7 @@ function MiniBossPanel({ onSaved }: { onSaved: () => void }) {
       {miniActive ? (
         <div className="space-y-3">
           <div className="space-y-2 rounded-xl border border-success/40 bg-secondary/20 p-3">
-            {boss.imageUrl && <img src={boss.imageUrl} alt="" className="mx-auto h-24 w-24 rounded-2xl object-cover" />}
+            {boss.imageUrl && <img src={thumb(boss.imageUrl, 192)} alt="" className="mx-auto h-24 w-24 rounded-2xl object-cover" />}
             <div className="text-center font-display text-base font-bold">{boss.name}</div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
               <div className="h-full rounded-full bg-success transition-all" style={{ width: `${hpPct}%` }} />

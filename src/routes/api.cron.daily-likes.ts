@@ -3,6 +3,7 @@ import { mcpExec } from "@/server/db/mcpClient";
 import { pg } from "@/server/db/pg";
 import { nanoid } from "nanoid";
 import { runTownDailyTick } from "@/server/api/beta-raid/town-cron";
+import { cronDenied } from "@/server/cronAuth";
 
 // Ежедневное начисление лайков всем юзерам (кто ниже cap'a). Крон бьёт сюда раз
 // в сутки (00:00 UTC). Защита через CRON_SECRET.
@@ -24,13 +25,8 @@ export const Route = createFileRoute("/api/cron/daily-likes")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         try {
           const rows = (await mcpExec(
             "SELECT * FROM yuplink.grant_daily_likes_for_all();",

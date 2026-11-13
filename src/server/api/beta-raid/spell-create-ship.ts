@@ -1,4 +1,6 @@
-// «Создать корабль» (вид create_ship): новый малый борт на воде рядом с героем.
+// «Создать корабль» (вид create_ship): новый малый борт на воде рядом с героем;
+// «Создать большой корабль» (create_big_ship, владелец 30.10.2026) — большой, на любую
+// воду, океан тоже: малому в океан нельзя, и в океане малое заклинание отказывает.
 //
 // Вынесено из spell-effects.ts (правило ≤250 строк). Механика своя не
 // придумана: вставка — как у верфи (ship-action.createShip), поиск воды — тот
@@ -21,6 +23,8 @@ import { freeWaterAround } from "./ships";
 import { canIgnoreVoid, isVoidCellLive } from "./voidGate";
 import { shipMaxHp } from "@/lib/shipHealth";
 import type { SpellEffectResult } from "./spell-effects";
+
+type ShipKind = "small" | "big";
 
 /** Есть ли уже строка с этим id — ответ на «вставка прошла, а ответ потерялся». */
 async function shipExists(id: string): Promise<boolean> {
@@ -48,13 +52,14 @@ async function insertShip(
   mapId: string,
   owner: string,
   spot: { q: number; r: number },
+  kind: ShipKind,
 ): Promise<boolean> {
   let failure: unknown = null;
   try {
     const rows = (await mcpExec(
       `INSERT INTO yuplink.beta_raid_ship (id, map_id, q, r, owner, kind, hp)
        VALUES (${sqlStr(id)}, ${sqlStr(mapId)}, ${spot.q}, ${spot.r}, ${sqlStr(owner)},
-               'small', ${shipMaxHp("small")})
+               ${sqlStr(kind)}, ${shipMaxHp(kind)})
        ON CONFLICT (id) DO NOTHING
        RETURNING id;`,
       { wrapJsonCte: true },
@@ -85,7 +90,10 @@ async function insertShip(
  * Малый — потому что океан ему заказан: и вода ищется «не океан», и запас
  * хода полный малый. Большой строится только верфью за дерево и «Молоток».
  */
-export async function createShipNearHero(wallet: string): Promise<SpellEffectResult> {
+export async function createShipNearHero(
+  wallet: string,
+  kind: ShipKind = "small",
+): Promise<SpellEffectResult> {
   const mapId = await myMapId(wallet);
   const pos = await ownCell(wallet).catch(() => null);
   if (!pos) return { ok: false, reasonKey: "spell.not_on_map" };
@@ -97,12 +105,16 @@ export async function createShipNearHero(wallet: string): Promise<SpellEffectRes
     return { ok: false, reasonKey: "braid.void_blocked" };
   }
 
-  const spot = await freeWaterAround(mapId, pos.q, pos.r, bypass, "small");
-  if (!spot) return { ok: false, reasonKey: "spell.no_water_near" };
+  const spot = await freeWaterAround(mapId, pos.q, pos.r, bypass, kind);
+  if (!spot) {
+    // Вода рядом есть, но только океан — малому туда нельзя: говорим прямо, а не «нет воды».
+    const ocean = kind === "small" && (await freeWaterAround(mapId, pos.q, pos.r, bypass, "big"));
+    return { ok: false, reasonKey: ocean ? "spell.ocean_small" : "spell.no_water_near" };
+  }
 
   const id = `ship_${nanoid(10)}`;
   const owner = await raidOwner(wallet);
-  if (!(await insertShip(id, mapId, owner, spot))) {
+  if (!(await insertShip(id, mapId, owner, spot, kind))) {
     return { ok: false, reasonKey: "spell.no_water_near" };
   }
 

@@ -3,8 +3,12 @@
 // Вынесено из BetaRaidScreen не ради красоты: экран и без того упирался в 249
 // строк при лимите 250. Заодно развилка «есть герой / нет героя» перестала
 // расползаться по компонентам — её видно целиком здесь.
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RaidState } from "./useBetaRaidData";
+import { onMineBuildStart } from "./mine-build/mineBuildStore";
+import { onTreeMapStart } from "./tree-map/treeMapEvents";
+import { onHandStart } from "./hand/handStore";
+import { onLadderStart } from "./sight/ladderMode";
 
 /**
  * Сколько «камера считается наведённой на героя» после первого нажатия.
@@ -63,6 +67,12 @@ export function useRaidHeroUi(state: RaidState | undefined): RaidHeroUi {
   // нажатие была бы платой ни за что.
   const aimedAt = useRef(0);
   const aimedCell = useRef("");
+  // «Поставить» шахту из рюкзака в окне замка — окно уходит, карта в режиме
+  // стройки. Окно героя (HeroQuickModal) закрывается само, откуда бы ни открыли.
+  useEffect(() => onMineBuildStart(() => setCastle(false)), []);
+  useEffect(() => onHandStart(() => setCastle(false)), []);
+  useEffect(() => onLadderStart(() => setCastle(false)), []);
+  useEffect(() => onTreeMapStart(() => setCastle(false)), []);
 
   const pos = state?.position;
   const cell = pos ? `${pos.q},${pos.r}` : "";
@@ -135,3 +145,4 @@ export function useRaidHeroUi(state: RaidState | undefined): RaidHeroUi {
     ],
   );
 }
+

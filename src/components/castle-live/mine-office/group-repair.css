@@ -1,0 +1,5 @@
+.mine-buildings .mb-group-repair { padding: 2px 6px 6px; }
+.mine-buildings .mb-group-repair > .mb-outline {
+  width: 100%; min-height: 36px; padding: 7px 12px; font-size: 14px; border-radius: 10px;
+}
+.mine-buildings .mb-repair-scope { color: #e3c16d; }

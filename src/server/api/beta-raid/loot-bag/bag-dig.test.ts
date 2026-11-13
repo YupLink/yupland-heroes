@@ -186,7 +186,12 @@ describe("сроки бугорка", () => {
       q: 5,
       r: 7,
       items: [
-        { stackKey: BANANA, count: 3, expiresAt: db.now + HOUR, marks: { mob: 3, mine: 0, field: 0, loot: 0 } },
+        {
+          stackKey: BANANA,
+          count: 3,
+          expiresAt: db.now + HOUR,
+          marks: { mob: 3, mine: 0, field: 0, loot: 0 },
+        },
         { stackKey: BANANA, count: 4, expiresAt: db.now + 5 * HOUR },
         { stackKey: "custom:cst_milk", count: 2, expiresAt: db.now - 1 },
       ],
@@ -197,7 +202,12 @@ describe("сроки бугорка", () => {
     db.now += 1000;
     await bury();
     expect(bag()?.items).toEqual([
-      expect.objectContaining({ stackKey: BANANA, count: 7, expiresAt: db.now + TTL, marks: expect.objectContaining({ mob: 3 }) }),
+      expect.objectContaining({
+        stackKey: BANANA,
+        count: 7,
+        expiresAt: db.now + TTL,
+        marks: expect.objectContaining({ mob: 3 }),
+      }),
     ]);
   });
 

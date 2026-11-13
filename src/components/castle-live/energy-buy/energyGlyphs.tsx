@@ -5,7 +5,7 @@ import type { PayOpt } from "./energyOffers";
 export function PaymentGlyph({ method }: { method: PayOpt["method"] }) {
   return (
     <span className="energy-buy__payment-glyph" aria-hidden="true">
-      {method === "tickets" || method === "likes" ? (
+      {method === "gold" || method === "likes" ? (
         <img src={`/resources/${method}.png`} alt="" />
       ) : method === "stars" ? (
         "★"

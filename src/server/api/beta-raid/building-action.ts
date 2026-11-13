@@ -9,10 +9,12 @@ import { requireNotVoid } from "./voidGate";
 import { parseTiers, heroFits, type BuildingTier } from "./buildings";
 import { selectedHero } from "./hero-current";
 import { cellBuildingEffect, isBuilt } from "@/lib/buildingEffect";
+import { isMushroomConfig } from "@/lib/mushroomKinds";
 import { skinDisplayName } from "@/lib/skinName";
 import { publishRaid } from "../../raidLive";
 import { noteEnergyInPrices } from "./econ/trade-hooks";
 import { islandGateBlock, islandGateText, requireIslandGate } from "../achievements/gate";
+import { isDemoMap, noExitText } from "./island/demo-map";
 
 const cellInput = (d: unknown) => z.object({ q: z.number().int(), r: z.number().int() }).parse(d);
 
@@ -99,11 +101,18 @@ export const getBuildingOffer = createServerFn({ method: "GET" })
     const b = await loadCellBuilding(mapId, data.q, data.r);
     if (!b) throw new Error("Здесь нет постройки");
 
-    const { current, next, price, costs, requires } = offerOf(b.tiers, b.tier);
+    const offer = offerOf(b.tiers, b.tier);
+    // Гриб DARAI не улучшают (владелец, 22.10.2026: «ускорение фарма недоступно»).
+    const next = isMushroomConfig(b.config) ? null : offer.next;
+    const { current, price, costs, requires } = offer;
     const hero = await selectedHero(wallet);
     // Портал острова чинится только с ачивками (§8.57) — кнопка серая с причиной.
     const gate = b.effect === "portal" && next ? await islandGateBlock(wallet, mapId) : null;
-    const fit = gate !== null ? { ok: false, reason: islandGateText(gate) } : heroFits(requires, hero);
+    // Портал демо-острова никуда не ведёт — чинить незачем (demo-island).
+    const demo = b.effect === "portal" && next && (await isDemoMap(mapId));
+    const fit = demo
+      ? { ok: false, reason: noExitText(mapId) }
+      : gate !== null ? { ok: false, reason: islandGateText(gate) } : heroFits(requires, hero);
 
     // Достроенная верфь/вышка умеют больше, чем менять облик, — что именно,
     // считает отдельный модуль (корабль, разведка). Ратуша — справка о городе.
@@ -126,10 +135,18 @@ export const getBuildingOffer = createServerFn({ method: "GET" })
             cellConfig: b.config,
           });
 
+    // Кузница: кнопка «Ремонт» артефактов (§8.72) — пока только админам.
+    const { forgeRepairShown } = await import("../art-repair/art-repair-gate");
+    // Своя постройка мира строителей: разобрать за половину цены, подписать табличку.
+    const { ownOffer } = await import("./building-sale/bsale-own");
+    const { accAccountId } = await import("../currency/move");
+    const account = await accAccountId(wallet).catch(() => null);
     return {
+      own: await ownOffer(account, mapId, data.q, data.r),
       effect,
       built,
       extra,
+      repair: await forgeRepairShown(wallet, b.buildingId),
       name: b.name,
       tier: b.tier,
       tierName: current?.name ?? null,
@@ -159,6 +176,7 @@ export const buildNextTier = createServerFn({ method: "POST" })
 
     const b = await loadCellBuilding(mapId, data.q, data.r);
     if (!b) throw new Error("Здесь нет постройки");
+    if (isMushroomConfig(b.config)) throw new Error("dmine.no_upgrade");
     const { next, costs, requires } = offerOf(b.tiers, b.tier);
     if (!next) throw new Error("Постройка уже на верхнем тире");
     if (!costs || costs.length === 0) throw new Error("Для этого перехода не задана цена");
@@ -167,6 +185,7 @@ export const buildNextTier = createServerFn({ method: "POST" })
     const fit = heroFits(requires, hero);
     if (!fit.ok) throw new Error(fit.reason ?? "Твой герой не подходит");
     if (b.effect === "portal") await requireIslandGate(wallet, mapId);
+    if (b.effect === "portal" && (await isDemoMap(mapId))) throw new Error(noExitText(mapId));
 
     // Ступень занимаем ДО оплаты и только ту, которую прочитали. Прежний
     // безусловный `tier + 1` при двух одновременных нажатиях уводил постройку
@@ -186,7 +205,10 @@ export const buildNextTier = createServerFn({ method: "POST" })
 
     // Ключ платежа включает ПЛАТЕЛЬЩИКА: без него повторный подход к той же
     // ступени другим игроком считался бы уже оплаченным.
-    const ref = `build:${mapId}:${data.q}:${data.r}:${b.tier}:${wallet}`;
+    // Постройка игрока мира строителей — ещё и ключ установки: разобрал и поставил
+    // заново — та же ступень снова платная (иначе ключ «уже проведён» = даром).
+    const { placeEpoch } = await import("./building-sale/bsale-own");
+    const ref = `build:${mapId}:${data.q}:${data.r}:${b.tier}:${wallet}${await placeEpoch(mapId, data.q, data.r)}`;
     // Платим ВСЕМИ строками цены разом (дерево + камень + …): общий модуль
     // сам откатит уже списанное, если какая-то строка не прошла.
     const { payResources } = await import("./resource-pay");
@@ -208,6 +230,8 @@ export const buildNextTier = createServerFn({ method: "POST" })
     // до конца срока кэша.
     const { dropMapBase } = await import("./map-base");
     dropMapBase();
+    // Достроенный склад сразу принимает урожай (кэш складов карты — 30 с).
+    (await import("./warehouse-map-cells")).forgetWarehouseCells(mapId);
     publishRaid({ mapId, type: "built", cells: [`${data.q},${data.r}`] });
     // Тир — в журнал карты: соседи видят новый облик дельтой, без перекачки.
     {

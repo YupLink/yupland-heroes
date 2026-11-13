@@ -2,6 +2,7 @@ import { TitleAutocomplete } from "@/components/TitleAutocomplete";
 import { KindToggle } from "./KindToggle";
 import { PackPicker } from "./PackPicker";
 import { PackQtyInput } from "./PackQtyInput";
+import { GoodsPicker } from "./GoodsPicker";
 import type { TierDraft } from "./types";
 
 export function TiersEditor({
@@ -52,7 +53,7 @@ export function TiersEditor({
                 </div>
                 <button type="button" onClick={() => remove(i)} className="mt-4 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-destructive/30 bg-destructive/5 text-destructive transition hover:bg-destructive/10" title="Удалить ярус">✕</button>
               </div>
-              <KindToggle value={t.kind} onChange={(k) => update(i, { kind: k, rewardToken: k === "energy" ? "energy" : t.rewardToken })} />
+              <KindToggle value={t.kind} onChange={(k) => update(i, { kind: k, rewardToken: k === "energy" || k === "custom" ? k : t.rewardToken === "energy" || t.rewardToken === "custom" ? (tokenOptions[0] ?? "") : t.rewardToken })} />
               {t.kind === "ft" ? (
                 <>
                   <div className="grid grid-cols-2 gap-2">
@@ -91,6 +92,14 @@ export function TiersEditor({
                     </div>
                   </div>
                   <div className="mt-1 text-[10px] text-muted-foreground">Начисляется мгновенно на баланс энергии при погашении — без токена и без он-чейна.</div>
+                </div>
+              ) : t.kind === "custom" ? (
+                <div className="space-y-2">
+                  <GoodsPicker itemId={t.itemId ?? ""} onPick={(g) => update(i, { itemId: g.id, itemName: g.name, itemImage: g.image })} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="number" min={1} value={t.rewardMin} onChange={(e) => update(i, { rewardMin: e.target.value })} placeholder="от" className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-gold/50" />
+                    <input type="number" min={1} value={t.rewardMax} onChange={(e) => update(i, { rewardMax: e.target.value })} placeholder="до" className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-gold/50" />
+                  </div>
                 </div>
               ) : t.kind === "nft" ? (
                 <div>

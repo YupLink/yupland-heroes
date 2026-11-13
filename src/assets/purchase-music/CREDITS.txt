@@ -1,0 +1,5 @@
+Yupland — A Little More Adventure, Suno variant 2.
+Generated via owner-provided sunoapi.org account; selected and approved for game publication 2026-10-24.
+Track ID: 0ed15d80-d866-4c33-980a-66a9af9ad322
+Prepared at 128kbps stereo MP3, 44.1kHz, -15.3 LUFS measured, gentle boundary fades.
+2026-10-24: level matched to castle (-14.19 LUFS) and raid (-14.95 LUFS), after live app audio capture showed purchase at -20.38 LUFS. Same track and timings. True peak measured below -1.5 dBTP; no clipping. Live transition code unchanged.

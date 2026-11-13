@@ -11,6 +11,7 @@ import { creditEnergy } from "../energy-credit";
 import type { BackpackTakeSnapshot } from "@/server/api/beta-raid/market-backpack-take";
 import type { MarketPriceResource } from "@/lib/marketItem";
 import type { PortalPrice as ResourcePrice } from "@/lib/portal";
+import { ticketRowAsGold } from "@/lib/ticketPriceGold";
 
 const RES = ["gold", "stone", "wood", "diamonds"] as const;
 export const isRes = (r: string): boolean => (RES as readonly string[]).includes(r);
@@ -78,11 +79,13 @@ async function refundItem(
 export async function refundOne(
   wallet: string,
   account: string | null,
-  p: ResourcePrice,
+  row: ResourcePrice,
   ref: string,
   kind = "portal_refund",
   keyed = false,
 ): Promise<void> {
+  // Цену «в билетах» брали золотом ×500 (§8.61) — тем же золотом и возвращаем.
+  const p = ticketRowAsGold(row);
   const amount = Number(p.amount) || 0;
   if (amount <= 0) return;
 

@@ -68,7 +68,7 @@
 [data-harvest-tile] > svg { width: 40px !important; height: 40px !important; }
 [data-harvest-tile] > img { transform: scale(1.2); }
 [data-harvest-tile] > div { line-height: 1.12 !important; }
-[data-harvest-tile] > div > span:first-child {
+[data-harvest-heading] > span {
   padding: 2px 8px !important;
   font-size: 10px !important;
   line-height: 12px;
@@ -193,3 +193,309 @@
   }
   [data-harvest-arrow] { justify-items: end; padding-right: 3px; background: linear-gradient(90deg, #11141500 55%, #111415 100%) !important; }
 }
+
+/* Only the approved raid Harvest window receives the new layout. */
+[data-hud-modal="harvest"] [data-harvest-modal] {
+  width: min(440px, calc(100vw - 16px)) !important;
+  max-width: calc(100vw - 16px) !important;
+  border: 1px solid #a6804b !important;
+  border-radius: 24px !important;
+  background: radial-gradient(ellipse at 50% 0, #1c1e1e 0, #121516 50%, #101213 100%) !important;
+  box-shadow: 0 22px 55px #000b, inset 0 0 0 1px #d5ae6a24 !important;
+  overflow: hidden !important;
+}
+[data-hud-modal="harvest"] { padding-inline: 8px !important; }
+[data-hud-modal="harvest"] [data-harvest-modal] > div:first-child {
+  min-height: 48px;
+  align-items: center;
+  padding: 10px 12px 4px !important;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #1a1d1d;
+}
+[data-hud-modal="harvest"] [data-harvest-modal] > div:first-child h3 {
+  font-size: 19px;
+  line-height: 1.15;
+  color: #f3eee5;
+}
+[data-hud-modal="harvest"] [data-harvest-modal] > div:first-child img { transform: scale(1.7); }
+[data-hud-modal="harvest"] [data-harvest-modal] [data-close-button] {
+  width: 44px;
+  height: 44px;
+  border-color: #5d5448 !important;
+  background: #101213 !important;
+  color: #bda483 !important;
+}
+[data-hud-modal="harvest"] [data-harvest-modal] > div:nth-child(2) {
+  padding: 5px 8px 8px !important;
+  gap: 7px !important;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+[data-hud-modal="harvest"] [data-harvest-income], [data-hud-modal="harvest"] [data-harvest-rewards] {
+  border: 1px solid #544a3f !important;
+  border-radius: 16px !important;
+  background: linear-gradient(145deg, #171a1b, #101314) !important;
+  padding: 6px !important;
+  box-shadow: inset 0 1px 0 #d8b77d0f;
+}
+[data-hud-modal="harvest"] [data-harvest-income] h4 {
+  margin: 0 0 4px !important;
+  padding: 0 4px !important;
+  font-size: 13px !important;
+  line-height: 17px;
+  color: #dfd8cd !important;
+}
+[data-hud-modal="harvest"] [data-harvest-rail] {
+  border: 1px solid #343738 !important;
+  border-radius: 13px !important;
+  background: #111415 !important;
+  overflow: hidden;
+}
+[data-hud-modal="harvest"] [data-harvest-viewport] { -webkit-overflow-scrolling: touch; }
+[data-hud-modal="harvest"] [data-harvest-track] { width: 100%; }
+[data-hud-modal="harvest"] [data-harvest-page] { flex: 0 0 100%; min-width: 0; }
+[data-hud-modal="harvest"] [data-harvest-tile] {
+  width: 100% !important;
+  min-height: 132px;
+  gap: 14px !important;
+  padding: 12px 14px !important;
+}
+[data-hud-modal="harvest"] [data-harvest-tile] > img, [data-hud-modal="harvest"] [data-harvest-tile] > svg { width: 64px !important; height: 64px !important; }
+[data-hud-modal="harvest"] [data-harvest-tile] > img { transform: scale(1.2); }
+[data-hud-modal="harvest"] [data-harvest-tile] > div { line-height: 1.12 !important; }
+[data-hud-modal="harvest"] [data-harvest-heading] > span {
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+  line-height: 12px;
+  border-color: #5a442e !important;
+  background: #31291e !important;
+}
+[data-hud-modal="harvest"] [data-harvest-tile] > div > div:nth-child(2) {
+  margin-top: 2px !important;
+  font-size: 17px !important;
+  line-height: 21px;
+}
+[data-hud-modal="harvest"] [data-harvest-rate] {
+  margin-top: 4px;
+  font-size: 17px !important;
+  font-weight: 600;
+  line-height: 17px;
+  color: #d3b16e !important;
+  overflow-wrap: anywhere;
+}
+[data-hud-modal="harvest"] [data-harvest-amount] {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 13px !important;
+  line-height: 17px;
+  color: #bdb8af !important;
+}
+[data-hud-modal="harvest"] [data-harvest-amount] span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+[data-hud-modal="harvest"] [data-harvest-amount] strong {
+  flex: none;
+  font-size: 16px;
+  font-weight: 700;
+  color: #efdfb9;
+}
+[data-hud-modal="harvest"] [data-harvest-amount][data-source-kind="field"] strong {
+  color: #d8d1c4;
+}
+[data-hud-modal="harvest"] [data-harvest-arrow] {
+  width: 44px !important;
+  height: 44px !important;
+  border: 1px solid #8a704c !important;
+  border-radius: 50% !important;
+  background: #29251f !important;
+  color: #edc679 !important;
+}
+[data-hud-modal="harvest"] [data-harvest-arrow]:disabled { border-color: #4a4844 !important; color: #77716a !important; }
+[data-hud-modal="harvest"] [data-harvest-arrow]:focus-visible { outline: 2px solid #f4c653; outline-offset: 2px; }
+[data-hud-modal="harvest"] [data-harvest-income] > div:last-child { margin-top: 6px !important; }
+[data-hud-modal="harvest"] [data-harvest-modal] button[data-harvest-collect][data-game-button], [data-hud-modal="harvest"] [data-harvest-modal] button[data-harvest-claim][data-game-button] {
+  width: 100%;
+  min-height: 44px !important;
+  border-radius: 10px !important;
+  padding: 7px 9px !important;
+  font-size: 13px !important;
+  line-height: 1.2;
+}
+[data-hud-modal="harvest"] [data-harvest-modal] button[data-harvest-collect][data-game-button] {
+  border: 1px solid #9a7849 !important;
+  background: linear-gradient(#33302a, #211f1c) !important;
+  color: #f2e8d8 !important;
+  box-shadow: inset 0 1px 0 #e7c99626 !important;
+}
+[data-hud-modal="harvest"] [data-harvest-modal] button[data-harvest-collect][data-game-button]:disabled {
+  border-color: #55514b !important;
+  background: #1d1f20 !important;
+  color: #9d9890 !important;
+}
+[data-hud-modal="harvest"] [data-harvest-rewards-heading] {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px !important;
+  margin-top: 0 !important;
+  padding: 1px 4px !important;
+  font-size: 12px !important;
+  line-height: 19px;
+}
+[data-hud-modal="harvest"] [data-harvest-rewards-heading] > span { white-space: nowrap; }
+[data-hud-modal="harvest"] [data-harvest-details-toggle] { gap: 3px !important; padding-inline: 3px !important; font-size: 11px !important; }
+[data-hud-modal="harvest"] [data-harvest-rewards-heading] img { width: 21px; height: 21px; transform: scale(1.2); }
+[data-hud-modal="harvest"] [data-harvest-reward-content] { margin-top: 4px !important; display: flex; flex-direction: column; gap: 6px; }
+[data-hud-modal="harvest"] [data-harvest-reward-content] > * { margin: 0 !important; }
+[data-hud-modal="harvest"] [data-harvest-details] { padding-top: 4px; }
+[data-hud-modal="harvest"] [data-harvest-details-toggle]:focus-visible { outline: 2px solid #f4c653; outline-offset: 2px; }
+[data-hud-modal="harvest"] [data-harvest-source] {
+  border-color: #343738 !important;
+  border-radius: 13px !important;
+  background: #111415 !important;
+}
+[data-hud-modal="harvest"] [data-harvest-source] > div:first-child {
+  min-height: 33px;
+  padding: 5px 8px !important;
+  border-color: #343738 !important;
+}
+[data-hud-modal="harvest"] [data-harvest-source] > div:first-child span:first-child {
+  font-size: 14px !important;
+  line-height: 20px;
+}
+[data-hud-modal="harvest"] [data-harvest-drop] {
+  min-height: 29px;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+}
+[data-hud-modal="harvest"] [data-harvest-drop] img, [data-hud-modal="harvest"] [data-harvest-drop] svg { width: 18px !important; height: 18px !important; transform: none !important; }
+[data-hud-modal="harvest"] [data-harvest-summary] [data-harvest-drop] { min-height: 52px; font-size: 14px !important; }
+[data-hud-modal="harvest"] [data-harvest-summary] [data-harvest-drop] img, [data-hud-modal="harvest"] [data-harvest-summary] [data-harvest-drop] svg { width: 28px !important; height: 28px !important; }
+[data-hud-modal="harvest"] [data-harvest-modal] button[data-harvest-claim][data-game-button] {
+  border: 1px solid #ffe08e !important;
+  background: linear-gradient(#ffda78, #e3a72f) !important;
+  color: #18130b !important;
+  box-shadow: inset 0 1px 0 #fff6c5b0, 0 4px 11px #bd81222e !important;
+}
+@media (max-width: 430px) {
+  [data-hud-modal="harvest"] [data-harvest-tile] { gap: 12px !important; padding-inline: 12px !important; }
+  [data-hud-modal="harvest"] [data-harvest-tile] > img, [data-hud-modal="harvest"] [data-harvest-tile] > svg { width: 56px !important; height: 56px !important; }
+}
+
+
+[data-hud-modal="harvest"] [data-harvest-summary] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+}
+[data-hud-modal="harvest"] [data-harvest-summary] [data-harvest-drop] {
+  min-width: 0;
+  min-height: 48px;
+  border-right: 1px solid #343738;
+  border-bottom: 1px solid #343738;
+  padding: 5px 7px !important;
+  gap: 5px;
+}
+[data-hud-modal="harvest"] [data-harvest-summary] [data-harvest-drop]:nth-child(2n) { border-right: 0; }
+[data-hud-modal="harvest"] [data-harvest-summary] [data-harvest-drop] > span { gap: 6px !important; }
+[data-hud-modal="harvest"] [data-harvest-summary] [data-harvest-drop] > b { font-size: 15px; }
+
+[data-hud-modal="harvest"] [data-harvest-sources] {
+  border: 1px solid #544a3f;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #171a1b, #101314);
+  padding: 7px;
+  box-shadow: inset 0 1px 0 #d8b77d0f;
+}
+[data-hud-modal="harvest"] .harvest-section-title {
+  color: #eee8de !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  line-height: 24px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+[data-hud-modal="harvest"] .harvest-section-title { margin: 0 0 5px; padding: 0 4px; }
+[data-hud-modal="harvest"] .harvest-empty { margin: 0; padding: 16px 8px; color: #aaa39a; text-align: center; font-size: 13px; }
+[data-hud-modal="harvest"] .harvest-list {
+  overflow: hidden;
+  border: 1px solid #343738;
+  border-radius: 13px;
+  background: #111415;
+}
+[data-hud-modal="harvest"] .harvest-list-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 60px;
+  padding: 4px 7px;
+  border-bottom: 1px solid #343738;
+}
+[data-hud-modal="harvest"] .harvest-list-row:last-child { border-bottom: 0; }
+[data-hud-modal="harvest"] .harvest-row-icon { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; }
+[data-hud-modal="harvest"] .harvest-row-icon img { width: 42px; height: 42px; object-fit: contain; image-rendering: pixelated; }
+[data-hud-modal="harvest"] .harvest-row-icon svg { width: 32px; height: 32px; color: #d6b67a; }
+[data-hud-modal="harvest"] .harvest-row-main { display: flex; min-width: 0; flex: 1; flex-direction: column; line-height: 1.25; }
+[data-hud-modal="harvest"] .harvest-row-main strong { overflow-wrap: anywhere; color: #f0e8db; font-size: 15px; }
+[data-hud-modal="harvest"] .harvest-row-rate { color: #eac474; font-size: 15px; font-weight: 700; }
+[data-hud-modal="harvest"] .harvest-row-meta { color: #b9b3aa; font-size: 12px; }
+[data-hud-modal="harvest"] .harvest-row-meta b { color: #f0e8db; font-size: 13px; font-weight: 700; }
+[data-hud-modal="harvest"] .harvest-row-remaining {
+  display: flex;
+  flex: 0 0 min(82px, 24vw);
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+  padding-left: 7px;
+  border-left: 1px solid #343738;
+  line-height: 1.1;
+}
+[data-hud-modal="harvest"] .harvest-row-remaining span { color: #b9b3aa; font-size: 11px; }
+[data-hud-modal="harvest"] .harvest-row-remaining strong { color: #f0e8db; font-size: 16px; }
+[data-hud-modal="harvest"] [data-harvest-broken] .harvest-row-remaining { border-left-color: #b47456; }
+[data-hud-modal="harvest"] [data-harvest-broken] .harvest-row-remaining strong { color: #efaa8d; font-size: 14px; }
+[data-hud-modal="harvest"] [data-harvest-broken] .harvest-row-rate { color: #b9b3aa; }
+[data-hud-modal="harvest"] [data-harvest-modal] button[data-harvest-show-cell][data-game-button] {
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #7a5c38;
+  border-radius: 50%;
+  background: #201e1b;
+  color: #e8c47f;
+}
+[data-hud-modal="harvest"] .harvest-row-map { display: flex; flex: 0 0 44px; flex-direction: column; align-items: center; gap: 1px; }
+[data-hud-modal="harvest"] .harvest-row-map > span { color: #e3c16d; font-size: 10px; font-weight: 700; line-height: 12px; white-space: nowrap; }
+[data-hud-modal="harvest"] [data-harvest-modal] button[data-harvest-show-cell]:focus-visible { outline: 2px solid #f4c653; outline-offset: 2px; }
+[data-hud-modal="harvest"] [data-harvest-collect-wrap] { margin: 6px 0; }
+[data-hud-modal="harvest"] button[data-harvest-show-cell]:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+/* Collapsed groups retain loss warnings; cell actions belong only to expanded rows. */
+[data-hud-modal="harvest"] .harvest-source-group + .harvest-source-group { border-top: 1px solid #343738; }
+[data-hud-modal="harvest"] .harvest-group-summary { display: flex; align-items: center; gap: 8px; min-height: 76px; padding: 9px; cursor: pointer; list-style: none; }
+[data-hud-modal="harvest"] .harvest-group-summary::-webkit-details-marker { display: none; }
+[data-hud-modal="harvest"] .harvest-group-summary:focus-visible { outline: 2px solid #e3c16d; outline-offset: -3px; border-radius: 10px; }
+[data-hud-modal="harvest"] .harvest-group-count { color: #b9b3aa; font-size: 12px; font-weight: 400; white-space: nowrap; }
+[data-hud-modal="harvest"] .harvest-group-chevron { width: 22px; height: 22px; flex: 0 0 22px; color: #e3c16d; }
+[data-hud-modal="harvest"] details[open] > summary .harvest-group-chevron { transform: rotate(180deg); }
+[data-hud-modal="harvest"] .harvest-group-alert { color: #ff9990; font-size: 12px; font-weight: 600; line-height: 1.4; }
+[data-hud-modal="harvest"] .harvest-group-details { border-top: 1px solid #544a3f; }
+[data-hud-modal="harvest"] [data-harvest-seized] { background: #4d20201f; }
+[data-hud-modal="harvest"] [data-harvest-seized] .harvest-row-remaining strong { color: #ff9990; }

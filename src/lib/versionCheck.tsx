@@ -1,6 +1,8 @@
 // Version-check: клиент знает свою BUILD_ID (из vite define) и периодически
 // сверяет с серверной через GET /api/version. При расхождении выставляет
-// `outdated=true` — баннер и critical-action-guard'ы подхватывают.
+// `outdated=true`, и страница тихо обновляется сама, когда игрок не заметит
+// (свернул игру или долго ничего не нажимал, lib/staleReload) — без баннеров
+// и просьб «обновите» (владелец, 28.10.2026).
 
 import {
   createContext,
@@ -10,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { BUILD_ID } from "@/lib/buildId";
+import { installStaleChunkReload, noteActivity, scheduleQuietUpdate } from "@/lib/staleReload";
 
 type Ctx = {
   outdated: boolean;
@@ -28,7 +31,7 @@ export function useVersion() {
   return useContext(VersionCtx);
 }
 
-const CHECK_INTERVAL_MS = 5 * 60 * 1000; // раз в 5 мин
+const CHECK_INTERVAL_MS = 60 * 1000; // раз в минуту: запрос лёгкий, новая версия видна быстрее
 
 /**
  * «Жёсткая» перезагрузка с обходом HTTP-кэша. window.location.reload() в
@@ -46,7 +49,7 @@ const CHECK_INTERVAL_MS = 5 * 60 * 1000; // раз в 5 мин
  * Шаги 1-2 опциональны (могут не отработать, в Safari Cache Storage API
  * не всегда есть) — но шаг 3 всегда срабатывает.
  */
-async function forceReloadBustCache(): Promise<void> {
+export async function forceReloadBustCache(): Promise<void> {
   if (typeof window === "undefined") return;
   try {
     if ("caches" in window) {
@@ -102,6 +105,9 @@ function patchFetchOnce(): void {
       url.startsWith("/api/") ||
       url.includes(window.location.host);
     if (!isOurs) return orig(input, init);
+    // Игра что-то делает (шаг героя, бой) — не «простой» для тихого обновления.
+    const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+    if (method.toUpperCase() !== "GET") noteActivity();
 
     const newInit: RequestInit = { ...init };
     const h = new Headers(newInit.headers);
@@ -119,6 +125,8 @@ export function VersionProvider({ children }: { children: ReactNode }) {
     // На SSR не запускаем (window не доступен).
     if (typeof window === "undefined") return;
     patchFetchOnce();
+    // Кусок кода не подгрузился перед импортом — тихая перезагрузка, а не ошибка.
+    const offPreload = installStaleChunkReload();
 
     let cancelled = false;
     let inFlight = false;
@@ -158,11 +166,15 @@ export function VersionProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      offPreload();
       window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
+
+  // Вышла новая версия — обновимся сами, когда игрок не заметит.
+  useEffect(() => (outdated ? scheduleQuietUpdate() : undefined), [outdated]);
 
   const reload = () => {
     if (typeof window !== "undefined") forceReloadBustCache();

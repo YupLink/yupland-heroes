@@ -1,0 +1,14 @@
+{
+  "name": "yupland-heroes-buckwheat-crowns",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "test": "node --test",
+    "build": "vite build",
+    "build:site-demo": "vite build --mode site-demo"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0"
+  }
+}

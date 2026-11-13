@@ -20,6 +20,8 @@ import { getSession } from "@/server/api/user-auth";
 import { useFogOfWar } from "./useFogOfWar";
 import { useAdminFogReveal } from "./adminFogReveal";
 import { useAllCellKeys } from "./useAllCellKeys";
+import { isIslandMapId } from "@/lib/raid/island/ids";
+import { isCreatorMapId } from "@/lib/raid/creator/ids";
 import type { Bounds } from "./viewportClamp";
 import type { MapStore } from "./mapStore";
 import type { FogView, KeySet } from "./fogMask";
@@ -78,7 +80,13 @@ export function useFogView({
   // Хук зовём безусловно: право на раскрытие решает сессия с сервера (тот же
   // admin-allowlist, что и у серверных админ-функций), а не флаг в браузере.
   const revealRequested = useAdminFogReveal(mapId);
-  const revealAll = Boolean(session.data?.isAdmin) && revealRequested;
+  // Право island_god (05.11.2026) — то же раскрытие на острове: туда её режим
+  // бога и пускает, а без него старт острова ставить вслепую.
+  const islandGod = session.data?.islandGod === true && isIslandMapId(mapId ?? "");
+  // Работа креатора (07.11.2026) — голая карта под стройку: тумана нет вовсе.
+  const work =
+    isCreatorMapId(mapId) && (session.data?.creator === true || Boolean(session.data?.isAdmin));
+  const revealAll = work || ((Boolean(session.data?.isAdmin) || islandGod) && revealRequested);
 
   // Набор всех ключей считается ТОЛЬКО в режиме раскрытия: миникарте и
   // границам камеры он нужен, а кадру — нет. Это взгляд на колонки, без

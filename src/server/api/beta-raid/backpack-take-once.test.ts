@@ -101,9 +101,20 @@ describe("закреп клетки охранником", () => {
 
   it("повтор моста по ключу — «закреплено», а не «охранник уже стоит»", () => {
     expect(sql).toContain("WHERE op = 'guardplace:n1'");
-    expect(sql).toContain("FROM prior WHERE NOT prior.was");
+    expect(sql).toContain("FROM prior, here WHERE NOT prior.was");
     expect(sql).toContain("SELECT 'guardplace:n1' FROM g");
     expect(sql).toContain("((SELECT was FROM prior) OR EXISTS (SELECT 1 FROM g)) AS placed");
+  });
+
+  it("под локом шахты: шахта на клетке, хозяин — я и не гриб, иначе не ставит", () => {
+    expect(sql.indexOf("hashtext('mine:m:1:2')")).toBeLessThan(sql.indexOf("WITH prior"));
+    expect(sql).toContain(
+      "FROM yuplink.raid_mine_state s WHERE s.map_id = 'm' AND s.q = 1 AND s.r = 2 AND s.owner_account = 'acc'",
+    );
+    expect(sql).toContain(
+      "c.r = 2 AND c.building_id IS NOT NULL AND NOT (yuplink.raid_mushroom_kind(c.building_config) IS NOT NULL))",
+    );
+    expect(sql).toContain("EXISTS (SELECT 1 FROM here) AS mine");
   });
 
   it("живого не заменяет, имя экранировано", () => {

@@ -249,9 +249,10 @@ export const adminSetBetaRaidMap = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     requireAdmin();
     await mcpExec(
+      // Значение — через JSON и sqlStr (аудит 11.11.2026: id шёл в SQL как есть).
       `INSERT INTO yuplink.settings (key, value)
-       VALUES ('beta_raid_map', '{"mapId": "${data.mapId}"}')
-       ON CONFLICT (key) DO UPDATE SET value = '{"mapId": "${data.mapId}"}';`,
+       VALUES ('beta_raid_map', ${sqlStr(JSON.stringify({ mapId: data.mapId }))})
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;`,
       { wrapJson: false },
     );
     // Активную карту держат в памяти процесса (encounter-where): без сброса

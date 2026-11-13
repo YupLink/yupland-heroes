@@ -1,12 +1,12 @@
 @font-face {
   font-family: "Town Hall Russo";
-  src: url("../../assets/tavern/RussoOne.ttf") format("truetype");
+  src: url("../../assets/tavern/RussoOne.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: "Town Hall Golos";
-  src: url("../../assets/tavern/GolosText.ttf") format("truetype");
+  src: url("../../assets/tavern/GolosText.woff2") format("woff2");
   font-weight: 400 900;
   font-display: swap;
 }
@@ -39,7 +39,7 @@
 .town-hall-header {
   position: absolute;
   z-index: 2;
-  top: max(12px, env(safe-area-inset-top));
+  top: max(12px, var(--app-top,env(safe-area-inset-top,0px)));
   left: 12px;
   right: 12px;
   display: flex;
@@ -169,7 +169,7 @@
   display: grid;
   gap: 8px;
   /* Аукционный дом + казино + «Здесь появятся»: на низком экране — листается, а не лезет под шапку. */
-  max-height: calc(100% - 72px - env(safe-area-inset-top));
+  max-height: calc(100% - 72px - var(--app-top,env(safe-area-inset-top,0px)));
   overflow-y: auto;
   overscroll-behavior: contain;
 }

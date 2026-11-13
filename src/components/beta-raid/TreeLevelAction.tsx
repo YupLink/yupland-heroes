@@ -62,7 +62,8 @@ export function TreeLevelAction({
       // Дерево поднимает герою уровень — значит поехали все его экраны, а не
       // только окно постройки. Ключ «hero-selected» тут был выдуман: нужного
       // запроса с таким именем нет, и карточка героя оставалась старой.
-      invalidateHeroQueries(qc, ["my-tickets", "my-like-balance"]);
+      // Цена «в билетах» — золото ×500 (§8.61): шапка ресурсов видит трату сразу.
+      invalidateHeroQueries(qc, ["my-resources", "my-like-balance"]);
       void qc.invalidateQueries({ queryKey: ["beta-raid-building", q, r] });
       void qc.invalidateQueries({ queryKey: ENERGY_KEY });
       // Дерево «закрылось» на карте — зелёный флажок над ним должен появиться

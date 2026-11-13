@@ -1,13 +1,12 @@
 // Выдача приза мистического бокса — любого вида (владелец, 29.09): пак или
 // другой бокс, артефакт, герой, свой товар (зелья, инструменты, сундуки — в
-// рюкзак героя), ресурс, токен на счёт, билеты, энергия, лайки.
+// рюкзак героя), ресурс, токен на счёт, билеты (с 20.10 — золотом), энергия, лайки.
 //
 // Приз выдаётся ровно один раз на бокс: у каждого вида ключ повтора — ref
 // «mystic:<грант>» (леджеры токенов/ресурсов/билетов/лайков, op-лог рюкзака),
 // а где своего ключа нет (энергия, пак, предмет) — метка в gift_deliver_op.
 // Бросок — выдать не удалось; вызывающий вернёт бокс закрытым, а выпавший
 // приз останется за ним (mystic.ts) — повтор выдаст ТОТ ЖЕ приз.
-import { nanoid } from "nanoid";
 import { secureRandomInt as randomInt } from "@/lib/secureRandom";
 import { pg, sb } from "../db/pg";
 import type { PgMysticItemTemplate } from "../db/pg";
@@ -96,20 +95,13 @@ export async function deliverMysticTier(
     return { kind: "energy", amount };
   }
   if (k === "tickets") {
-    if (amount > 0) {
-      await once(ref, grantId, async () => {
-        await pg.ticketClaims.insert({
-          id: nanoid(),
-          event_id: "te_mystic_box",
-          wallet,
-          token_ids: ref,
-          tickets_awarded: amount,
-        });
-        const { moveTickets } = await import("./tickets-ledger");
-        await moveTickets({ wallet, delta: amount, kind: "nft_claim", ref });
-      });
-    }
-    return { kind: "tickets", amount };
+    // Тир билетов (старые пулы) выдаётся золотом, 100 за билет (§8.61), и
+    // показывается как приз-ресурс «золото». Ключ — ref бокса: повтор не задвоит.
+    const { creditGoldForTickets } = await import("./gold-earn");
+    const gold = await creditGoldForTickets({ wallet, tickets: amount, kind: "mystic", ref });
+    const { noteBoxPrize } = await import("@/server/api/beta-raid/econ/box-note");
+    void noteBoxPrize({ wallet, kind: "resource", code: "gold", amount: gold, ref });
+    return { kind: "resource", amount: gold, code: "gold" };
   }
   if (k === "likes") {
     const { likeAccountId, addLikes } = await import("../likesAccount");

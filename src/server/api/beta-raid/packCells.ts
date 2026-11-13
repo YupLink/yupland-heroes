@@ -46,6 +46,18 @@ export type PackedCells = {
    * нужны, чтобы тап прямо по ратуше открывал окно города.
    */
   townHalls: number[];
+  /**
+   * Индексы клеток с ШАХТОЙ (mine-cells.ts, §8.59 п. 9): сквозь шахту не
+   * пройти, и клиент обходит её тем же правилом, что сервер. Списком: шахт на
+   * карте сотни из десятков тысяч клеток.
+   */
+  mines: number[];
+  /**
+   * Жилы золота и алмазов (vein-cells.ts): плоские тройки (индекс клетки, вид
+   * 1 — золото / 2 — алмазы, поворот 0..5 × 60°). Накладка в гексе поверх
+   * местности, ходьбу не трогает. Нет поля — таблицы жил ещё нет в базе.
+   */
+  veins?: number[];
   /** Словарь id объединённых блоков (режим бога: 2–10 клеток под одной картинкой). */
   groupIds: string[];
   /**
@@ -91,6 +103,10 @@ export function packCells(
   isRunner: (key: string) => boolean = () => false,
   /** Постройка клетки — ратуша: индекс уходит в townHalls (town-resolve). */
   isTownHall: (key: string) => boolean = () => false,
+  /** На клетке шахта (mine-cells.loadMineCells): индекс уходит в mines. */
+  isMine: (key: string) => boolean = () => false,
+  /** Жила клетки [вид, поворот] (vein-cells); не передано — списка veins нет. */
+  veinOf?: (q: number, r: number) => readonly [number, number] | undefined,
 ): PackedCells {
   const pools = {
     terrainIds: [] as string[],
@@ -132,8 +148,11 @@ export function packCells(
     runners: [],
     voidFog: [],
     townHalls: [],
+    mines: [],
     groups: [],
   };
+  const veins: number[] | undefined = veinOf ? [] : undefined;
+  if (veins) out.veins = veins;
   for (const c of rows) {
     const i = out.q.length;
     out.q.push(c.q);
@@ -151,6 +170,13 @@ export function packCells(
     if (c.object_id && isRunner(`${c.q},${c.r}`)) out.runners.push(i);
     if (isVoidFlag(c.void_fog)) out.voidFog.push(i);
     if (c.building_id && isTownHall(`${c.q},${c.r}`)) out.townHalls.push(i);
+    // Член блока-шахты стеной тоже (своей постройки у него нет). Под куполом у
+    // игрока нет ни постройки, ни блока — шахта там не выдаётся.
+    if ((c.building_id || c.group_id) && isMine(`${c.q},${c.r}`)) out.mines.push(i);
+    if (veins && veinOf) {
+      const vein = veinOf(c.q, c.r);
+      if (vein) veins.push(i, vein[0], vein[1]);
+    }
     // Объединённый блок: id блока + масштаб картинки процентами (100 = как есть).
     if (c.group_id) {
       const pct = Math.round(clampIconScale(Number(c.icon_scale ?? 1)) * 100);

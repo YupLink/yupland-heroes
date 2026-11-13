@@ -17,7 +17,7 @@ type State = {
 
 const BUCKET: Record<string, { label: string; unit: string; kind?: Kind }> = {
   sub_usd_map: { label: "$ → карта (меняется сразу)", unit: "USDT", kind: "usd_map" },
-  sub_usd: { label: "Корзина $ (вам и дупло)", unit: "USDT", kind: "usd" },
+  sub_usd: { label: "Корзина $ (вам и пул сжигания)", unit: "USDT", kind: "usd" },
   sub_burn: { label: "Сжечь DARAI", unit: "DARAI", kind: "burn" },
   sub_dev: { label: "Разработчикам DARAI", unit: "DARAI", kind: "dev" },
   sub_stars: { label: "Звёзды подписок", unit: "⭐" },

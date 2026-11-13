@@ -9,7 +9,9 @@ import { getCurrentWallet, isAdminWallet } from "../../auth";
 import { godMapId } from "./god-map";
 import { marketRows } from "./market-admin";
 import { marketShopFor } from "./market-shop";
-import type { MarketItem } from "@/lib/marketItem";
+import { normalizeGiveAmount, type MarketItem } from "@/lib/marketItem";
+import { parseRecipe } from "@/lib/marketRecipe";
+import { parsePriceMore } from "@/lib/marketPrices";
 
 function requireAdmin(): void {
   const w = getCurrentWallet();
@@ -35,6 +37,8 @@ type TplItem = Pick<
   | "price2Token"
   | "price2Amount"
   | "stock"
+  | "outcomes"
+  | "priceMore"
 >;
 
 type TplConfig = { items: TplItem[]; shop: { races: string[]; specs: string[] } };
@@ -69,6 +73,9 @@ function toTplItem(it: MarketItem): TplItem {
     price2Token: it.price2Token,
     price2Amount: it.price2Amount,
     stock: it.stock,
+    // Рецепт едет со своими исходами — без них разворот дал бы пустой рецепт.
+    outcomes: it.outcomes ?? null,
+    priceMore: it.priceMore ?? [],
   };
 }
 
@@ -171,7 +178,7 @@ export const applyMarketTemplate = createServerFn({ method: "POST" })
           const id = `mkt_${Math.random().toString(36).slice(2, 12)}${i}`;
           // Снимки старых шаблонов стороны не знают — это покупка.
           const side = it.side === "sell" ? "sell" : "buy";
-          return `(${sqlStr(id)}, ${sqlStr(mapId)}, ${data.q}, ${data.r}, ${i}, ${sqlStr(side)}, ${sqlStr(it.kind)}, ${it.refId ? sqlStr(it.refId) : "NULL"}, ${num(it.giveAmount)}, ${sqlStr(it.name)}, ${it.image ? sqlStr(it.image) : "NULL"}, ${sqlStr(it.priceResource)}, ${it.priceToken ? sqlStr(it.priceToken) : "NULL"}, ${num(it.priceAmount)}, 'all', '[]'::jsonb, '[]'::jsonb, ${it.stock != null ? num(it.stock) : "NULL"}, ${it.price2Resource ? sqlStr(it.price2Resource) : "NULL"}, ${it.price2Token ? sqlStr(it.price2Token) : "NULL"}, ${it.price2Amount != null ? num(it.price2Amount) : "NULL"})`;
+          return `(${sqlStr(id)}, ${sqlStr(mapId)}, ${data.q}, ${data.r}, ${i}, ${sqlStr(side)}, ${sqlStr(it.kind)}, ${it.refId ? sqlStr(it.refId) : "NULL"}, ${num(normalizeGiveAmount(it.kind, it.giveAmount))}, ${sqlStr(it.name)}, ${it.image ? sqlStr(it.image) : "NULL"}, ${sqlStr(it.priceResource)}, ${it.priceToken ? sqlStr(it.priceToken) : "NULL"}, ${num(it.priceAmount)}, 'all', '[]'::jsonb, '[]'::jsonb, ${it.stock != null ? num(it.stock) : "NULL"}, ${it.price2Resource ? sqlStr(it.price2Resource) : "NULL"}, ${it.price2Token ? sqlStr(it.price2Token) : "NULL"}, ${it.price2Amount != null ? num(it.price2Amount) : "NULL"}, ${it.kind === "recipe" ? `${sqlStr(JSON.stringify(parseRecipe(it.outcomes)))}::jsonb` : "NULL"}, ${sqlStr(JSON.stringify(side === "buy" ? parsePriceMore(it.priceMore) : []))}::jsonb)`;
         })
         .join(", ");
       // ON CONFLICT DO NOTHING: id детерминированы строкой запроса, и слепой
@@ -181,7 +188,7 @@ export const applyMarketTemplate = createServerFn({ method: "POST" })
         `INSERT INTO yuplink.raid_market_item
             (id, map_id, q, r, pos, side, kind, ref_id, give_amount, name, image,
              price_resource, price_token, price_amount, buyer_mode, buyer_races, buyer_specs,
-             stock, price2_resource, price2_token, price2_amount)
+             stock, price2_resource, price2_token, price2_amount, outcomes, price_more)
          VALUES ${values}
          ON CONFLICT (id) DO NOTHING;`,
       );

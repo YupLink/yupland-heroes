@@ -59,6 +59,28 @@ export type SlotState = {
   /** Автокрутка включена. */
   auto: boolean;
   stats: SlotStats;
+  /** Мягкая тяга барабанов (reelLevel.ts). Только на сервере — браузеру не
+   *  отдаётся (publicView). У игравших до 09.11 — старые ступени `{level, at, cap}`,
+   *  их заменяет первый же спин. */
+  reels?: SlotReels | { level: number; at: number; cap: number };
+};
+
+/** Барабаны игрока: наборы сетки (reelGrid.ts) и память его удвоения. */
+export type SlotReels = {
+  /** На каком спине поставлена цель. */
+  at: number;
+  /** Набор на эти спины и набор «90 % для умного» (потолок на поднятую ставку). */
+  set: number;
+  safe: number;
+  /** Средняя ставка за спин за всю игру и за последние ~200 спинов. */
+  cap: number;
+  stake: number;
+  /** Выигрыш линий и прибавка от выборов в удвоении (кредиты, с затуханием):
+   *  долгая память (~1000 спинов) и короткая (~60). */
+  raw: number;
+  edge: number;
+  rawS: number;
+  edgeS: number;
 };
 
 export type SlotAction =

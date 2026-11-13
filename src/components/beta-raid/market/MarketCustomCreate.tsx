@@ -41,6 +41,8 @@ export function MarketCustomCreate({
         | "categoryId"
         | "isRod"
         | "isMap"
+        | "isBinocular"
+        | "isLadder"
       > & {
         description?: string | null;
         boost?: BoostEffect[] | null;
@@ -52,6 +54,8 @@ export function MarketCustomCreate({
         categoryId?: string | null;
         isRod?: boolean;
         isMap?: boolean;
+        isBinocular?: boolean;
+        isLadder?: boolean;
       })
     | null;
 }) {
@@ -70,11 +74,14 @@ export function MarketCustomCreate({
     isShovel: editing?.isShovel ?? false,
     isRod: editing?.isRod ?? false,
     isMap: editing?.isMap ?? false,
+    isBinocular: editing?.isBinocular ?? false,
+    isLadder: editing?.isLadder ?? false,
   });
   // Износ инструмента за удар, % (28.09): пусто — ломается с первого удара.
   // Сундук и карта не изнашиваются (сундуку сервер откажет) — у них поля нет.
   const [wear, setWear] = useState(editing?.toolWear ? String(editing.toolWear) : "");
-  const noWear = kinds.magicChest || kinds.plainChest || kinds.isMap;
+  const noWear =
+    kinds.magicChest || kinds.plainChest || kinds.isMap || kinds.isBinocular || kinds.isLadder;
   const toolWear = noWear ? null : toolWearOf(wear);
   // Категория (04.10): null — «без категории»; правка шлёт её всегда.
   const [categoryId, setCategoryId] = useState<string | null>(editing?.categoryId ?? null);

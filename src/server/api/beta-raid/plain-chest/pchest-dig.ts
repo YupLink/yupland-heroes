@@ -23,6 +23,7 @@ import { nanoid } from "nanoid";
 import { mcpExec } from "@/server/db/mcpClient";
 import { publishRaid } from "@/server/raidLive";
 import { markDigHole } from "@/server/api/beta-raid/main-tool/dig-hole";
+import { requireNotOnMine } from "@/server/api/beta-raid/mine-dig-gate";
 import { resolveBackpack } from "@/server/api/beta-raid/market-backpack";
 import { loadChest, requireChestNear, sqlRow } from "@/server/api/beta-raid/chest/chest-row";
 import { guardAlive, loadGuardRow } from "@/server/api/beta-raid/mine-guard-read";
@@ -74,11 +75,13 @@ async function flip(
   // Живой объект — сначала бой, декор вырос поверх бугорка — сначала рубка.
   const blocked = await blockedAt(a.mapId, data.q, data.r);
   if (blocked) throw new Error(blocked);
+  // Шахта — ни закопать, ни выкопать (§8.59 п. 9); под прочим зданием — только выкопать.
+  await requireNotOnMine(a.mapId, data.q, data.r);
   if (bury) await requireNotUnderBuilding(a.mapId, data.q, data.r);
   const target = await targetAt(a, data.q, data.r, bury);
   const bp = await resolveBackpack(a.wallet);
   if (!bp) throw new Error(NEED_SHOVEL);
-  const pay = await payDig(a.wallet);
+  const pay = await payDig(a.wallet, a.mapId);
   const tool = await chargeShovel(a.wallet, bp.heroId, op).catch(async (e: unknown) => {
     await pay.refund();
     throw e;

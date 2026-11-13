@@ -67,6 +67,9 @@ type StackRow = {
   shovel?: boolean | null;
   rod?: boolean | null;
   map?: boolean | null;
+  /** Бинокль и лестница (08.11): «Применить» из рюкзака. */
+  binocular?: boolean | null;
+  ladder?: boolean | null;
   /** Износ текущей штуки стопки, % (28.09, lib/raid/toolWear). */
   wear?: number | string | null;
   /** «Износ за удар, %» товара: задан — стопка инструмент с прочностью. */
@@ -88,7 +91,8 @@ async function loadStacks(heroId: string, strict = false): Promise<BackpackStack
             ${IS_POTION_SQL} AS potion, ${collectedSql(originCols("b."))} AS collected,
             COALESCE(ci.magic_chest, false) AS chest, b.wear, ci.tool_wear,
             COALESCE(ci.plain_chest, false) AS plain_chest, COALESCE(ci.is_shovel, false) AS shovel,
-            COALESCE(ci.is_rod, false) AS rod, COALESCE(ci.is_map, false) AS map
+            COALESCE(ci.is_rod, false) AS rod, COALESCE(ci.is_map, false) AS map,
+            COALESCE(ci.is_binocular, false) AS binocular, COALESCE(ci.is_ladder, false) AS ladder
        FROM yuplink.raid_hero_backpack b
        ${POTION_JOIN}
       WHERE b.hero_id = ${sqlStr(heroId)} AND b.count > 0
@@ -115,6 +119,8 @@ async function loadStacks(heroId: string, strict = false): Promise<BackpackStack
       shovel: r.shovel === true,
       rod: r.rod === true,
       map: r.map === true,
+      binocular: r.binocular === true,
+      ladder: r.ladder === true,
       durability: durabilityFor(r),
     };
   });

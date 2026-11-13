@@ -6,6 +6,7 @@ import { requireWallet } from "../../auth";
 import { raidOwner } from "./owner";
 import { sqlStr } from "../raid-shared";
 import { requireBetaRaid } from "./gate";
+import { customNameSql } from "@/server/api/player-name/player-name-sql";
 
 /** Сколько строк отдаём в таблицу. Своя строка добавляется сверх лимита. */
 const TOP_LIMIT = 200;
@@ -47,7 +48,7 @@ export const getBetaRaidTournament = createServerFn({ method: "GET" }).handler(a
   const rows = (await mcpExec(
     `WITH agg AS (
        SELECT min(r.wallet) AS wallet,
-              COALESCE(NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
+              COALESCE(${customNameSql("r.account_id")}, '@' || NULLIF(max(u.telegram_username), ''), min(r.wallet)) AS name,
               SUM(r.damage)::bigint AS total,
               COUNT(*) FILTER (WHERE r.killed)::int AS kills,
               min(r.created_at) AS first_at,
@@ -66,7 +67,10 @@ export const getBetaRaidTournament = createServerFn({ method: "GET" }).handler(a
     { wrapJson: true },
   )) as Row[];
 
-  const players: BetaTournamentPlayer[] = (rows ?? []).map((r) => ({
+  // Telegram-номер (кошелёк tg<id>) наружу — меткой (publicWallet, аудит 11.11.2026).
+  const { publicRows } = await import("../../publicWallet");
+  const safe = await publicRows(rows ?? []);
+  const players: BetaTournamentPlayer[] = safe.map((r) => ({
     wallet: r.wallet,
     name: r.name && r.name !== r.wallet ? r.name : shortWallet(r.wallet),
     totalDamage: Number(r.total ?? 0),

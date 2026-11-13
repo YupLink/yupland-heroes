@@ -6,6 +6,7 @@
 // Закрыть — погасить срок своих входов, не стирая ключ нажатия. Смысл —
 // pass.test и pass-race.test на фейке.
 import { describe, expect, it } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import {
   bagTarget,
   cellsPriceSql,
@@ -53,10 +54,12 @@ describe("открыть", () => {
   it("не дороже показанного кнопкой; вкладка до выката — без потолка", () => {
     expect(sql).toContain("WHERE NOT EXISTS (SELECT 1 FROM free) AND price.c <= 3 )");
     expect(openSql()).not.toContain("price.c <=");
+    // Остров: цена дробная — потолок не режется вниз до 0 (тогда вход не открылся бы).
+    expect(openSql(0.5)).toContain("AND price.c <= 0.5 )");
   });
 
   it("цена — занятые ячейки в миг открытия, не меньше 1; списание — той же транзакцией", () => {
-    expect(sql).toContain("GREATEST(1, (SELECT COALESCE(SUM(CEIL(s.count / 20.0)), 0)");
+    expect(sql).toContain(`GREATEST(1, (SELECT COALESCE(SUM(CEIL(s.count / ${CELL_SIZE}.0)), 0)`);
     expect(sql).toContain("CROSS JOIN LATERAL yuplink.touch_energy_atomic('w1', need.c)");
   });
 

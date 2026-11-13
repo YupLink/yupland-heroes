@@ -1,0 +1,253 @@
+/* One glass drop joined to the castle or raid HUD. */
+.sound-drop {
+  position: absolute;
+  z-index: 42;
+  width: 170px;
+  height: 34px;
+  pointer-events: none;
+  color: #ded8cb;
+  font-family: var(--font-sans), sans-serif;
+  --sound-frame: #ffd32e66;
+}
+.sound-drop[hidden] { display: none; }
+.castle-main-hud > .sound-drop { top: 65px; left: 18px; }
+.raid-hero-group > .sound-drop { top: 100%; left: 18px; --sound-frame: #c6aa6c; }
+@media (max-width: 620px) { .castle-main-hud > .sound-drop { top: 54px; } }
+@media (min-width: 1024px) { .castle-desktop-toolbar .castle-main-hud > .sound-drop { top: 72px; } }
+
+/* The fill morphs with the drop. Its mask clips the blur to the rounded contour. */
+.sound-drop::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 170px;
+  height: 34px;
+  pointer-events: none;
+  transform: scale(.376470588, .647058824);
+  transform-origin: top left;
+  clip-path: path("M0 0 C11 0 16 5 20 14 C25 27 34 34 52 34 H118 C136 34 145 27 150 14 C154 5 159 0 170 0 Z");
+  transition: transform 280ms cubic-bezier(.22,.75,.24,1);
+  background: linear-gradient(180deg, rgba(8,18,19,.32), rgba(8,18,19,.85));
+  -webkit-backdrop-filter: blur(6px) saturate(115%);
+  backdrop-filter: blur(6px) saturate(115%);
+}
+.sound-drop[data-scene="raid"]::before {
+  background: linear-gradient(135deg, #302e26bf, #171d1bd4);
+  -webkit-backdrop-filter: blur(12px) saturate(.8);
+  backdrop-filter: blur(12px) saturate(.8);
+}
+@media (min-width: 1024px) {
+  .castle-desktop-toolbar .sound-drop[data-scene="castle"]::before {
+    background: linear-gradient(180deg, #081213fa, #081213f2);
+  }
+}
+.sound-drop[data-open="true"]::before { transform: scale(1); }
+.sound-drop::before { display: none; }
+
+.sound-drop__surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(6px) saturate(115%);
+  backdrop-filter: blur(6px) saturate(115%);
+  box-shadow: 0 4px 12px #0008;
+}
+.raid-hero-group > .sound-drop__surface {
+  -webkit-backdrop-filter: blur(12px) saturate(.8);
+  backdrop-filter: blur(12px) saturate(.8);
+}
+@media (min-width: 1024px) {
+  .castle-desktop-toolbar > .sound-drop__surface {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+
+/* One measured SVG stroke draws the full HUD frame and the drop without a seam. */
+.sound-drop__outline {
+  position: absolute;
+  z-index: 1;
+  overflow: visible;
+  color: var(--sound-frame);
+  pointer-events: none;
+}
+
+.sound-drop__trigger,
+.sound-drop__controls { position: absolute; z-index: 2; top: 0; }
+.sound-drop__trigger {
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  width: 64px;
+  height: 34px;
+  padding: 3px 0 0;
+  border: 0;
+  background: none;
+  color: #ded8cb;
+  font: 500 11px/15px var(--font-sans), sans-serif;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 110ms ease, transform 260ms ease;
+}
+.sound-drop__trigger svg { flex: none; width: 14px; height: 14px; stroke-width: 2; }
+.sound-drop__trigger svg:last-child { width: 10px; height: 10px; margin-top: 2px; }
+.sound-drop[data-open="true"] .sound-drop__trigger { opacity: 0; transform: translateX(-25px); pointer-events: none; }
+.sound-drop__controls {
+  left: 26px;
+  display: flex;
+  align-items: center;
+  width: 118px;
+  height: 34px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scaleX(.75);
+  transition: opacity 140ms ease, transform 260ms cubic-bezier(.22,.75,.24,1), visibility 0s linear 260ms;
+}
+.sound-drop[data-open="true"] .sound-drop__controls {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scaleX(1);
+  transition-delay: 85ms, 0ms, 0ms;
+}
+.sound-drop__music { flex: 1; min-width: 0; }
+.sound-drop .scene-music-controls { position: static; display: flex; gap: 2px; width: 100%; max-width: none; height: 34px; margin: 0; }
+.sound-drop .scene-music-controls__toggle { flex: 0 0 28px; width: 28px; height: 34px; color: #e9d9a6; }
+.sound-drop .scene-music-controls__toggle::before { display: none; }
+.sound-drop .scene-music-controls__toggle svg { width: 16px; height: 16px; }
+.sound-drop .scene-music-controls__level { gap: 0; height: 26px; padding: 0 3px; background: transparent; box-shadow: none; }
+.sound-drop .scene-music-controls__level span { display: none; }
+.sound-drop .scene-music-controls input { height: 34px; touch-action: none; }
+.sound-drop .scene-music-controls input::-webkit-slider-thumb { width: 13px; height: 13px; margin-top: -5px; }
+.sound-drop__close { display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 34px; padding: 0; border: 0; background: none; color: #ded8cb; cursor: pointer; }
+.sound-drop__close svg { width: 11px; height: 11px; transform: rotate(180deg); }
+.sound-drop__trigger:focus-visible,
+.sound-drop__close:focus-visible { outline: 2px solid #fff4d8; outline-offset: -2px; border-radius: 8px; }
+
+/* Keep the existing glass; the SVG supplies its entire continuous outline. */
+.raid-hero-group:has(> .sound-drop:not([hidden])),
+.castle-main-hud:has(> .sound-drop:not([hidden])) > .castle-main-hud__balances,
+.castle-desktop-toolbar:has(.sound-drop:not([hidden])) {
+  overflow: visible;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.castle-main-hud:has(> .sound-drop:not([hidden])) > .castle-main-hud__balances { position: relative; }
+@media (min-width: 1024px) {
+  .castle-main-hud:has(> .sound-drop:not([hidden])) > .castle-main-hud__balances { border: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sound-drop::before, .sound-drop__trigger, .sound-drop__controls { transition: none; }
+}
+
+/* Castle effects share the sound drop outline and use individual compact cards. */
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) > .castle-main-hud__effects-shell {
+  position: absolute;
+  z-index: 43;
+  top: 65px;
+  left: 96px;
+  width: 62px;
+  height: 34px;
+  max-width: none;
+  margin: 0;
+  transition: left 280ms cubic-bezier(.22,.75,.24,1);
+}
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"][data-open="true"]) > .castle-main-hud__effects-shell { left: 202px; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-toggle {
+  width: 100%;
+  min-height: 34px;
+  height: 34px;
+  justify-content: center;
+  align-items: flex-start;
+}
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-pill {
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  min-height: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-copy { display: inline-flex; align-items: center; gap: 3px; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-copy::before { content: "✦"; color: #e9d9a6; font-size: 13px; line-height: 1; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-label { display: none; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-count { font-size: 11px; font-variant-numeric: tabular-nums; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-toggle svg { width: 10px; height: 10px; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-panel {
+  top: 27px;
+  right: auto;
+  left: calc(8px - 96px);
+  width: min(250px, calc(100vw - 120px));
+  max-height: min(42dvh, 300px);
+  gap: 4px;
+  padding: 1px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: left 280ms cubic-bezier(.22,.75,.24,1);
+}
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effect-entry {
+  overflow: hidden;
+  border: 1px solid #ffd32e66;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #18211ff7, #121a18f2);
+  box-shadow: 0 3px 9px #0008;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effect {
+  min-height: 34px;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effect-icon { width: 17px; height: 17px; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effect-chevron { width: 12px; height: 12px; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effect-detail { padding: 0 6px 6px; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effect:focus-visible { outline-offset: -2px; }
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"][data-open="true"]) .castle-main-hud__effects-panel { left: calc(8px - 202px); }
+@media (max-width: 620px) {
+  .castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) > .castle-main-hud__effects-shell { top: 54px; }
+}
+@media (min-width: 1024px) {
+  .castle-desktop-toolbar .castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) > .castle-main-hud__effects-shell { top: 72px; }
+}
+@media (max-width: 340px) {
+  .castle-main-hud:has(> .sound-drop[data-effects-drop="true"][data-open="true"]) > .castle-main-hud__effects-shell { left: 172px; }
+  .castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) > .castle-main-hud__effects-shell { width: 54px; }
+  .castle-main-hud:has(> .sound-drop[data-effects-drop="true"][data-open="true"]) .castle-main-hud__effects-panel { left: calc(8px - 172px); }
+  .sound-drop[data-scene="castle"][data-effects-drop="true"][data-open="true"] .sound-drop__controls { left: 22px; width: 100px; }
+}
+
+/* Keep loading, empty and error messages legible in the same individual-card style. */
+.castle-main-hud:has(> .sound-drop[data-effects-drop="true"]) .castle-main-hud__effects-status {
+  padding: 8px 10px;
+  border: 1px solid #ffd32e66;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #18211ff7, #121a18f2);
+  box-shadow: 0 3px 9px #0008;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.sound-drop__frost-surface { position:absolute; top:-1px; left:0; z-index:3; pointer-events:none; }

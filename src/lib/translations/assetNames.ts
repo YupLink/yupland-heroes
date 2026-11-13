@@ -8,6 +8,7 @@
 // имени (ASSET_WORD_EN) → исходное русское имя, если перевести нечего.
 import type { Lang } from "../store";
 import { ASSET_NAME_EN } from "./assetNames-data";
+import { TREE_NAME_EN } from "./assetNames-trees";
 import { ASSET_WORD_EN_A } from "./assetNames-words";
 import { ASSET_WORD_EN_B } from "./assetNames-words-b";
 
@@ -39,7 +40,7 @@ export function localizeAssetName(name: string | null | undefined, lang: Lang): 
   if (!name) return "";
   if (lang !== "en") return name;
 
-  const exact = ASSET_NAME_EN[name];
+  const exact = ASSET_NAME_EN[name] ?? TREE_NAME_EN[name];
   if (exact) return exact;
 
   // Пословный fallback: режем на слова и разделители, разделители и числа

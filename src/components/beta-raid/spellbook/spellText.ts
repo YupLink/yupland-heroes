@@ -34,6 +34,7 @@ export function spellGiftLines(entry: SpellBookEntry, lang: "ru" | "en", t: T): 
   if (entry.kind === "summon_ship") lines.push(t("braid.spell_gift_ship"));
   if (entry.kind === "teleport_town") lines.push(t("braid.spell_gift_teleport"));
   if (entry.kind === "create_ship") lines.push(t("braid.spell_gift_ship_create"));
+  if (entry.kind === "create_big_ship") lines.push(t("braid.spell_gift_big_ship_create"));
   if (entry.kind === "repair_ship") lines.push(t("braid.spell_gift_ship_repair"));
   if (entry.effects.length > 0) lines.push(boostListText(entry.effects, lang));
   else if (lines.length === 0) lines.push(t("braid.spell_gift_none"));

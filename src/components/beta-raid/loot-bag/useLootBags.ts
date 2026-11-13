@@ -13,12 +13,15 @@
 // мешочка; мешочек важнее сундука, города и постройки — он временный, а
 // постройка под ним открывается кнопкой из его окна. Декор, выросший поверх
 // мешочка или бугорка (дополнение №5), перекрывает его: не рисуем, тап — декору.
+// Рыба от красного динамита (30.10.2026) лежит на воде: к ней подходят с любой
+// стороны — и с берега (сервер берёт рыбу, как мешочек, с соседней клетки); под моим
+// кораблём тап — рыбе (shipTakesTap), чужой корабль по-прежнему важнее.
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { hexDistance } from "@/lib/raid/hex";
-import { LOOT_BAG_SEE, bagMarksOf, notUnderDecor, type LootBagMarks } from "@/lib/lootBag";
+import { bagMarksOf, notUnderDecor, shipTakesTap, type LootBagMarks } from "@/lib/lootBag";
 import type { GroundMarks } from "@/lib/digHole";
 import { getLootBagsNear } from "@/server/api/beta-raid/loot-bag/bag-read";
 import { DIRS } from "@/components/beta-raid/usePathfinding";
@@ -29,47 +32,35 @@ import type { useMagicChests } from "@/components/beta-raid/chest/useMagicChests
 import { LootBagWindow } from "@/components/beta-raid/loot-bag/LootBagWindow";
 import { BAGS_NEAR_KEY } from "@/components/beta-raid/loot-bag/lootBagLive";
 import { useShovel } from "@/components/beta-raid/tool/useShovel";
-
-/** Герой постоял столько — слой перечитывается; в пути — не реже MAX_WAIT_MS. */
-const STEP_MS = 600;
-const MAX_WAIT_MS = 4000;
+import { useStepRefetch } from "@/components/beta-raid/useStepRefetch";
+import { useSightRadius } from "@/components/beta-raid/sight/useSightRadius";
 
 type At = { q: number; r: number };
-
-/** Шаги героя → одно чтение слоя: после паузы, а в долгом пути — раз в MAX_WAIT_MS. */
-function useStepRefetch(pos: At | null, refetch: () => void): void {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const first = useRef(0);
-  // Первая позиция — не шаг: слой и так читается при появлении героя.
-  const mounted = useRef(false);
-  const [pq, pr] = [pos?.q, pos?.r];
-  useEffect(() => {
-    if (pq == null || pr == null) return;
-    if (!mounted.current) return void (mounted.current = true);
-    const now = Date.now();
-    if (!timer.current) first.current = now;
-    else clearTimeout(timer.current);
-    const wait = Math.max(0, Math.min(STEP_MS, first.current + MAX_WAIT_MS - now));
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      refetch();
-    }, wait);
-  }, [pq, pr, refetch]);
-  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
-}
 
 export function useLootBags(o: {
   playerPos: At | null;
   cells: Record<string, Cell>;
   ships: Map<string, ShipMark>;
   chest: ReturnType<typeof useMagicChests>;
-  approachCell: (q: number, r: number, action?: PendingAction | null) => void;
+  approachCell: (
+    q: number,
+    r: number,
+    action?: PendingAction | null,
+    failKey?: string,
+    anySide?: boolean,
+    go?: boolean,
+  ) => Promise<boolean> | void;
   walkTo: (q: number, r: number) => unknown;
+  /** Снять плашку маршрута: двойной тап лопатой копает сразу. */
+  clearPending: () => void;
   setBuilding: (cell: At) => void;
+  /** Бусты состояния рейда: под биноклем «второй обзор» 40 (lib/raid/sight). */
+  buff?: unknown;
 }) {
   const qc = useQueryClient();
   const t = useT();
   const pos = o.playerPos;
+  const see = useSightRadius(o.buff);
   const q = useQuery({
     queryKey: BAGS_NEAR_KEY,
     queryFn: () => getLootBagsNear(),
@@ -106,12 +97,12 @@ export function useLootBags(o: {
               hq != null &&
               hr != null &&
               // Мои бугорки — с любого расстояния (02.10, как свои шахты).
-              (b.mine === true || hexDistance(hq, hr, b.q, b.r) <= LOOT_BAG_SEE),
+              (b.mine === true || hexDistance(hq, hr, b.q, b.r) <= see),
           ),
           (q, r) => !!cells[`${q},${r}`]?.decorationId,
         ),
       ),
-    [list, gotAt, now, hq, hr, cells],
+    [list, gotAt, now, hq, hr, cells, see],
   );
   // Земля для кадра: ямки (на клетке ничего не стоит и не выросло) и мои
   // бугорки — вокруг них первый обзор на клетку, как у своих шахт.
@@ -121,14 +112,14 @@ export function useLootBags(o: {
       const key = `${h.q},${h.r}`;
       const c = cells[key];
       if (gotAt + h.leftMs <= now || marks[key] || c?.decorationId || c?.buildingId) continue;
-      if (hq == null || hr == null || hexDistance(hq, hr, h.q, h.r) > LOOT_BAG_SEE) continue;
+      if (hq == null || hr == null || hexDistance(hq, hr, h.q, h.r) > see) continue;
       holes.add(key);
     }
     const mounds = list
       .filter((b) => b.mine === true && b.buried && gotAt + b.leftMs > now)
       .map((b) => `${b.q},${b.r}`);
     return { holes, mounds };
-  }, [holeList, list, marks, cells, gotAt, now, hq, hr]);
+  }, [holeList, list, marks, cells, gotAt, now, hq, hr, see]);
   const marksRef = useRef(marks);
   marksRef.current = marks;
   // Лопата в руках (§8.24): тап сначала ей — «Копать» / «Закопать» / «Выкопать».
@@ -138,7 +129,9 @@ export function useLootBags(o: {
     bags: marks,
     chests: o.chest.chests,
     ships: o.ships,
+    holes: ground.holes,
     approachCell: o.approachCell,
+    clearPending: o.clearPending,
   });
 
   const [open, setOpen] = useState<At | null>(null);
@@ -164,14 +157,15 @@ export function useLootBags(o: {
     headingTo.current = null;
     if (shovelTap(tq, tr)) return true;
     const key = `${tq},${tr}`;
-    if (!marks[key] || !pos || o.ships.has(key)) return false;
+    if (!marks[key] || !pos || shipTakesTap(marks[key], o.ships.get(key))) return false;
     for (const c of [o.cells[key], lead ? o.cells[`${lead.q},${lead.r}`] : undefined]) {
       if (c?.objectId && !c.objectDefeated) return false;
     }
     if (near({ q: tq, r: tr })) setOpen({ q: tq, r: tr });
     else {
       headingTo.current = key;
-      o.approachCell(tq, tr, { kind: "build", q: tq, r: tr, extraCost: 0 });
+      const fish = marks[key].fish === true;
+      o.approachCell(tq, tr, { kind: "build", q: tq, r: tr, extraCost: 0 }, undefined, fish);
     }
     return true;
   };

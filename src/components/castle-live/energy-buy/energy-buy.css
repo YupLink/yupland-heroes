@@ -633,8 +633,8 @@
 .energy-buy--energy-catalog .energy-buy__status { grid-column: 1 / -1; }
 
 /* Production font sources: do not rely on the preview's font registrations. */
-@font-face { font-family: "Castle Energy Display"; src: url("../../../assets/tavern/RussoOne.ttf") format("truetype"); font-weight: 400; font-display: swap; }
-@font-face { font-family: "Castle Energy Text"; src: url("../../../assets/tavern/GolosText.ttf") format("truetype"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Castle Energy Display"; src: url("../../../assets/tavern/RussoOne.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Castle Energy Text"; src: url("../../../assets/tavern/GolosText.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 .energy-buy { --font-display: "Castle Energy Display", sans-serif; --font-sans: "Castle Energy Text", sans-serif; font-family: var(--font-sans); }
 .energy-buy__pack-all-methods { font-family: var(--font-sans); font-size: 14px; font-weight: 600; min-width: 36px; min-height: 44px; }
 

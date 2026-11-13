@@ -20,6 +20,10 @@ export const dict: Record<string, Entry> = {
     ru: "Войди в игру, чтобы играть на золото",
     en: "Sign in to play for gold",
   },
+  "slot.google": {
+    ru: "Казино недоступно при входе через Google",
+    en: "The casino is not available with Google sign-in",
+  },
   "slot.load_error": { ru: "Не удалось открыть казино", en: "Could not open the casino" },
   "slot.casino_open": { ru: "Играть", en: "Play" },
   "slot.casino_far": { ru: "Подойди к казино", en: "Walk up to the casino" },
@@ -176,4 +180,10 @@ export const dict: Record<string, Entry> = {
     en: "Prizes at {stake} per spin",
   },
   "slot.risk.on_stake": { ru: "На кону", en: "At stake" },
+  // Доля владельцев казино (§8.124) в «Добыче».
+  "harvest.source.casino_share": { ru: "Казино", en: "Casino" },
+  "casino.share_later": {
+    ru: "Доля казино пока не выдалась — попробуй ещё раз позже",
+    en: "The casino share didn't go through yet — try again later",
+  },
 };

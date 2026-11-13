@@ -13,6 +13,9 @@ import { useAdminCellView } from "./useAdminCellView";
 import { AdminCellState } from "./AdminCellState";
 import { AdminObjectSettings } from "./AdminObjectSettings";
 import { AdminMobSpawnRow } from "./AdminMobSpawnRow";
+import { AdminLootSpawnRow } from "./AdminLootSpawnRow";
+import { AdminSpawnPointRow } from "./spawn-point/AdminSpawnPointRow";
+import { AdminIslandStartRow } from "./island-start/AdminIslandStartRow";
 import { withKeptSnapshot } from "@/components/admin/hex-editor/hexShared";
 import type { GodMoveFrom, GodMovePick } from "@/components/beta-raid/god-move/useGodMove";
 import type { CellPatch } from "./patchMapCache";
@@ -87,12 +90,18 @@ export function AdminCellModal({
         />
         {/* Точка возрождения моба: встаёт сам, бродит вокруг. */}
         <AdminMobSpawnRow q={q} r={r} />
+        {/* Добыча по погоде: в свою погоду на клетке появляется мешочек. */}
+        <AdminLootSpawnRow q={q} r={r} />
+        {/* Точка спавна: мобы, погода, частота и награда — в одном месте. */}
+        <AdminSpawnPointRow q={q} r={r} />
+        {/* Старт героя на острове: сюда встаёт новичок при входе. */}
+        <AdminIslandStartRow q={q} r={r} />
 
         {/* Выгрузка прямо отсюда: панель кисти закрыта этим окном. */}
         {brush.pending > 0 && (
           <button
             type="button"
-            onClick={brush.publish}
+            onClick={() => void brush.publish()}
             disabled={brush.sending}
             className="mt-3 flex items-center justify-center gap-1.5 rounded-xl gradient-gold px-3 py-2.5 text-xs font-bold text-gold-foreground disabled:opacity-40"
           >

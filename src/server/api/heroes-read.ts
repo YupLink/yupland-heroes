@@ -21,6 +21,7 @@ import {
 } from "./heroes-shared";
 import { activeRest, requireHeroAwake } from "./hero-rest";
 import { heroCardStats, heroSkillCard } from "./heroes-skill-card";
+import { rarityOfTemplateLevel } from "./heroes-list-dormant";
 
 // Карточка героя из инвентаря живёт в heroes-card.ts; здесь — список и прокачка.
 export { heroCardForTemplate } from "./heroes-card";
@@ -137,9 +138,13 @@ export const levelUpHeroTemplate = createServerFn({ method: "POST" })
       : await q.eq("template_id", data.templateId).order("level", { ascending: false });
     let inst = ((rows ?? []) as HeroRow[])[0] ?? null;
 
+    // Новый экземпляр — редкость по ярусу шаблона, как у спящего и у пробуждения
+    // (rarityOfTemplateLevel): «обычные герои всегда обычные» (владелец, 22.10.2026).
+    // Раньше здесь была своя формула без common — первая прокачка спящего 1★
+    // записывала ему «rare» (потолок 30, восемь мест под артефакты).
+    // У заведённого — записанная: редкость ставится один раз, при создании.
     const rarity: HeroRarity =
-      (inst?.rarity as HeroRarity) ??
-      (Number(tpl.level) >= 5 ? "legendary" : Number(tpl.level) >= 4 ? "epic" : "rare");
+      (inst?.rarity as HeroRarity | undefined) ?? rarityOfTemplateLevel(Number(tpl.level));
     const level = inst?.level ?? 0;
     const cost = nextLevelCost(rarity, level);
     if (cost == null) {
@@ -158,10 +163,17 @@ export const levelUpHeroTemplate = createServerFn({ method: "POST" })
       // уровня вместо двадцатого.
       // Копию берём ту, что прислал клиент; без неё — любую свободную (у
       // которой ещё нет экземпляра), и только потом любую свою.
-      const own = pg.userGameItems.raw().select("id").eq("kind", "hero").eq("account_id", account);
+      // Копия — именно этого шаблона (аудит 11.11.2026): чужой шаблон со своей
+      // дешёвой копией давал легендарного героя по цене первого уровня.
+      const own = pg.userGameItems
+        .raw()
+        .select("id")
+        .eq("kind", "hero")
+        .eq("account_id", account)
+        .eq("template_id", data.templateId);
       const { data: ownedRows } = data.itemId
         ? await own.eq("id", data.itemId).limit(1)
-        : await own.eq("template_id", data.templateId).limit(50);
+        : await own.limit(50);
       const owned = (ownedRows ?? []) as Array<{ id: string }>;
       if (!owned.length) throw new Error("Этого героя у тебя нет");
       let itemId = data.itemId ?? null;
@@ -211,7 +223,13 @@ export const levelUpHeroTemplate = createServerFn({ method: "POST" })
       level: newLevel,
       spentLikes: cost,
       likesLeft,
-      stats: heroCardStats(tpl.race ?? null, tpl.specialization ?? null, rarity, newLevel, sk.skills),
+      stats: heroCardStats(
+        tpl.race ?? null,
+        tpl.specialization ?? null,
+        rarity,
+        newLevel,
+        sk.skills,
+      ),
       nextCost: nextLevelCost(rarity, newLevel),
       // Очков пришло с этой ступени — та же графа, что у levelUpHero.
       skillGain: skillPointsAt(rarity, newLevel) - skillPointsAt(rarity, newLevel - 1),

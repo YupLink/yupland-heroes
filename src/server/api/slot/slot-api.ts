@@ -2,6 +2,8 @@
 // транзакция slot_commit) — slot-core.ts; здесь только вход и проверка ввода.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { getCurrentWallet, getSessionTgId } from "../../auth";
+import { isGoogleOnlyTg } from "@/lib/auth/googleTg";
 import { requireBetaRaid } from "../beta-raid/gate";
 import { accAccountId } from "../currency/move";
 import { slotActFor, slotLoadFor, view, type SlotView } from "./slot-core";
@@ -10,6 +12,10 @@ import type { ClientAction } from "@/lib/slot/serverStep";
 export type { SlotView } from "./slot-core";
 
 async function who(): Promise<string> {
+  // Не вошёл — браузер крутит холостую игру (lib/slot/demoSlot), золота не касается.
+  if (!getCurrentWallet()) throw new Error("slot.guest");
+  // Вход через Google — казино закрыто (владелец, 06.11.2026).
+  if (isGoogleOnlyTg(getSessionTgId())) throw new Error("slot.google");
   const wallet = await requireBetaRaid();
   const account = await accAccountId(wallet);
   if (!account) throw new Error("slot.need_account");

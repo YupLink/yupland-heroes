@@ -1,15 +1,17 @@
 // Основной замок игрока (владелец, 07.10.2026): войти в замок можно только у
 // своего основного замка. По умолчанию это замок в центре карты; ратушу можно
 // сделать основным замком — первый раз бесплатно, дальше каждое переселение
-// стоит 5 билетов. Таблица — migrations/home-01-account-home-castle.sql.
+// стоило 5 билетов; с 20.10.2026 билетов нет (§8.61) — 2 500 золота (5 × 500).
+// Таблица — migrations/home-01-account-home-castle.sql.
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { castleCell, cellAtCastle } from "./castle";
 import { hexDistance } from "./helpers";
 import type { Cell } from "./encounter-where";
 
-/** Цена переселения после первого выбора, билетов. */
-export const HOME_MOVE_COST = 5;
+/** Цена переселения после первого выбора, золото (бывшие 5 билетов × 500). */
+export const HOME_MOVE_COST = goldForTicketPrice(5);
 
 export type HomePlace = { kind: "castle" | "town"; q: number; r: number; name: string };
 
@@ -115,9 +117,11 @@ export async function homeMoveCost(account: string): Promise<number> {
 }
 
 /**
- * Сделать place основным замком. Плата и запись — одним запросом: не хватило
- * билетов — ticket_move бросает, и выбор не меняется. ref операции — opId
- * нажатия: повтор того же нажатия второй раз не спишет.
+ * Сделать place основным замком. Плата (золото) и запись — одним запросом: не
+ * хватило золота — res_move бросает «в минус», и выбор не меняется. ref
+ * операции — opId нажатия: повтор того же нажатия второй раз не спишет — и
+ * замок не сменит: уже использованный ключ (applied=false) строку не вставляет,
+ * иначе один opId переселял бы бесплатно сколько угодно раз.
  */
 export async function setHome(opts: {
   account: string;
@@ -127,7 +131,7 @@ export async function setHome(opts: {
   cost: number;
   opId: string;
 }): Promise<void> {
-  const { account, wallet, mapId, place, cost, opId } = opts;
+  const { account, mapId, place, cost, opId } = opts;
   const acc = sqlStr(account);
   // Оплата — подзапрос внутри самой вставки, а не отдельный WITH: обёртка
   // mcpExec (wrapJsonCte) сама кладёт запрос в WITH, и вложенный WITH с
@@ -135,16 +139,23 @@ export async function setHome(opts: {
   // must be at the top level») — выбор основного замка не проходил ни разу.
   const pay =
     cost > 0
-      ? `SELECT applied FROM yuplink.ticket_move(${acc}, ${-cost}, 'home_castle', ${sqlStr(`home:${opId}`)}, ${sqlStr(wallet)})`
+      ? `SELECT applied FROM yuplink.res_move(${acc}, 'gold', ${-cost}, 'home_castle', ${sqlStr(`home:${opId}`)})`
       : `SELECT true AS applied`;
-  await mcpExec(
+  const rows = await mcpExec(
     `INSERT INTO yuplink.account_home_castle (account_id, map_id, q, r, kind, moves, updated_at)
      SELECT ${acc}, ${sqlStr(mapId)}, ${place.q}, ${place.r}, ${sqlStr(place.kind)}, 1, now()
        FROM (${pay}) pay
+      WHERE pay.applied
      ON CONFLICT (account_id) DO UPDATE
        SET map_id = EXCLUDED.map_id, q = EXCLUDED.q, r = EXCLUDED.r, kind = EXCLUDED.kind,
            moves = yuplink.account_home_castle.moves + 1, updated_at = now()
      RETURNING moves;`,
     { wrapJsonCte: true },
-  );
+  ).catch((e: unknown) => {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(/в минус/.test(msg) ? `Не хватает золота: нужно ${cost}` : msg);
+  });
+  // Ключ нажатия уже проведён раньше (повтор после успеха отсекает samePlace
+  // выше) — оплаты нет, замок не меняем. Новое нажатие даёт новый opId.
+  if (!rows?.length) throw new Error("err.op_reused");
 }

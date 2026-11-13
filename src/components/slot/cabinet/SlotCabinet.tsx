@@ -14,6 +14,7 @@ import { SlotReels } from "../SlotReels";
 import { SlotWinFx } from "../SlotFx";
 import { winTier } from "@/lib/slot/winTier";
 import { text } from "./shared";
+import { NOTICE_YUPIK, NOTICE_BACKGROUND, warmArtwork } from "./bonusArtwork";
 import "./cabinet.css";
 import "./runtime.css";
 import "../slot-frame.css";
@@ -98,6 +99,10 @@ export function SlotCabinet({
     if (!["idle", "won", "spinning"].includes(api.state.phase))
       root.current?.scrollTo({ top: 0, behavior: "instant" });
   }, [api.state.phase]);
+  useEffect(() => {
+    if (api.loading || api.error) return;
+    return warmArtwork([NOTICE_YUPIK, NOTICE_BACKGROUND], 350);
+  }, [api.loading, api.error]);
   const s = api.state,
     tier = s.phase === "won" ? winTier(s.lastWin, s.lines * s.bet) : 0;
   return (
@@ -133,7 +138,9 @@ export function SlotCabinet({
       {mounts && createPortal(children, mounts.stage)}
       {(api.loading || api.error) && (
         <div className="cabinet-status" role="status">
-          {api.error ? (
+          {api.error?.includes("slot.google") ? (
+            text(api.ru, "Казино недоступно при входе через Google", "The casino is not available with Google sign-in")
+          ) : api.error ? (
             <>
               {text(
                 api.ru,

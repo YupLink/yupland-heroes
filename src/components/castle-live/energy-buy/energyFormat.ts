@@ -21,16 +21,16 @@ export const tokenName = (token: string) => (token === "Darai" ? "DarAi" : token
 
 export function methodName(o: PayOpt, ru: boolean): string {
   if (o.method === "stars") return ru ? "Stars из Казны" : "Stars from Treasury";
-  if (o.method === "tickets") return ru ? "Билеты" : "Tickets";
+  if (o.method === "gold") return ru ? "Золото" : "Gold";
   if (o.method === "likes") return ru ? "Лайки" : "Likes";
   return tokenName(o.token);
 }
 
-/** Цена целиком: «593 ★», «5 билетов», «0,1 USDT». */
+/** Цена целиком: «593 ★», «2 500 золота», «500 000 DarAi». */
 export function priceText(o: PayOpt, ru: boolean): string {
   const n = num(o.price, ru);
   if (o.method === "stars") return `${n} ★`;
-  if (o.method === "tickets") return `${n} ${plural(o.price, ru, "билет", "билета", "билетов", "tickets")}`;
+  if (o.method === "gold") return `${n} ${ru ? "золота" : "gold"}`;
   if (o.method === "likes") return `${n} ${plural(o.price, ru, "лайк", "лайка", "лайков", "likes")}`;
   return `${n} ${tokenName(o.token)}`;
 }

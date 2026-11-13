@@ -4,19 +4,25 @@
 // LootBagWindow. На плитке мешочка — сколько осталось жить ближайшей порции
 // вида. У бугорка не видно ничего: ни содержимого, ни срока.
 import { Timer } from "lucide-react";
-import { useLang, useT } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
 import { MAP_ART } from "@/lib/gameArt";
-import type { LootBagView } from "@/lib/lootBag";
-import { localizeAssetName } from "@/lib/translations/assetNames";
+import { bagArtOf, bagResOf, type LootBagView } from "@/lib/lootBag";
 import type { BackpackView } from "@/server/api/beta-raid/market-backpack";
 import { EmptyCell, FilledCell } from "@/components/beta-raid/WarehouseCells";
 import { buildCells, type Cell } from "@/components/beta-raid/warehouseGrid";
 import { bagCells, leftLabel } from "@/components/beta-raid/loot-bag/lootBagPick";
+import { useBagItemName } from "@/components/beta-raid/loot-bag/useBagItemName";
+import { EnchantMark } from "@/components/EnchantMark";
 
 const HEAD = "truncate text-[10px] font-semibold text-muted-foreground";
 
 /** «осталось N ч» — у плитки мешочка и у бугорка. */
-function Left({ leftMs, gotAt, now, className }: {
+function Left({
+  leftMs,
+  gotAt,
+  now,
+  className,
+}: {
   leftMs: number;
   gotAt: number;
   now: number;
@@ -51,8 +57,7 @@ export function LootBagGrid({
   onTake: (c: Cell) => void;
 }) {
   const t = useT();
-  const lang = useLang();
-  const name = (n: string) => localizeAssetName(n, lang);
+  const name = useBagItemName();
 
   // Бугорок — только картинка: по нему не видно ни что закопано (мешочек или
   // сундук, ПРАВИЛА §8.22), ни сколько ему жить (бугорок сундука не сгорает).
@@ -65,11 +70,13 @@ export function LootBagGrid({
   }
 
   const left = new Map(bag.items.map((i) => [i.stackKey, i.leftMs]));
-  const stacks = (backpack?.stacks ?? []).map((s) => ({ ...s, name: name(s.name) }));
+  const ench = new Map(bag.items.map((i) => [i.stackKey, i.enchantPct]));
+  const stacks = (backpack?.stacks ?? []).map((s) => ({ ...s, name: name(s.name, s.stackKey) }));
   const bpCells = backpack?.heroId
     ? buildCells(
         stacks,
-        stacks.reduce((n, s) => n + s.cells, 0) + Math.max(0, backpack.capacity - backpack.occupied),
+        stacks.reduce((n, s) => n + s.cells, 0) +
+          Math.max(0, backpack.capacity - backpack.occupied),
       )
     : [];
 
@@ -106,12 +113,16 @@ export function LootBagGrid({
         <div className="grid grid-cols-2 gap-1.5">
           {bagCells(bag.items, name).map((c) => (
             <div key={c.key} className="relative">
+              {/* Ресурс счёта и артефакт ячеек рюкзака не занимают — у плитки без «/20». */}
               <FilledCell
                 cell={c}
                 dir="out"
                 busy={busyKey === `bag:${c.key}`}
                 onClick={() => onTake(c)}
+                bare={bagResOf(c.stack.stackKey) !== null || bagArtOf(c.stack.stackKey) !== null}
               />
+              {/* Артефакт — тот же экземпляр: зачарованный с ✦ (§8.87), под числом штук. */}
+              <EnchantMark pct={ench.get(c.stack.stackKey)} corner className="top-5" />
               <Left
                 leftMs={left.get(c.stack.stackKey) ?? 0}
                 gotAt={gotAt}

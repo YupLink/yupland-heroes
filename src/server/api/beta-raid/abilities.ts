@@ -21,7 +21,14 @@ export type AbilityKind =
   | "weak_atk"
   | "weak_arm"
   | "weak_luck"
-  | "weak_int";
+  | "weak_int"
+  // Снятие иммунитетов: на N минут у героя не действует НИ ОДИН иммунитет —
+  // ни от надетых артефактов, ни временный (зелья/еда/заклинания). Иммунитета
+  // к самому снятию нет (владелец, 22.10.2026; модуль encounter-strip.ts).
+  | "strip_immune";
+
+/** Вид способности «Снятие иммунитетов» — он же вид строки эффекта на аккаунте. */
+export const STRIP_IMMUNE_KIND = "strip_immune" as const;
 
 /** Виды, которые бьют по характеристикам героя. */
 export const WEAKEN_KINDS = ["weak_atk", "weak_arm", "weak_luck", "weak_int"] as const;
@@ -113,6 +120,12 @@ export const ABILITY_META: Record<
     valueLabel: "−интеллекта героя",
     durationLabel: "минут",
     defaults: { chance: 12, value: "1-2", duration: "10-20" },
+  },
+  strip_immune: {
+    label: "Снятие иммунитетов",
+    valueLabel: "— (все иммунитеты героя)",
+    durationLabel: "минут",
+    defaults: { chance: 10, value: 0, duration: "5-10" },
   },
 };
 

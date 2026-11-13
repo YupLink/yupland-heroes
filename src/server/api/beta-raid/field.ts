@@ -13,6 +13,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
+import { farmMultWith } from "@/lib/accountUpgrade";
 import { requireBetaRaid } from "./gate";
 import { myMapId, ownCell } from "./encounter-where";
 import { areNeighbors } from "./helpers";
@@ -73,10 +74,14 @@ export const getFieldState = createServerFn({ method: "GET" })
     // ручного сбора у полей больше нет, пендинга игрок не видит.
     await settleFieldPayout(mapId, data.q, data.r, cfg).catch(() => {});
 
-    const [workers, heroes] = await Promise.all([
+    const { upgradesOf } = await import("./account-upgrade");
+    const [workers, heroes, upg] = await Promise.all([
       fieldWorkers(mapId, data.q, data.r),
       fieldHeroes(wallet, mapId),
+      upgradesOf(account),
     ]);
+    // Улучшение ферм игрока (lib/accountUpgrade): его доля ×1,5.
+    const mult = farmMultWith(upg);
     const mineRow = workers.find((w) => w.account_id === account) ?? null;
     return {
       name: b.name,
@@ -94,7 +99,7 @@ export const getFieldState = createServerFn({ method: "GET" })
        *  (workers): клиент красит красным при полном, зелёным — если есть место. */
       maxHeroes: cfg.maxHeroes,
       /** Моя доля в час прямо сейчас. */
-      share: workers.length > 0 ? cfg.yield / workers.length : cfg.yield,
+      share: (workers.length > 0 ? cfg.yield / workers.length : cfg.yield) * mult,
       myHero: mineRow ? { id: mineRow.hero_id ?? "", name: mineRow.hero_name ?? "Герой" } : null,
       // Показываем ТОЛЬКО тех, кто проходит по требованиям поля: список «кого
       // нельзя» игроку ничего не даёт, кроме раздражения.
@@ -201,7 +206,7 @@ export const removeHeroFromField = createServerFn({ method: "POST" })
     const account = await accAccountId(wallet);
     if (!account) throw new Error("Нужен аккаунт — привяжи Telegram");
 
-    const { dust } = await leaveFieldWork({
+    await leaveFieldWork({
       wallet,
       account,
       mapId,
@@ -212,7 +217,7 @@ export const removeHeroFromField = createServerFn({ method: "POST" })
       key: null,
     });
     publishRaid({ mapId, type: "built", cells: [`${data.q},${data.r}`] });
-    return { ok: true as const, dustClaimed: dust };
+    return { ok: true as const };
   });
 
 // claimField (ручной сбор урожая) удалён: урожай сам уходит на ближайший склад

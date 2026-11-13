@@ -5,6 +5,7 @@
 // Базы нет: строки рюкзака и полок держит фейк (src/test/warehouseFake.ts) на
 // numeric-BigInt и читает из SQL те же условия, что выполнит Postgres.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { dec, decNum } from "@/test/numeric";
 import { K, db, fakeDb, item, resetDb, shelf } from "@/test/warehouseFake";
 import { fakeDeposit, fakeSlots, fakeUpsert } from "@/test/warehouseFakeOps";
@@ -105,10 +106,10 @@ describe("положить на склад", () => {
     expect(db.shelves[0].count).toBe(dec("5"));
   });
 
-  it("«Ячейку» с точным хвостом плитки — в рюкзаке ровно 20, одна ячейка", async () => {
-    db.bp.set(K, item("27.738083231472351586"));
+  it(`«Ячейку» с точным хвостом плитки — в рюкзаке ровно ${CELL_SIZE}, одна ячейка`, async () => {
+    db.bp.set(K, item(`${CELL_SIZE + 7}.738083231472351586`));
     await put({ stackKey: K, qty: 7.738083231 });
-    expect(db.bp.get(K)?.count).toBe(dec("20"));
+    expect(db.bp.get(K)?.count).toBe(dec(`${CELL_SIZE}`));
   });
 
   it("полка не приняла — всё вернулось в рюкзак (до девятого знака)", async () => {
@@ -154,10 +155,12 @@ describe("забрать со склада", () => {
   it("в рюкзак влезает не всё — тысячные вниз, край ячейки не перешагнуть", async () => {
     db.capacity = 1;
     db.bp.set(K, item("7.738083231"));
-    db.shelves = [shelf("own", "acc1", "12.262")];
-    const res = await take({ stackKey: K, scope: "own", qty: 12.262 });
-    expect(res.qty).toBe(12.261);
-    expect(db.bp.get(K)?.count).toBe(dec("19.999083231"));
+    // До края ячейки — CELL_SIZE − 7,738083231; на полке на крошку больше.
+    const onShelf = `${CELL_SIZE - 8}.262`;
+    db.shelves = [shelf("own", "acc1", onShelf)];
+    const res = await take({ stackKey: K, scope: "own", qty: Number(onShelf) });
+    expect(res.qty).toBe(Number(`${CELL_SIZE - 8}.261`));
+    expect(db.bp.get(K)?.count).toBe(dec(`${CELL_SIZE - 1}.999083231`));
     expect(db.shelves[0].count).toBe(dec("0.001"));
   });
 

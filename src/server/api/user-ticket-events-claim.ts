@@ -14,7 +14,12 @@ import {
 
 export async function performClaim(
   eventId: string, wallet: string, pre?: EventClaimPre
-): Promise<{ claims: number; ticketsAwarded: number; tokens: string[] } | null> {
+): Promise<{
+  claims: number;
+  ticketsAwarded: number;
+  goldAwarded: number;
+  tokens: string[];
+} | null> {
   const event = await pg.ticketEvents.findOne({ id: eventId });
   if (!event || !event.active) throw new Error("Событие не найдено");
   const now = Date.now();
@@ -70,13 +75,17 @@ export async function performClaim(
     if (isDuplicateRow(e)) return null;
     throw e;
   }
-  {
-    // Начисление в леджер; ref — id клейма, поэтому ретрай не задвоит.
-    const { moveTickets } = await import("./tickets-ledger");
-    await moveTickets({ wallet, delta: ticketsAwarded, kind: "nft_claim", ref: `claim:${claimId}` });
-  }
+  // Начисление — золотом, 100 за билет (§8.61): в клейме число остаётся в
+  // билетах (настройка события), на счёт идёт золото. ref — id клейма: ретрай не задвоит.
+  const { creditGoldForTickets } = await import("./gold-earn");
+  const goldAwarded = await creditGoldForTickets({
+    account,
+    tickets: ticketsAwarded,
+    kind: "nft_claim",
+    ref: `claim:${claimId}`,
+  });
   invalidateTicketsCache(sisters);
-  return { claims: nComplete, ticketsAwarded, tokens: usedTokens };
+  return { claims: nComplete, ticketsAwarded, goldAwarded, tokens: usedTokens };
 }
 
 export const claimTicketEvent = createServerFn({ method: "POST" })
@@ -88,7 +97,12 @@ export const claimTicketEvent = createServerFn({ method: "POST" })
     await requireLinkedTelegram(wallet);
     const res = await performClaim(data.eventId, wallet);
     if (!res) throw new Error("Сейчас нечего забирать");
-    return { ok: true, claims: res.claims, ticketsAwarded: res.ticketsAwarded };
+    return {
+      ok: true,
+      claims: res.claims,
+      ticketsAwarded: res.ticketsAwarded,
+      goldAwarded: res.goldAwarded,
+    };
   });
 
 export const claimAllTicketEvents = createServerFn({ method: "POST" }).handler(async () => {
@@ -110,11 +124,21 @@ export const claimAllTicketEvents = createServerFn({ method: "POST" }).handler(a
   const pre = { sisters, owned, sub: { level: sub.level } };
   let totalClaims = 0;
   let totalAwarded = 0;
+  let totalGold = 0;
   for (const e of events) {
     try {
       const res = await performClaim(e.id, wallet, pre);
-      if (res) { totalClaims += res.claims; totalAwarded += res.ticketsAwarded; }
+      if (res) {
+        totalClaims += res.claims;
+        totalAwarded += res.ticketsAwarded;
+        totalGold += res.goldAwarded;
+      }
     } catch { /* skip broken */ }
   }
-  return { ok: true, claims: totalClaims, ticketsAwarded: totalAwarded };
+  return {
+    ok: true,
+    claims: totalClaims,
+    ticketsAwarded: totalAwarded,
+    goldAwarded: Math.round(totalGold * 1e4) / 1e4,
+  };
 });

@@ -21,6 +21,7 @@ import { loadHeroSide } from "./encounter-hero-squad";
 import { resolveLineup } from "./encounter-lineup";
 import { computeChipMults } from "./encounter-mults";
 import { payForHit } from "./encounter-pay";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 import { applySideEffects } from "./encounter-side-apply";
 import { abilityTotals } from "./encounter-ability-totals";
 import { simulateEncounter, type SimChip } from "./encounter-sim";
@@ -71,6 +72,9 @@ export const attackMineGuard = createServerFn({ method: "POST" })
     // Своего охранника не бьём — он держит шахту от чужих.
     const myAcc = await accAccountId(wallet).catch(() => null);
     if (guard.owner_account === myAcc) throw new Error("Это твой охранник");
+    // Шахта v2 сломалась (§8.59) — охрана сбегает при уборке; бить незачем.
+    const { mineCellBroken } = await import("./mine-v2-read");
+    if (await mineCellBroken(mapId, data.q, data.r)) throw new Error("braid.mine_broken");
 
     // Отряд собираем ДО списания энергии — иначе при отказе энергия сгорала.
     const { hero, squad: heroSquad } = await loadHeroSide(wallet);
@@ -92,7 +96,8 @@ export const attackMineGuard = createServerFn({ method: "POST" })
     // Ослабление от охраны действует сразу, как у боссов (fight-weaken).
     const reweaken = combat ? await loadFightWeaken(wallet, guardAbilities(guard)) : undefined;
 
-    const cost = num(guard.interaction_cost) || 10;
+    // На острове удар в 10 раз дешевле (island/energy); в мире — как было.
+    const cost = scaleEnergy(num(guard.interaction_cost) || 10, energyMultOf(mapId));
     const payment = await payForHit(wallet, cost);
 
     const sim = simulateEncounter({
@@ -151,7 +156,17 @@ export const attackMineGuard = createServerFn({ method: "POST" })
     }
 
     // Побочки боя — тем же модулем, что и у энкаунтера.
-    const { burned } = await applySideEffects(wallet, sim.side, "[mine-guard]", guard.name);
+    // И износ надетого на героя (art-wear-hit) — раз за бой: бой = этот охранник
+    // (клетка и время постановки), удар уже засчитан.
+    const fight = `guard:${mapId}:${data.q}:${data.r}:${guard.placed_at ?? ""}`;
+    const side = await applySideEffects(
+      wallet,
+      sim.side,
+      "[mine-guard]",
+      guard.name,
+      hero ? { heroId: hero.heroId, fight } : null,
+    );
+    const { burned } = side;
     // Добили — шахта открылась к захвату (сундук — чужим), оверлей охранника
     // гаснет у всех.
     if (killed) publishRaid({ mapId, type: "built", mine: true, cells: [`${data.q},${data.r}`] });
@@ -177,8 +192,12 @@ export const attackMineGuard = createServerFn({ method: "POST" })
         minutes: e.minutes,
         chip: e.chip ?? null,
       })),
+      /** Удар изменил фишки (оглушение) — только тогда клиент перечитывает инвентарь. */
+      chipsChanged: sim.side.chipEffects.some((e) => e.kind === "stun"),
       abilityTotals: abilityTotals(sim.abilities, burned, sim.side),
       abilityLog: trimFightLog(sim.abilities),
       log: trimFightLog(sim.log),
+      /** Слетело с героя сломанным (§8.63 п.3) — плашка над героем. */
+      artBroken: side.artBroken,
     };
   });

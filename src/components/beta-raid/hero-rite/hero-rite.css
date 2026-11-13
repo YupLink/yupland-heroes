@@ -1,0 +1,56 @@
+/* Зачарование героев: те же ячейки и цвета, что у лавки артефактов (enchant.css);
+   здесь только лицо героя, уровень и сетки выбора у админа. */
+.hrite-ava {
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--rc, #806447);
+  background: #0c0e0f;
+}
+.hrite-ava.is-none {
+  display: grid;
+  place-items: center;
+  color: var(--e-soft);
+}
+.hrite-lv {
+  font-size: 10px;
+  color: var(--e-soft);
+  font-variant-numeric: tabular-nums;
+}
+.ench-r-rare {
+  --rc: #5b9bff;
+}
+/* Уникальный — «лег+» (§8.91), цвет как в heroLabels.RARITY_COLOR. */
+.ench-r-unique {
+  --rc: #ff7043;
+}
+.hrite-new {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.hrite-new .hrite-ava {
+  width: 88px;
+}
+.hrite-new b {
+  font: 400 15px var(--e-head);
+}
+.ench-seg.hrite-seg-from {
+  grid-template-columns: 1fr;
+}
+.ench-seg.hrite-seg-need {
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+}
+.hrite-seg-need button {
+  color: var(--e-ink);
+  font-variant-numeric: tabular-nums;
+}
+.hrite-first {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  color: var(--rc, #ff7043);
+  font-size: 13px;
+  line-height: 1;
+}

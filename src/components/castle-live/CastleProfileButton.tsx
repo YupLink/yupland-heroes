@@ -7,6 +7,7 @@ import { useLang } from "@/lib/i18n";
 import { getMySelectedHero } from "@/server/api/heroes-select";
 import { thumb } from "@/lib/image";
 import { ProfileAvatar } from "./ProfileAvatar";
+import { ReferralRewardDot } from "@/components/referrals/ReferralRewardDot";
 import { SatietyBar, satietyLabel, useSatiety } from "@/components/beta-raid/SatietyBar";
 import "./castle-profile-satiety.css";
 
@@ -27,6 +28,7 @@ export function CastleProfileButton({ onClick, showSatiety = true }: { onClick: 
       label={ru ? "Открыть профиль" : "Open profile"}
       loading={hero.isPending}
       imageUrl={!hero.isError && hero.data?.imageUrl ? thumb(hero.data.imageUrl, 96) : null}
+      badge={<ReferralRewardDot className="absolute right-1 top-1" />}
     />
   );
   if (!showSatiety) return avatar;

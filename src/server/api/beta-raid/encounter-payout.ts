@@ -15,7 +15,7 @@ import { moneyByPlace } from "./encounter-share";
 import { moneyOnly, extraByPlace } from "./encounter-extra";
 import { bumpBossKill } from "../achievements/bump";
 import { isIslandMapId } from "@/lib/raid/island/ids";
-import { islandLikesFor } from "./island/island-likes";
+import { islandArtFull, islandCanonExtras, islandDropsFor, islandHunters } from "./island/island-drops";
 
 export type TopRow = { account: string; total: number };
 
@@ -72,6 +72,10 @@ export async function payoutByTop(opts: {
   const lb = await objectLeaderboard(opts.hpId, opts.generation ?? 0);
   if (lb.length === 0) return [];
   if (!(await claimObjectPayout(opts.hpId, opts.generation ?? opts.cycleNo))) return [];
+  // Босс острова: «Охотник» читаем до +1 за этого босса (лайки 10–30 → 5–15).
+  const island = opts.target.kind === "boss" && isIslandMapId(opts.mapId);
+  const hunters = island ? await islandHunters(lb.map((r) => r.account)) : null;
+  const artFull = island ? await islandArtFull(lb.map((r) => r.account)) : new Set<string>();
   // Ачивка «Охотник» (§8.57): одна на жизнь босса — каждому, кто его бил.
   bumpBossKill(opts.hpId, opts.generation ?? 0);
 
@@ -117,15 +121,21 @@ export async function payoutByTop(opts: {
   // невостребованного: фонд на топ-10 при двух бивших уходил лишь на треть.
   // moneyOnly убирает ресурсы и свои товары: формулы денег остаются ровно
   // теми же, а новые виды считает соседний модуль.
-  const money = moneyByPlace(moneyOnly(cfg), lb.length);
+  // Остров обучения — только канон (§8.47, 13.11): мировые деньги шаблона не делим.
+  const money = island ? [] : moneyByPlace(moneyOnly(cfg), lb.length);
   for (let i = 0; i < money.length; i++) {
     for (const row of money[i]) await give(lb[i], i + 1, row.kind, row.amount, null);
   }
 
-  // Босс острова платит лайками на корабль (§8.47): жирно до первых 500.
-  if (opts.target.kind === "boss" && isIslandMapId(opts.mapId)) {
+  // Босс острова (§8.47): лайки, шанс пака, артефакта и золота — каждому бившему.
+  if (hunters) {
     for (let i = 0; i < lb.length; i++) {
-      await give(lb[i], i + 1, "likes", await islandLikesFor(lb[i].account), null);
+      for (const d of await islandDropsFor(
+        hunters.has(lb[i].account),
+        artFull.has(lb[i].account),
+      )) {
+        await give(lb[i], i + 1, d.kind, d.amount, d.ref);
+      }
     }
   }
 
@@ -133,17 +143,17 @@ export async function payoutByTop(opts: {
   // едет в той же колонке, что и пак.
   const extras = extraByPlace(cfg, lb.length);
   for (let i = 0; i < extras.length; i++) {
-    for (const row of extras[i]) await give(lb[i], i + 1, row.kind, row.amount, row.ref);
+    for (const row of island ? islandCanonExtras(extras[i]) : extras[i]) await give(lb[i], i + 1, row.kind, row.amount, row.ref);
   }
 
-  for (const pk of cfg.packs) {
+  for (const pk of island ? [] : cfg.packs) {
     if (!pk.packId || pk.toPlace <= 0) continue;
     for (let i = 0; i < Math.min(pk.toPlace, lb.length); i++) {
       await give(lb[i], i + 1, "pack", 1, pk.packId);
     }
   }
 
-  for (const it of cfg.items ?? []) {
+  for (const it of island ? [] : (cfg.items ?? [])) {
     if (!it.itemTemplateId || it.toPlace <= 0) continue;
     for (let i = 0; i < Math.min(it.toPlace, lb.length); i++) {
       await give(lb[i], i + 1, "item", 1, it.itemTemplateId);

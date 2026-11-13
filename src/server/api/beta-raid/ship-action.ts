@@ -25,7 +25,8 @@ import {
   BIG_SHIP_ITEM_NAME,
 } from "@/lib/shipRules";
 import { freeWaterAround, visibleShipCells } from "./ships";
-import { shipBroken, shipMaxHp } from "@/lib/shipHealth";
+import { shipMaxHp } from "@/lib/shipHealth";
+import { shipMarkOf } from "./ship-marks";
 import { loadAshore } from "./ship-ashore";
 import { boardShipCore, leaveShipCore } from "./ship-ride";
 import { myShip } from "./ship-crew";
@@ -78,7 +79,7 @@ async function myCell(wallet: string): Promise<Cell> {
 export const getBetaRaidShips = createServerFn({ method: "GET" }).handler(async () => {
   const wallet = await requireBetaRaid();
   const mapId = await myMapId(wallet);
-  // Разбитые >2 суток корабли снимаем с карты (ленивая уборка, раз в минуту).
+  // Разбитые >2 суток и подбитые >1 ч снимаем с карты (ленивая уборка, раз в минуту).
   const { sweepBrokenShips } = await import("./ship-sweep");
   await sweepBrokenShips(mapId).catch(() => {});
   // Своё судно и его ВИД — по записи экипажа (одно на аккаунт). Нужен отдельно
@@ -94,46 +95,7 @@ export const getBetaRaidShips = createServerFn({ method: "GET" }).handler(async 
   // Причалы в глухом тумане игроку не показываем: корабль бывает только на
   // воде, и один этот значок раскрывал бы местность за стеной.
   const cells = await visibleShipCells(mapId, canIgnoreVoid(wallet), account, my);
-  const ships = cells.map((c) => {
-    const busy = Math.min(c.busy, c.ships);
-    // Разрушено то, у чего кончился запас хода и на борту никого: пока капитан
-    // не сошёл, судно ещё на ходу («дай доехать до берега»).
-    const broken = c.fleet.filter((f) => shipBroken(f.hp, !!f.crew)).length;
-    const mineShip = c.fleet.find((f) => f.crew === account) ?? null;
-    const freeShips = c.fleet.filter((f) => !f.crew && f.hp > 0);
-    // Полоску рисуем по тому борту, чей арт виден: свой → свободный (самый
-    // целый) → занятый → разрушенный.
-    const shown =
-      mineShip ??
-      (c.water ? (freeShips.sort((a, b) => b.hp - a.hp)[0] ?? null) : null) ??
-      c.fleet.find((f) => f.crew) ??
-      c.fleet[0] ??
-      null;
-    return {
-      q: c.q,
-      r: c.r,
-      total: c.ships,
-      busy,
-      // На суше свободных нет: сесть туда сервер не пустит, и обещать посадку
-      // клиенту нельзя — он посчитал бы цену посадки, а списалась бы другая.
-      // Разрушенные тоже не в счёт: на них не сядешь, пока не починят.
-      free: c.water ? freeShips.length : 0,
-      broken,
-      // Своё судно — то, где записан аккаунт игрока.
-      mine: c.crew.includes(account),
-      // Большой корабль на клетке — карта рисует его отдельным артом.
-      big: c.big,
-      // Свободный ЦЕЛЫЙ большой — в него сядет посадка (seatOnShip берёт большой
-      // первым). Только он открывает маршруту океан: занятый или разбитый
-      // большой рядом с малым вёл игрока в океан на малом (жалоба 03.10).
-      freeBig: c.water && freeShips.some((f) => f.kind === "big"),
-      // МОЁ судно большое (для океана и цены гребка), а не «на клетке есть большой».
-      mineBig: !!my && my.q === c.q && my.r === c.r && my.kind === "big",
-      // Запас хода видимого борта — для полоски под кораблём.
-      hp: shown?.hp ?? 0,
-      hpMax: shipMaxHp(shown?.kind ?? "small"),
-    };
-  });
+  const ships = cells.map((c) => shipMarkOf(c, account, my));
   return { ships };
 });
 

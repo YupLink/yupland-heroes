@@ -9,7 +9,8 @@ import type { ServicePrice } from "@/lib/buildingEffect";
 const MAX_PRICES = 20;
 
 const KINDS: Array<{ value: ServicePrice["kind"]; label: string }> = [
-  { value: "tickets", label: "Билеты" },
+  // Билетов нет (§8.61): цена «в билетах» платится золотом ×500.
+  { value: "tickets", label: "Золото ×500 (цена в билетах)" },
   { value: "likes", label: "Лайки" },
   { value: "energy", label: "Энергия" },
   { value: "token", label: "Токен" },

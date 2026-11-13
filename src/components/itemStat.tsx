@@ -2,6 +2,7 @@
 // в правом-верхнем углу карточки — и в админке, и у юзера в инвентаре.
 import {
   Shield,
+  ShieldOff,
   Sword,
   Zap,
   BookOpen,
@@ -105,6 +106,9 @@ export function immunityMeta(name: string | null | undefined): {
       return { Icon: Clover, color: "#6fcf6f" };
     case "Ослабление: интеллект":
       return { Icon: BookOpen, color: "#b46bff" };
+    // Снятие иммунитетов: перечёркнутый щит — иммунитеты героя не действуют.
+    case "Снятие иммунитетов":
+      return { Icon: ShieldOff, color: "#e879f9" };
     default:
       return { Icon: Shield, color: "#9aa4bd" };
   }

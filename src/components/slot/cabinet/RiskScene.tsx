@@ -23,7 +23,7 @@ function Face({ card }: { card: Card }) {
 function CardArt({ card }: { card?: Card }) {
   return (
     <span className="card-turn" aria-hidden="true">
-      <span className="card-side card-back">?</span>
+      <span className="card-side card-back" />
       <span
         className={
           "card-side card-face" + (card && cardRed(card) ? " is-red" : "")

@@ -8,35 +8,19 @@
 // раньше они стояли вплотную, и промах по золотой кнопке стирал час работы —
 // молча и без спроса. Теперь корзина спрашивает, точно ли забыть.
 import { useEffect, useState } from "react";
-import {
-  Combine,
-  Eraser,
-  Loader2,
-  MousePointerClick,
-  Paintbrush,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
-import { godText, type GodText } from "./adminCellText";
+import { godText } from "./adminCellText";
+import { KINDS, LIMITED_KINDS, MODES } from "./adminBrushModes";
+import { AdminEraseTargets } from "./AdminEraseTargets";
+import type { EraseTarget } from "./eraseTarget";
 import { AdminBrushActions } from "./AdminBrushActions";
 import { AdminBrushSizes } from "./AdminBrushSizes";
 import { AdminCellPalette, type AssetKind } from "./AdminCellPalette";
 import { VOID_ON, isGenBrush, isVoidBrush } from "./brushPatch";
 import { AREA_KINDS, type Brush } from "./useAdminBrush";
 import type { AdminMode } from "./useAdminLive";
-
-// Дорога — вторая после местности: она поверх неё и без неё не ставится.
-// prettier-ignore
-const KINDS: AssetKind[] = ["terrain", "road", "decoration", "chest", "artifact", "boss", "building"];
-
-const MODES: Array<{ id: AdminMode; label: (t: GodText) => string; Icon: typeof Eraser }> = [
-  { id: "inspect", label: (t) => t.modeInspect, Icon: MousePointerClick },
-  { id: "paint", label: (t) => t.modePaint, Icon: Paintbrush },
-  { id: "erase", label: (t) => t.modeErase, Icon: Eraser },
-  { id: "merge", label: (t) => t.modeMerge, Icon: Combine },
-];
 
 /** Сколько ждём второго нажатия по корзине, прежде чем передумать за админа. */
 const CONFIRM_MS = 5_000;
@@ -54,6 +38,13 @@ export function AdminBrushBar({
   onReset,
   onGiveaway,
   onCreate,
+  allow = null,
+  actions = true,
+  create = true,
+  studio = false,
+  eraseTarget = "top",
+  onEraseTarget,
+  eraseTerrain = false,
 }: {
   brush: Brush;
   onPick: (brush: Brush) => void;
@@ -71,8 +62,21 @@ export function AdminBrushBar({
   onGiveaway: () => void;
   /** Открыть окно создания объекта (шаблон заводится тут же, с карты). */
   onCreate: () => void;
+  /** Дизайнер на своём острове — только эти постройки, без раздачи, создания и объектов. */
+  allow?: ReadonlySet<string> | null;
+  /** Раздача (деньги) — только админу. */
+  actions?: boolean;
+  /** Создание объекта и «+ новый» (общий справочник) — админ или право catalogs. */
+  create?: boolean;
+  /** Мир креатора: сохраняет «Сохранить» студии — без «Выгрузить», корзины и раздачи. */
+  studio?: boolean;
+  /** Режим ластика и выбор его (AdminEraseTargets); местность — только мир креатора. */
+  eraseTarget?: EraseTarget;
+  onEraseTarget?: (target: EraseTarget) => void;
+  eraseTerrain?: boolean;
 }) {
   const t = godText(useLang());
+  const limited = allow !== null;
   const [kind, setKind] = useState<AssetKind>("terrain");
   /** Корзина спросила «точно?» и ждёт второго нажатия. */
   const [confirm, setConfirm] = useState(false);
@@ -111,12 +115,17 @@ export function AdminBrushBar({
           : t.hintVoidOff
         : t.hintPaint(brush.name);
   const hints = {
-    erase: t.hintErase,
+    erase:
+      eraseTarget === "top"
+        ? t.hintErase
+        : eraseTarget === "terrain"
+          ? t.hintEraseTerrain
+          : t.hintEraseOnly(t.eraseTargets[eraseTarget]),
     paint: paintHint,
     merge: t.hintMerge,
     inspect: t.hintInspect,
   };
-  const hint = hints[mode];
+  const hint = mode === "spawn" ? t.hintSpawn : hints[mode];
 
   // Размер имеет смысл у ластика и area-кистей (местность/декор/постройка);
   // у дороги и объектов клетка одна — там строку прячем.
@@ -144,7 +153,7 @@ export function AdminBrushBar({
             </button>
           ))}
         </div>
-        <button
+        {!studio && <button
           type="button"
           onClick={onPublish}
           disabled={pending === 0 || sending}
@@ -157,13 +166,13 @@ export function AdminBrushBar({
           )}
           {t.publish}
           {pending > 0 ? ` · ${pending}` : ""}
-        </button>
+        </button>}
       </div>
 
       {/* Корзина — в другом ряду и у другого края, чем «Выгрузить». Размер кисти
           стоит В ОДНОМ РЯДУ с урной (как в редакторе карт), не отдельной строкой. */}
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <button
+        {!studio && <button
           type="button"
           onClick={tapReset}
           disabled={pending === 0 || sending}
@@ -177,17 +186,19 @@ export function AdminBrushBar({
         >
           <Trash2 className="h-3.5 w-3.5" />
           {confirm ? t.forgetAsk(pending) : ""}
-        </button>
+        </button>}
         {/* Массовая раздача и создание объекта — отсюда же. Раньше за ними
             шли в общий редактор карт: выход из рейда, меню, подгрузки — и так
             по десять раз за день. Ряд переносится (flex-wrap): на 360 px они
             не выдавливают размеры кисти за край, а уходят строкой ниже. */}
-        <AdminBrushActions
-          t={t}
-          blocked={sending || pending > 0}
-          onGiveaway={onGiveaway}
-          onCreate={onCreate}
-        />
+        {!limited && (actions || create) && (
+          <AdminBrushActions
+            t={t}
+            blocked={sending || pending > 0}
+            onGiveaway={actions && !studio ? onGiveaway : undefined}
+            onCreate={create ? onCreate : undefined}
+          />
+        )}
         {sizeable && !confirm ? (
           <AdminBrushSizes
             brush={brush}
@@ -205,10 +216,13 @@ export function AdminBrushBar({
         )}
       </div>
 
+      {mode === "erase" && onEraseTarget && (
+        <AdminEraseTargets t={t} value={eraseTarget} onPick={onEraseTarget} terrain={eraseTerrain} />
+      )}
       {mode === "paint" && (
         <div className="mt-1.5 space-y-1.5">
           <div className="flex flex-wrap gap-1">
-            {KINDS.map((k) => (
+            {(limited ? LIMITED_KINDS : KINDS).map((k) => (
               <button
                 key={k}
                 type="button"
@@ -223,6 +237,8 @@ export function AdminBrushBar({
             ))}
           </div>
           <AdminCellPalette
+            allow={allow}
+            create={create}
             kind={kind}
             selected={brush?.id ?? null}
             onPick={(id, name) => onPick({ kind, id, name })}

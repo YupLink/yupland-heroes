@@ -12,7 +12,7 @@ import type { Cell } from "./encounter-where";
 
 /**
  * Постройку исключаем явно — на клетке с постройкой стоять нельзя, а
- * blockedSql про постройки ничего не знает.
+ * blockedSql из построек знает только двери и шахты.
  */
 export async function castleLanding(mapId: string, castle: Cell): Promise<Cell | null> {
   const dist = `(abs(c.q - ${castle.q}) + abs(c.r - ${castle.r})

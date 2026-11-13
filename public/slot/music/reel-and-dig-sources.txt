@@ -1,0 +1,17 @@
+YupLink slot presentation sound assets
+
+reel-spin-v1.wav, reel-stop-v1.wav, reel-bonus-stop-v1.wav
+Derived from Mixkit "Slot machine wheel" (1932):
+https://mixkit.co/free-sound-effects/slot-machine/
+
+dig-shovel-v1.wav
+Derived from Mixkit "Garden shovel stab" (1918).
+dig-soil-v1.wav
+Derived from Mixkit "Garden digging single" (1916):
+https://mixkit.co/free-sound-effects/garden/
+
+License: Mixkit Sound Effects Free License
+https://mixkit.co/license/#sfxFree
+Modified (trimmed, filtered, faded, level-adjusted and resampled) for this game.
+Use these assets as part of the game, not as a standalone sound library.
+Original source recordings are not included.

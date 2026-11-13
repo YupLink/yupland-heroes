@@ -18,6 +18,12 @@ describe("что лопата сделает с клеткой", () => {
     expect(at({ ...land, objectId: "boss:x", objectDefeated: true })).toBeNull();
   });
 
+  it("на ямке «Копать» нет — только «Закопать» её (§8.24 п. 6б)", () => {
+    expect(at(land, { hole: true })).toBe("bury");
+    expect(at(land, { hole: false })).toBe("dig");
+    expect(at(land, { hole: true, bag: { n: 1, buried: true } })).toBe("unbury");
+  });
+
   it("мешочек — «Закопать», одни бугорки — «Выкопать»; сундук — обычный или свой", () => {
     expect(at(land, { bag: { n: 2, buried: false } })).toBe("bury");
     expect(at(land, { bag: { n: 1, buried: true } })).toBe("unbury");
@@ -38,6 +44,11 @@ describe("что лопата сделает с клеткой", () => {
     expect(at({ ...land, objectId: "boss:x" }, { bag: { n: 1, buried: false } })).toBeNull();
     expect(at({ ...land, voidFog: true })).toBeNull();
     expect(at({ ...land, townHall: { q: 0, r: 0 } })).toBeNull();
+    // Шахта (§8.59 п. 9): ни закопать, ни выкопать — даже старый бугорок.
+    expect(
+      at({ ...land, buildingId: "b1", mine: true }, { bag: { n: 1, buried: true } }),
+    ).toBeNull();
+    expect(at({ ...land, mine: true }, { bag: { n: 1, buried: false } })).toBeNull();
     expect(at({})).toBeNull();
     expect(at(undefined)).toBeNull();
   });

@@ -1,0 +1,52 @@
+.shaman-hut-live{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:18px;border:0;background:#000b;color:#f3ead9;font-size:16px;line-height:1.3}
+.shaman-hut-live:not([open]){display:none}
+.shaman-hut-live::backdrop{background:transparent}
+.shaman-hut-live *{box-sizing:border-box}
+.shaman-hut-live__window{position:relative;display:flex;flex-direction:column;width:min(100%,760px);height:min(calc(100dvh - 36px),860px);overflow:hidden;border:1px solid #66523b;border-radius:15px;background:radial-gradient(ellipse at 50% 0,#1c1e1e 0,#121516 50%,#101213 100%);box-shadow:0 20px 55px #000a}
+.shaman-hut-live__scene{flex:none;height:156px;border-bottom:1px solid #66523b;background:#14202a url('/shaman-hut/hut-banner.webp') center 54%/cover no-repeat}
+.shaman-hut-live__header{position:absolute;z-index:1;inset:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:57px;padding:4px 13px 4px 19px;text-shadow:0 2px 5px #050708,0 0 12px #050708}
+.shaman-hut-live__header h2{min-width:0;margin:0;color:#ffe2a3;font-size:clamp(20px,3.4vw,27px);line-height:1.08}
+.shaman-hut-live__header button{flex:none;display:grid;place-items:center;width:42px;height:42px;border:1px solid #bb9652;border-radius:10px;background:#101213d9;color:#f4dfb2;cursor:pointer}
+.shaman-hut-live__scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#806643 #151919}
+.shaman-hut-live__body{padding:12px 18px 22px}
+.shaman-hut-live__total{display:flex;align-items:center;gap:7px;min-height:44px;margin:0 0 8px;padding:6px 12px;border:1px solid #55534c;border-radius:12px;background:linear-gradient(145deg,#171a1b,#101314);font-size:17px}
+.shaman-hut-live__total strong{color:#eac579;font-size:20px}
+.shaman-hut-live__tabs{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:9px;border-bottom:2px solid #8a744f}
+.shaman-hut-live__tabs button{display:flex;align-items:center;justify-content:center;min-height:44px;padding:6px 8px;border:0;border-bottom:3px solid transparent;border-radius:0;background:#111415;color:#a9aaa8;font-size:15px;font-weight:600;line-height:1.25;cursor:pointer}
+.shaman-hut-live__tabs button[aria-selected=true]{border-bottom-color:#d7ad5d;background:linear-gradient(135deg,#1b1c19,#2b261b);color:#ffe4a1}
+.shaman-hut-live__tabs button:hover{color:#fff1d4}
+.shaman-hut-live button:focus-visible{outline:2px solid #f1c66f;outline-offset:2px}
+.shaman-hut-live__card{position:relative;padding:10px 12px 12px;border:1px solid #5b564c;border-radius:13px;background:linear-gradient(145deg,#171a1b,#101314)}
+.shaman-hut-live__card-main{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:11px;min-height:94px}
+.shaman-hut-live__shaman{display:block;width:88px;height:88px;object-fit:contain;image-rendering:pixelated}
+.shaman-hut-live__details{min-width:0}
+.shaman-hut-live__details h3{margin:0 0 7px;color:#fff7e8;font-size:20px;line-height:1.1}
+.shaman-hut-live__details p{margin:3px 0;color:#c1b9ad;font-size:14px}
+.shaman-hut-live__details strong{color:#f1d08f;font-weight:700}
+.shaman-hut-live__quantity{position:absolute;top:11px;right:12px;padding:4px 7px;border:1px solid #64543a;border-radius:7px;color:#f1d08f;font-size:13px}
+.shaman-hut-live__card:has(.shaman-hut-live__quantity) .shaman-hut-live__details h3{padding-right:60px}
+.shaman-hut-live__actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #46443d}
+.shaman-hut-live__price{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:5px 8px;border:1px solid #55534c;border-radius:10px;background:#111415;color:#fff8ea;font-size:17px;font-weight:700}
+.shaman-hut-live__price img{display:block;width:22px;height:22px;object-fit:contain;image-rendering:pixelated}
+.shaman-hut-live__action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:7px 10px;border:1px solid #c69950;border-radius:10px;background:linear-gradient(145deg,#30281d,#171919);color:#ffe6ae;font-size:16px;font-weight:700;cursor:pointer}
+.shaman-hut-live__action:hover:not(:disabled){background:#3a2d1c}
+.shaman-hut-live__action:disabled{border-color:#55534c;background:#202322;color:#8d8b87;cursor:not-allowed}
+.shaman-hut-live__action--secondary{background:#171a1b}
+.shaman-hut-live__hint{margin:0;color:#b7b0a5;font-size:12px}
+.shaman-hut-live__card>.shaman-hut-live__hint{margin-top:7px}
+.shaman-hut-live__warning{margin:8px 2px 0;color:#b7b0a5;font-size:13px}
+.shaman-hut-live__empty{padding:14px;border:1px solid #55534c;border-radius:12px;background:#111415;text-align:center}
+.shaman-hut-live__empty p{margin:0 0 10px}
+.shaman-hut-live__empty button,.shaman-hut-live__message button{min-height:44px;padding:8px 15px;border:1px solid #a3804c;border-radius:9px;background:#2d251b;color:#f3dfbd;cursor:pointer}
+.shaman-hut-live__message{margin:14px;padding:14px;border:1px solid #55534c;border-radius:12px;background:#111415;text-align:center}
+.shaman-hut-live__admin{margin:14px 18px 22px;padding-top:12px;border-top:1px solid #55534c}
+.shaman-hut-live__spinner{animation:shaman-hut-spin 1s linear infinite}
+@keyframes shaman-hut-spin{to{transform:rotate(360deg)}}
+.shaman-hut-live__confirm{width:min(370px,calc(100% - 28px));max-width:none;margin:auto;padding:18px;border:1px solid #8c714e;border-radius:14px;background:radial-gradient(ellipse at 50% 0,#1c1e1e,#101213);box-shadow:0 18px 45px #000b;color:#f3ead9;font-size:15px}
+.shaman-hut-live__confirm::backdrop{background:#050708bb}
+.shaman-hut-live__confirm h3{margin:0 0 8px;color:#f4ddad;font-size:20px}
+.shaman-hut-live__confirm p{margin:0 0 16px}
+.shaman-hut-live__confirm>div{display:flex;justify-content:flex-end;gap:8px}
+.shaman-hut-live__confirm>div button:first-child{min-height:44px;padding:7px 12px;border:1px solid #665c4e;border-radius:9px;background:#202321;color:#d6ccb9;cursor:pointer}
+@media(max-width:420px){.shaman-hut-live{padding:0}.shaman-hut-live__window{width:100%;height:100dvh;border:0;border-radius:0}.shaman-hut-live__header{padding:4px 10px 4px 14px}.shaman-hut-live__header h2{font-size:19px}.shaman-hut-live__scene{height:132px;background-position:64% center}.shaman-hut-live__body{padding:10px 14px 20px}.shaman-hut-live__total{font-size:15px}.shaman-hut-live__card{padding:9px}.shaman-hut-live__card-main{grid-template-columns:74px minmax(0,1fr);gap:8px;min-height:82px}.shaman-hut-live__shaman{width:74px;height:74px}.shaman-hut-live__details h3{font-size:18px}.shaman-hut-live__details p{font-size:13px}}
+@media(max-width:360px){.shaman-hut-live__header h2{font-size:17px}.shaman-hut-live__body{padding-inline:11px}.shaman-hut-live__actions{gap:6px}.shaman-hut-live__action{font-size:14px}.shaman-hut-live__hint{font-size:11px}}

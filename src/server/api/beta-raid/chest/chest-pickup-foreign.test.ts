@@ -4,6 +4,7 @@
 // вся сеть хозяина: в рюкзак, сколько влезет после сундука, остальное —
 // мешочком. Модель базы — src/test/chestPickupFake.ts.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { count, inBags, OWNER, resetPickup, s, THIEF } from "@/test/chestPickupFake";
 
 const M = vi.hoisted(() => "@/test/chestPickupFake");
@@ -33,7 +34,11 @@ const lift = async (op: string, confirm = false) => {
 const ORE = "custom:cst_ore";
 const CHEST = "custom:cst_mc";
 const full = (n: number) =>
-  Array.from({ length: n }, (_, i) => ({ stackKey: `custom:x${i}`, count: 20, potion: false }));
+  Array.from({ length: n }, (_, i) => ({
+    stackKey: `custom:x${i}`,
+    count: CELL_SIZE,
+    potion: false,
+  }));
 
 beforeEach(() => {
   resetPickup();
@@ -93,11 +98,18 @@ describe("последний сундук хозяина — вся сеть с�
 
   it("в рюкзак после сундука, сколько влезет; остальное — мешочком; сеть хозяина пуста", async () => {
     s.bag = full(2);
+    s.net = [{ stackKey: ORE, count: CELL_SIZE + 10 }];
     const res = await lift("op1abc", true);
-    // Ёмкость 4: две заняты, одна — сундук, одна — 20 руды.
-    expect(res).toMatchObject({ taken: [{ stackKey: ORE, qty: 20 }], bagged: [{ stackKey: ORE, qty: 10 }] });
+    // Ёмкость 4: две заняты, одна — сундук, одна — полная ячейка руды.
+    expect(res).toMatchObject({
+      taken: [{ stackKey: ORE, qty: CELL_SIZE }],
+      bagged: [{ stackKey: ORE, qty: 10 }],
+    });
     expect(count(CHEST)).toBe(1);
-    expect(s.bag.find((b) => b.stackKey === ORE)).toMatchObject({ count: 20, loot: 20 });
+    expect(s.bag.find((b) => b.stackKey === ORE)).toMatchObject({
+      count: CELL_SIZE,
+      loot: CELL_SIZE,
+    });
     expect(inBags(ORE)).toBe(10);
     expect(s.net).toEqual([]);
     expect(s.chests).toEqual({});

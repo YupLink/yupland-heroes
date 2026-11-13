@@ -13,11 +13,12 @@
 //   5. Дедупит уже отправленные уведомления (по sale_id).
 //   6. Сортирует по цене ASC (внутри одного payment-токена) и шлёт TG.
 
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import { pg } from "./db/pg";
 import { tgSendMessage } from "./tg";
 import { normalizeTitle } from "@/lib/normalizeTitle";
+import { teamOwnerTg } from "./team";
 
-const MARKETPLACE_NOTIFY_TG = 100000001;
 const SENDLER_CONTRACT = "yuplandshop.mintbase1.near";
 const SENDLER_API = "https://api.sendler.xyz";
 const FILTERS_KEY = "marketplace_filters";
@@ -245,10 +246,7 @@ function rawToHumanNumber(raw: string, decimals: number): number {
  *   "usdt.tether-token.near" → "USDT"
  *   ftContract из reward_tokens → точный symbol
  */
-function tokenLabel(
-  priceToken: string,
-  tokenMap: Map<string, TokenInfo>
-): string {
+function tokenLabel(priceToken: string, tokenMap: Map<string, TokenInfo>): string {
   const known = tokenMap.get(priceToken);
   if (known) return known.symbol;
   // Fallback: первый сегмент до точки, в верхнем регистре.
@@ -263,15 +261,13 @@ function passesFilters(
   symbol: string,
   humanPrice: number,
   matchingCampaignIds: string[],
-  filters: MarketplaceFilters
+  filters: MarketplaceFilters,
 ): boolean {
   if (filters.excludeTokens?.includes(symbol)) return false;
   const cap = filters.maxPriceByToken?.[symbol];
   if (typeof cap === "number" && cap > 0 && humanPrice > cap) return false;
   if (filters.onlyCampaigns && filters.onlyCampaigns.length > 0) {
-    const ok = matchingCampaignIds.some((id) =>
-      filters.onlyCampaigns!.includes(id)
-    );
+    const ok = matchingCampaignIds.some((id) => filters.onlyCampaigns!.includes(id));
     if (!ok) return false;
   }
   return true;
@@ -317,8 +313,8 @@ async function pickFreshMatchingListings(): Promise<MatchedListing[]> {
         m.symbol,
         m.humanPrice,
         m.drops.map((d) => d.id),
-        filters
-      )
+        filters,
+      ),
     );
 
   if (candidates.length === 0) return [];
@@ -387,10 +383,7 @@ export interface MarketplaceStats {
  * Подсчёт «у меня на кошельках» по title через локальный кэш Sendler.
  * Если sisters пустой — возвращает null.
  */
-async function ownedByTitle(
-  titles: string[],
-  sisters: string[]
-): Promise<Map<string, number>> {
+async function ownedByTitle(titles: string[], sisters: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   if (sisters.length === 0) return out;
   const { fetchSendlerNftsByTitle } = await import("./sendler");
@@ -400,27 +393,25 @@ async function ownedByTitle(
       try {
         const items = await fetchSendlerNftsByTitle(SENDLER_CONTRACT, title);
         const want = normalizeTitle(title);
-        const strict = items.filter(
-          (it) => normalizeTitle(it.title) === want
-        );
+        const strict = items.filter((it) => normalizeTitle(it.title) === want);
         const list = strict.length > 0 ? strict : items;
-        const owned = list.filter((it) =>
-          sisterSet.has(it.owner_id ?? "")
-        ).length;
+        const owned = list.filter((it) => sisterSet.has(it.owner_id ?? "")).length;
         // ключ нормализуем — потому что caller передаёт оригинальный
         // title (может в разных регистрах для одного логического NFT)
         out.set(normalizeTitle(title), owned);
       } catch {
         // skip
       }
-    })
+    }),
   );
   return out;
 }
 
-export async function getMarketplaceStats(opts: {
-  sisters?: string[];
-} = {}): Promise<MarketplaceStats> {
+export async function getMarketplaceStats(
+  opts: {
+    sisters?: string[];
+  } = {},
+): Promise<MarketplaceStats> {
   const usable = await pickFreshMatchingListings();
   const sisters = opts.sisters ?? [];
 
@@ -433,9 +424,7 @@ export async function getMarketplaceStats(opts: {
   }
   const uniqueTitles = Array.from(titleByNorm.values());
   const ownedMap =
-    sisters.length > 0
-      ? await ownedByTitle(uniqueTitles, sisters)
-      : new Map<string, number>();
+    sisters.length > 0 ? await ownedByTitle(uniqueTitles, sisters) : new Map<string, number>();
 
   return {
     interestingCount: usable.length,
@@ -489,12 +478,14 @@ export async function checkMarketplaceListings(): Promise<{
         .select("sale_id")
         .in(
           "sale_id",
-          usable.map((m) => String(m.sale.approval_id))
+          usable.map((m) => String(m.sale.approval_id)),
         )
     ).data as Array<{ sale_id: string }>) ?? [];
   const seen = new Set(seenRows.map((r) => r.sale_id));
   const fresh = usable.filter((m) => !seen.has(String(m.sale.approval_id)));
 
+  // Получатель — владелец (TG id из env, server/team); не задан — не шлём.
+  const notifyTg = teamOwnerTg();
   let notified = 0;
   for (const m of fresh) {
     const lines: string[] = [];
@@ -502,9 +493,7 @@ export async function checkMarketplaceListings(): Promise<{
     lines.push("");
     lines.push(`<b>${escapeHtml(m.sale.title)}</b>`);
     lines.push(`Token #${m.sale.token_id}`);
-    lines.push(
-      `Цена: <b>${shortenHuman(m.humanPrice)} ${m.symbol}</b>`
-    );
+    lines.push(`Цена: <b>${shortenHuman(m.humanPrice)} ${m.symbol}</b>`);
     if (m.sale.owner_id) {
       lines.push(`Продавец: <code>${escapeHtml(m.sale.owner_id)}</code>`);
     }
@@ -518,9 +507,9 @@ export async function checkMarketplaceListings(): Promise<{
     }
     if (m.events.length > 0) {
       lines.push("");
-      lines.push("Ticket-события:");
+      lines.push("Золото за холд NFT:");
       for (const e of m.events) {
-        lines.push(`• +${e.rewardTickets} билет(ов)`);
+        lines.push(`• +${goldForEarnedTickets(e.rewardTickets)} золота в сутки`);
       }
     }
 
@@ -541,9 +530,11 @@ export async function checkMarketplaceListings(): Promise<{
         ],
       ],
     };
-    const ok = await tgSendMessage(MARKETPLACE_NOTIFY_TG, lines.join("\n"), {
-      replyMarkup: buttons,
-    });
+    const ok =
+      notifyTg != null &&
+      (await tgSendMessage(notifyTg, lines.join("\n"), {
+        replyMarkup: buttons,
+      }));
     if (ok) {
       notified++;
       await pg.notifiedMarketplaceListings.upsert(
@@ -554,7 +545,7 @@ export async function checkMarketplaceListings(): Promise<{
           price_raw: m.sale.price,
           price_token: m.sale.price_token,
         },
-        { onConflict: "sale_id" }
+        { onConflict: "sale_id" },
       );
     }
     await new Promise((r) => setTimeout(r, 60));
@@ -569,7 +560,5 @@ export async function checkMarketplaceListings(): Promise<{
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/[&<>]/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"
-  );
+  return s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
 }

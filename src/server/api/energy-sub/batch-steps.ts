@@ -11,7 +11,7 @@ import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 
 export type Step = {
-  name: "swap" | "map" | "burn" | "dev" | "bank";
+  name: "swap" | "map" | "burn" | "burnpool" | "dev" | "bank";
   state: "sending" | "done" | "retry";
   hash?: string;
   hashes?: string[];
@@ -134,6 +134,12 @@ export async function sendOnce(
 
 /** Доли разработчиков до 6 знаков; остаток округления — последнему, сумма ровно amount. */
 export function devItems(wallets: Array<{ wallet: string; share: number }>, amount: number) {
+  // Кошельки по умолчанию — из env (server/team): не задан — не платим никуда.
+  if (!wallets.length || wallets.some((w) => !w.wallet.trim())) {
+    throw new Error(
+      "Кошелёк разработчика не задан (TEAM_OWNER_WALLET / TEAM_PARTNER_WALLET) — перевод остановлен",
+    );
+  }
   const floor6 = (n: number) => Math.floor(n * 1e6 + 1e-6) / 1e6;
   const items = wallets.map((w) => ({ receiverId: w.wallet, amountHuman: floor6(amount * w.share) }));
   const rest = items.slice(0, -1).reduce((s, i) => s + i.amountHuman, 0);
@@ -186,6 +192,8 @@ export function batchSummary(bucket: string, amount: number, steps: Step[]): str
   if (map) parts.push(`в пул карты ${n(map.amount)} DARAI`);
   const burn = done("burn");
   if (burn) parts.push(`в дупло ${n(burn.amount)} DARAI`);
+  const pool = done("burnpool");
+  if (pool) parts.push(`в пул сжигания ${n(pool.amount)} DARAI`);
   const dev = done("dev");
   if (dev) parts.push(`разработчикам ${n(dev.amount)} ${usd ? "USDT" : "DARAI"}`);
   if (parts.length === 0) parts.push(`${n(amount)} ${usd ? "USDT" : "DARAI"}`);

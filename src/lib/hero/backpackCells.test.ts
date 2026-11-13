@@ -1,5 +1,5 @@
 // Место в рюкзаке под дробный стек: 0,79 Огурцов от босса — это занятая
-// ячейка (CEIL, как в SQL), и долить в неё можно 19,21, а не 20.
+// ячейка (CEIL, как в SQL), и долить в неё можно CELL_SIZE − 0,79, а не CELL_SIZE.
 import { describe, it, expect } from "vitest";
 import { backpackRoomFor, occupiedCells, CELL_SIZE } from "./backpackCells";
 
@@ -17,6 +17,6 @@ describe("backpackRoomFor: дробный стек", () => {
   });
 
   it("целые стеки считаются как раньше", () => {
-    expect(backpackRoomFor({ capacity: 3, cur: 5, occupied: 2 })).toBe(15 + CELL_SIZE);
+    expect(backpackRoomFor({ capacity: 3, cur: 5, occupied: 2 })).toBe(CELL_SIZE - 5 + CELL_SIZE);
   });
 });

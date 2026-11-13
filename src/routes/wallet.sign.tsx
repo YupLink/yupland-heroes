@@ -45,6 +45,7 @@ import { hasAppPassword, isAppUnlocked, unlockApp } from "@/lib/appLock";
 import { transferAction, functionCallAction } from "@/lib/nearTx";
 import { touchDappConnection } from "@/server/api/walletConnect";
 import { useT } from "@/lib/i18n";
+import { returnUrlOrThrow, safeReturnUrl } from "@/lib/walletReturnUrl";
 
 export const Route = createFileRoute("/wallet/sign")({
   head: () => ({
@@ -89,12 +90,13 @@ function decodeBase64Json<T>(s: string): T {
 function parseQuery(): ParsedRequest | { error: string } {
   if (typeof window === "undefined") return { error: "no-window" };
   const q = new URLSearchParams(window.location.search);
-  const txParam =
-    q.get("transactions") || q.get("transaction") || q.get("tx") || "";
+  const txParam = q.get("transactions") || q.get("transaction") || q.get("tx") || "";
   const callbackUrl = q.get("callbackUrl") || q.get("callback_url") || "";
   const meta = q.get("meta");
   if (!txParam) return { error: "transactions параметр обязателен" };
   if (!callbackUrl) return { error: "callbackUrl обязателен" };
+  // Только https (и http на localhost): «javascript:» выполнил бы чужой код у нас.
+  if (!safeReturnUrl(callbackUrl)) return { error: "callbackUrl должен быть https-адресом" };
   let parsed: unknown;
   try {
     parsed = decodeBase64Json<unknown>(txParam);
@@ -146,7 +148,10 @@ function nftTransferPairs(methodName: string, rawArgs: unknown): Array<[string, 
   if (methodName !== "nft_transfer" && methodName !== "nft_batch_transfer") return [];
   let args: Record<string, unknown> = {};
   try {
-    args = typeof rawArgs === "string" ? JSON.parse(rawArgs) : ((rawArgs as Record<string, unknown>) ?? {});
+    args =
+      typeof rawArgs === "string"
+        ? JSON.parse(rawArgs)
+        : ((rawArgs as Record<string, unknown>) ?? {});
   } catch {
     return [];
   }
@@ -170,8 +175,7 @@ function ActionPreview({ a }: { a: TxAction }) {
       <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-xs">
         <div className="font-semibold text-gold">Transfer</div>
         <div className="mt-0.5 text-muted-foreground">
-          {t("wsign.amount")}{" "}
-          <span className="font-mono text-foreground">{near} NEAR</span>
+          {t("wsign.amount")} <span className="font-mono text-foreground">{near} NEAR</span>
         </div>
       </div>
     );
@@ -211,10 +215,7 @@ function ActionPreview({ a }: { a: TxAction }) {
           FunctionCall · <span className="font-mono">{a.params.methodName}</span>
         </div>
         <div className="mt-1 text-muted-foreground">
-          Deposit:{" "}
-          <span className="font-mono text-foreground">
-            {yoctoToNear(dep)} NEAR
-          </span>
+          Deposit: <span className="font-mono text-foreground">{yoctoToNear(dep)} NEAR</span>
         </div>
         <details className="mt-1.5">
           <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
@@ -348,7 +349,7 @@ function WalletSignPage() {
     onSuccess: (hashes) => {
       if (!request) return;
       toast.success(t("wsign.toast_signed"));
-      const u = new URL(request.callbackUrl);
+      const u = returnUrlOrThrow(request.callbackUrl);
       u.searchParams.set("transactionHashes", hashes.join(","));
       if (request.meta) u.searchParams.set("meta", request.meta);
       window.location.href = u.toString();
@@ -356,15 +357,17 @@ function WalletSignPage() {
     onError: (e: Error) => {
       const m = e.message || "";
       const human =
-        m === "PIN_REQUIRED"
-          ? t("wsign.enter_pin")
-          : m === "APP_PWD_REQUIRED" || m === "APP_LOCKED"
-            ? t("wsign.enter_wallet_password")
-            : m.includes("Неверный PIN")
-              ? t("wsign.wrong_pin")
-              : m.includes("Master заблокирован")
-                ? t("wsign.enter_pin")
-                : m;
+        m === "APP_PWD_SETUP"
+          ? t("wvault.need_setup")
+          : m === "PIN_REQUIRED"
+            ? t("wsign.enter_pin")
+            : m === "APP_PWD_REQUIRED" || m === "APP_LOCKED"
+              ? t("wsign.enter_wallet_password")
+              : m.includes("Неверный PIN")
+                ? t("wsign.wrong_pin")
+                : m.includes("Master заблокирован")
+                  ? t("wsign.enter_pin")
+                  : m;
       toast.error(human);
     },
   });
@@ -375,7 +378,7 @@ function WalletSignPage() {
       return;
     }
     try {
-      const u = new URL(request.callbackUrl);
+      const u = returnUrlOrThrow(request.callbackUrl);
       u.searchParams.set("errorCode", "userRejected");
       u.searchParams.set("errorMessage", "User rejected the request");
       if (request.meta) u.searchParams.set("meta", request.meta);
@@ -406,9 +409,7 @@ function WalletSignPage() {
         <div className="mx-auto max-w-xl px-4 pb-20 pt-6">
           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-center">
             <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
-            <h1 className="mt-3 font-display text-lg font-bold">
-              {t("wsign.invalid_request")}
-            </h1>
+            <h1 className="mt-3 font-display text-lg font-bold">{t("wsign.invalid_request")}</h1>
             <p className="mt-2 text-sm text-muted-foreground">{parseError}</p>
           </div>
         </div>
@@ -449,19 +450,14 @@ function WalletSignPage() {
           {totalDeposit > 0n && (
             <div className="mt-1 text-xs text-muted-foreground">
               {t("wsign.total_deposit")}{" "}
-              <span className="font-mono text-foreground">
-                {yoctoToNear(totalDeposit)} NEAR
-              </span>
+              <span className="font-mono text-foreground">{yoctoToNear(totalDeposit)} NEAR</span>
             </div>
           )}
         </div>
 
         {/* Tx list */}
         {request.txs.map((tx, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-border bg-card p-4 space-y-3"
-          >
+          <div key={i} className="rounded-2xl border border-border bg-card p-4 space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">{t("wsign.receiver")}</span>
               <code className="font-mono text-gold">{tx.receiverId}</code>
@@ -571,7 +567,7 @@ function WalletSignPage() {
               (appLockNeeded && !appPwd.trim())
             }
             className={cn(
-              "flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-50"
+              "flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground shadow-gold transition hover:scale-[1.01] disabled:opacity-50",
             )}
           >
             {approve.isPending ? (

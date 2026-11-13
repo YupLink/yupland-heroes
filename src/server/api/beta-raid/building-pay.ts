@@ -1,17 +1,22 @@
-// Оплата постройки: билеты, лайки или токен экосистемы.
+// Оплата постройки: золото (цена «в билетах» ×500, §8.61), лайки или токен.
 //
-// Каждый ресурс списывается своим проверенным путём — билеты через леджер
-// билетов, лайки через баланс лайков, токен через валютный леджер. Ссылка
-// (ref) одна на переход тира, поэтому повторное нажатие не спишет дважды.
+// Каждый ресурс списывается своим проверенным путём — золото через res_move,
+// лайки через баланс лайков, токен через валютный леджер. Ссылка (ref) одна
+// на переход тира, поэтому повторное нажатие не спишет дважды.
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import { noteEnergySpendByWallet } from "./econ/energy-note";
 import type { BuildPrice } from "./buildings";
 import type { ServicePrice } from "@/lib/buildingEffect";
 
 export async function payBuildPrice(wallet: string, price: BuildPrice, ref: string): Promise<void> {
   if (price.kind === "tickets") {
-    const { moveTickets } = await import("../tickets-ledger");
-    const res = await moveTickets({ wallet, delta: -price.amount, kind: "building", ref });
-    if (!res.applied) throw new Error("Оплата билетами не прошла");
+    // Билетов нет (§8.61): цена «в билетах» — золото ×500, вид building.
+    const { accAccountId } = await import("../currency/move");
+    const { goldMove } = await import("../gold-move");
+    const account = await accAccountId(wallet);
+    if (!account) throw new Error("Ресурсный счёт не заведён");
+    if (!(await goldMove(account, -goldForTicketPrice(price.amount), "building", ref)))
+      throw new Error("Эта постройка уже оплачена");
     return;
   }
 

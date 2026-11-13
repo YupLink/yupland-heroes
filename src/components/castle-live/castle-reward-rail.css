@@ -1,6 +1,6 @@
 .castle-reward-rail {
   position: fixed;
-  top: max(104px, calc(env(safe-area-inset-top) + 96px));
+  top: max(104px, calc(var(--app-top,env(safe-area-inset-top,0px)) + 96px));
   right: 11px;
   z-index: 52;
   display: flex;
@@ -9,7 +9,7 @@
   gap: 9px;
   pointer-events: none;
 }
-.castle-reward-rail > button {
+:is(.castle-reward-rail, .castle-reward-rail__items) > button {
   position: relative;
   display: grid;
   place-items: center;
@@ -21,8 +21,8 @@
   color: #e8c983;
   pointer-events: auto;
 }
-.castle-reward-rail > button:active { transform: scale(.95); }
-.castle-reward-rail > button::before {
+:is(.castle-reward-rail, .castle-reward-rail__items) > button:active { transform: scale(.95); }
+:is(.castle-reward-rail, .castle-reward-rail__items) > button::before {
   position: absolute;
   inset: 3px;
   border: .75px solid #ffd32e55;
@@ -31,7 +31,7 @@
   box-shadow: inset 0 .5px #e8d4a626, 0 2px 5px #0007;
   content: "";
 }
-.castle-reward-rail > button > img {
+:is(.castle-reward-rail, .castle-reward-rail__items) > button > img {
   position: relative;
   display: block;
   width: 32px;
@@ -58,7 +58,7 @@
   font-variant-numeric: tabular-nums;
   box-shadow: 0 1px 3px #0008;
 }
-.castle-reward-rail > button:focus-visible {
+:is(.castle-reward-rail, .castle-reward-rail__items) > button:focus-visible {
   outline: 2px solid #ffe08a;
   outline-offset: 3px;
 }
@@ -66,11 +66,10 @@ body:has([aria-labelledby="castle-window-title"]) .castle-reward-rail,
 body:has([role="dialog"]) .castle-reward-rail {
   display: none;
 }
-
 /* Local visual treatment of the shared GiftsModal, independent of its entry point. */
 [data-hud-modal="gifts"] {
   align-items: center;
-  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  padding: max(12px, var(--app-top,env(safe-area-inset-top,0px))) 12px max(12px, env(safe-area-inset-bottom));
 }
 [data-hud-modal="gifts"] [data-hud-modal-panel] {
   width: 100%;
@@ -194,7 +193,6 @@ body:has([role="dialog"]) .castle-reward-rail {
   [data-hud-modal="gifts"] [data-gift-card],
   [data-hud-modal="gifts"] [data-gift-card]::before { animation: none; }
 }
-
 /* Desktop: one content-sized castle toolbar; mobile rules above stay unchanged. */
 .castle-reward-rail__label { display: none; }
 @media (min-width: 1024px) {
@@ -218,15 +216,15 @@ body:has([role="dialog"]) .castle-reward-rail {
   .castle-desktop-toolbar .castle-reward-rail {
     position: static; display: flex; flex-direction: row; gap: 8px; flex: none;
   }
-  .castle-desktop-toolbar .castle-reward-rail > button {
+  .castle-desktop-toolbar :is(.castle-reward-rail, .castle-reward-rail__items) > button {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     width: auto; min-width: 104px; height: 44px; padding: 0 10px;
     border: 1px solid #9d8249; border-radius: 12px;
     background: #101a18; font: 600 13px "Castle HUD Golos",sans-serif;
     color: #fff4d8;
   }
-  .castle-desktop-toolbar .castle-reward-rail > button::before { display: none; }
-  .castle-desktop-toolbar .castle-reward-rail > button > img { width: 28px; height: 28px; }
+  .castle-desktop-toolbar :is(.castle-reward-rail, .castle-reward-rail__items) > button::before { display: none; }
+  .castle-desktop-toolbar :is(.castle-reward-rail, .castle-reward-rail__items) > button > img { width: 28px; height: 28px; }
   .castle-desktop-toolbar .castle-reward-rail__label { display: inline; }
   .castle-desktop-toolbar > .castle-toolbar-profile { margin-left: 0; flex: none; }
   .castle-desktop-toolbar > .castle-toolbar-profile > .castle-profile-satiety > button { width: 52px !important; height: 52px !important; }

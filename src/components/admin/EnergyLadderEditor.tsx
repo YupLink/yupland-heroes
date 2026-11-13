@@ -5,14 +5,23 @@
 // HOPE остаётся активным (валюты считаются независимо).
 //
 // Пример: DARAI [1 000 000 ×2] → [5 000 000 ×2], HOPE [1000 ×1] → [2000 ×1].
-import { Plus, Trash2, Coins, Ticket, Gem, DollarSign } from "lucide-react";
+//
+// Строка золота (§8.61): в базе — ступень kind 'tickets' в билетах, игрок платит
+// золотом ×500. Админ видит и вводит ЗОЛОТО: поле = билеты × 500, в базу — ÷500
+// (price_steps — jsonb, дробь допустима). Паку без такой строки её не добавляем сами.
+import { Plus, Trash2, Coins, Gem, DollarSign } from "lucide-react";
 import { StepLadderRow } from "./StepLadderRow";
 import { UsdPreview } from "./shop/UsdPriceField";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
+import { TICKET_SPEND_GOLD } from "@/lib/ticketGold";
 import type { OfferPricing, PayOption } from "@/lib/energySteps";
 import { payName } from "@/lib/energySteps";
 
-const ICON = { tickets: Ticket, darai: Coins, usd: DollarSign, token: Gem } as const;
-const ADD_LABEL = { tickets: "билеты", darai: "DARAI", usd: "тариф в $", token: "токен" } as const;
+const GoldIcon = ({ className }: { className?: string }) => (
+  <ResourceGlyph kind="gold" className={className} />
+);
+const ICON = { tickets: GoldIcon, darai: Coins, usd: DollarSign, token: Gem } as const;
+const ADD_LABEL = { tickets: "золото", darai: "DARAI", usd: "тариф в $", token: "токен" } as const;
 
 export function EnergyLadderEditor({
   pricing,
@@ -28,7 +37,8 @@ export function EnergyLadderEditor({
     onChange(pricing.map((o, k) => (k === i ? next : o)));
 
   const addCurrency = (kind: "tickets" | "darai" | "usd" | "token") => {
-    const steps = [{ amount: kind === "usd" ? 1 : 100, times: 1 }];
+    // Золото: первая ступень 500 (= 1 билет в базе).
+    const steps = [{ amount: kind === "usd" || kind === "tickets" ? 1 : 100, times: 1 }];
     onChange([
       ...pricing,
       kind === "token" ? { kind, symbol: tokenSymbols[0] ?? "", steps } : { kind, steps },
@@ -70,7 +80,9 @@ export function EnergyLadderEditor({
                     ))}
                   </select>
                 ) : (
-                  <span className="text-xs font-bold">{payName(opt)}</span>
+                  <span className="text-xs font-bold">
+                    {opt.kind === "tickets" ? "Золото" : payName(opt)}
+                  </span>
                 )}
                 <span className="text-[10px] text-muted-foreground">
                   всего {opt.steps.reduce((s, st) => s + Math.max(1, st.times), 0)} покупок/день
@@ -89,6 +101,14 @@ export function EnergyLadderEditor({
               <StepLadderRow
                 steps={opt.steps}
                 onChange={(steps) => setOption(i, { ...opt, steps })}
+                scale={opt.kind === "tickets" ? TICKET_SPEND_GOLD : 1}
+                priceLabel={
+                  opt.kind === "tickets" ? (
+                    <>
+                      <ResourceGlyph kind="gold" className="h-3 w-3" /> золото
+                    </>
+                  ) : undefined
+                }
               />
               {/* Тариф в $: USDT, DARAI и звёзды со счёта считаются от ступени по курсу. */}
               {opt.kind === "usd" && opt.steps[0] && (
@@ -110,6 +130,7 @@ export function EnergyLadderEditor({
             className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] text-muted-foreground transition hover:text-foreground disabled:opacity-40"
           >
             <Plus className="h-3 w-3" />
+            {k === "tickets" && <ResourceGlyph kind="gold" className="h-3 w-3" />}
             {ADD_LABEL[k]}
           </button>
         ))}

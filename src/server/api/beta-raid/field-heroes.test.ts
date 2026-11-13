@@ -52,7 +52,9 @@ describe("requireOwnHero — постановка на грядку", () => {
       true,
     );
     expect(sql).toContain("AS _row FROM (SELECT (SELECT count(*) FROM j)::int AS joined)");
-    expect(sql).toContain("id = 'hero_w' AND selected_at IS NULL");
+    // Владелец — под замком героя: залог рынка героев между проверкой и постановкой не пройдёт.
+    expect(sql).toContain("id = 'hero_w' AND account_id = 'acc_me'");
+    expect(sql).toContain("AND selected_at IS NULL");
     expect(sql).toContain("rest_until IS NULL OR rest_until <= now()");
     expect(sql).toContain("yuplink.raid_field_join('rmap_a', 1, 2,");
     expect(sql).toContain("'acc_me', 'w_me', h.id) FROM h");

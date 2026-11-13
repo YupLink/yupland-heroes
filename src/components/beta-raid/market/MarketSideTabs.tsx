@@ -12,17 +12,15 @@ export function MarketSideTabs({
 }) {
   const t = useT();
   return (
-    <div className="mb-2 grid grid-cols-2 gap-1 rounded-2xl border border-border/60 bg-background/40 p-1">
+    <div className="raid-market-side-tabs" role="group" aria-label={t('market.mode_buy')+' / '+t('market.mode_sell')}>
       {(["buy", "sell"] as const).map((s) => (
         <button
           key={s}
+          data-market-mode={s}
           type="button"
           onClick={() => onSide(s)}
-          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-            side === s
-              ? "bg-gold text-gold-foreground shadow-gold"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          aria-pressed={side === s}
+          className="raid-market-side-button"
         >
           {t(s === "buy" ? "market.mode_buy" : "market.mode_sell")}
         </button>
@@ -30,3 +28,5 @@ export function MarketSideTabs({
     </div>
   );
 }
+
+

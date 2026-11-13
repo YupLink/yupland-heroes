@@ -17,12 +17,12 @@ import {
   type ZoneGenerateOutput,
 } from "@/lib/raid/zonegen/recipe";
 import { requireAdmin } from "@/server/auth";
-import { godMapId } from "@/server/api/beta-raid/god-map";
 import { loadAffinity } from "./affinity";
 import { loadDecorTerrains } from "../asset-tags";
 import { addBusy, loadOccupied, loadRoads } from "./occupied";
 import { loadTerrainCatalog, namesById } from "./catalog";
 import { planZoneSettlements } from "./generate-settlement";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 const cellSchema = z.object({ q: z.number().int(), r: z.number().int() });
 
@@ -57,8 +57,7 @@ export function assertKnownTerrains(
 export const adminZoneGenerate = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => zoneGenerateInputSchema.parse(d))
   .handler(async ({ data }): Promise<ZoneGenerateOutput> => {
-    requireAdmin();
-    const mapId = await godMapId();
+    const { mapId } = await requireGodAdmin();
     if (data.mapId && data.mapId !== mapId) {
       throw new Error(
         `Карта сменилась — зона не сгенерирована: она выделена на «${data.mapId}», ` +

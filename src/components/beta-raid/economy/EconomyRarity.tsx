@@ -1,7 +1,8 @@
 // Бейдж редкости для товаров (арты, паки, герои). Общие цвета для всей
 // сводки Экономики: иначе легендарки в списке и в карточке начнут окрашиваться
 // по-разному. Живёт отдельно от вкладки, чтобы клиентские правила стиля
-// хранились в одном месте.
+// хранились в одном месте. Его же берёт витрина маркета у героя-товара — со
+// своей подписью на языке игрока (label): короткие русские тут — для админки.
 import { cn } from "@/lib/utils";
 
 const CLASS: Record<string, string> = {
@@ -21,13 +22,16 @@ const LABEL_RU: Record<string, string> = {
 export function RarityBadge({
   rarity,
   className,
+  label: text,
 }: {
   rarity: string | null | undefined;
   className?: string;
+  /** Подпись вместо короткой русской — у игрока она на его языке (metaLabel). */
+  label?: string;
 }) {
   if (!rarity) return null;
   const cls = CLASS[rarity] ?? "border-border text-muted-foreground bg-secondary/40";
-  const label = LABEL_RU[rarity] ?? rarity;
+  const label = text ?? LABEL_RU[rarity] ?? rarity;
   return (
     <span
       className={cn(

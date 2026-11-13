@@ -114,7 +114,12 @@ export async function noteLiveMapsRebuilt(): Promise<void> {
  * в словарях игроков ещё нет. Словари берём из свежесобранного снимка —
  * тем же кодом, что собирает карту целиком, ничего не переписывая.
  */
-export async function noteAdminPatches(mapId: string, patches: CellPatch[]): Promise<void> {
+export async function noteAdminPatches(
+  mapId: string,
+  patches: CellPatch[],
+  /** edit: false — edit_seq уже поднят той же записью (постановка шахты игроком). */
+  opts: { edit?: boolean } = {},
+): Promise<void> {
   if (patches.length === 0) return;
   try {
     // Снятый купол: игроку уедет вся клетка, а не только признак (map-lifted).
@@ -162,7 +167,7 @@ export async function noteAdminPatches(mapId: string, patches: CellPatch[]): Pro
           ]),
         };
       },
-      { edit: true },
+      { edit: opts.edit !== false },
     );
   } catch (e) {
     console.warn("[map-change] правка админа не разослана:", (e as Error).message);

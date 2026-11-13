@@ -30,6 +30,8 @@ export type Cell = {
   tool?: boolean;
   /** Инструмент в руках героя — метка на последней ячейке стека. */
   main?: boolean;
+  /** Бинокль или лестница (08.11): тап по ячейке — карточка «Применить». */
+  apply?: boolean;
 };
 
 /**
@@ -60,6 +62,7 @@ export function buildCells(
         durability: i === s.cells - 1 ? (s.durability ?? null) : null,
         tool: s.tool === true || s.shovel === true,
         main: i === s.cells - 1 && !!mainKey && s.stackKey === mainKey,
+        apply: s.binocular === true || s.ladder === true,
       });
     }
   }

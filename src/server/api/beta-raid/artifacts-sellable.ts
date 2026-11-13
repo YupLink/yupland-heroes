@@ -7,6 +7,11 @@
 // pick.templateId, а сервер там ещё раз проверяет владение и редкость.
 //
 // Надетое в список НЕ попадает: раздевать героя ради продажи маркет не будет.
+// Изношенное — только по флагу worn: маркет берёт лишь целые (100 %), как
+// инструменты (lib/hero/artWear), а ломбард («Любой … артефакт») — любые, вплоть
+// до сломанных, и перепродаёт их починенными (владелец, 23.10.2026: «ломбард
+// чинит арты»). Флаг — только про список; что примет сделка, решает сервер
+// (market-sell-input.sellSpendPick), а старый клиент без флага видит, как было.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireBetaRaid } from "./gate";
@@ -19,6 +24,8 @@ const input = (d: unknown) =>
       // Редкость витрины: 'common' | 'rare' | 'epic' | 'legendary'. Не задана —
       // весь свободный инвентарь (именная позиция скупки, где выбирать нечего).
       rarity: z.string().min(1).optional(),
+      // Пикер скупки ломбарда: показать и изношенные — каждая прочность своей строкой.
+      worn: z.boolean().optional(),
     })
     .parse(d ?? {});
 
@@ -29,5 +36,5 @@ export const listSellableArtifacts = createServerFn({ method: "GET" })
     const wallet = await requireBetaRaid();
     const account = await accAccountId(wallet);
     if (!account) return [];
-    return listFreeArtifacts(account, data.rarity ?? null);
+    return listFreeArtifacts(account, data.rarity ?? null, data.worn ? null : 0);
   });

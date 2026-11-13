@@ -63,8 +63,8 @@ export const BUILDINGS_SECTION: GuideSection = {
       icon: c(TreeDeciduous, "#6fcf6f"),
       name: ["Дерево уровней", "Level tree"],
       what: [
-        "+1 уровень выбранному герою за плату (на выбор: билеты, лайки, токен, энергия). Одно дерево — один раз, до потолка роста редкости.",
-        "+1 level to the chosen hero for a fee (your pick: tickets, likes, token, energy). Once per tree, up to the rarity's growth cap.",
+        "+1 уровень выбранному герою за плату (на выбор: золото, лайки, токен, энергия). Одно дерево — один раз, до потолка роста редкости.",
+        "+1 level to the chosen hero for a fee (your pick: gold, likes, token, energy). Once per tree, up to the rarity's growth cap.",
       ],
     },
     {
@@ -81,13 +81,33 @@ export const BUILDINGS_SECTION: GuideSection = {
       icon: c(Pickaxe, "#f5c451"),
       name: ["Шахта", "Mine"],
       what: [
-        "Каждый час добывает ресурс владельцу. Захватить можно за энергию и −10 сытости; хозяин один.",
-        "Produces a resource for its owner every hour. Capture it for energy and −10 satiety; one owner at a time.",
+        "Каждый час добывает ресурс владельцу: дерево 10, камень, золото, алмаз по 1 (× режим). Сквозь шахту не пройти, копать на ней нельзя. Режим — в окне шахты и в «Добыче», починка — в окне шахты.",
+        "Produces a resource for its owner every hour: wood 10, stone, gold, diamond 1 each (× mode). Mines are walls; no digging on them. Mode — in the mine window and Harvest, repair — in the mine window.",
       ],
       where: [
-        "Прежнему хозяину доплачиваются целые несобранные часы. Есть охранник — сначала победи его.",
-        "The previous owner is paid for full uncollected hours. If there's a guard — beat it first.",
+        "Запас 0 — шахта сломана: ничья, охранник сбежал навсегда, забирает первый, кто заплатит починку. Работающую можно отбить боем (охрана, энергия, −10 сытости).",
+        "At 0 service the mine breaks: ownerless, its guard is gone for good, the first to pay the repair takes it. A working mine can be won in a fight (guard, energy, −10 satiety).",
       ],
+      table: {
+        cols: [
+          ["Режим", "Mode"],
+          ["Добыча", "Output"],
+          ["Служба", "Service"],
+        ],
+        rows: [
+          [["Бережно", "Steady"], "×1", ["7 дней", "7 days"]],
+          [["Усердно", "Hard"], "×2", ["3 дня", "3 days"]],
+          [["На износ", "Overdrive"], "×3", ["1 день", "1 day"]],
+          [
+            ["Починка", "Repair"],
+            [
+              "дерево, камень — 20 золота; золото — 1 алмаз",
+              "wood, stone — 20 gold; gold — 1 diamond",
+            ],
+            ["алмаз — 10 000 дерева + 1 000 камня", "diamond — 10,000 wood + 1,000 stone"],
+          ],
+        ],
+      },
     },
     {
       id: "field",
@@ -164,8 +184,8 @@ export const BUILDINGS_SECTION: GuideSection = {
         "Chips study and earn likes: 5★ — 6 a day at level 1, each −0.5★ halves it. Building level: +20% each.",
       ],
       where: [
-        "3 места сразу, до 12 (следующее — 25, 50, 75… билетов). Забирать раз в 4 ч, копится до 7 суток. Учащиеся фишки не воюют.",
-        "3 seats at once, up to 12 (next — 25, 50, 75… tickets). Collect every 4 h, stores up to 7 days. Studying chips don't fight.",
+        "3 места сразу, до 12 (следующее — 12 500, 25 000, 37 500… золота). Забирать раз в 4 ч, копится до 7 суток. Учащиеся фишки не воюют.",
+        "3 seats at once, up to 12 (next — 12,500, 25,000, 37,500… gold). Collect every 4 h, stores up to 7 days. Studying chips don't fight.",
       ],
     },
     {
@@ -173,8 +193,8 @@ export const BUILDINGS_SECTION: GuideSection = {
       icon: c(Landmark, "#f5c451"),
       name: ["Музей", "Museum"],
       what: [
-        "Билеты за собранные коллекции: все фишки от 5★ — 1 в сутки, от 4★ — 0,5, от 3★ — 0,1. С 3-го тира +20% за тир.",
-        "Tickets for completed collections: all chips 5★+ — 1 a day, 4★+ — 0.5, 3★+ — 0.1. From tier 3, +20% per tier.",
+        "Золото за собранные коллекции: все фишки от 5★ — 100 в сутки, от 4★ — 50, от 3★ — 10. С 3-го тира +20% за тир.",
+        "Gold for completed collections: all chips 5★+ — 100 a day, 4★+ — 50, 3★+ — 10. From tier 3, +20% per tier.",
       ],
       where: ["Забирать раз в 6 ч, копится до 3 суток.", "Collect every 6 h, stores up to 3 days."],
     },

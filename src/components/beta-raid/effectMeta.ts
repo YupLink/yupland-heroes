@@ -9,12 +9,13 @@
 // остаётся запасным вариантом: для вида, которого ещё нет в словаре.
 //
 // `t` везде необязателен: без него модуль ведёт себя как раньше, по-русски.
-import { BookMinus, Sword, Wind } from "lucide-react";
+import { Binoculars, BookMinus, Sword, Wind } from "lucide-react";
 import type { Lang } from "@/lib/store";
 import { immunityMeta, statMeta } from "@/components/itemStat";
 import { ABILITY_META, parseRange, type AbilityKind } from "@/server/api/beta-raid/abilities";
 import { immuneTargetOf } from "@/lib/hero/boostImmune";
 import { OBLIVION_LV_KIND, OBLIVION_LVT_KIND, OBLIVION_TIME_KIND } from "@/lib/hero/boostOblivion";
+import { BINOCULAR_RADIUS, SIGHT_KIND } from "@/lib/raid/sight";
 
 /** Короткий стат→полный ключ statMeta: чтобы иконки бустов совпадали с
  *  теми, что рисуются на арте характеристики. */
@@ -97,6 +98,13 @@ export function effectMeta(
       color: "#c4b5fd",
     };
   }
+  // Бинокль (lib/raid/sight): обзор 40 клеток, только таймер.
+  if (raw === SIGHT_KIND) {
+    const label = t
+      ? t("braid.sight", { n: BINOCULAR_RADIUS })
+      : `Бинокль: обзор ${BINOCULAR_RADIUS}`;
+    return { kind: null, label, Icon: Binoculars, color: "#7dd3fc" };
+  }
   // Временный иммунитет: значок самого дебаффа, подпись «Иммунитет: Яд».
   const immune = immuneTargetOf(raw);
   if (immune) {
@@ -154,6 +162,8 @@ export function effectDetail(
     case "weak_luck":
     case "weak_int":
       return t(`braid.eff_${effectKind(a.kind)}`, { n: range(a.value) }) + dur;
+    case "strip_immune":
+      return t("braid.eff_strip_immune") + dur;
     default:
       return "";
   }

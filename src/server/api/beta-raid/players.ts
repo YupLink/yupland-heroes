@@ -18,8 +18,10 @@ import { subtractSelf } from "./players-self";
 import { loadVoidCells } from "./voidCells";
 import { canIgnoreVoid } from "./voidGate";
 import { markSeen } from "../account-seen";
+import { markOnline } from "../raid-presence";
 
-export type PlayerCell = { q: number; r: number; count: number };
+/** count — все игроки клетки, online — из них сейчас в игре (09.11). */
+export type PlayerCell = { q: number; r: number; count: number; online: number };
 
 export const getBetaRaidPlayers = createServerFn({ method: "GET" }).handler(async () => {
   const wallet = await requireBetaRaid();
@@ -27,6 +29,8 @@ export const getBetaRaidPlayers = createServerFn({ method: "GET" }).handler(asyn
   const account = await raidOwner(wallet);
   // Опрос идёт раз в минуту, пока игрок на карте: он здесь — его лагерь виден.
   markSeen(account);
+  // И «онлайн сейчас» — для анимации лагеря и счёта «онлайн/офлайн» у соседей (09.11).
+  markOnline(account);
   // Карта ИГРОКА (мультикарта): видим только соседей по СВОЕЙ карте.
   const mapId = await playerMapId(account);
   // Зону глухого тумана вычёркиваем из ответа целиком: и чужие метки, и
@@ -41,7 +45,7 @@ export const getBetaRaidPlayers = createServerFn({ method: "GET" }).handler(asyn
   // сам снимок (shared.at), — не по текущей клетке: снимок старше шага, и по
   // текущей в пройденной клетке оставался свой лагерь («тень», 20.09).
   const shared = await sharedPlayers(mapId);
-  const cells: PlayerCell[] = subtractSelf(shared.cells, shared.at, account).filter(
+  const cells: PlayerCell[] = subtractSelf(shared.cells, shared.at, account, shared.online).filter(
     (c) => !hidden.has(`${c.q},${c.r}`),
   );
 

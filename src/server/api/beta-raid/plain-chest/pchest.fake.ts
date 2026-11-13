@@ -6,6 +6,7 @@
 // Сам текст SQL держит pchest-sql.test. Мост моделируется режимами: replay —
 // оператор применён, ответ потерян, слепой повтор вернул свой ответ; lose —
 // применён, все попытки кончились ошибкой; fail — упал до записи.
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { createHash } from "node:crypto";
 import { originWithin, type OriginQty } from "@/server/api/beta-raid/stack-origin";
 
@@ -138,9 +139,9 @@ export function addToPack(heroId: string, key: string, qty: number, name = key):
   } else p.set(key, { count: round(qty), wear: 0, marks: { ...NO }, kind: "custom", name });
 }
 
-/** Ячеек занято: стеки по 20, пыль — целая ячейка. */
+/** Ячеек занято: стеки по CELL_SIZE, пыль — целая ячейка. */
 export const cellsOf = (counts: number[]) =>
-  counts.reduce((n, c) => n + (c > 0 ? Math.ceil(c / 20) : 0), 0);
+  counts.reduce((n, c) => n + (c > 0 ? Math.ceil(c / CELL_SIZE) : 0), 0);
 
 /** Отпечаток набора стеков — как md5 по «ключ=count» в порядке ключей. */
 export const fp = (list: Iterable<[string, { count: number }]>) =>

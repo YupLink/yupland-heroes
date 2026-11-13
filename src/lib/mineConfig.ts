@@ -3,6 +3,8 @@
 // {resource, token?, yield, captureCost}. Ту же форму читает SQL raid_mine_settle
 // (building_config->>'resource' и т.д.).
 import type { MineResource } from "./buildingEffect";
+import { mineIslandOf, mineStdYield, mineV2Of } from "./mineV2";
+import { mineLevelOf } from "./mineLevels";
 
 export interface MineConfig {
   resource: MineResource;
@@ -31,7 +33,12 @@ function parse(raw: unknown): MineConfig | null {
     ? (o.resource as MineResource)
     : null;
   if (!resource) return null;
-  const y = Math.round(Number(o.yield));
+  // Шахты v2 (§8.59): выход — стандарт вида, настройка клетки не действует
+  // (у поставленных игроком шахт её и нет). Режим умножает уже у владельца.
+  // Шахта острова — свой стандарт (алмаз — 1/24 в час, т. е. 1 в сутки);
+  // шахта мира — по своему уровню (§8.74).
+  const v2 = mineV2Of(o);
+  const y = v2 ? mineStdYield(v2, mineIslandOf(o), mineLevelOf(o)) : Math.round(Number(o.yield));
   if (!Number.isFinite(y) || y <= 0) return null;
   const cost = Math.round(Number(o.captureCost));
   return {

@@ -2,6 +2,7 @@
 // строка «что дали» для подписи подарка.
 //
 // Приз — то, что умеет подарок (gifts-deliver): вид, сколько и на что ссылается.
+import { goldForEarnedTickets } from "@/lib/ticketGold";
 import type { TourPrize, TourPrizeKind } from "@/lib/tournament/types";
 import { isUsdt } from "@/lib/usdtBanned";
 
@@ -85,7 +86,7 @@ export function prizeLine(p: TourPrize): string {
     case "likes":
       return `${n} лайков`;
     case "tickets":
-      return `${n} билетов`;
+      return `${fmt(goldForEarnedTickets(Number(p.amount) || 0))} золота`;
     default:
       return `${p.title || ref} ×${n}`;
   }

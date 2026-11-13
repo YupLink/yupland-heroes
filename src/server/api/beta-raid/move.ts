@@ -78,6 +78,11 @@ export const getBetaRaidState = createServerFn({ method: "GET" }).handler(async 
     slowExtra,
     effects,
     heroSprite,
+    // Конь выбранного героя (§8.84): темп шага на карте и прыжок пегаса; mountPct —
+    // его зачарование, %: множит скорость (03.11.2026).
+    ...(await (await import("./hero-mount"))
+      .heroMount(account)
+      .then((m) => ({ mount: m.tier, mountPct: m.pct }))),
     ...heroPatch,
   };
 });
@@ -100,4 +105,24 @@ export const moveBetaRaid = createServerFn({ method: "POST" })
     const wallet = await requireBetaRaid();
     const { performStep } = await import("./move-step");
     return performStep(wallet, data);
+  });
+
+/** Пачка шагов маршрута наперёд (§8.84, move-steps): по порядку, до первого отказа. */
+export const moveBetaRaidSteps = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        steps: z
+          .array(z.object({ q: z.number().int(), r: z.number().int() }))
+          .min(1)
+          .max(8),
+      })
+      .parse(d),
+  )
+  // Ответ шага — тот же, что у moveBetaRaid (сериализатор не выводит его тип).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  .handler(async ({ data }): Promise<any> => {
+    const wallet = await requireBetaRaid();
+    const { performSteps } = await import("./move-steps");
+    return performSteps(wallet, data.steps);
   });

@@ -1,0 +1,99 @@
+/* Approved compact mine cards; scoped so Architect and other windows stay intact. */
+.mine-buildings .mb-mine.mb-compact{--mine-object:24%;display:grid;grid-template-columns:var(--mine-object) minmax(0,1fr) 94px;grid-template-rows:max-content max-content;gap:0 10px;padding:5px;border:1px solid #535957;border-radius:12px;background:#111415;align-items:start}
+.mine-buildings .mb-compact.is-open{border-color:#8c743f}
+.mb-compact .mb-object{grid-column:1;grid-row:1/3;position:relative;display:block;width:100%;height:100%;min-height:0;padding:0;border:0;border-radius:7px;background:transparent;align-self:stretch}
+.mb-object img{position:absolute;inset:-12%;width:124%;height:124%;max-width:none;object-fit:contain;image-rendering:auto}
+.mb-object>svg{position:absolute;right:1px;bottom:1px;box-sizing:content-box;padding:3px;border-radius:4px;color:#e7c879;background:#111415d9}
+.mb-identity{grid-column:2;grid-row:1;min-width:0;padding-top:0}
+.mine-buildings .mb-identity h3{font-size:16px;line-height:1.25;margin:0 0 2px;overflow-wrap:normal}
+.mb-identity p{color:#adb2b1;font-size:12px;line-height:1.3}
+.mb-compact-ready{grid-column:3;grid-row:1;text-align:right}
+.mb-compact-ready>span{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:12px;color:#eee3c4;white-space:nowrap}
+.mb-compact-ready .mb-resource{width:16px;height:16px}
+.mine-buildings .mb-compact-ready>.mb-gold{width:94px;min-height:24px;margin-top:2px;padding:2px 7px;gap:3px;border-radius:8px;font:400 13px/1.2 "Mine Russo",sans-serif;font-weight:400!important}
+.mb-compact-summary{grid-column:2/4;grid-row:2;display:flex;align-items:center;justify-content:space-between;gap:2px 8px;flex-wrap:wrap;min-height:24px}
+.mb-remaining,.mb-broken-label{display:flex;align-items:center;gap:5px;font-size:12px;line-height:1.3;color:#bdc2c1}
+.mb-remaining>svg,.mb-broken-label>svg{flex:none}
+.mb-remaining b{color:inherit;font-weight:600;white-space:nowrap}
+.mb-warning{color:#edc05e}
+.mine-buildings .mb-manage-toggle{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-height:32px;padding:3px 2px 3px 5px;border:0;background:transparent;color:#d0c6b0;font:400 12px/1.2 "Mine Golos",sans-serif;margin-left:auto}
+.mb-manage-toggle svg{color:#e7c879;flex:none}
+.mb-manage-toggle svg.up{transform:rotate(180deg)}
+.mb-management{grid-column:1/-1;display:grid;gap:4px;padding-top:0}
+.mb-stock{display:flex;flex-direction:column;align-items:stretch;gap:3px;margin-left:calc(var(--mine-object) + 10px);margin-bottom:2px;color:#e6cb87;font-size:12px}
+.mb-stock>span{white-space:nowrap}
+.mb-compact .mb-stock .mb-bar{flex:none;margin:0;height:6px}
+.mine-buildings .mb-management .mb-modes{grid-column:auto;grid-row:auto;gap:6px}
+.mine-buildings .mb-management .mb-modes button{min-height:36px;padding:5px 3px;font-size:12px;border-radius:8px}
+.mine-buildings .mb-management .mb-repair{grid-column:auto;grid-row:auto;min-height:34px;padding:5px 7px;font:400 12px/1.3 "Mine Russo",sans-serif;font-weight:400!important;border-radius:18px;gap:5px}
+.mb-management .mb-repair b{font:inherit}
+.mb-management .mb-repair .mb-resource{width:17px;height:17px}
+.mine-buildings .mb-management .mb-confirm{grid-column:auto;grid-row:auto}
+.mb-compact button:focus-visible{outline:2px solid #f2cd76;outline-offset:2px}
+/* Owner-approved dense proportions; targets remain at least 24px and do not overlap. */
+.mine-buildings .mb-compact-ready>.mb-gold{min-height:26px;margin-top:2px;padding:2px 7px}
+.mine-buildings .mb-manage-toggle{min-height:24px;padding:3px 2px 3px 5px}
+.mine-buildings .mb-management .mb-modes button,.mine-buildings .mb-management .mb-repair{min-height:28px;padding-top:3px;padding-bottom:3px}
+.mine-buildings .mb-groups .mb-group-title{display:grid;grid-template-columns:26px minmax(0,1fr) 18px;gap:8px;padding:6px 10px;min-height:36px}
+.mine-buildings .mb-groups .mb-group-title h2{font-size:17px;line-height:1.25;flex-basis:auto}
+.mine-buildings .mb-groups .mb-group-title>svg{position:static;grid-column:3;grid-row:1}
+.mine-buildings .mb-groups .mb-group-time{display:none}
+.mine-buildings .mb-groups .mb-group-time.mb-danger{display:flex;grid-column:2;grid-row:2;justify-content:flex-start;margin:0;font-size:11px}
+@container(max-width:430px){
+ .mine-buildings .mb-mine.mb-compact{--mine-object:24%;grid-template-columns:var(--mine-object) minmax(0,1fr) 78px;gap:0 7px;padding:5px}
+ .mb-stock{margin-left:calc(var(--mine-object) + 7px)}
+ .mine-buildings .mb-identity h3{font-size:16px;margin-bottom:2px}
+ .mb-identity p{font-size:11px}
+ .mine-buildings .mb-compact-ready>.mb-gold{width:78px;font-size:12px;min-height:26px}
+ .mb-compact-ready>span{font-size:11px;gap:3px}
+ .mb-compact-summary{gap:1px 5px}
+ .mb-remaining,.mb-broken-label{font-size:11px;gap:4px}
+ .mine-buildings .mb-manage-toggle{font-size:11px;gap:5px;min-height:24px}
+ .mine-buildings .mb-management .mb-modes button{font-size:11px}
+ .mine-buildings .mb-management .mb-repair{font-size:11px}
+}
+@container(max-width:370px){
+ .mine-buildings .mb-identity h3{font-size:14px}
+}
+@container(min-width:500px){
+ .mine-buildings .mb-mine.mb-compact{--mine-object:24%;grid-template-columns:var(--mine-object) minmax(0,1fr) 124px;gap:0 14px;padding:6px}
+ .mine-buildings .mb-identity h3{font-size:20px}
+ .mb-identity p,.mb-compact-ready>span,.mb-remaining,.mb-broken-label,.mb-stock{font-size:14px}
+ .mine-buildings .mb-compact-ready>.mb-gold{width:124px;font-size:16px}
+ .mine-buildings .mb-manage-toggle{font-size:14px}
+ .mb-stock{margin-left:calc(var(--mine-object) + 14px)}
+ .mine-buildings .mb-management .mb-modes button,.mine-buildings .mb-management .mb-repair{font-size:14px}
+ .mine-buildings .mb-groups .mb-group-title h2{font-size:20px}
+}
+.mb-window:has(#mb-panel-mine_office)>.mb-tabs{margin-bottom:8px}
+.mb-window:has(#mb-panel-mine_office)>.mb-tabs button{min-height:34px;padding-top:4px;padding-bottom:4px}
+.mb-window:has(#mb-panel-mine_office)>.mb-footer{padding-top:6px;padding-bottom:7px}
+.mb-window:has(#mb-panel-mine_office)>.mb-footer .mb-gold{min-height:42px}
+.mine-buildings #mb-panel-mine_office .mb-sort{padding-top:1px;padding-bottom:1px;margin-bottom:5px}
+
+/* Existing confirmation component has a paragraph and its own action row. */
+.mine-buildings .mb-compact .mb-confirm>div{display:block;margin-top:4px}
+/* «Починить всё» рядом с «Собрать всё» — две кнопки подвала поровну. */
+.mb-footer-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mb-footer-pair .mb-gold,.mb-footer-pair>.mb-outline{width:100%;min-height:55px;border-radius:16px;font-size:18px}
+.mb-window:has(#mb-panel-mine_office)>.mb-footer-pair .mb-gold,.mb-window:has(#mb-panel-mine_office)>.mb-footer-pair>.mb-outline{min-height:42px}
+.mb-footer-pair>.mb-outline:disabled{opacity:.5}
+@media(max-width:560px){.mb-footer-pair .mb-gold,.mb-footer-pair>.mb-outline{font-size:15px;border-radius:13px;padding:6px 8px}}
+.mine-buildings .mb-repair-all-cost{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 16px}
+.mine-buildings .mb-repair-all-cost>span{display:inline-flex;align-items:center;gap:5px;font-size:17px}
+.mine-buildings .mb-message .mb-repair-all-short{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.mine-buildings .mb-repair-all-short .mb-repair-all-cost{margin:0}
+.mine-buildings .mb-message>.mb-outline{width:100%}
+
+
+/* Production is separate from the accumulated amount, beside the level. */
+.mine-buildings .mb-identity .mb-level-rate{display:flex;flex-wrap:wrap;align-items:center;gap:2px 5px;margin:0}
+.mine-buildings .mb-level-rate>span{white-space:nowrap}
+.mine-buildings .mb-production-rate{color:#e3c16d;font-variant-numeric:tabular-nums}
+.mine-buildings .mb-repair-all-slider{display:grid;gap:8px;margin:14px 0 4px}
+.mine-buildings .mb-repair-all-slider>span{color:#e7d6ac}
+.mine-buildings .mb-repair-all-slider input{width:100%;accent-color:var(--gold);min-height:28px}
+.mine-buildings .mb-repair-all-stale{opacity:.55}
+.mine-buildings .mb-repair-all-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mine-buildings .mb-repair-all-actions>button{width:100%;min-height:44px}
+

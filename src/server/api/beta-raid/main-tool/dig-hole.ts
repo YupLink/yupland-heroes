@@ -6,8 +6,8 @@
 // оставит клетку без ямки, а не сорвёт копание.
 // Комментарии внутри SQL — только блочные.
 import { mcpExec } from "@/server/db/mcpClient";
+import { sightRadiusSql } from "@/server/api/beta-raid/sight/sight-sql";
 import { sqlStr } from "@/server/api/raid-shared";
-import { LOOT_BAG_SEE } from "@/lib/lootBag";
 import { CHEST_MOUND_LEFT_MS } from "@/lib/plainChest";
 import { DIG_HOLE_MINUTES } from "@/lib/digHole";
 import { livePortion } from "@/server/api/beta-raid/loot-bag/bag-sql";
@@ -24,9 +24,11 @@ type At = { mapId: string; q: number; r: number };
 const LIFE = `interval '${DIG_HOLE_MINUTES} minutes'`;
 
 /**
- * Ямка на клетке: новая или прежняя с часом заново. Тем же оператором уходят
- * просроченные ямки — кроме этой клетки (одну строку дважды в операторе не
- * трогают). Повтор моста безвреден: час просто начнётся на миг позже.
+ * Ямка на клетке: новая или прежняя со сроком заново. Тем же оператором уходят
+ * просроченные строки (старше часа) — кроме этой клетки
+ * (одну строку дважды в операторе не трогают). Повтор моста безвреден: срок
+ * просто начнётся на миг позже. «Копать» ставит ямку сам, своей записью
+ * (ground-dig-sql: ямка держит клетку).
  */
 export function holeMarkSql(o: At): string {
   const [map, q, r] = [sqlStr(o.mapId), Math.floor(o.q), Math.floor(o.r)];
@@ -53,7 +55,8 @@ export async function markDigHole(o: At): Promise<void> {
  * стоящий или закопанный), вырос декор или стоит постройка — ямки не видно.
  */
 export function holesNearSql(o: Near): string {
-  const d = LOOT_BAG_SEE;
+  // Радиус — 20, под биноклем 40 (lib/raid/sight.ts).
+  const d = sightRadiusSql(sqlStr(o.account));
   const acc = sqlStr(o.account);
   const on = (a: string) => `${a}.map_id = h.map_id AND ${a}.q = h.q AND ${a}.r = h.r`;
   return `SELECT h.q, h.r, ${msLeftSql(`h.dug_at + ${LIFE}`)} AS "leftMs"

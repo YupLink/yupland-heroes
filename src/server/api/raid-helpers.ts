@@ -192,10 +192,18 @@ export async function grantRaidReward(
     // Отказ базы бросается — вызывающие держат на этом откат сундука.
     await creditEnergy(wallet, amount, "energy_reward", ref);
   } else if (kind === "tickets") {
-    // Ветка была пустой: настроенные админом билеты просто исчезали.
-    // Пишем через леджер — баланс билетов считается только по нему.
-    const { moveTickets } = await import("./tickets-ledger");
-    await moveTickets({ wallet, delta: amount, kind: "raid_reward", ref });
+    // Билетов нет (§8.61): награда в билетах (старые настройки) — золотом, 100 за
+    // билет, тем же путём, что ресурс-награда (вид mob/reward, дедуп по ref).
+    const { goldForEarnedTickets } = await import("@/lib/ticketGold");
+    const { grantExtraReward } = await import("./raid-reward-extra");
+    await grantExtraReward({
+      kind: "resource",
+      wallet,
+      amount: goldForEarnedTickets(amount),
+      ref: "gold",
+      opRef: ref,
+      origin: opts?.origin,
+    });
   } else if (kind === "item" && packId) {
     const tpl = await pg.mysticItemTemplates
       .raw()
@@ -213,7 +221,9 @@ export async function grantRaidReward(
         source: "raid",
         obtained_at: now,
       });
-  } else if (kind === "resource" || kind === "custom") {
+  } else if (kind === "casino_share" || (kind === "treasure" && packId)) {
+    await (await import("./raid-reward-special")).claimSpecial(kind, packId ?? "", wallet);
+  } else if (kind === "resource" || kind === "custom" || kind === "boss") {
     // СТРОГО до общего else: он считает любой незнакомый вид символом монеты и
     // заводит заявку в redemptions — ресурс и свой товар висели бы там вечно,
     // ожидая несуществующий FT-контракт.

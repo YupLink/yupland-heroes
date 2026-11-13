@@ -92,6 +92,36 @@ type SweepRow = { n: number; cells: string[] | null; runner_cells: string[] | nu
 const sweepers = new Map<string, ReturnType<typeof setInterval>>();
 
 /**
+ * Остров новичка сносится после выхода (island-exit), а таймер и снимок карты
+ * жили в каждом процессе до перезапуска (06.11.2026: остров встречает всех
+ * новичков — таких карт станет много). Карты нет или на острове никто не стоит
+ * (ушёл в мир, бросил) — таймер стоп, память прочь; вернётся — карта отдастся
+ * заново и запустит таймер (map-serve.snapshotFor).
+ */
+async function tick(mapId: string): Promise<void> {
+  if (mapId.startsWith("isle_")) {
+    const m = sqlStr(mapId);
+    const rows = (await mcpExec(
+      `SELECT EXISTS (SELECT 1 FROM yuplink.raid_maps WHERE id = ${m}) AS map,
+              EXISTS (SELECT 1 FROM yuplink.beta_raid_positions WHERE map_id = ${m}) AS busy;`,
+      { wrapJson: true },
+    )) as Array<{ map: boolean; busy: boolean }>;
+    const row = rows?.[0];
+    if (row && (row.map !== true || row.busy !== true)) return stopDeadSweeper(mapId);
+  }
+  await sweepDeadObjects(mapId);
+}
+
+export async function stopDeadSweeper(mapId: string): Promise<void> {
+  const timer = sweepers.get(mapId);
+  if (timer) clearInterval(timer);
+  sweepers.delete(mapId);
+  lastSwept.delete(mapId);
+  const { forgetMapSnapshot } = await import("./map-snapshot");
+  forgetMapSnapshot(mapId);
+}
+
+/**
  * Периодическая уборка карты. Раньше её звал каждый опрос карты
  * (getBetaRaidMap), а карту теперь берут снимком с версией — уборку никто не
  * дёргал, и трупы копились бы вечно. Раз в минуту на карту, в каждом процессе
@@ -100,7 +130,7 @@ const sweepers = new Map<string, ReturnType<typeof setInterval>>();
 export function startDeadSweeper(mapId: string): void {
   if (sweepers.has(mapId) || typeof setInterval !== "function") return;
   const timer = setInterval(() => {
-    void sweepDeadObjects(mapId).catch(() => {});
+    void tick(mapId).catch(() => {});
   }, 60_000);
   (timer as unknown as { unref?: () => void }).unref?.();
   sweepers.set(mapId, timer);

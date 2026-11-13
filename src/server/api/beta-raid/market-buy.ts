@@ -1,19 +1,23 @@
 // Покупка товара в маркете: фильтр по герою → резерв запаса → списание цены
-// (одной или ДВУХ) → выдача → откат. Инвариант проекта: сначала деньги, потом
-// товар; при сбое выдачи — возврат ОБЕИХ цен и возврат запаса.
+// (всех ингредиентов, до пяти — market-buy-pay) → выдача → откат. Инвариант
+// проекта: сначала деньги, потом товар; при сбое выдачи — возврат ВСЕЙ цены и
+// возврат запаса.
 // Порядок шагов держит инвариант: резерв запаса ДО денег (нет товара — нет
 // траты), деньги ДО выдачи, любой сбой ниже по цепочке откатывает всё выше.
 import { createServerFn } from "@tanstack/react-start";
 import { requireBetaRaid } from "./gate";
 import { myMapId } from "./encounter-where";
+import { requireShopNear } from "./market-near";
 import { accAccountId } from "../currency/move";
 import { marketItemById } from "./market-admin";
 import { assertShopAllowed } from "./market-shop";
 import { assertChestGood } from "./market-chest-buyer";
-import { spend, credit } from "./market-money";
+import type { SpendReceipt } from "./market-money";
+import { payAll, refundAll, type PayCtx } from "./market-buy-pay";
+import { allPrices } from "@/lib/marketPrices";
 import { reserveStock, releaseStock } from "./market-stock";
 import { deliverGood } from "./market-deliver";
-import { resolveBackpack, assertBackpackRoom, stackKeyFor } from "./market-backpack";
+import { assertBuyRoom } from "./market-buy-room";
 import { publishRaid } from "../../raidLive";
 import { normalizeQty } from "./market-qty";
 import { buyInput, type BuyData } from "./market-buy-input";
@@ -21,12 +25,8 @@ import { holdBuyerLimit, withBuyerLimit } from "./market-buy-limit";
 import { undoFailReporter } from "./market-undo-alert";
 import { noteMarketBuy } from "@/server/api/beta-raid/econ/exchange-note";
 import type { MarketItem } from "@/lib/marketItem";
-
-/** Товары, что падают в рюкзак героя. Артефакта здесь НЕТ: он штучный и живёт
- *  в инвентаре (user_game_item), иначе его нельзя надеть — а полный рюкзак
- *  зря запрещал бы покупку. */
-const GOES_TO_BACKPACK = (kind: MarketItem["kind"]): boolean =>
-  kind === "boss" || kind === "custom";
+import type { RecipePrize } from "@/lib/marketRecipe";
+import type { CityShop } from "./town-shop";
 
 export const buyMarketItem = createServerFn({ method: "POST" })
   .inputValidator(buyInput)
@@ -38,6 +38,7 @@ export const buyMarketItem = createServerFn({ method: "POST" })
     // Витрина скупки покупкой не берётся: там магазин ПЛАТИТ за товар, и
     // купить такую позицию значило бы вывернуть сделку наизнанку.
     if (item.side === "sell") throw new Error("market.wrong_side");
+    await requireShopNear(wallet, mapId, item.q, item.r);
 
     const account = await accAccountId(wallet);
     if (!account) throw new Error("market.need_account");
@@ -45,22 +46,38 @@ export const buyMarketItem = createServerFn({ method: "POST" })
     // Фильтр покупателя — ОБЩИЙ на весь магазин (клетку), не по товару.
     await assertShopAllowed(wallet, mapId, item.q, item.r);
     await assertChestGood(wallet, item); // сундук — только Торговцу, до денег
+    // Дерево/камень — только пока шаблон годен (админ мог снять «Срубить» или кирку), до денег.
+    if (item.kind === "tree" || item.kind === "rock") {
+      await (await import("./tree/tree-admin")).assertTreeForSale(item.refId, item.kind);
+    }
+
+    // Земля — только пока местность жива, и пока мир строителей открыт игроку.
+    if (item.kind === "land") {
+      const { canUseFeature } = await import("../testers");
+      if (!(await canUseFeature(wallet, "builder_world"))) throw new Error("land.closed");
+      await (await import("./land/land-admin")).assertLandForSale(item.refId);
+    }
+    // Жила — только с настоящим видом (золото / алмазы), до денег.
+    if (item.kind === "vein") (await import("./vein/vein-admin")).assertVeinForSale(item.refId);
+    // Постройка — только пока шаблон жив и не стал шахтой, до денег.
+    if (item.kind === "building") {
+      const { assertBuildingForSale } = await import("./building-sale/bsale-admin");
+      // Товар на шаблоне постройки — что продаётся сейчас (снимок для чертежа).
+      Object.assign(item, await assertBuildingForSale(item.refId, item.building));
+    }
 
     const qty = normalizeQty(data.qty);
+    // Лавка, привязанная к ратуше, торгует складом и ценой ратуши (town-shop-trade).
+    const city = await (await import("./town-shop")).cityShopAt(mapId, item.q, item.r);
 
-    // ПРЕДпроверка рюкзака — ДО запаса и денег: нет героя или рюкзак полон →
-    // бросок сейчас, покупка не спишет ни монеты. Товары в рюкзак — art|boss|
-    // custom; паки/герои/ресурсы идут прежними путями и рюкзак не трогают.
-    if (GOES_TO_BACKPACK(item.kind)) {
-      const bp = await resolveBackpack(wallet);
-      if (!bp) throw new Error("market.need_hero");
-      await assertBackpackRoom(bp, await stackKeyFor(item), qty);
-    }
+    // ПРЕДпроверка рюкзака — ДО запаса и денег, с учётом цены товаром из этого
+    // же рюкзака (market-buy-room). Паки/герои/ресурсы рюкзак не трогают.
+    await assertBuyRoom(wallet, item, qty, city != null);
 
     // Лимит на игрока — резерв до денег, как запас; недоданное — назад.
     const hold = await holdBuyerLimit(item, account, qty);
     return withBuyerLimit(hold, qty, () =>
-      buyAfterChecks({ data, wallet, mapId, item, account, qty }),
+      buyAfterChecks({ data, wallet, mapId, item, account, qty, city }),
     );
   });
 
@@ -72,12 +89,11 @@ async function buyAfterChecks(c: {
   item: MarketItem;
   account: string;
   qty: number;
+  city: CityShop | null;
 }) {
-  const { data, wallet, mapId, item, account, qty } = c;
+  const { data, wallet, mapId, item, account, qty, city } = c;
   const nonce = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   const payRef = `mkt:${item.id}:${account}:${nonce}`;
-  // Лавка, привязанная к ратуше, торгует складом и ценой ратуши (town-shop-trade).
-  const city = await (await import("./town-shop")).cityShopAt(mapId, item.q, item.r);
   if (city) {
     const { cityBuy } = await import("./town-shop-trade");
     return cityBuy({
@@ -92,140 +108,62 @@ async function buyAfterChecks(c: {
       nonce,
     });
   }
-  const p2 = item.price2Resource; // вторая цена (алхимия) — может отсутствовать
+  // Все ингредиенты цены: первая, вторая («алхимия»), ещё до трёх (§8.104 п. 1а).
+  const lines = allPrices(item);
 
   // Выбор игрока адресован цене-артефакту: остальным видам он ничего не
-  // говорит, spendArt на них его и не спросит. Обе цены сразу артефактом —
-  // редкость, и одной формой pick их не развести: выбор уходит ПЕРВОЙ, вторая
-  // остаётся на прежнем авто-подборе. Так покупка, работавшая раньше, не
-  // превращается в отказ «не та редкость».
+  // говорит, spendArt на них его и не спросит. Две цены сразу артефактом —
+  // редкость, и одной формой pick их не развести: выбор уходит ПЕРВОЙ
+  // строке-артефакту, остальные — на прежнем авто-подборе. Так покупка,
+  // работавшая раньше, не превращается в отказ «не та редкость».
   const artPick = data.pick ? { artTemplateId: data.pick.templateId } : undefined;
-  const pick1 = item.priceResource === "art" ? artPick : undefined;
-  const pick2 = p2 === "art" && item.priceResource !== "art" ? artPick : undefined;
+  const firstArt = lines.findIndex((l) => l.resource === "art");
+  const picks = lines.map((_, i) => (i === firstArt ? artPick : undefined));
 
   /** Провал ВОЗВРАТА цены проглатывать нельзя: деньги уже списаны, а вернуть
    *  их не смогли — сигнал админам с ключом памятки op-лога (market-undo-alert). */
   const undoFail = undoFailReporter({ wallet, account, side: "buy", payRef });
+  const pay: PayCtx = { wallet, account, lines, payRef, picks, undoFail };
 
   // 0) РЕЗЕРВ запаса — до денег. Нет остатка (или меньше qty) → распродано.
   if (!(await reserveStock(item.id, mapId, qty))) throw new Error("market.sold_out");
 
-  // 1) деньги. Первая цена; при сбое — вернуть запас.
+  // 1) деньги — все строки цены по очереди; сбой — списанное назад, запас назад.
   // Квитанции spend несут stackKey/refId для отката «арта по редкости»:
   // без них credit создал бы фантомный стек art:art_any_X.
-  let receipt1: Awaited<ReturnType<typeof spend>> = {};
-  let receipt2: Awaited<ReturnType<typeof spend>> = {};
+  let receipts: SpendReceipt[];
   try {
-    receipt1 = await spend(
-      wallet,
-      account,
-      item.priceResource,
-      item.priceToken,
-      item.priceAmount * qty,
-      payRef,
-      pick1,
-    );
+    receipts = await payAll(pay, qty);
   } catch (e) {
     await releaseStock(item.id, mapId, qty);
     throw e;
   }
-  // 1b) вторая цена (если задана). При сбое — вернуть запас и ПЕРВУЮ цену.
-  if (p2 && item.price2Amount) {
-    try {
-      receipt2 = await spend(
-        wallet,
-        account,
-        p2,
-        item.price2Token,
-        item.price2Amount * qty,
-        `${payRef}:p2`,
-        pick2,
-      );
-    } catch (e) {
-      await credit(
-        wallet,
-        account,
-        item.priceResource,
-        item.priceToken,
-        item.priceAmount * qty,
-        `${payRef}:undo`,
-        receipt1,
-      ).catch(
-        undoFail(item.priceResource, item.priceToken, item.priceAmount * qty, payRef, "undo"),
-      );
-      await releaseStock(item.id, mapId, qty);
-      throw e;
-    }
-  }
 
-  // 2) товар. Ничего не выдано (бросок) → вернуть ОБЕ цены и весь запас.
+  // 2) товар. Ничего не выдано (бросок) → вернуть ВСЮ цену и весь запас.
   let delivery;
   let delivered;
+  let prizes: RecipePrize[] | undefined; // рецепт: что выпало (market-recipe)
   try {
     const res = await deliverGood({ wallet, account, item, qty, payRef, nonce });
-    delivery = res.target;
-    delivered = res.delivered;
+    ({ target: delivery, delivered, prizes } = res);
   } catch (e) {
-    await credit(
-      wallet,
-      account,
-      item.priceResource,
-      item.priceToken,
-      item.priceAmount * qty,
-      `${payRef}:undo`,
-      receipt1,
-    ).catch(undoFail(item.priceResource, item.priceToken, item.priceAmount * qty, payRef, "undo"));
-    if (p2 && item.price2Amount) {
-      await credit(
-        wallet,
-        account,
-        p2,
-        item.price2Token,
-        item.price2Amount * qty,
-        `${payRef}:undo2`,
-        receipt2,
-      ).catch(undoFail(p2, item.price2Token, item.price2Amount * qty, `${payRef}:p2`, "undo2"));
-    }
+    await refundAll(pay, receipts, qty, "undo");
     await releaseStock(item.id, mapId, qty);
     throw e;
   }
 
-  // 2b) частичная выдача (только паки: поштучный сбой после k выдач). Вернуть
-  // ОБЕ цены и запас ТОЛЬКО за недоставленный остаток — игрок платит ровно за
-  // то, что получил, а «сгоревшие» единицы возвращаются в продажу.
+  // 2b) частичная выдача (паки, рецепт: поштучный сбой после k выдач). Вернуть
+  // цену и запас ТОЛЬКО за недоставленный остаток — игрок платит ровно за то,
+  // что получил, а «сгоревшие» единицы возвращаются в продажу.
   const back = qty - delivered;
   if (back > 0) {
-    await credit(
-      wallet,
-      account,
-      item.priceResource,
-      item.priceToken,
-      item.priceAmount * back,
-      `${payRef}:undoPart`,
-      receipt1,
-    ).catch(
-      undoFail(item.priceResource, item.priceToken, item.priceAmount * back, payRef, "undoPart"),
-    );
-    if (p2 && item.price2Amount) {
-      await credit(
-        wallet,
-        account,
-        p2,
-        item.price2Token,
-        item.price2Amount * back,
-        `${payRef}:undoPart2`,
-        receipt2,
-      ).catch(
-        undoFail(p2, item.price2Token, item.price2Amount * back, `${payRef}:p2`, "undoPart2"),
-      );
-    }
+    await refundAll(pay, receipts, back, "undoPart");
     await releaseStock(item.id, mapId, back);
   }
 
   // Журнал сделок — за реально выданное, после всех откатов; отданный товар
   // цены — «заплатил». Сбой записи покупку не трогает (econ/trade-journal).
   if (delivered > 0) {
-    const receipts = [receipt1, receipt2] as const;
     void noteMarketBuy({ item, account, mapId, qty, delivered, receipts, ref: payRef });
   }
 
@@ -238,5 +176,6 @@ async function buyAfterChecks(c: {
     // Куда попал товар — клиент по этому полю точечно инвалидирует ключи.
     delivery,
     toAccount: delivery === "account",
+    prizes: prizes ?? null,
   };
 }

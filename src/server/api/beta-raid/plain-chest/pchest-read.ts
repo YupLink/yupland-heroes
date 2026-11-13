@@ -10,6 +10,7 @@ import { sqlStr } from "@/server/api/raid-shared";
 import { stackCells } from "@/lib/warehouseCells";
 import { PLAIN_CHEST_CELLS, type PlainChestSlot, type PlainChestView } from "@/lib/plainChest";
 import { chestOpenPrice } from "@/lib/openPass";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 import { pchestActor, plainNear } from "@/server/api/beta-raid/plain-chest/pchest-row";
 import { passOpen } from "@/server/api/beta-raid/open-pass/pass";
 import { plainTarget } from "@/server/api/beta-raid/open-pass/pass-sql";
@@ -70,6 +71,7 @@ export const getPlainChest = createServerFn({ method: "GET" })
       used,
       slots: open ? slots : [],
       open,
-      price: chestOpenPrice(used),
+      // На острове — в 10 раз дешевле (island/energy), ровно как спишет pass-price.
+      price: scaleEnergy(chestOpenPrice(used), energyMultOf(a.mapId)),
     };
   });

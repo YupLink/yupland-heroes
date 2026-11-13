@@ -11,6 +11,7 @@
 // из них упала бы на каждой записи, поэтому их нет и здесь.
 import type { TourEntryPrice } from "@/lib/tournament/types";
 import { starsForDarai } from "@/lib/starsForDarai";
+import { ticketRowAsGold } from "@/lib/ticketPriceGold";
 
 type Res = TourEntryPrice["resource"];
 
@@ -129,8 +130,9 @@ function ruForm(n: number, f: [string, string, string]): string {
 export const fmtEntryAmount = (n: number, lang: string): string =>
   new Intl.NumberFormat(lang === "ru" ? "ru-RU" : "en-US", { maximumFractionDigits: 4 }).format(n);
 
-/** Одна строка цены: «5 золота», «1 000 Darai», «2 × Яблоко». */
-export function entryPriceLine(p: TourEntryPrice, lang: string): string {
+/** Одна строка цены: «5 золота», «1 000 Darai», «2 × Яблоко». Билеты — золотом ×500 (§8.61). */
+export function entryPriceLine(row: TourEntryPrice, lang: string): string {
+  const p = ticketRowAsGold(row);
   const n = Number(p.amount) || 0;
   const num = fmtEntryAmount(n, lang);
   if (p.resource === "item")

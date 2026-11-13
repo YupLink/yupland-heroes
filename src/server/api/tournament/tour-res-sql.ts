@@ -5,42 +5,120 @@
 // max(старт турнира, его запись): всё, что выработано или добыто раньше, не
 // засчитывается и потом, когда его соберут.
 //
-//  • Шахта (ref mine:<карта>:<q>:<r>:<эпоха захвата>:[cap]<N>). Шахта копит
-//    ЦЕЛЫЕ часы от захвата (raid_mine_claim): час j после прошлого сбора на
-//    уровне pn «капает» в момент эпоха + (pn + j) ч. Строка сбора несёт часы
-//    (pn, N] разом — засчитываем только те, что отработаны в [порог, конец],
-//    той же долей от delta. pn — уровень прошлого сбора по (карта, эпоха,
-//    аккаунт), а не по клетке: перенос в режиме бога двигает шахту вместе с
-//    часами. Хвост прежнему владельцу при захвате (cap) — та же формула.
+//  • Шахта (ref mine:<карта>:<q>:<r>:<эпоха начала отрезка>:[cap]<N>). Шахта
+//    копит ЦЕЛЫЕ часы от начала отрезка (захват; у v2 — accrue_from): час j
+//    после прошлого сбора на уровне pn «капает» в момент эпоха + (pn + j) ч.
+//    Строка сбора несёт часы (pn, N] разом — засчитываем только те, что
+//    отработаны в [порог, конец], той же долей от delta. pn — уровень
+//    прошлого сбора той же шахты: аккаунт, карта, клетка (q, r) и эпоха. Без
+//    клетки шахты одного игрока с совпавшей до секунды эпохой затеняли друг
+//    друга (уровень соседки давал 0 или полный delta). Хвост прежнему
+//    владельцу при захвате (cap) — та же формула. Дробный хвост часа
+//    (…:<эпоха>:tail: поломка, смена режима, починка своей, перевод) — не
+//    уровень часов: ref не разбирается как сбор, строка идёт как прочий доход
+//    (момент строки, доли часа, один раз — ключ 'res:<id строки>').
+//    Перенос в режиме бога меняет клетку, а эпоху и уровень оставляет: первый
+//    сбор на новой клетке прошлого уровня не найдёт (pn = 0) и разложит свою
+//    delta на все N часов отрезка. Засчитаются только часы в [порог, конец]
+//    (часы до порога — никогда), каждый по delta / N, а не delta / (N − pn):
+//    недосчёт, не пересчёт. Дальше уровни на новой клетке идут как обычно.
 //  • «Добыча» (ref raidtour:<локация>:c<цикл>:<id raid_reward>): момент — когда
 //    добыто (raid_reward.created_at), а не когда нажали «Забрать».
 //  • Прочие доходы (моб, грядка) — момент строки журнала, как раньше.
 import { sqlStr } from "@/server/api/raid-shared";
 
-/** ref сбора шахты: [1] карта, [2] эпоха захвата (сек), [3] уровень часов N. */
+/** ref сбора шахты: [1] карта, [2] q, [3] r, [4] эпоха отрезка (сек), [5] уровень часов N. */
 export const MINE_REF_RE =
-  "^mine:([^:]+):-?[0-9]+:-?[0-9]+:([0-9]+):(?:cap)?([0-9]+(?:[.][0-9]+)?)$";
-
-/** Разбор ref сбора шахты (LATERAL): map, ep, n — или ни одной строки. */
-export const mineRefSql = (ref: string): string =>
-  `SELECT x.m[1] AS map, x.m[2]::bigint AS ep, x.m[3]::numeric AS n
-     FROM (SELECT regexp_match(${ref}, ${sqlStr(MINE_REF_RE)}) AS m) x
-    WHERE x.m IS NOT NULL`;
+  "^mine:([^:]+):(-?[0-9]+):(-?[0-9]+):([0-9]+):(?:cap)?([0-9]+(?:[.][0-9]+)?)$";
 
 /**
- * Уровень часов прошлого сбора той же шахты (карта + эпоха) у аккаунта до
- * момента before; сборов не было — 0. Ищем по индексу (аккаунт, время) и не
- * раньше захвата (эпоха округлена до секунды — с запасом): без нижней границы
- * полная подтяжка дерева шла 16 с, с ней — 3 с.
+ * Разбор ref сбора шахты (LATERAL): map, q, r (текстом), ep, n — или ни одной
+ * строки. OFFSET 0 — забор от подстановки: без него база подставляла
+ * regexp_match в фильтр minePrevSql и считала его на КАЖДОЙ просмотренной
+ * строке журнала (прод 20.10: 300 сборов — 12 с, с забором — 0,4 с).
  */
-export const minePrevSql = (o: { acc: string; map: string; ep: string; before: string }): string =>
-  `COALESCE((SELECT substring(split_part(p.ref, ':', 6) from '^(?:cap)?([0-9]+(?:[.][0-9]+)?)$')::numeric
-       FROM yuplink.res_ledger p
-      WHERE p.account_id = ${o.acc} AND p.kind = 'mine'
+export const mineRefSql = (ref: string): string =>
+  `SELECT x.m[1] AS map, x.m[2] AS q, x.m[3] AS r, x.m[4]::bigint AS ep, x.m[5]::numeric AS n
+     FROM (SELECT regexp_match(${ref}, ${sqlStr(MINE_REF_RE)}) AS m) x
+    WHERE x.m IS NOT NULL OFFSET 0`;
+
+/** Уровень часов в 6-й части ref: N или capN. */
+const LEVEL_RE = "^(?:cap)?([0-9]+(?:[.][0-9]+)?)$";
+
+/** Уровень часов строки сбора p (6-я часть ref); хвост часа и прочее — NULL. */
+const levelSql = `substring(split_part(p.ref, ':', 6) from ${sqlStr(LEVEL_RE)})`;
+
+/** Строки журнала сборов отрезка (аккаунт, карта, эпоха) до before; с q, r — и клетки. */
+function minePrevWhere(o: {
+  acc: string;
+  map: string;
+  ep: string;
+  before: string;
+  q?: string;
+  r?: string;
+}): string {
+  const cell =
+    o.q === undefined || o.r === undefined
+      ? ""
+      : `
+        AND split_part(p.ref, ':', 3) = (${o.q})::text AND split_part(p.ref, ':', 4) = (${o.r})::text`;
+  return `p.account_id = ${o.acc} AND p.kind = 'mine'
         AND p.created_at < ${o.before} AND p.created_at >= to_timestamp(${o.ep} - 1)
         AND left(p.ref, 5) = 'mine:' AND split_part(p.ref, ':', 2) = ${o.map}
-        AND split_part(p.ref, ':', 5) = (${o.ep})::text
+        AND split_part(p.ref, ':', 5) = (${o.ep})::text${cell}`;
+}
+
+/**
+ * Уровень часов прошлого сбора той же шахты (аккаунт, карта, клетка, эпоха)
+ * до момента before; сборов не было — 0. Ищем по индексу (аккаунт, время) и
+ * не раньше начала отрезка (эпоха округлена до секунды — с запасом): без
+ * нижней границы полная подтяжка дерева шла 16 с, с ней — 3 с. Хвост часа
+ * (…:tail) уровнем не бывает, но он закрывает отрезок: поломка, смена режима,
+ * починка своей и перевод пишут его вместе с последним сбором, а новый
+ * отрезок идёт со своей эпохой. «Прошлым» он выпадет, только если следующий
+ * отрезок клетки начался в ту же секунду, — тогда сборов до него не было и
+ * NULL даёт верный 0. Проверка на каждой строке стоила бы +35 % времени.
+ */
+export const minePrevSql = (o: {
+  acc: string;
+  map: string;
+  q: string;
+  r: string;
+  ep: string;
+  before: string;
+}): string =>
+  `COALESCE((SELECT ${levelSql}::numeric
+       FROM yuplink.res_ledger p
+      WHERE ${minePrevWhere(o)}
       ORDER BY p.created_at DESC LIMIT 1), 0)`;
+
+/**
+ * Последний сбор отрезка (аккаунт, карта, эпоха) до before на ЛЮБОЙ клетке,
+ * кроме skip — text[] клеток 'q:r' живых соседок с той же эпохой (LATERAL):
+ * pn — его уровень часов, lat — момент; сборов нет — ни одной строки. Хвосту
+ * на финише это нижняя граница: шахту, перенесённую режимом бога (туда и
+ * обратно — тоже), уже собирали на другой клетке, и эти часы засчитаны той
+ * строкой. Соседки срезали бы чужие часы — их клетки вне поиска. Только
+ * строки с уровнем: хвост часа (…:tail) отрезок не продолжает. Обе проверки —
+ * одним CASE: он дороже прочих условий, и база зовёт его последним, только на
+ * строках этого отрезка (отдельным условием разбор уровня шёл раньше карты и
+ * эпохи — на каждой строке шахт игрока). LIMIT — забор: поиск идёт один раз
+ * на шахту, а не на каждое упоминание pn и lat.
+ */
+export const mineLastSql = (o: {
+  acc: string;
+  map: string;
+  ep: string;
+  before: string;
+  skip: string;
+}): string =>
+  `SELECT ${levelSql}::numeric AS pn, p.created_at AS lat
+     FROM yuplink.res_ledger p
+    WHERE ${minePrevWhere(o)}
+      AND CASE WHEN ${levelSql} IS NULL THEN false
+               WHEN cardinality(${o.skip}) = 0 THEN true
+               ELSE split_part(p.ref, ':', 3) || ':' || split_part(p.ref, ':', 4) <> ALL (${o.skip}) END
+    ORDER BY p.created_at DESC LIMIT 1`;
 
 /**
  * Сколько часов после уровня pn отработано в [thr, ends] (LATERAL): cnt — их
@@ -90,7 +168,7 @@ export function resSrcSql(resource: string, income: string): string {
          ON left(l.ref, 9) = 'raidtour:' AND rr.id = split_part(l.ref, ':', 4)
        LEFT JOIN LATERAL (${mineRefSql("l.ref")}) mr ON true
        LEFT JOIN LATERAL (
-         SELECT ${minePrevSql({ acc: "l.account_id", map: "mr.map", ep: "mr.ep", before: "l.created_at" })} AS pn
+         SELECT ${minePrevSql({ acc: "l.account_id", map: "mr.map", q: "mr.q", r: "mr.r", ep: "mr.ep", before: "l.created_at" })} AS pn
           WHERE mr.ep IS NOT NULL
        ) mp ON true
        LEFT JOIN LATERAL (

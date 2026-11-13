@@ -9,6 +9,8 @@ import { nitro } from "nitro/vite";
 import { config as loadDotenv } from "dotenv";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { lucideDirect } from "./vite/lucideDirect";
+import { releaseResolveErrors } from "./vite/releaseResolveErrors";
 
 // .env + .env.local → define ТОЛЬКО в серверные окружения (ssr, nitro), в
 // клиентский бандл ключи из .env не попадают никогда. В dev так доезжают
@@ -34,8 +36,11 @@ for (const [k, v] of Object.entries(__localEnv)) {
 // supabase-js с мостом к базе (~240 КБ) уезжали в телефон. Обращение к
 // заглушке на клиенте — ошибка «server-only: …»: так и должно быть.
 // Клиент ИИ (ai/mimo) — в том же списке: ключи провайдера читает он, и даже
-// мёртвым кодом в телефоне ему делать нечего.
-const SERVER_ONLY = /\/src\/server\/(db\/(pg|mcpClient|directPg|postgrestShim)|ai\/mimo|raidLive)\.ts$/;
+// мёртвым кодом в телефоне ему делать нечего. AWS KMS (wallet/kms) — туда же:
+// шифрование ключей только на сервере, а в граф клиента он тянул ~400 модулей
+// @aws-sdk/@smithy (память сборки, 21.10.2026).
+const SERVER_ONLY =
+  /\/src\/server\/(db\/(pg|mcpClient|directPg|postgrestShim)|ai\/mimo|raidLive|wallet\/kms)\.ts$/;
 function exportNames(src: string): string[] {
   const names = new Set<string>();
   const decl = /^export\s+(?:async\s+)?(?:const|let|var|function\*?|class)\s+([A-Za-z_$][\w$]*)/gm;
@@ -102,6 +107,18 @@ export default defineConfig({
       config: {
         preset: NITRO_PRESET,
         publicAssets: [{ dir: ".output/public", baseURL: BASE_PATH }],
+        // Мини-игры (public/minigames, 08.11 «картинки долго грузятся»): сборка с хэшем в
+        // имени — навсегда; картинки и звук — сутки и ещё неделю из кэша со сверкой в фоне;
+        // страница игры — всегда сверять (в ней имена свежей сборки).
+        routeRules: {
+          "/minigames/**": {
+            headers: { "cache-control": "public, max-age=86400, stale-while-revalidate=604800" },
+          },
+          "/minigames/*/assets/**": {
+            headers: { "cache-control": "public, max-age=31536000, immutable" },
+          },
+          "/minigames/*/index.html": { headers: { "cache-control": "no-cache" } },
+        },
         // Старт сторожа и отчёта о задержке цикла при загрузке процесса.
         plugins: [fileURLToPath(new URL("./src/server/nitro/boot.ts", import.meta.url))],
       },
@@ -116,6 +133,6 @@ export default defineConfig({
       nitro: { define: __envDefine },
     },
     server: { hmr: { overlay: false } },
-    plugins: [serverOnlyStubs],
+    plugins: [serverOnlyStubs, lucideDirect(), releaseResolveErrors()],
   },
 });

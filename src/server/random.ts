@@ -11,8 +11,9 @@ export function rollReward(min: number, max: number): number {
  */
 export interface RewardTier {
   weight: number;
-  /** "ft" (default), "nft" — nftTitle, "pack" — packId, "energy" — ⚡ по rewardMin/Max */
-  kind?: "ft" | "nft" | "pack" | "energy";
+  /** "ft" (default), "nft" — nftTitle, "pack" — packId, "energy" — ⚡ по rewardMin/Max,
+   *  "custom" — товар маркета itemId, штук rewardMin..rewardMax (user-claims-goods). */
+  kind?: "ft" | "nft" | "pack" | "energy" | "custom";
   rewardMin: number;
   rewardMax: number;
   rewardToken: string;
@@ -26,6 +27,10 @@ export interface RewardTier {
   packQty?: number;
   /** Имя пака (hydrate на серверной стороне для UI; в БД не хранится). */
   packName?: string;
+  /** Товар маркета (cst_…), если kind="custom"; имя и картинка — снимок для карточки. */
+  itemId?: string;
+  itemName?: string;
+  itemImage?: string;
 }
 
 /** Кол-во паков за клейм: целое 1..MAX_PACK_QTY. Мусор/пусто → 1. */
@@ -62,7 +67,9 @@ export function parseRewardTiers(json: string | null): RewardTier[] | null {
           ? "pack"
           : o.kind === "energy"
             ? "energy"
-            : "ft";
+            : o.kind === "custom"
+              ? "custom"
+              : "ft";
     if (typeof o.weight !== "number" || o.weight <= 0) return null;
     if (kind === "energy") {
       // ⚡-ярус: награда = целое кол-во энергии из rewardMin..rewardMax. Токена нет.
@@ -75,6 +82,24 @@ export function parseRewardTiers(json: string | null): RewardTier[] | null {
         rewardMin: mn,
         rewardMax: mx,
         rewardToken: "energy",
+      });
+      continue;
+    }
+    if (kind === "custom") {
+      // Товар маркета: штук из rewardMin..rewardMax, кладётся в «Подарки».
+      const itemId = typeof o.itemId === "string" && o.itemId.startsWith("cst_") ? o.itemId : null;
+      const mn = typeof o.rewardMin === "number" ? o.rewardMin : 1;
+      const mx = typeof o.rewardMax === "number" ? o.rewardMax : mn;
+      if (!itemId || mn < 1 || mx < mn) return null;
+      tiers.push({
+        weight: o.weight,
+        kind: "custom",
+        rewardMin: mn,
+        rewardMax: mx,
+        rewardToken: typeof o.rewardToken === "string" ? o.rewardToken : "",
+        itemId,
+        itemName: typeof o.itemName === "string" ? o.itemName : undefined,
+        itemImage: typeof o.itemImage === "string" ? o.itemImage : undefined,
       });
       continue;
     }

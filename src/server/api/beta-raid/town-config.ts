@@ -8,8 +8,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { getCurrentWallet, isAdminWallet } from "../../auth";
-import { godMapId } from "./god-map";
+import { requireGodAdmin } from "./island/island-editor-auth";
+import { assertMarketPacksRight } from "./god-money";
 import { publishRaid } from "../../raidLive";
 import {
   ensureTownSchema,
@@ -27,12 +27,6 @@ import {
   townConfigSchema,
   type TownConfig,
 } from "@/lib/townConfig";
-
-function requireAdmin(): string {
-  const w = getCurrentWallet();
-  if (!w || !isAdminWallet(w)) throw new Error("town.admin_only");
-  return w;
-}
 
 /** Конфиг ратуши и отметка голода; нет строки — пустой снимок (первое открытие). */
 async function readConfig(
@@ -68,9 +62,8 @@ export const getTownConfig = createServerFn({ method: "GET" })
     }> => {
       // Настройки, склад и голод — только админу: игроку ратуша показывает
       // справку (town-hall-extra), а не пульт.
-      requireAdmin();
+      const { mapId } = await requireGodAdmin();
       await ensureTownSchema();
-      const mapId = await godMapId();
       const town = { mapId, q: data.q, r: data.r };
       const { townAreaYield } = await import("./town-area");
       const [read, stock, yields] = await Promise.all([
@@ -101,9 +94,14 @@ export const setTownConfig = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    const god = await requireGodAdmin();
+    const mapId = god.mapId;
+    // Право island_god — без денег: товары ратуши в токенах только админу.
+    if (!god.money && data.config.goods.some((g) => g.refId === "token" || !!g.token)) {
+      throw new Error("Токены в ратуше — только админу");
+    }
+    for (const g of data.config.goods) await assertMarketPacksRight(g, god.money);
     await ensureTownSchema();
-    const mapId = await godMapId();
     // Клетка обязана быть ратушей — по meta шаблона ИЛИ по override клетки
     // (админ через режим бога назначает effect='town_hall' прямо клетке,
     // тогда шаблон не переопределён, а роль ратуши уже у клетки).
@@ -134,9 +132,8 @@ export const setTownConfig = createServerFn({ method: "POST" })
 export const listTownsOnMap = createServerFn({ method: "GET" })
   .inputValidator((_d: unknown) => z.object({}).parse({}))
   .handler(async () => {
-    requireAdmin();
+    const { mapId } = await requireGodAdmin();
     await ensureTownSchema();
-    const mapId = await godMapId();
     const rows = (await mcpExec(
       `SELECT q, r, config FROM yuplink.raid_town WHERE map_id=${sqlStr(mapId)};`,
       { wrapJson: true },

@@ -555,6 +555,20 @@ export const marathonClaim = createServerFn({ method: "POST" }).handler(async ()
   if (y.marathon_last_claim_day === todayUTC) {
     throw new Error("Награду за сегодня уже забрал");
   }
+  // День занимается одной записью ДО выдачи (аудит 11.11.2026): параллельные
+  // нажатия проходили проверку выше и получали фишку дважды.
+  const { mcpExec } = await import("../db/mcpClient");
+  const { sqlStr } = await import("./raid-shared");
+  const prevDay = y.marathon_last_claim_day
+    ? `${sqlStr(String(y.marathon_last_claim_day).slice(0, 10))}::date`
+    : "NULL";
+  const took = (await mcpExec(
+    `UPDATE yuplink.hallway_yupiks SET marathon_last_claim_day = ${sqlStr(todayUTC)}::date
+      WHERE wallet = ${sqlStr(yw)} AND marathon_last_claim_day IS NOT DISTINCT FROM ${prevDay}
+      RETURNING wallet`,
+    { wrapJsonCte: true },
+  )) as Array<{ wallet: string }> | null;
+  if (!took?.length) throw new Error("Награду за сегодня уже забрал");
   const yesterdayUTC = new Date(today.getTime() - 86_400_000).toISOString().slice(0, 10);
   // Строгий стрик: продолжаем только если вчера забирал; иначе — день 1.
   const newDay = y.marathon_last_claim_day === yesterdayUTC ? Math.min(30, y.marathon_day + 1) : 1;
@@ -761,7 +775,7 @@ export const exchangeTrainingForTickets = createServerFn({ method: "POST" })
       0,
     );
     const capLeft = Math.round((cfg.release.ticketCap - priorTickets) * 1e4) / 1e4;
-    if (capLeft <= 0) throw new Error("Лимит обмена фишек на билеты исчерпан");
+    if (capLeft <= 0) throw new Error("Лимит обмена фишек на золото исчерпан");
 
     // Кандидаты (явные id ∈ live, иначе топ-N) из ЖИВЫХ фишек аккаунта.
     const { data: chipRows } = await pg.hallwayTrainingChips
@@ -817,6 +831,7 @@ export const exchangeTrainingForTickets = createServerFn({ method: "POST" })
     const raw = won.reduce((sum, c) => sum + Number(c.star) * cfg.release.ticketPerStar, 0);
     // Потолок: и разовый (ticketCap), и кумулятивный на аккаунт (capLeft).
     const tickets = Math.round(Math.min(cfg.release.ticketCap, capLeft, raw) * 1e4) / 1e4;
+    let gold = 0;
     if (tickets >= 0.01) {
       // event_id 'hallway_chip_exchange' обязан существовать в ticket_events
       // (FK ticket_claims.event_id). Если начисление всё же упало (FK/транзиент)
@@ -830,14 +845,11 @@ export const exchangeTrainingForTickets = createServerFn({ method: "POST" })
           token_ids: JSON.stringify(won.map((c) => c.id)),
           tickets_awarded: tickets,
         });
-        // Обмен триал-фишек прихожей на билеты — в леджер.
-        const { moveTickets } = await import("./tickets-ledger");
-        await moveTickets({
-          wallet: yw,
-          delta: tickets,
-          kind: "nft_claim",
-          ref: `hallway:${claimId}`,
-        });
+        // Потолок обмена считается в билетах (строка выше), а на счёт идёт
+        // золото — 100 за билет (§8.61). ref по id клейма — повтор не задвоит.
+        const { creditGoldForTickets } = await import("./gold-earn");
+        const ref = `hallway:${claimId}`;
+        gold = await creditGoldForTickets({ wallet: yw, tickets, kind: "hallway", ref });
       } catch (e) {
         await pg.hallwayTrainingChips
           .raw()
@@ -851,7 +863,7 @@ export const exchangeTrainingForTickets = createServerFn({ method: "POST" })
       }
       invalidateTicketsCache(sisters);
     }
-    return { ok: true, exchanged: won.length, tickets };
+    return { ok: true, exchanged: won.length, tickets, gold };
   });
 
 // ──────── PUBLIC: мои триал-фишки (отдельная категория в инвентаре игры) ────────
@@ -941,6 +953,9 @@ export const createHallwayChipInvoice = createServerFn({ method: "POST" })
     const me = await pg.users.findOne({ wallet });
     const tgId = me?.telegram_id ?? null;
     if (!tgId) throw new Error("Привяжи Telegram, чтобы платить звёздами");
+    // Номер Google или кошелька — не Telegram (§8.127): звёздами такой аккаунт не платит.
+    const { starsAllowed } = await import("@/lib/auth/entryRules");
+    if (!starsAllowed(tgId)) throw new Error("Покупка временно недоступна");
     const cfg = await getHallwayConfig();
     if (!cfg.starShop?.enabled) throw new Error("Покупка временно недоступна");
     const offer = (cfg.starShop?.offers ?? []).find((o) => o.id === data.offerId && o.active);

@@ -5,18 +5,19 @@ import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { StarsTopUp } from "@/components/account/StarsTopUp";
 import { useAccountBalances } from "@/lib/hooks/useAccountBalances";
 import { useLang } from "@/lib/i18n";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import type { HouseContents, HouseProduct } from "./model";
+import type { HouseMethod } from "./TradingHouseView";
 import { maxHouseQuantity } from "./model";
 import marketCutout from "./assets/market-pack-cutout-preview.webp";
 import yupikCutout from "./assets/yupik-pack-cutout-preview.webp";
 
 const formatted = (n: number) => n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
-const ticketWord = (n: number) => n % 100 >= 11 && n % 100 <= 14 ? "билетов" : n % 10 === 1 ? "билет" : n % 10 >= 2 && n % 10 <= 4 ? "билета" : "билетов";
 
-export function TradingHouseSheet({ product, contents, tickets, daraiBalance, daraiFromAccount = false, walletConnected, purchaseAllowed, accountPurchaseAllowed, catalogPending, maxDaraiQuantity, quantity, onQuantityChange, onClose, onPurchase, onBuyTickets, onReturnFromTopUp }: {
+export function TradingHouseSheet({ product, contents, gold, daraiBalance, daraiFromAccount = false, walletConnected, purchaseAllowed, accountPurchaseAllowed, catalogPending, maxDaraiQuantity, quantity, onQuantityChange, onClose, onPurchase, onReturnFromTopUp }: {
   product: HouseProduct;
   contents: HouseContents | null;
-  tickets: number | null;
+  gold: number | null;
   daraiBalance: number | null;
   daraiFromAccount?: boolean;
   walletConnected: boolean;
@@ -27,14 +28,14 @@ export function TradingHouseSheet({ product, contents, tickets, daraiBalance, da
   quantity: number;
   onQuantityChange: (value: number) => void;
   onClose: () => void;
-  onPurchase: (product: HouseProduct, count: number, method: "tickets" | "darai" | "stars") => Promise<{ count: number; partial?: boolean }>;
-  onBuyTickets: () => void;
+  onPurchase: (product: HouseProduct, count: number, method: HouseMethod) => Promise<{ count: number; partial?: boolean }>;
   onReturnFromTopUp: () => void;
 }) {
   const ru = useLang() === "ru";
   const t = (a: string, b: string) => ru ? a : b;
   // Звёзды — первыми (владелец, 07.10.2026): у пака с ценой в DARAI они считаются от неё по курсу.
-  const [method, setMethod] = useState<"tickets" | "darai" | "stars">(product.priceStars != null ? "stars" : product.priceTickets != null ? "tickets" : "darai");
+  // Цена в билетах платится золотом ×500 (ПРАВИЛА §8.61); золото не докупается.
+  const [method, setMethod] = useState<HouseMethod>(product.priceStars != null ? "stars" : product.priceTickets != null ? "gold" : "darai");
   const [topUp, setTopUp] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -43,9 +44,9 @@ export function TradingHouseSheet({ product, contents, tickets, daraiBalance, da
   const starsBalance = useAccountBalances();
   const starsAvailable = starsBalance.isFetching || starsBalance.isError ? null : starsBalance.data?.balances.find(item => item.token.toUpperCase() === "STARS")?.balance ?? null;
   const max = Math.min(maxHouseQuantity(product, method), method === "darai" ? maxDaraiQuantity ?? 50 : 50);
-  const selectedPrice = method === "tickets" ? product.priceTickets : method === "stars" ? product.priceStars : product.priceDarai;
+  const selectedPrice = method === "gold" ? (product.priceTickets == null ? null : goldForTicketPrice(product.priceTickets)) : method === "stars" ? product.priceStars : product.priceDarai;
   const total = selectedPrice == null ? null : selectedPrice * quantity;
-  const shortage = method === "tickets" && tickets != null && total != null ? Math.max(0, total - tickets) : 0;
+  const shortage = method === "gold" && gold != null && total != null ? Math.max(0, Math.ceil(total - gold)) : 0;
   const daraiShortage = method === "darai" && daraiFromAccount && total != null && daraiBalance != null && total > daraiBalance;
   const daraiUnknown = method === "darai" && daraiFromAccount && daraiBalance == null;
   const starsShortage = method === "stars" && total != null && starsAvailable != null ? Math.max(0, total - starsAvailable) : 0;
@@ -70,7 +71,7 @@ export function TradingHouseSheet({ product, contents, tickets, daraiBalance, da
     if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   };
   const buy = async () => {
-    if (shortage > 0) { onBuyTickets(); return; }
+    if (shortage > 0) return;
     if (starsShortage > 0) { setTopUp(true); return; }
     if (!selectedPurchaseAllowed || catalogPending || max < quantity || total == null || pending || reviewRequired || daraiShortage || daraiUnknown || method === "stars" && starsAvailable == null) return;
     setPending(true);
@@ -84,9 +85,9 @@ export function TradingHouseSheet({ product, contents, tickets, daraiBalance, da
     finally { setPending(false); }
   };
   const button = <button className={`trading-house__sheet-buy${walletConnected || product.priceStars != null ? "" : " trading-house__sheet-buy--inline"}`}
-    disabled={pending || !reviewRequired && (catalogPending || max < 1 || total == null || tickets == null && method === "tickets" || method === "stars" && starsAvailable == null || daraiShortage || daraiUnknown || !selectedPurchaseAllowed)}
+    disabled={pending || !reviewRequired && (catalogPending || max < 1 || total == null || method === "gold" && (gold == null || shortage > 0) || method === "stars" && starsAvailable == null || daraiShortage || daraiUnknown || !selectedPurchaseAllowed)}
     onClick={reviewRequired ? onClose : () => void buy()}>
-    {reviewRequired ? t("Закрыть и проверить Казарму", "Close and check Barracks") : pending ? t("Покупаем…", "Buying…") : <>{t("Купить", "Buy")} · {method === "tickets" ? <><ResourceGlyph kind="tickets" /> {total == null ? "—" : formatted(total)}</> : <>{total == null ? "—" : formatted(total)} {method === "stars" ? "★" : "$DARAI"}</>}</>}
+    {reviewRequired ? t("Закрыть и проверить Казарму", "Close and check Barracks") : pending ? t("Покупаем…", "Buying…") : <>{t("Купить", "Buy")} · {method === "gold" ? <><ResourceGlyph kind="gold" /> {total == null ? "—" : formatted(total)}</> : <>{total == null ? "—" : formatted(total)} {method === "stars" ? "★" : "$DARAI"}</>}</>}
   </button>;
 
   return createPortal(<div className="trading-house__veil" onClick={event => { if (event.target === event.currentTarget && !pending) onClose(); }}>
@@ -108,12 +109,12 @@ export function TradingHouseSheet({ product, contents, tickets, daraiBalance, da
         <div className="trading-house__sheet-controls">
           <div className="trading-house__quantity"><span>{t("Количество", "Quantity")}</span><div><button aria-label={t("Уменьшить количество", "Decrease quantity")} disabled={quantity <= 1 || pending} onClick={() => onQuantityChange(quantity - 1)}><span>−</span></button><strong>{quantity}</strong><button aria-label={t("Увеличить количество", "Increase quantity")} disabled={quantity >= max || pending} onClick={() => onQuantityChange(quantity + 1)}><span>+</span></button></div></div>
           {walletConnected || product.priceStars != null ? <div className="trading-house__payment" role="group" aria-label={t("Валюта покупки", "Purchase currency")}>
-            <span className="trading-house__payment-balance" aria-live="polite">{method === "darai" && daraiBalance != null ? `${t("На счёте", "Balance")}: ${formatted(daraiBalance)} $DARAI` : method === "stars" && starsAvailable != null ? `${t("В Казне", "In Treasury")}: ${formatted(starsAvailable)} ★` : "\u00a0"}</span>
-            <div className="trading-house__payment-options">{product.priceStars != null && <button type="button" aria-pressed={method === "stars"} disabled={pending} onClick={() => setMethod("stars")}>★ Stars</button>}{product.priceTickets != null && <button type="button" aria-pressed={method === "tickets"} disabled={pending} onClick={() => setMethod("tickets")}>{t("Билеты", "Tickets")}</button>}{walletConnected && product.priceDarai != null && <button type="button" aria-pressed={method === "darai"} disabled={pending} onClick={() => setMethod("darai")}>$DARAI</button>}</div>
+            <span className="trading-house__payment-balance" aria-live="polite">{method === "darai" && daraiBalance != null ? `${t("На счёте", "Balance")}: ${formatted(daraiBalance)} $DARAI` : method === "gold" && gold != null ? `${t("Золото", "Gold")}: ${formatted(Math.floor(gold))}` : method === "stars" && starsAvailable != null ? `${t("В Казне", "In Treasury")}: ${formatted(starsAvailable)} ★` : "\u00a0"}</span>
+            <div className="trading-house__payment-options">{product.priceStars != null && <button type="button" aria-pressed={method === "stars"} disabled={pending} onClick={() => setMethod("stars")}>★ Stars</button>}{product.priceTickets != null && <button type="button" aria-pressed={method === "gold"} disabled={pending} onClick={() => setMethod("gold")}>{t("Золото", "Gold")}</button>}{walletConnected && product.priceDarai != null && <button type="button" aria-pressed={method === "darai"} disabled={pending} onClick={() => setMethod("darai")}>$DARAI</button>}</div>
           </div> : <div className="trading-house__buy-slot">{button}</div>}
         </div>
         {(walletConnected || product.priceStars != null) && button}
-        {method === "tickets" && shortage > 0 && <div className="trading-house__shortfall" role="status"><span>{ru ? `Нужно ещё ${formatted(shortage)} ${ticketWord(shortage)}` : `Need ${formatted(shortage)} more tickets`}</span><button type="button" data-ticket-topup onClick={onBuyTickets}>{t("Купить билеты", "Buy tickets")}</button></div>}
+        {method === "gold" && shortage > 0 && <div className="trading-house__shortfall" role="status"><span>{ru ? `Не хватает ${formatted(shortage)} золота` : `Need ${formatted(shortage)} more gold`}</span></div>}
         {daraiShortage && <p className="trading-house__error" role="status">{t("Недостаточно $DARAI на счёте.", "Not enough $DARAI on the account.")}</p>}
         {daraiUnknown && <p className="trading-house__error" role={starsBalance.isError ? "alert" : "status"}>{starsBalance.isFetching ? t("Проверяем баланс $DARAI…", "Checking $DARAI balance…") : t("Не удалось проверить баланс $DARAI.", "Could not check the $DARAI balance.")}{starsBalance.isError && <> <button type="button" onClick={() => void starsBalance.refetch()}>{t("Повторить", "Retry")}</button></>}</p>}
         {method === "stars" && starsShortage > 0 && <p className="trading-house__error" role="status">{t("Не хватает", "Need")} {formatted(starsShortage)} ★. {t("Оплата откроет пополнение Казны.", "Payment will open Treasury top-up.")}</p>}

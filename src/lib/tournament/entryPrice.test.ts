@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   TOUR_ENTRY_RESOURCES,
   cleanEntryPrice,
+  fmtEntryAmount,
   parseEntryPrice,
   sameEntryPrice,
   tourEntryPriceError,
@@ -111,7 +112,10 @@ describe("tourEntryPriceLabel", () => {
     expect(tourEntryPriceLabel([gold(1)], "ru")).toBe("1 золото");
     expect(tourEntryPriceLabel([{ resource: "diamonds", amount: 1 }], "ru")).toBe("1 алмаз");
     expect(tourEntryPriceLabel([{ resource: "diamonds", amount: 3 }], "ru")).toBe("3 алмаза");
-    expect(tourEntryPriceLabel([{ resource: "tickets", amount: 11 }], "ru")).toBe("11 билетов");
+    // Билетов нет (§8.61): цена «в билетах» — золото ×500.
+    expect(tourEntryPriceLabel([{ resource: "tickets", amount: 11 }], "ru")).toBe(
+      `${fmtEntryAmount(5500, "ru")} золота`,
+    );
     expect(tourEntryPriceLabel([{ resource: "stone", amount: 21 }], "ru")).toBe("21 камень");
     expect(tourEntryPriceLabel([{ resource: "energy", amount: 1.5 }], "ru")).toBe("1,5 энергии");
   });

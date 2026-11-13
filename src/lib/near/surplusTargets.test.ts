@@ -9,7 +9,7 @@ describe("цели вывода", () => {
   it("контракт — по подписанту, чужой кошелёк — ничего", () => {
     expect(surplusTargetOf("yupland_nfts.near")?.contract).toBe("yupai.nfts.tg");
     expect(surplusTargetOf("darai_collection.near")?.contract).toBe("yuplandshop.mintbase1.near");
-    expect(surplusTargetOf("owner.example.tg")).toBeUndefined();
+    expect(surplusTargetOf("owner.tg")).toBeUndefined();
     expect(surplusTargetOf(null)).toBeUndefined();
   });
 

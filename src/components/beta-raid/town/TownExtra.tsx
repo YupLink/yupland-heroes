@@ -2,9 +2,11 @@
 // жителей и что они едят за сутки; настройки ратуши — админу, кнопкой отсюда же.
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Settings2 } from "lucide-react";
-import { useT } from "@/lib/i18n";
+import { ChevronDown, Home, Loader2, Settings2 } from "lucide-react";
+import { useLang, useT } from "@/lib/i18n";
 import { getSession } from "@/server/api/user-auth";
+import { getHomeCastle } from "@/server/api/beta-raid/home-castle";
+import { useCastleMode } from "../castleMode";
 import { marketResourceIconSrc } from "@/lib/resourceIcons";
 import type { TownEatLine, TownHallExtra } from "@/lib/townHallView";
 import { numText } from "../market/num";
@@ -16,54 +18,79 @@ export function TownExtra({ q, r, extra }: { q: number; r: number; extra: TownHa
 
 function TownHallInfo({ q, r, extra }: { q: number; r: number; extra: TownHallExtra }) {
   const t = useT();
+  const ru = useLang() === "ru";
   const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
+  const castleMode = useCastleMode();
+  const offerMainAt = castleMode?.offerMainAt;
+  const home = useQuery({ queryKey: ["home-castle"], queryFn: () => getHomeCastle(), staleTime: 0, refetchOnMount: "always", retry: false });
+  const [checkingMain, setCheckingMain] = useState(false);
   const [settings, setSettings] = useState(false);
-  // Снимок окна мог лечь в суточный кэш до этой правки — поля читаем терпимо.
+  const [foodOpen, setFoodOpen] = useState(false);
+  // A cached response predating the food list may omit it.
   const eats = Array.isArray(extra.eats) ? extra.eats : [];
   const name = typeof extra.name === "string" ? extra.name.trim() : "";
+  const place = home.data;
+  const main = !place?.island && !place?.away && place?.home.kind === "town" && place.home.q === q && place.home.r === r;
+  const here = !place?.island && !place?.away && place?.here?.kind === "town" && place.here.q === q && place.here.r === r;
+  const showMainPlace = !home.isFetching && home.isSuccess && !place?.island && !place?.away;
   return (
-    <div className="space-y-2 rounded-2xl border border-border/60 bg-secondary/20 p-3">
-      {/* Название города — то, что админ вписал в пульт ратуши. */}
-      {name && (
-        <div className="truncate text-center font-display text-base font-bold text-gold">
-          {name}
+    <section className="raid-townhall-city" aria-label={ru ? "Сведения о городе" : "City information"}>
+      <div className="raid-townhall-city__head">
+        <div className="min-w-0">
+          <span className="raid-townhall-city__eyebrow">{ru ? "ГОРОД" : "CITY"}</span>
+          <h4 className="raid-townhall-city__name">{name || (ru ? "Город" : "City")}</h4>
+          {showMainPlace && main && <div className="raid-townhall-city__main-status"><span className="raid-townhall-city__main-dot" aria-hidden="true" />{ru ? "Твой основной замок" : "Your main castle"}</div>}
         </div>
-      )}
+        <div className="raid-townhall-city__population">
+          <strong>{numText(Number(extra.residents) || 0)}</strong>
+          <span>{ru ? "жителей" : "residents"}</span>
+        </div>
+      </div>
       {extra.starving && (
         <div className="rounded-xl border border-destructive/50 bg-destructive/10 px-3 py-2 text-center text-xs font-bold text-destructive">
           {t("town.starving_badge")}
         </div>
       )}
-      <div className="text-center text-sm font-semibold">
-        {t("town.residents", { n: numText(Number(extra.residents) || 0) })}
-      </div>
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-        {t("town.eats_title")}
-      </div>
-      {eats.length === 0 ? (
-        <p className="text-center text-xs text-muted-foreground">{t("town.eats_none")}</p>
-      ) : (
-        <ul className="space-y-1">
-          {eats.map((e, i) => (
-            <EatRow key={`${e.kind}:${e.refId ?? ""}:${i}`} e={e} />
-          ))}
-        </ul>
+      <button type="button" className="raid-townhall-city__toggle" aria-expanded={foodOpen}
+        onClick={() => setFoodOpen(open => !open)}>
+        <span>{t("town.eats_title")}</span>
+        <ChevronDown aria-hidden="true" />
+      </button>
+      {foodOpen && (
+        eats.length === 0
+          ? <p className="raid-townhall-city__empty">{t("town.eats_none")}</p>
+          : <ul className="raid-townhall-city__food">
+              {eats.map((e, i) => <EatRow key={`${e.kind}:${e.refId ?? ""}:${i}`} e={e} />)}
+            </ul>
       )}
       {extra.starving && (
-        <p className="text-center text-[11px] text-muted-foreground">{t("town.starving_hint")}</p>
+        <p className="raid-townhall-city__hint">{t("town.starving_hint")}</p>
       )}
+      {home.isFetching && <p className="raid-townhall-city__main-feedback" role="status">{ru ? "Проверяем основной замок…" : "Checking main castle…"}</p>}
+      {!home.isFetching && home.isError && <div className="raid-townhall-city__main-feedback" role="alert">
+        <span>{ru ? "Не удалось проверить основной замок." : "Could not check the main castle."}</span>
+        <button type="button" onClick={() => void home.refetch()}>{ru ? "Повторить" : "Retry"}</button>
+      </div>}
+      {showMainPlace && !main && offerMainAt && <div className="raid-townhall-city__main-action">
+        <button type="button" className="raid-townhall-city__main-button" disabled={!here || checkingMain}
+          onClick={() => {
+            setCheckingMain(true);
+            void offerMainAt(q, r).finally(() => setCheckingMain(false));
+          }}>
+          {checkingMain ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Home aria-hidden="true" />}
+          <span>{ru ? "Сделать основным замком" : "Make main castle"}</span>
+        </button>
+        {!here && <p className="raid-townhall-city__main-hint">{ru ? "Доступно, когда герой находится у этой ратуши." : "Available when your hero is at this town hall."}</p>}
+      </div>}
       {session.data?.isAdmin && (
-        <button
-          type="button"
-          onClick={() => setSettings(true)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gold/50 bg-gold/10 py-2 text-xs font-bold text-gold"
-        >
-          <Settings2 className="h-3.5 w-3.5" />
+        <button type="button" onClick={() => setSettings(true)}
+          className="raid-townhall-city__settings">
+          <Settings2 aria-hidden="true" />
           {t("town.settings")}
         </button>
       )}
       {settings && <TownAdminPanel q={q} r={r} onClose={() => setSettings(false)} />}
-    </div>
+    </section>
   );
 }
 

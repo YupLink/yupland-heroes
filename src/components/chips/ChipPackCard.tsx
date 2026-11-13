@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Loader2, Box, Ticket, Coins, Package, Star } from "lucide-react";
+import { Loader2, Box, Coins, Package, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
+import { goldForTicketPrice } from "@/lib/ticketGold";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { cn } from "@/lib/utils";
 import { AccountBalanceBadge } from "@/components/AccountBalanceBadge";
 import { useAccountEnabled } from "@/lib/hooks/useAccountBalances";
+import { useEntryRules } from "@/hooks/useEntryRules";
 import { useChipPackPurchase } from "./useChipPackPurchase";
 
 type PublicPack = {
@@ -24,16 +27,17 @@ type PublicPack = {
 
 export function ChipPackCard({
   pack,
-  availableTickets,
+  availableGold,
   availableDarai,
 }: {
   pack: PublicPack;
-  availableTickets: number;
+  availableGold: number;
   availableDarai: number;
 }) {
   const t = useT();
   const { buy, buyFromAccount, buyDaraiOnChain } = useChipPackPurchase(pack);
   const accountOn = useAccountEnabled();
+  const starsOn = useEntryRules().stars; // §8.127: звёзды — только с Telegram
   const [qty, setQty] = useState(1);
   const MAX_QTY = 50;
   const QTY_STEPS = [1, 3, 5, 10, 25, 50];
@@ -63,12 +67,14 @@ export function ChipPackCard({
     const pv = [...usableSteps].reverse().find((s) => s < q);
     setQty(pv ?? 1);
   };
-  const ticketsTotal = pack.priceTickets != null ? pack.priceTickets * q : null;
+  // Билетов нет (ПРАВИЛА §8.61): цена в билетах платится золотом ×500.
+  const goldUnit = pack.priceTickets != null ? goldForTicketPrice(pack.priceTickets) : null;
+  const ticketsTotal = goldUnit != null ? goldUnit * q : null;
   const daraiTotal = pack.priceDarai != null ? pack.priceDarai * q : null;
   const starsTotal = pack.priceStars != null ? pack.priceStars * q : null;
   // Звёзды платятся со счёта — как и Darai, только другой валютой.
-  const canStars = accountOn && starsTotal != null && !soldOut;
-  const ticketsOk = ticketsTotal != null && availableTickets >= ticketsTotal;
+  const canStars = starsOn && accountOn && starsTotal != null && !soldOut;
+  const ticketsOk = ticketsTotal != null && availableGold >= ticketsTotal;
   const ticketsQtyOk = q <= ticketsMax;
 
   return (
@@ -98,16 +104,16 @@ export function ChipPackCard({
             </p>
           )}
           <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-            {pack.priceStars != null && (
+            {starsOn && pack.priceStars != null && (
               <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/50 bg-sky-500/10 px-2 py-0.5 text-sky-300">
                 <Star className="h-3 w-3 fill-sky-300" />
                 {pack.priceStars}★
               </span>
             )}
-            {pack.priceTickets != null && (
+            {goldUnit != null && (
               <span className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-gold">
-                <Ticket className="h-3 w-3" />
-                {pack.priceTickets}
+                <ResourceGlyph kind="gold" className="h-3 w-3" />
+                {goldUnit.toLocaleString("ru-RU")}
               </span>
             )}
             {pack.priceDarai != null && (
@@ -173,7 +179,7 @@ export function ChipPackCard({
         <div className="flex gap-1.5">
           <button
             type="button"
-            onClick={() => buy.mutate({ payWith: "tickets", count: q })}
+            onClick={() => buy.mutate({ payWith: "gold", count: q })}
             disabled={
               buy.isPending ||
               cannotBuyTickets ||
@@ -191,8 +197,8 @@ export function ChipPackCard({
             {buy.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              // Кнопка платит билетами — и значок билетный, тот же, что в шапке.
-              <Ticket className="h-3.5 w-3.5" />
+              // Кнопка платит золотом — и значок золота, тот же, что в шапке.
+              <ResourceGlyph kind="gold" className="h-3.5 w-3.5" />
             )}
             {soldOut
               ? t("chips.sold_out")
@@ -201,8 +207,8 @@ export function ChipPackCard({
                 : pack.priceTickets == null
                   ? t("chips.darai_only")
                   : ticketsOk
-                    ? t("chips.buy_for", { n: ticketsTotal ?? 0 })
-                    : t("chips.not_enough_have", { n: availableTickets })}
+                    ? t("chips.buy_for", { n: (ticketsTotal ?? 0).toLocaleString("ru-RU") })
+                    : t("chips.not_enough_have", { n: Math.floor(availableGold).toLocaleString("ru-RU") })}
           </button>
           <button
             type="button"

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Castle, Footprints, Loader2 } from "lucide-react";
+import { ArrowRight, Castle, Footprints, Loader2 } from "lucide-react";
 
 type Status = { here: { q: number; r: number } | null };
 type Props = {
@@ -8,10 +8,11 @@ type Props = {
   onGoTo?: (q: number, r: number) => void;
   enter?: (q: number, r: number) => Promise<boolean>;
   loadStatus: () => Promise<Status>;
+  prominent?: boolean;
 };
 
 /** The existing server status identifies this entrance. No distance rule is inferred here. */
-export function BuildingTravelAction({ q, r, ru, onClose, onGoTo, enter, loadStatus }: Props) {
+export function BuildingTravelAction({ q, r, ru, onClose, onGoTo, enter, loadStatus, prominent = false }: Props) {
   const status = useQuery({
     queryKey: ["home-castle"], queryFn: loadStatus, enabled: !!enter,
     staleTime: 0, refetchOnMount: "always", retry: false,
@@ -28,7 +29,7 @@ export function BuildingTravelAction({ q, r, ru, onClose, onGoTo, enter, loadSta
     : error ? (ru ? "Повторить проверку" : "Retry check")
     : canEnter ? (ru ? "Войти в замок" : "Enter castle")
     : (ru ? "Идти сюда" : "Go here");
-  return <div>
+  return <div className={prominent ? "raid-townhall-entry" : undefined}>
     {(error || failed) && <p role="alert" className="mb-2 text-center text-sm text-muted-foreground">
       {error ? (ru ? "Не удалось проверить положение героя." : "Could not check your hero's position.") : (ru ? "Не удалось войти. Проверь положение героя и попробуй ещё раз." : "Could not enter. Check your hero's position and try again.")}
     </p>}
@@ -46,10 +47,11 @@ export function BuildingTravelAction({ q, r, ru, onClose, onGoTo, enter, loadSta
         } catch { setFailed(true); }
         finally { lock.current = false; setPending(false); }
       }}
-      className={`flex w-full items-center justify-center gap-1.5 rounded-2xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${canEnter ? "gradient-gold text-gold-foreground" : "border border-border"}`}>
+      className={prominent ? `raid-townhall-entry__button ${canEnter ? "is-ready" : ""}` : `flex w-full items-center justify-center gap-1.5 rounded-2xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${canEnter ? "gradient-gold text-gold-foreground" : "border border-border"}`}>
       {checking ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
         : canEnter ? <Castle aria-hidden="true" className="h-4 w-4" /> : <Footprints aria-hidden="true" className="h-4 w-4" />}
-      {label}
+      {prominent ? <span className="raid-townhall-entry__label">{label}</span> : label}
+      {prominent && <ArrowRight aria-hidden="true" className="raid-townhall-entry__arrow" />}
     </button>
   </div>;
 }

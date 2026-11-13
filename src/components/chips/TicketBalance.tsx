@@ -1,29 +1,33 @@
-import { useTickets } from "@/lib/hooks/useTickets";
+import { useResources } from "@/lib/hooks/useResources";
 import { useLang } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
-/** Shares the game's ticket cache and refreshes after trading/purchases. */
+/**
+ * Баланс над магазином паков и рынком. Билетов нет с 20.10.2026 (ПРАВИЛА §8.61):
+ * здесь золото — общий кэш ресурсов ["my-resources"], обновляется после трат.
+ * Имя компонента прежнее, чтобы не трогать места, где он стоит.
+ */
 export function TicketBalance() {
   const ru = useLang() === "ru";
-  const tickets = useTickets();
-  const amount = (tickets.data && "availableRaw" in tickets.data ? tickets.data.availableRaw : tickets.data?.available);
+  const resources = useResources();
+  const amount = resources.data?.gold;
   return (
     <section
-      aria-label={ru ? "Баланс билетов" : "Ticket balance"}
+      aria-label={ru ? "Баланс золота" : "Gold balance"}
       className="flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/25 bg-gold/5 px-4 py-3"
     >
       <span className="text-sm font-medium text-muted-foreground">
-        {ru ? "Твои билеты" : "Your tickets"}
+        {ru ? "Твоё золото" : "Your gold"}
       </span>
-      {tickets.isError ? (
-        <Button variant="outline" size="sm" onClick={() => void tickets.refetch()}>
+      {resources.isError ? (
+        <Button variant="outline" size="sm" onClick={() => void resources.refetch()}>
           {ru ? "Повторить загрузку" : "Retry balance"}
         </Button>
       ) : (
         <span role="status" className="text-xl font-bold tabular-nums text-gold">
-          {tickets.isPending || amount == null
+          {resources.isPending || amount == null
             ? "…"
-            : Number(amount).toLocaleString(ru ? "ru" : "en", { maximumFractionDigits: 2 })}
+            : Math.floor(amount).toLocaleString(ru ? "ru" : "en")}
         </span>
       )}
     </section>

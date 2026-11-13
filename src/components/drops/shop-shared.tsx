@@ -1,13 +1,12 @@
+// Общие помощники карточек дропов и холда NFT. Магазина билетов больше нет
+// (ПРАВИЛА §8.61) — его типы и подсказка про скидки ушли вместе с ним.
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { purchaseTicketsViaToken, listMyShopOffers } from "@/server/api/user-shop";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { thumb } from "@/lib/image";
 
 export type RewardTier = {
   weight: number;
-  kind?: "ft" | "nft" | "pack";
+  kind?: "ft" | "nft" | "pack" | "energy" | "custom";
   rewardMin: number;
   rewardMax: number;
   rewardToken: string;
@@ -16,6 +15,9 @@ export type RewardTier = {
   packName?: string;
   /** Сколько паков выдаётся за один клейм (kind=pack). Пусто = 1. */
   packQty?: number;
+  /** Товар маркета (kind=custom): имя и картинка; штук — rewardMin..rewardMax. */
+  itemName?: string;
+  itemImage?: string;
 };
 
 export type SisterWallet = { wallet: string; isActive: boolean };
@@ -27,29 +29,6 @@ export type HiddenItem = {
   rewardSpec: string;
   status: "active" | "ended" | "paused";
 };
-
-export type ShopOffer = Awaited<ReturnType<typeof listMyShopOffers>>[number];
-export type EnergyMut = ReturnType<
-  typeof useMutation<
-    unknown,
-    Error,
-    { offerId: string; quantity: number }
-  >
->;
-export type TokenMut = ReturnType<
-  typeof useMutation<
-    unknown,
-    Error,
-    {
-      id: string;
-      ftContract: string | null;
-      decimals: number | null;
-      priceToken: number | null;
-      paymentToken: string | null;
-      quantity: number;
-    }
-  >
->;
 
 export function fmtClaim(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "0";
@@ -94,6 +73,35 @@ export function TiersBreakdown({ tiers }: { tiers: RewardTier[] | null | undefin
               <span>·</span>
               <span className="font-mono">🎁</span>
               <span className="max-w-[160px] truncate">{tier.nftTitle}</span>
+            </span>
+          );
+        }
+        if (tier.kind === "custom") {
+          const n =
+            tier.rewardMin === tier.rewardMax
+              ? `${tier.rewardMin}`
+              : `${tier.rewardMin}–${tier.rewardMax}`;
+          const name = tier.itemName?.trim() || t("braid.rw_custom");
+          return (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 rounded-md border border-neon/40 bg-neon/10 px-1.5 py-0.5 text-[10px] text-neon"
+              title={`${name} ×${n}`}
+            >
+              <span className="text-muted-foreground">{pct}%</span>
+              <span>·</span>
+              {tier.itemImage ? (
+                <img
+                  src={thumb(tier.itemImage, 32)}
+                  alt=""
+                  className="h-3.5 w-3.5 rounded-sm object-cover"
+                />
+              ) : (
+                <span className="font-mono">🎒</span>
+              )}
+              <span className="max-w-[160px] truncate">
+                {name} ×{n}
+              </span>
             </span>
           );
         }
@@ -185,46 +193,4 @@ export function fmtMs(ms: number): string {
   const sec = s % 60;
   if (h > 0) return `${h}ч ${String(m).padStart(2, "0")}м`;
   return `${m}:${String(sec).padStart(2, "0")}`;
-}
-
-export function SubscriptionDiscountTooltip() {
-  const t = useT();
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative inline-block">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-secondary/40 text-[11px] font-bold text-muted-foreground transition hover:border-gold/40 hover:text-foreground"
-        aria-label={t("mynfts.sub_discounts_aria")}
-      >
-        ?
-      </button>
-      {open && (
-        <div className="absolute left-0 top-7 z-30 w-[min(16rem,calc(100vw-2rem))] max-w-[calc(100vw-1rem)] rounded-lg border border-amber-400/30 bg-card p-3 text-[11px] leading-relaxed shadow-2xl">
-          <div className="font-medium text-foreground">
-            {t("mynfts.sub_discount_title")}
-          </div>
-          <ul className="mt-1.5 space-y-1 text-muted-foreground">
-            <li>
-              <span className="text-orange-300">Tier 1</span> — −
-              <b className="text-success">5%</b> {t("mynfts.on_any_purchase")}
-            </li>
-            <li>
-              <span className="text-slate-200">Tier 2</span> — −
-              <b className="text-success">10%</b> {t("mynfts.on_any_purchase")}
-            </li>
-            <li>
-              <span className="text-amber-300">Tier 3</span> — −
-              <b className="text-success">15%</b> {t("mynfts.on_any_purchase")}
-            </li>
-          </ul>
-          <div className="mt-1.5 text-[10px] text-muted-foreground">
-            {t("mynfts.discount_stacks_note")}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }

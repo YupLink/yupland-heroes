@@ -10,6 +10,7 @@ import { isUsdt } from "@/lib/usdtBanned";
 import { normalizeTitle } from "@/lib/normalizeTitle";
 import { toast } from "sonner";
 import { Plus, Wallet, ChevronDown, X, Layers, Package, Ticket, Sparkles } from "lucide-react";
+import { DEFAULT_CLAIM_GOLD } from "./goldCost";
 import { PacksAdminPanel } from "@/components/admin/PacksAdminPanel";
 import { ChipDropPanel } from "@/components/admin/ChipDropPanel";
 import { ServiceWalletPanel } from "@/components/ServiceWalletPanel";
@@ -22,6 +23,7 @@ import { DropsList } from "./DropsList";
 import { CreateDropForm } from "./CreateDropForm";
 import type { DropEvent, TierDraft, LikeLaunchItem } from "./types";
 import { humanError } from "@/lib/humanError";
+import type { GoodsPick } from "./GoodsPicker";
 
 export function AdminDrops() {
   const qc = useQueryClient();
@@ -33,13 +35,14 @@ export function AdminDrops() {
   const [duplicateWarn, setDuplicateWarn] = useState<{ titles: string[] } | null>(null);
   const lastSubmittedRef = useRef<any>(null);
   const [confirmDraft, setConfirmDraft] = useState<null | { kind: "simple" | "combo"; summary: { titles: string[]; rewardLine: string; freeClaim: boolean; ticketCost: number; allowDuplicate: boolean }; payload: unknown }>(null);
-  const [simpleKind, setSimpleKind] = useState<"ft" | "nft" | "pack" | "energy">("ft");
+  const [simpleKind, setSimpleKind] = useState<"ft" | "nft" | "pack" | "energy" | "custom">("ft");
+  const [simpleItem, setSimpleItem] = useState<GoodsPick | null>(null);
   const [simpleNftTitle, setSimpleNftTitle] = useState("");
   const [simplePackId, setSimplePackId] = useState("");
   const [simplePackQty, setSimplePackQty] = useState("1");
   const [freeClaim, setFreeClaim] = useState(false);
   const [recurring, setRecurring] = useState(false);
-  const [ticketCost, setTicketCost] = useState("1");
+  const [ticketCost, setTicketCost] = useState(DEFAULT_CLAIM_GOLD); // золото, см. goldCost.ts
   const [useTiers, setUseTiers] = useState(false);
   const [tiers, setTiers] = useState<TierDraft[]>([]);
   const [balanceOpen, setBalanceOpen] = useState(false);
@@ -125,7 +128,7 @@ export function AdminDrops() {
     setMode(d.mode); setReward(formatRewardSpec(d.rewardMin, d.rewardMax)); setToken(d.rewardToken); setFreeClaim(d.freeClaim); setRecurring(d.recurring);
     if (d.rewardTiers && d.rewardTiers.length > 0) {
       setUseTiers(true);
-      setTiers(d.rewardTiers.map((t) => ({ weight: String(t.weight), kind: ((t as { kind?: string }).kind ?? "ft") as any, rewardMin: String(t.rewardMin), rewardMax: String(t.rewardMax), rewardToken: t.rewardToken, nftTitle: ((t as { nftTitle?: string }).nftTitle ?? "") as string, packId: ((t as { packId?: string }).packId ?? "") as string, packQty: String(parsePackQty((t as { packQty?: number }).packQty)) })));
+      setTiers(d.rewardTiers.map((t) => ({ weight: String(t.weight), kind: ((t as { kind?: string }).kind ?? "ft") as any, rewardMin: String(t.rewardMin), rewardMax: String(t.rewardMax), rewardToken: t.rewardToken, nftTitle: ((t as { nftTitle?: string }).nftTitle ?? "") as string, packId: ((t as { packId?: string }).packId ?? "") as string, packQty: String(parsePackQty((t as { packQty?: number }).packQty)), itemId: (t as { itemId?: string }).itemId, itemName: (t as { itemName?: string }).itemName, itemImage: (t as { itemImage?: string }).itemImage })));
     } else { setUseTiers(false); setTiers([]); }
     if (d.mode === "combo" && d.requirements) {
       setSelectedTitles(d.requirements.map((r) => ({ title: r.title, image: null, count: r.count })));
@@ -198,6 +201,7 @@ export function AdminDrops() {
               simpleKind={simpleKind} setSimpleKind={setSimpleKind} simpleNftTitle={simpleNftTitle} setSimpleNftTitle={setSimpleNftTitle}
               simplePackId={simplePackId} setSimplePackId={setSimplePackId}
               simplePackQty={simplePackQty} setSimplePackQty={setSimplePackQty}
+              simpleItem={simpleItem} setSimpleItem={setSimpleItem}
               freeClaim={freeClaim} setFreeClaim={setFreeClaim}
               recurring={recurring} setRecurring={setRecurring} ticketCost={ticketCost} setTicketCost={setTicketCost}
               useTiers={useTiers} setUseTiers={setUseTiers} tiers={tiers} setTiers={setTiers}

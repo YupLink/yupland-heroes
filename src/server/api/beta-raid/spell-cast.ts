@@ -23,7 +23,8 @@ import { applySpellEffects, type SpellRoll } from "./spell-effects";
 import { castRefusal, cooldownLeftSec, spellHero } from "./spell-book";
 import { readyAtOf, restoreCooldown, takeCooldown } from "./spell-cooldown";
 import { loadSpellTemplate, spellCostFor, type SpellKind } from "./spell-tpl";
-import type { Cell } from "./encounter-where";
+import { myMapId, type Cell } from "./encounter-where";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 
 export type CastRefused = {
   ok: false;
@@ -69,24 +70,28 @@ export const castSpell = createServerFn({ method: "POST" })
         spellId: z.string().min(1).max(120),
         /** Ключ нажатия: слепой повтор моста не должен кастовать дважды. */
         op: z.string().min(6).max(80),
-        /** Цена, которую показала кнопка. Дороже неё не списываем. */
-        expect: z.number().int().min(0).max(1_000_000).optional(),
+        /** Цена, которую показала кнопка. Дороже неё не списываем. Дробная — остров (×0,1). */
+        expect: z.number().min(0).max(1_000_000).optional(),
       })
       .parse(d),
   )
   .handler(async ({ data }): Promise<CastResult> => {
     const wallet = await requireBetaRaid();
     // Книга и откат — оба на КОНКРЕТНОМ герое: разные герои независимы.
-    const [hero, tpl] = await Promise.all([
+    // Карта — ради цены: на острове заклинание в 10 раз дешевле. Не узнали —
+    // цена мировая, как было (книга при сбое покажет так же).
+    const [hero, tpl, mapId] = await Promise.all([
       spellHero(wallet),
       loadSpellTemplate(data.spellId),
+      myMapId(wallet).catch(() => null),
     ]);
     if (!hero) return { ok: false, reasonKey: "spell.no_hero" };
     if (!tpl || !tpl.active) return { ok: false, reasonKey: "spell.unknown" };
     if (!(await knowsSpell(hero.heroId, tpl.id)))
       return { ok: false, reasonKey: "spell.not_learned" };
 
-    const cost = spellCostFor(tpl, hero.intellect);
+    const full = spellCostFor(tpl, hero.intellect);
+    const cost = { ...full, energy: scaleEnergy(full.energy, energyMultOf(mapId)) };
     // Интеллект проверяем до всего остального: это правило шаблона, а не
     // состояние игрока, и отказ по нему не должен трогать ни ключ, ни откат.
     const gate = castRefusal(tpl, hero, 0);

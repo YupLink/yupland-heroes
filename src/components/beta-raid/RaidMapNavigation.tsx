@@ -1,12 +1,15 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Square } from "lucide-react";
-import { LiveStrategicMapDialog } from "./strategic-map/LiveStrategicMapDialog";
 import type { LiveMapProps } from "./strategic-map/LiveStrategicMapDialog";
 import { INITIAL_VIEW } from "./strategic-map/mapViewport";
 import { toast } from "sonner";
 import { HudRoundButton } from "./HudRoundButton";
+import { HudAsyncDialog } from "./HudAsyncDialog";
 import { HUD_ART, MAP_ART, heroSpriteSrc } from "@/lib/gameArt";
+import { CreatorWorldButton } from "./creator/CreatorWorldButton";
 import "./raid-map-navigation.css";
+
+const loadLiveStrategicMapDialog = () => import("./strategic-map/LiveStrategicMapDialog").then(m => ({ default: m.LiveStrategicMapDialog }));
 
 type Props = {
   castleImage?: string; heroSprite?: string | null; showCamera?: boolean; ru: boolean; map: LiveMapProps;
@@ -32,6 +35,8 @@ export function RaidMapNavigation({ castleImage = MAP_ART.castle, heroSprite, sh
             if (atCastle) onEnterCastle();
             else if (await onShowCastle() !== false) { toast.info(ru ? "Для входа подойди к замку или ратуше." : "Approach a castle or town hall to enter.", { id: "castle-entry-hint" }); }
           }}><span className="raid-map-nav__castle-art"><img src={castleImage} alt="" /></span>{atCastle && <span>{ru ? "В замок" : "Enter castle"}</span>}</button>}
+          {/* Мир креатора — рядом с замком, только у права creator и админа. */}
+          <CreatorWorldButton ru={ru} />
         </div>
         {toolAction}
         {!walking && extraActions && <div className="raid-map-nav__context-slot">{extraActions}</div>}
@@ -45,9 +50,12 @@ export function RaidMapNavigation({ castleImage = MAP_ART.castle, heroSprite, sh
 export function RaidMiniMapButton({ ru, map, mapActions, art = HUD_ART.map }: { ru: boolean; map: LiveMapProps; mapActions?: ReactNode; art?: string }) {
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState(INITIAL_VIEW);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const close = () => { setExpanded(false); requestAnimationFrame(() => trigger.current?.focus()); };
   return <>
-    <HudRoundButton art={art} label={ru ? "Раскрыть карту" : "Expand map"} onClick={() => setExpanded(true)} />
-    {expanded && <LiveStrategicMapDialog ru={ru} map={map} view={view} onView={setView} onClose={() => setExpanded(false)} actions={mapActions} />}
+    <HudRoundButton buttonRef={trigger} art={art} label={ru ? "Раскрыть карту" : "Expand map"} onClick={() => setExpanded(true)} />
+    {expanded && <HudAsyncDialog load={loadLiveStrategicMapDialog} props={{ ru, map, view, onView: setView, onClose: close, actions: mapActions }} onClose={close} ru={ru} />}
   </>;
 }
+
 

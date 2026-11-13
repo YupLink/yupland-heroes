@@ -12,18 +12,50 @@
 // Состояний ТРИ, и их нельзя путать: «грузим», «не смогли спросить» (можно
 // повторить) и «сдавать нечего» (пусто по-настоящему). Слитые в одно, они
 // однажды уже соврали владельцу «нечего сдать» при ста шестнадцати артефактах.
+//
+// worn — скупка ломбарда: в списке и изношенные, и сломанные, каждая прочность
+// своей строкой, и выбор несёт износ группы — сервер снимет ровно её, а не
+// целый того же шаблона (ломбард их чинит, владелец 23.10.2026). Без флага —
+// только целые, как в остальном маркете.
+//
+// multi — тоже ломбард: отметить можно сразу несколько групп и по нескольку
+// штук из каждой (владелец, 25.10.2026: «как с героями, чтобы можно разом
+// много выделять»). Всё отмеченное уходит одной сделкой (pick.arts в
+// sellMarketItem, сервер проверяет каждую группу). Правила выбора — artPickSel.
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Check, ImageOff, Loader2, RotateCw, X } from "lucide-react";
-import { thumb } from "@/lib/image";
+import { AlertTriangle, Check, Loader2, RotateCw, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { listSellableArtifacts } from "@/server/api/beta-raid/artifacts-sellable";
 import { numText } from "./num";
 import type { ArtRarity } from "./artAnyIcon";
+import { ArtPickTile } from "./ArtPickTile";
+import {
+  choiceOf,
+  sameGroup,
+  selFromChoice,
+  selTotal,
+  setSelN,
+  tapSel,
+  type Sel,
+} from "./artPickSel";
 
-/** Что выбрал игрок: шаблон, его имя для подписи и сколько свободных штук. */
-export type ArtChoice = { templateId: string; name: string; count: number };
+/** Группа артефактов в выборе ломбарда: шаблон, износ и сколько штук сдать. */
+export type ArtGroupPick = { templateId: string; wear: number; count: number };
+
+/** Что выбрал игрок: шаблон, его имя для подписи и сколько штук.
+ *  wear — износ выбранной группы (только у ломбарда, worn); heroItemIds —
+ *  копии героев у скупки «Любой … герой» (MarketHeroPick, count = их число);
+ *  arts — группы артефактов ломбарда по порядку отметок (count = штук всего). */
+export type ArtChoice = {
+  templateId: string;
+  name: string;
+  count: number;
+  wear?: number;
+  heroItemIds?: string[];
+  arts?: ArtGroupPick[];
+};
 
 /** Префикс ключа кэша — сделка меняет состав инвентаря, список надо сбрасывать. */
 export const SELLABLE_ARTS_KEY = ["sellable-arts"] as const;
@@ -32,21 +64,28 @@ type Sellable = Awaited<ReturnType<typeof listSellableArtifacts>>[number];
 
 export function MarketArtPick({
   rarity,
+  worn = false,
+  multi = false,
   value,
   onPick,
 }: {
   rarity: ArtRarity;
+  /** Показать и изношенные (скупка ломбарда). */
+  worn?: boolean;
+  /** Отмечать несколько групп и штук разом (скупка ломбарда). */
+  multi?: boolean;
   value: ArtChoice | null;
   onPick: (choice: ArtChoice) => void;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  // Выделение в попапе — целым объектом: «Выбрать» применяет именно его и не
+  // Выделение в попапе — целыми объектами: «Выбрать» применяет именно их и не
   // зависит от того, дожил ли шаблон до рефетча списка.
-  const [picked, setPicked] = useState<Sellable | null>(null);
+  const [sel, setSel] = useState<Sel<Sellable>>([]);
+  const total = selTotal(sel);
   const q = useQuery({
-    queryKey: [...SELLABLE_ARTS_KEY, rarity],
-    queryFn: () => listSellableArtifacts({ data: { rarity } }),
+    queryKey: [...SELLABLE_ARTS_KEY, rarity, worn ? "worn" : "whole"],
+    queryFn: () => listSellableArtifacts({ data: worn ? { rarity, worn } : { rarity } }),
     // Инвентарь меняется редко, а плиток одной редкости на витрине бывает
     // несколько — общий кэш экономит запросы при каждом открытии маркета.
     staleTime: 30_000,
@@ -83,7 +122,7 @@ export function MarketArtPick({
         // повторить. Гасить нечего только когда сдавать действительно нечего.
         disabled={empty || q.isLoading}
         onClick={() => {
-          setPicked(list.find((a) => a.templateId === value?.templateId) ?? null);
+          setSel(selFromChoice(list, value, multi));
           setOpen(true);
         }}
         title={hint}
@@ -152,37 +191,20 @@ export function MarketArtPick({
                   </p>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
-                    {list.map((a) => (
-                      <div
-                        key={a.templateId}
-                        onClick={() => setPicked(a)}
-                        className={`flex cursor-pointer flex-col gap-1 rounded-lg border p-1.5 ${
-                          a.templateId === picked?.templateId
-                            ? "border-gold bg-gold/10"
-                            : "border-border"
-                        }`}
-                      >
-                        {a.imageUrl ? (
-                          <img
-                            // Через уменьшающий прокси: арты лежат
-                            // полноразмерными, а плитка тут ~110 px.
-                            src={thumb(a.imageUrl, 160)}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            className="aspect-square w-full rounded-lg border border-border object-contain"
-                          />
-                        ) : (
-                          <div className="grid aspect-square w-full place-items-center rounded-lg border border-border text-muted-foreground">
-                            <ImageOff className="h-5 w-5" />
-                          </div>
-                        )}
-                        <span className="truncate text-[11px] leading-tight">{a.name}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {t("market.art_free", { n: numText(a.count) })}
-                        </span>
-                      </div>
-                    ))}
+                    {list.map((a) => {
+                      const mine = sel.find((x) => sameGroup(x.a, a));
+                      return (
+                        <ArtPickTile
+                          key={`${a.templateId}:${a.wear}`}
+                          a={a}
+                          picked={mine != null}
+                          n={mine?.n ?? 0}
+                          multi={multi}
+                          onTap={() => setSel((cur) => tapSel(cur, a, multi))}
+                          onN={(n) => setSel((cur) => setSelN(cur, a, n))}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -190,20 +212,22 @@ export function MarketArtPick({
               <div className="shrink-0 border-t border-border p-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
                 <button
                   type="button"
-                  disabled={!picked}
+                  disabled={sel.length === 0}
                   onClick={() => {
-                    if (picked)
-                      onPick({
-                        templateId: picked.templateId,
-                        name: picked.name,
-                        count: picked.count,
-                      });
+                    const choice = choiceOf(sel, multi, (n) =>
+                      t("market.art_pick_n", { n: numText(n) }),
+                    );
+                    if (choice) onPick(choice);
                     setOpen(false);
                   }}
                   className="flex w-full items-center justify-center gap-1.5 rounded-xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" />
-                  {picked ? `${t("market.pick_apply")}: ${picked.name}` : t("market.art_pick")}
+                  {multi && total > 1
+                    ? `${t("market.pick_apply")} (${numText(total)})`
+                    : sel[0]
+                      ? `${t("market.pick_apply")}: ${sel[0].a.name}`
+                      : t("market.art_pick")}
                 </button>
               </div>
             </div>

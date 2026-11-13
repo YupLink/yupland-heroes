@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { pg } from "@/server/db/pg";
 import { refreshReputation } from "@/server/reputation";
 import { checkMarketplaceListings } from "@/server/marketplace";
+import { cronDenied } from "@/server/cronAuth";
 
 // Vercel cron вызывает этот endpoint каждые 5 минут (см. vercel.json).
 // Защита: Vercel передаёт заголовок `Authorization: Bearer $CRON_SECRET`
@@ -17,13 +18,8 @@ export const Route = createFileRoute("/api/cron/refresh-reputation")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         const result: Record<string, unknown> = {};
         try {
           result.reputation = await refreshReputation();

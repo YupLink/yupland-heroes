@@ -76,7 +76,8 @@ function AdminShop() {
   const isTreasury = session?.isTreasury ?? false;
   // Переключатель (владельцу): показываем ЛИБО магазин, ЛИБО раздачу DARAI —
   // одно за раз, не грузим всё на одной странице.
-  const [view, setView] = useState<"shop" | "darai" | "money">("shop");
+  // Магазина билетов больше нет (§8.61): страница открывается на раздаче DARAI.
+  const [view, setView] = useState<"shop" | "darai" | "money">("darai");
 
   const create = useMutation({
     mutationFn: createTicketShopOffer,
@@ -144,13 +145,13 @@ function AdminShop() {
           </span>
           <div>
             <h1 className="font-display text-3xl font-bold leading-tight">
-              Магазин билетов
+              Раздача DARAI
             </h1>
             <p
               className="mt-0.5 text-sm text-muted-foreground"
               title="FT-токены сжигаются на контракте darai_gdrop.near, сервер проверяет транзакцию on-chain"
             >
-              Платит энергией или токеном — получает билеты
+              Раздача DARAI и счета
             </p>
           </div>
         </div>
@@ -159,19 +160,6 @@ function AdminShop() {
               его ждёт урезанная панель. */}
           {(isPayoutsAdmin || isTreasury) && (
             <div className="inline-flex shrink-0 rounded-full border border-border bg-secondary/40 p-1">
-              <button
-                type="button"
-                onClick={() => setView("shop")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition",
-                  view === "shop"
-                    ? "gradient-gold text-gold-foreground shadow-gold"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Store className="h-3.5 w-3.5" />
-                Магазин
-              </button>
               <button
                 type="button"
                 onClick={() => setView("darai")}
@@ -445,7 +433,7 @@ function AdminShop() {
                 Раздача DARAI
               </h2>
               <p className="text-[11px] text-muted-foreground">
-                Доход с продаж билетов: duplo 50% · player03 12.5% · miplix 12.5% ·
+                Доход с продаж билетов: duplo 50% · партнёр 12.5% · владелец 12.5% ·
                 legendary. «Разослать» двигает реальные средства.
               </p>
             </div>

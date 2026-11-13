@@ -1,3 +1,4 @@
+import {createStyledDecorCatalog} from './decor-styles/runtime/createStyledDecorCatalog';
 import fountain from '../../assets/castle-decor/fountain.webp';
 import type {SceneBuilding} from './modularCastleLayout';
 import art0 from '../../assets/castle-decor/city/tree-planter.webp';
@@ -17,7 +18,7 @@ import art13 from '../../assets/castle-decor/city/statue.webp';
 import art14 from '../../assets/castle-decor/city/flower-cart.webp';
 import art15 from '../../assets/castle-decor/city/barrels.webp';
 import art16 from '../../assets/castle-decor/city/crates.webp';
-type DecorItem={id:string;name:string;en:string;category:string;image:string;size:number;anchor:number;height:number;base:[number,number][];silhouette:string};
+type DecorItem={style?:string;shadow?:string;shadowFlipped?:string;id:string;name:string;en:string;category:string;image:string;size:number;anchor:number;height:number;base:[number,number][];silhouette:string};
 export const decorCatalog:DecorItem[]=[
  {"id":"tree","name":"Дерево в клумбе","en":"Tree in planter","category":"plants","size":210,"anchor":0.974,"height":0.7,"base":[[0.4733,0.932],[0.5378,0.8901],[0.6022,0.932],[0.5378,0.974]],"silhouette":"0.5521,0.0443 0.4688,0.0885 0.4089,0.1328 0.349,0.1771 0.3125,0.2214 0.25,0.2656 0.2344,0.3099 0.2396,0.3542 0.2161,0.3984 0.1875,0.4427 0.1849,0.487 0.2031,0.5312 0.2656,0.5755 0.4609,0.6198 0.401,0.6641 0.3177,0.7083 0.2891,0.7526 0.2865,0.7969 0.2943,0.8411 0.3047,0.8854 0.3516,0.9297 0.5026,0.974 0.526,0.974 0.7266,0.9297 0.776,0.8854 0.7839,0.8411 0.7917,0.7969 0.7891,0.7526 0.7604,0.7083 0.6745,0.6641 0.776,0.6198 0.8411,0.5755 0.875,0.5312 0.8802,0.487 0.849,0.4427 0.8776,0.3984 0.875,0.3542 0.849,0.3099 0.8073,0.2656 0.7682,0.2214 0.737,0.1771 0.6797,0.1328 0.6302,0.0885 0.5573,0.0443","image":art0},
  {"id":"flowerbed-round","name":"Круглая клумба","en":"Round flowerbed","category":"plants","size":155,"anchor":0.7852,"height":0.18,"base":[[0.2814,0.6502],[0.5488,0.5152],[0.8163,0.6502],[0.5488,0.7852]],"silhouette":"0.6211,0.2266 0.3867,0.2539 0.3711,0.2812 0.3203,0.3086 0.3203,0.3359 0.3242,0.3633 0.2852,0.3906 0.2578,0.418 0.2383,0.4453 0.2266,0.4727 0.2227,0.5 0.2227,0.5273 0.2266,0.5547 0.2266,0.582 0.2305,0.6094 0.2305,0.6367 0.2461,0.6641 0.2695,0.6914 0.3047,0.7188 0.3555,0.7461 0.4492,0.7734 0.6484,0.7734 0.7383,0.7461 0.7734,0.7188 0.8203,0.6914 0.8438,0.6641 0.8594,0.6367 0.8633,0.6094 0.8672,0.582 0.8672,0.5547 0.8711,0.5273 0.8711,0.5 0.8672,0.4727 0.8555,0.4453 0.8359,0.418 0.8047,0.3906 0.7656,0.3633 0.7422,0.3359 0.7305,0.3086 0.7031,0.2812 0.6367,0.2539 0.625,0.2266","image":art1},
@@ -38,8 +39,9 @@ export const decorCatalog:DecorItem[]=[
  {"id":"crates","name":"Ящики","en":"Crates","category":"items","size":115,"anchor":0.8242,"height":0.45,"base":[[0.2095,0.718],[0.5137,0.6117],[0.8179,0.718],[0.5137,0.8242]],"silhouette":"0.3828,0.1641 0.3281,0.1953 0.2617,0.2266 0.2422,0.2578 0.2461,0.2891 0.2461,0.3203 0.2461,0.3516 0.2461,0.3828 0.2422,0.4141 0.1875,0.4453 0.1719,0.4766 0.1758,0.5078 0.1758,0.5391 0.1758,0.5703 0.1758,0.6016 0.1758,0.6328 0.1758,0.6641 0.168,0.6953 0.1914,0.7266 0.2617,0.7578 0.3281,0.7891 0.3867,0.8203 0.4102,0.8203 0.4688,0.7891 0.7031,0.7578 0.7734,0.7266 0.8477,0.6953 0.8555,0.6641 0.8477,0.6328 0.8477,0.6016 0.8477,0.5703 0.8477,0.5391 0.8477,0.5078 0.8555,0.4766 0.8477,0.4453 0.7656,0.4141 0.6914,0.3828 0.5664,0.3516 0.5664,0.3203 0.5664,0.2891 0.5703,0.2578 0.5703,0.2266 0.4805,0.1953 0.3984,0.1641","image":art16},
  {id:'fountain',name:'Фонтан',en:'Fountain',category:'water',image:fountain,size:205,anchor:.835,height:.45,base:[[.207,.709],[.29,.63],[.49,.603],[.70,.65],[.793,.729],[.70,.805],[.49,.835],[.28,.787]],silhouette:'.48,.125 .55,.16 .6,.26 .68,.41 .75,.53 .797,.64 .79,.76 .6,.83 .45,.835 .2,.71 .22,.56 .38,.43 .39,.25 .45,.16'},
 ];
+decorCatalog.push(...createStyledDecorCatalog(decorCatalog));
 export function createDecor(catalogId:string,id:string,x:number,y:number):SceneBuilding|undefined{
  const item=decorCatalog.find(d=>d.id===catalogId);if(!item)return;
  const base=item.base.map(([px,py]):[number,number]=>[(px-.5)*item.size,(py-item.anchor)*item.size]);
- return {id,catalogId,decor:true,name:item.name,image:item.image,x,y,size:item.size,baseSize:item.size,anchor:item.anchor,caption:{x:0,y:0,font:12,height:23},lines:[item.name],footprint:base.map(p=>p.join(',')).join(' '),silhouette:item.silhouette,volumes:[{base,height:item.size*item.height}]};
+ return {id,catalogId,decor:true,shadow:item.shadow,shadowFlipped:item.shadowFlipped,name:item.name,image:item.image,x,y,size:item.size,baseSize:item.size,anchor:item.anchor,caption:{x:0,y:0,font:12,height:23},lines:[item.name],footprint:base.map(p=>p.join(',')).join(' '),silhouette:item.silhouette,volumes:[{base,height:item.size*item.height}]};
 }

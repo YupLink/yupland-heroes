@@ -1,9 +1,9 @@
 // Рубка руками (§8.56): только декор, который берёт деревянный или каменный
-// топор; цена — 10 энергии и 30 сытости; помеха кнопки — по данным клиента.
+// топор; цена — энергия топора ×2 (25.10) и 30 сытости; помеха — по данным клиента.
 import { describe, expect, it } from "vitest";
 import {
-  HAND_CHOP_ENERGY,
   HAND_CHOP_SATIETY,
+  handChopEnergy,
   HAND_CHOP_TOOL_IDS,
   canChopByHand,
   handChopBlock,
@@ -32,20 +32,24 @@ describe("что рубится руками", () => {
 });
 
 describe("цена и помеха", () => {
-  it("10 энергии и 30 сытости — та же, что в таблице сытости", () => {
-    expect(HAND_CHOP_ENERGY).toBe(10);
+  it("руками — вдвое дороже топора, никогда не дешевле; сытость 30 — как в таблице сытости", () => {
+    expect(handChopEnergy(20)).toBe(40);
+    expect(handChopEnergy(10)).toBe(20);
+    expect(handChopEnergy(5)).toBe(10);
+    expect(handChopEnergy(0)).toBe(0);
+    for (const c of [1, 3, 7, 20, 50]) expect(handChopEnergy(c)).toBeGreaterThan(c);
     expect(HAND_CHOP_SATIETY).toBe(30);
     expect(SATIETY_COST.handChop).toBe(HAND_CHOP_SATIETY);
   });
 
   it("сытости меньше 30 — сытость; энергии меньше 10 — энергия", () => {
-    expect(handChopBlock({ energy: 50, satiety: 29 })).toBe("satiety");
-    expect(handChopBlock({ energy: 9.9, satiety: 30 })).toBe("energy");
-    expect(handChopBlock({ energy: 5, satiety: 0 })).toBe("satiety");
+    expect(handChopBlock({ energy: 50, satiety: 29, need: 40 })).toBe("satiety");
+    expect(handChopBlock({ energy: 39.9, satiety: 30, need: 40 })).toBe("energy");
+    expect(handChopBlock({ energy: 5, satiety: 0, need: 40 })).toBe("satiety");
   });
 
   it("ровно хватает или чисел нет — не мешает", () => {
-    expect(handChopBlock({ energy: 10, satiety: 30 })).toBeNull();
+    expect(handChopBlock({ energy: 40, satiety: 30, need: 40 })).toBeNull();
     expect(handChopBlock({})).toBeNull();
     expect(handChopBlock({ energy: null, satiety: null })).toBeNull();
   });

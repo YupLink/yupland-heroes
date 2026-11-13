@@ -19,6 +19,7 @@ import { TavernAction } from "./TavernAction";
 import { ShipyardAction } from "./ShipyardAction";
 import { TournamentAction } from "./tournament/TournamentAction";
 import { CasinoAction } from "./CasinoAction";
+import { BuckwheatAction } from "@/components/buckwheat/BuckwheatAction";
 import { FieldAction } from "./FieldAction";
 import { WarehouseAction } from "./WarehouseAction";
 import { MineAction } from "./MineAction";
@@ -28,7 +29,10 @@ import { BoostAction } from "./BoostAction";
 import { ChambersAction } from "./ChambersAction";
 import { OblivionAction } from "./OblivionAction";
 import { SpellPillarAction } from "./spell-pillar/SpellPillarAction";
+import { EnchantAction } from "@/components/beta-raid/enchant/EnchantAction";
+import { HeroRiteAction } from "@/components/beta-raid/hero-rite/HeroRiteAction";
 import type { BuildingExtra } from "@/lib/buildingEffect";
+import { useReloadOnUnknownExtra } from "@/components/beta-raid/unknownExtra";
 
 export function BuildingExtraActions({
   q,
@@ -43,6 +47,7 @@ export function BuildingExtraActions({
 }) {
   const qc = useQueryClient();
   const t = useT();
+  useReloadOnUnknownExtra(extra, q, r); // вид новее страницы — тихая перезагрузка (unknownExtra)
 
   const reveal = useMutation({
     mutationFn: () => revealFromTower({ data: { q, r } }),
@@ -152,23 +157,8 @@ export function BuildingExtraActions({
   // Шахта: захват за энергию, часовая добыча ресурса, свой таймер.
   if (extra.kind === "mine") {
     return (
-      <MineAction
-        q={q}
-        r={r}
-        resource={extra.resource}
-        token={extra.token}
-        yieldAmount={extra.yieldAmount}
-        captureCost={extra.captureCost}
-        mine={extra.mine}
-        capturedAt={extra.capturedAt}
-        claimedHours={extra.claimedHours}
-        maxHours={extra.maxHours ?? null}
-        pending={extra.pending}
-        guardian={extra.guardian}
-        can={extra.can}
-        reasonKey={extra.reasonKey}
-        onDone={onDone}
-      />
+      // Поля окна шахты (MineExtra) — те же имена, что у пропсов MineAction.
+      <MineAction q={q} r={r} {...extra} onDone={onDone} />
     );
   }
 
@@ -180,16 +170,21 @@ export function BuildingExtraActions({
   // Университет: стейкинг фишек ради лайков — своим блоком (UniversityAction).
   if (extra.kind === "university") return <UniversityAction q={q} r={r} {...extra} />;
 
-  // Музей: фарм билетов с собранных коллекций — та же механика, что во вкладке
-  // Фишки, здесь у неё дом на карте.
+  // Музей: фарм билетов с коллекций — механика вкладки Фишки, здесь её дом на карте.
   if (extra.kind === "museum") return <MuseumAction q={q} r={r} built={extra.built} />;
 
   // Турнир: плашки идущих и прошлых турниров, таблицы по местам.
   if (extra.kind === "tournament") return <TournamentAction q={q} r={r} />;
 
-  // Казино: слот на золото на весь экран.
+  // Казино и «Корона гречневого королевства»: игры на золото на весь экран.
   if (extra.kind === "casino") return <CasinoAction />;
+  if (extra.kind === "buckwheat") return <BuckwheatAction />;
 
+  // Зачарование артефактов (заклинания) и героев (обряды); админ настраивает тут же.
+  if (extra.kind === "enchant") return <EnchantAction q={q} r={r} />;
+  if (extra.kind === "hero_enchant") return <HeroRiteAction q={q} r={r} />;
+  // Дальше — только вышка; незнакомый вид — страница перезагружается (или блок пустой).
+  if (extra.kind !== "watchtower") return null;
   return (
     <div className="space-y-1.5 rounded-2xl border border-border/60 bg-secondary/20 p-3">
       <div className="text-center text-sm">

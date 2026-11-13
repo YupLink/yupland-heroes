@@ -10,6 +10,7 @@ import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import type { MarketPriceResource } from "@/lib/marketItem";
 import type { ResourcePrice } from "./resource-pay";
+import { buildingEffect, type BuildingEffect } from "@/lib/buildingEffect";
 
 export type BuildPrice = {
   kind: "tickets" | "likes" | "token";
@@ -135,6 +136,11 @@ export type BuildingTemplate = {
   id: string;
   name: string;
   tiers: BuildingTier[];
+  /**
+   * Эффект ШАБЛОНА (buildingEffect: meta.effect, иначе по имени). Клиенту —
+   * чтобы по дельте карты узнать, что на клетку встала шахта (§8.59 п. 9).
+   */
+  effect: BuildingEffect;
 };
 
 /** Шаблоны построек, встречающиеся на карте. */
@@ -147,7 +153,12 @@ export async function loadBuildingTemplates(mapId: string): Promise<BuildingTemp
                       WHERE map_id = ${sqlStr(mapId)} AND building_id IS NOT NULL);`,
     { wrapJson: true },
   )) as Array<{ id: string; name: string; meta: unknown }>;
-  return (rows ?? []).map((r) => ({ id: r.id, name: r.name, tiers: parseTiers(r.meta) }));
+  return (rows ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    tiers: parseTiers(r.meta),
+    effect: buildingEffect(r.meta, r.name),
+  }));
 }
 
 /** Текущие тиры построек на карте: "q,r" → номер тира. */

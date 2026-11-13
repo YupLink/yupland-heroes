@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { humanError } from "@/lib/humanError";
@@ -11,7 +12,8 @@ import { RaidPresetQuickAccess } from "./RaidPresetQuickAccess";
 export function RaidLivePresetQuickAccess({ ru, atCastle }: { ru: boolean; atCastle: boolean }) {
   const t = useT();
   const qc = useQueryClient();
-  const presets = useQuery({ queryKey: GEAR_PRESETS_KEY, queryFn: () => listGearPresets() });
+  const [hasOpened, setHasOpened] = useState(false);
+  const presets = useQuery({ queryKey: GEAR_PRESETS_KEY, queryFn: () => listGearPresets(), enabled: hasOpened });
   const apply = useMutation({
     mutationFn: (id: string) => applyGearPreset({ data: { id } }),
     onSuccess: res => {
@@ -19,6 +21,7 @@ export function RaidLivePresetQuickAccess({ ru, atCastle }: { ru: boolean; atCas
       toast.success(lost > 0
         ? t("braid.preset_applied_partial", { name: res.name, n: res.equipped, lost })
         : t("braid.preset_applied", { name: res.name, n: res.equipped }));
+      if (res.broken > 0) toast.warning(t("artbroken.preset_skipped", { n: res.broken }));
       if (res.gear) qc.setQueryData(["my-hero-gear"], res.gear);
       invalidateHeroQueries(qc, ["my-energy", "beta-encounter", "beta-encounter-top", "yupland-status"]);
       void qc.invalidateQueries({ queryKey: GEAR_PRESETS_KEY, refetchType: "all" });
@@ -29,6 +32,7 @@ export function RaidLivePresetQuickAccess({ ru, atCastle }: { ru: boolean; atCas
   return <RaidPresetQuickAccess
     ru={ru}
     atCastle={atCastle}
+    onOpen={() => setHasOpened(true)}
     presets={(presets.data ?? []).map(({ id, name }) => ({ id, name }))}
     status={presets.isPending ? "loading" : presets.isError ? "error" : "ready"}
     onRetry={() => { void presets.refetch(); }}
@@ -36,3 +40,4 @@ export function RaidLivePresetQuickAccess({ ru, atCastle }: { ru: boolean; atCas
     disabled={apply.isPending}
   />;
 }
+

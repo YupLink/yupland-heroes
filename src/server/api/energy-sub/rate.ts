@@ -4,8 +4,7 @@
 // столько, сколько заходов, и вкладка ждала бы сеть. С кэшем — 288 запросов в
 // сутки при любом числе игроков, а игрок получает готовое число из памяти.
 //
-// Источник тот же, что у комиссии минта фишек (indexer.ref.finance) — спот-цена
-// пула; 29.09 она сходилась с реальной покупкой/продажей на Ref в пределах 2 %.
+// Источник — Ref Finance (с 04.11 — живой обмен, см. ниже).
 // Ref недоступен — держим последний курс 30 минут, дальше DARAI-цены нет
 // (оплата USDT и Stars работает без курса).
 //
@@ -13,9 +12,23 @@
 // новый тянем фоном (раньше лавка паков ждала ответа Ref до 8 с, днём он
 // упирался в таймаут). Курс лежит и в базе (settings.darai_usd_rate): свежий
 // рабочий после выкатки берёт его оттуда, а не идёт в Ref с пустыми руками.
+//
+// 25.10.2026: общий прайс-лист Ref (list-token-price) разросся до 614 КБ и
+// качается 12–13 с — за 8 с таймаута не успевал, курс протух, DARAI-цены
+// пропали из подписок, лавки золота и наборов. Берём цену одного токена
+// (get-token-price, 70 байт, ~1 с); не ответил индексер — второй адрес Ref.
+//
+// 04.11.2026: индексер Ref застыл — с 29.10 отдавал одну и ту же цену DARAI
+// (1 708 420 за $ против живых ~2,02 млн; NEAR у него $1,33 при $4,01), и
+// подписки, золото, наборы за DARAI шли на ~15 % дешевле цены в $. Теперь курс
+// — живой обмен: сколько DARAI Ref даёт за 1 USDT прямо сейчас (смарт-роутер
+// считает по пулам на момент запроса). Не ответил — цена одного токена с
+// api.ref.finance; застывший индексер не спрашиваем.
 
-const PRICE_API = "https://indexer.ref.finance/list-token-price";
-const DARAI = "darai.tkn.near";
+const ROUTER_URL =
+  "https://smartrouter.ref.finance/findPath?amountIn=1000000" +
+  "&tokenIn=usdt.tether-token.near&tokenOut=darai.tkn.near&pathDeep=3&slippage=0.005";
+const PRICE_URL = "https://api.ref.finance/get-token-price?token_id=darai.tkn.near";
 const FRESH_MS = 5 * 60_000;
 const STALE_MS = 30 * 60_000;
 
@@ -68,17 +81,41 @@ function refresh(): Promise<Cached | null> {
   return inflight;
 }
 
-async function fetchRate(): Promise<Cached | null> {
-  try {
-    const res = await fetch(PRICE_API, { signal: AbortSignal.timeout(8_000) });
-    if (!res.ok) return null;
-    const j = (await res.json()) as Record<string, { price?: string }>;
-    const usd = Number(j[DARAI]?.price);
-    if (!(usd > 0)) return null;
-    return { daraiPerUsd: 1 / usd, at: Date.now() };
-  } catch {
-    return null;
+type RouterResp = { amount_out?: string; result_data?: { amount_out?: string } };
+
+/** $ за 1 DARAI по живому обмену 1 USDT → DARAI. */
+export async function routerUsd(): Promise<number | null> {
+  const res = await fetch(ROUTER_URL, { signal: AbortSignal.timeout(8_000) });
+  if (!res.ok) return null;
+  const j = (await res.json()) as RouterResp;
+  const out = Number((j.result_data ?? j).amount_out) / 1e18;
+  return out > 0 ? 1 / out : null;
+}
+
+/** $ за 1 DARAI по цене токена Ref. */
+export async function feedUsd(): Promise<number | null> {
+  const res = await fetch(PRICE_URL, { signal: AbortSignal.timeout(8_000) });
+  if (!res.ok) return null;
+  const usd = Number(((await res.json()) as { price?: string })?.price);
+  return usd > 0 ? usd : null;
+}
+
+/** Цена 1 DARAI в $ по живому обмену на Ref; null — оба адреса не ответили. */
+export async function fetchDaraiUsd(): Promise<number | null> {
+  for (const get of [routerUsd, feedUsd]) {
+    try {
+      const usd = await get();
+      if (usd) return usd;
+    } catch {
+      /* следующий адрес */
+    }
   }
+  return null;
+}
+
+async function fetchRate(): Promise<Cached | null> {
+  const usd = await fetchDaraiUsd();
+  return usd ? { daraiPerUsd: 1 / usd, at: Date.now() } : null;
 }
 
 /** Курс «DARAI за 1 $» и возраст в мс. null — курса нет дольше 30 минут. */

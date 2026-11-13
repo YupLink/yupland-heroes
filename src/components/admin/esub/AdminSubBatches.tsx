@@ -18,7 +18,7 @@ const STATUS: Record<string, string> = {
   closed: "закрыта вручную",
 };
 const btn = "rounded-lg border border-border px-2 py-1 text-[11px] font-semibold disabled:opacity-50";
-const STEP: Record<string, string> = { swap: "обмен", map: "пул карты", bank: "откуп золота", burn: "в дупло", dev: "разработчикам" };
+const STEP: Record<string, string> = { swap: "обмен", map: "пул карты", bank: "откуп золота", burn: "в дупло", burnpool: "в пул сжигания", dev: "разработчикам" };
 const BUCKET: Record<string, string> = {
   sub_usd_map: "Подписки · $ → карта",
   sub_usd: "Подписки · $",
@@ -128,7 +128,7 @@ function FailedActions(p: {
           Продолжить
         </button>
       )}
-      {stuck && stuck !== "map" && stuck !== "bank" && (
+      {stuck && stuck !== "map" && stuck !== "bank" && stuck !== "burnpool" && (
         <>
           <span className="w-full">Шаг «{STEP[stuck]}»: исход неизвестен — проверь кошелёк.</span>
           {stuck === "swap" && (

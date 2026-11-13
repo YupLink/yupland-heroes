@@ -19,12 +19,12 @@ import { mcpExec } from "../db/mcpClient";
 import { sqlStr } from "./chips-utils";
 import { getCurrentWallet } from "../auth";
 import { accountIdOf } from "./user-shared";
-import { deliverGift, type GiftRow, type GiftKind } from "./gifts-deliver";
+import { deliverGift, type GiftRow, type GiftRowKind } from "./gifts-deliver";
 import { GIFT_LIVE_SQL, startGiftExpirySweeper, whyNotClaimed } from "./gifts-expire";
 
 export type MyGift = {
   id: string;
-  kind: GiftKind;
+  kind: GiftRowKind;
   amount: number;
   refId: string | null;
   title: string | null;
@@ -33,6 +33,8 @@ export type MyGift = {
   createdAt: string;
   /** Когда сгорит, мс эпохи; null — бессрочный (строки до правила 48 ч). */
   expiresAt: number | null;
+  /** Артефакт: прочность, % (с аукциона — как у продавца). Не артефакт — null. */
+  durability?: number | null;
 };
 
 // Срок отдаём числом, а не timestamptz-строкой: row_to_json пишет шесть знаков
@@ -72,6 +74,8 @@ export const getMyGifts = createServerFn({ method: "GET" }).handler(async (): Pr
       ORDER BY created_at DESC LIMIT 100;`,
     { wrapJson: true },
   )) as GiftRow[];
+  const { giftWears } = await import("./gifts-art-wear");
+  const wears = await giftWears((rows ?? []).filter((r) => r.kind === "art").map((r) => r.id));
   return (rows ?? []).map((r) => ({
     id: r.id,
     kind: r.kind,
@@ -82,6 +86,7 @@ export const getMyGifts = createServerFn({ method: "GET" }).handler(async (): Pr
     note: r.note,
     createdAt: r.created_at,
     expiresAt: expiresAtOf(r),
+    durability: r.kind === "art" ? 100 - (wears.get(r.id) ?? 0) : null,
   }));
 });
 

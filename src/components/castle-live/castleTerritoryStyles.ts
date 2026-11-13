@@ -1,0 +1,13 @@
+import {modularCastleAssets as art} from './modularCastleAssets';
+import elvenGround from './decor-styles/assets/elven/territory-ground.webp';
+import elvenWall from './decor-styles/assets/elven/territory-wall.webp';
+import winterGround from './decor-styles/assets/winter/territory-ground.webp';
+import winterWall from './decor-styles/assets/winter/territory-wall.webp';
+import infernalGround from './decor-styles/assets/infernal/territory-ground.webp';
+import infernalWall from './decor-styles/assets/infernal/territory-wall.webp';
+import buckwheatGround from './decor-styles/assets/buckwheat/sculptural-ground.webp';
+import buckwheatWall from './decor-styles/assets/buckwheat/sculptural-wall.webp';
+import celestialGround from './decor-styles/assets/celestial/ground.webp';
+import celestialWall from './decor-styles/assets/celestial/wall.webp';
+export const castleTerritoryStyles=[{id:'base',ru:'Базовый',en:'Base',ground:art['paving-tile.png'],wall:art['wall.png'],wallY:134,warmth:1,groundTop:320},{id:'elven',ru:'Эльфийский',en:'Elven',ground:elvenGround,wall:elvenWall,wallY:139.1,warmth:0.65,groundTop:320},{id:'winter',ru:'Зимний',en:'Winter',ground:winterGround,wall:winterWall,wallY:144.44,warmth:0.15,groundTop:320},{id:'infernal',ru:'Адский',en:'Infernal',ground:infernalGround,wall:infernalWall,wallY:139.1,warmth:0.2,groundTop:320},{id:'buckwheat',ru:'Гречневый',en:'Buckwheat',ground:buckwheatGround,wall:buckwheatWall,wallY:121.75,warmth:0.2,groundTop:320},{id:'celestial',ru:'Небесный',en:'Celestial',ground:celestialGround,wall:celestialWall,wallY:79.69,warmth:0.2,groundTop:320}];
+export const castleTerritoryStyle=(id?:string)=>castleTerritoryStyles.find(s=>s.id===id)||castleTerritoryStyles[0];

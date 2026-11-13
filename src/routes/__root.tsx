@@ -1,4 +1,11 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+  useRouter,
+} from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { getQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
@@ -7,10 +14,11 @@ import { SessionSync } from "@/components/SessionSync";
 import { NearConnectorBridge } from "@/components/NearConnectorBridge";
 import { TgGuard } from "@/components/TgGuard";
 import { VersionProvider } from "@/lib/versionCheck";
-import { VersionBanner } from "@/components/VersionBanner";
 import { PwaSetup } from "@/components/Pwa";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { BetaGate } from "@/components/BetaGate";
+import { BOOT_WATCHDOG, markBooted } from "@/lib/bootWatchdog";
+import { useEffect } from "react";
 
 import "@fontsource/space-grotesk/400.css";
 import "@fontsource/space-grotesk/600.css";
@@ -55,6 +63,10 @@ export const Route = createRootRoute({
           "Погашение NFT в сети NEAR: открой свой мешочек и получи награду в одном из токенов экосистемы Golden Darai.",
       },
       { name: "theme-color", content: "#0a0a0f" },
+      // Не даём браузеру «затемнять сайты» (ночной режим Mi Browser, Chrome/Samsung):
+      // он перекрашивает тёмные SVG-плашки подписей замка и тени в белое, иконки
+      // дерева и камня — тоже. Игра и так тёмная; «only light» вид не меняет.
+      { name: "color-scheme", content: "only light" },
       // PWA / iOS standalone — открытие с «Домой» как отдельное приложение.
       { name: "application-name", content: "YupLink" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -137,12 +149,17 @@ const EARLY_YUPIK_WALK = `document.addEventListener("load",function(e){var t=e.t
 const EARLY_TG_READY = `(function(){try{if(!document.querySelector('.game-load-state--fullscreen'))return;var tg=window.Telegram&&window.Telegram.WebApp;if(tg&&tg.ready)tg.ready();}catch(e){}})();`;
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  // Метка ответа (защитный заголовок, lib/csp): без неё браузер в режиме
+  // блокировки не выполнил бы наши же встроенные скрипты. Значение атрибута
+  // браузер прячет после загрузки — расхождение при гидрации ожидаемое.
+  const nonce = useRouter().options.ssr?.nonce;
   return (
     <html lang="ru">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: OLDWEBVIEW_POLYFILL }} />
-        <script dangerouslySetInnerHTML={{ __html: PROCESS_POLYFILL }} />
-        <script dangerouslySetInnerHTML={{ __html: EARLY_YUPIK_WALK }} />
+        <script suppressHydrationWarning nonce={nonce} dangerouslySetInnerHTML={{ __html: OLDWEBVIEW_POLYFILL }} />
+        <script suppressHydrationWarning nonce={nonce} dangerouslySetInnerHTML={{ __html: PROCESS_POLYFILL }} />
+        <script suppressHydrationWarning nonce={nonce} dangerouslySetInnerHTML={{ __html: EARLY_YUPIK_WALK }} />
+        <script suppressHydrationWarning nonce={nonce} dangerouslySetInnerHTML={{ __html: BOOT_WATCHDOG }} />
         {/*
           Telegram Mini Apps SDK. Без этого скрипта window.Telegram.WebApp
           не существует — мы не можем понять, что юзер открыт внутри TG,
@@ -150,12 +167,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
           сервис живут в разных Mini App-песочницах и не могут общаться.
           С SDK platform известна → WalletModal открывает внешний браузер.
         */}
-        <script src="https://telegram.org/js/telegram-web-app.js" />
+        <script suppressHydrationWarning nonce={nonce} src="https://telegram.org/js/telegram-web-app.js" />
         <HeadContent />
       </head>
       <body>
         {children}
-        <script dangerouslySetInnerHTML={{ __html: EARLY_TG_READY }} />
+        <script suppressHydrationWarning nonce={nonce} dangerouslySetInnerHTML={{ __html: EARLY_TG_READY }} />
         <Scripts />
       </body>
     </html>
@@ -163,10 +180,11 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  // Игра поднялась — сторож запуска (bootWatchdog) больше не перезагружает.
+  useEffect(markBooted, []);
   return (
     <QueryClientProvider client={getQueryClient()}>
       <VersionProvider>
-        <VersionBanner />
         <PwaSetup />
         <SessionSync />
         <NearConnectorBridge />

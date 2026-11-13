@@ -15,6 +15,7 @@ import { HOV_CONTRACT } from "./config";
 import { ethAccount, linkedAddress } from "./link";
 import { ownerOf } from "./rpc";
 import { hovHeroTemplate, planHovHero } from "./hov-hero";
+import { secureRandom } from "@/lib/secureRandom";
 
 export type HovToken = {
   tokenId: number;
@@ -81,12 +82,15 @@ export const ethHovClaim = createServerFn({ method: "POST" })
       { wrapJson: true },
     )) ?? []) as Array<{ hero_name: string | null; race: string | null; lirian: boolean; portrait: string | null }>;
     const plan = tok[0]
-      ? planHovHero({
-          heroName: tok[0].hero_name,
-          nftRace: tok[0].race,
-          portrait: tok[0].portrait,
-          lirian: tok[0].lirian === true,
-        })
+      ? planHovHero(
+          {
+            heroName: tok[0].hero_name,
+            nftRace: tok[0].race,
+            portrait: tok[0].portrait,
+            lirian: tok[0].lirian === true,
+          },
+          secureRandom,
+        )
       : null;
     if (!plan) throw new Error("Этот NFT ещё не разобран — попробуй через 10 минут");
     const rarity = plan.rarity;

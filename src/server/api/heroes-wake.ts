@@ -7,6 +7,37 @@
 import { mcpExec } from "../db/mcpClient";
 import { sqlStr } from "./raid-shared";
 import { rarityOfTemplateLevel } from "./heroes-list-dormant";
+import { heroItemLockSql } from "./hero-item-lock";
+
+/**
+ * Завести экземпляр копии — под замком копии (hero-item-lock; его же держит
+ * ломбард, снимая копию). Вставка сама проверяет, что копия всё ещё лежит у
+ * игрока и экземпляра у неё нет: сданную в ломбард за миг до нас не разбудить,
+ * а двое будящих разом не заведут два экземпляра одной копии. 0 строк — не
+ * вставили (решает вызывающий).
+ */
+export function wakeInsertSql(o: {
+  id: string;
+  wallet: string;
+  list: string;
+  itemId: string;
+  rarity: string;
+}): string {
+  const item = sqlStr(o.itemId);
+  return `${heroItemLockSql(o.itemId)}
+WITH ins AS (
+  INSERT INTO yuplink.hero_instance
+    (id, wallet, template_id, item_id, rarity, level, likes_spent, equipped, source, source_chip_id)
+  SELECT ${sqlStr(o.id)}, ${sqlStr(o.wallet)}, u.template_id, u.id, ${sqlStr(o.rarity)},
+         0, 0, '{}'::jsonb, 'inventory_item', NULL
+    FROM yuplink.user_game_item u
+   WHERE u.id = ${item} AND u.account_id IN (${o.list}) AND u.kind = 'hero'
+     AND NOT EXISTS (SELECT 1 FROM yuplink.hero_instance h
+                      WHERE h.account_id IN (${o.list}) AND h.item_id = ${item})
+  RETURNING id
+)
+SELECT id FROM ins;`;
+}
 
 /**
  * Найти экземпляр по шаблону или создать его. Возвращает id.
@@ -21,12 +52,16 @@ export async function wakeHeroInstance(
   const list = sqlStr(account);
   // Экземпляр ищем по КОПИИ, а не по шаблону: у игрока их бывает несколько, и
   // поиск по шаблону подсовывал чужой (уже прокачанный) экземпляр.
-  const have = (await mcpExec(
-    `SELECT id FROM yuplink.hero_instance
-      WHERE account_id IN (${list}) AND item_id = ${sqlStr(itemId)} LIMIT 1;`,
-    { wrapJson: true },
-  ).catch(() => [])) as Array<{ id: string }>;
-  if (have?.[0]?.id) return have[0].id;
+  const findHave = async (): Promise<string | null> => {
+    const have = (await mcpExec(
+      `SELECT id FROM yuplink.hero_instance
+        WHERE account_id IN (${list}) AND item_id = ${sqlStr(itemId)} LIMIT 1;`,
+      { wrapJson: true },
+    ).catch(() => [])) as Array<{ id: string }>;
+    return have?.[0]?.id ?? null;
+  };
+  const have = await findHave();
+  if (have) return have;
 
   const owned = (await mcpExec(
     `SELECT u.template_id, t.level FROM yuplink.user_game_item u
@@ -39,15 +74,15 @@ export async function wakeHeroInstance(
 
   const rarity = rarityOfTemplateLevel(Number(owned[0].level));
   const id = `hero_${Math.random().toString(36).slice(2, 12)}`;
-  const rows = (await mcpExec(
-    `INSERT INTO yuplink.hero_instance
-       (id, wallet, template_id, item_id, rarity, level, likes_spent, equipped, source, source_chip_id)
-     VALUES (${sqlStr(id)}, ${sqlStr(wallet)}, ${sqlStr(owned[0].template_id)}, ${sqlStr(itemId)},
-             ${sqlStr(rarity)}, 0, 0, '{}'::jsonb, 'inventory_item', NULL)
-     RETURNING id;`,
-    { wrapJsonCte: true },
-  )) as Array<{ id: string }>;
-  return rows?.[0]?.id ?? id;
+  const made = (await mcpExec(wakeInsertSql({ id, wallet, list, itemId, rarity }))) as Array<{
+    id?: string;
+  }>;
+  if (made?.[0]?.id) return String(made[0].id);
+  // Не вставили: соседний запрос разбудил копию раньше — берём его экземпляр;
+  // копии уже нет (сдана в ломбард, продана) — героя у игрока нет.
+  const woken = await findHave();
+  if (woken) return woken;
+  throw new Error("Это не твой герой");
 }
 
 /**

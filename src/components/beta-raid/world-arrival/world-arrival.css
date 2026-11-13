@@ -1,0 +1,43 @@
+@font-face {
+  font-family: "World Arrival Golos";
+  src: url("../../../assets/tavern/GolosText.woff2") format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
+.raid-world-arrival {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 24px;
+  background: rgba(9, 11, 12, .90);
+  pointer-events: none;
+  animation: raid-world-arrival 1200ms ease-in-out both;
+}
+.raid-world-arrival h1 {
+  margin: 0;
+  max-width: 100%;
+  text-align: center;
+  font-family: "World Arrival Golos", system-ui, sans-serif;
+  font-size: clamp(25px, 4.5vw, 42px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: .01em;
+  color: #f0d68a;
+  overflow-wrap: anywhere;
+  text-shadow: 0 2px 14px #0008;
+}
+@keyframes raid-world-arrival {
+  0% { opacity: 0; }
+  12%, 68% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .raid-world-arrival { animation: raid-world-arrival-reduced 1200ms step-end both; }
+  @keyframes raid-world-arrival-reduced {
+    0%, 85% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}

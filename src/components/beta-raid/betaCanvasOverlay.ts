@@ -1,8 +1,15 @@
+import { heroActionFrame } from "./heroActionTiming";
+import { drawActionAtlasFrame } from "./drawActionAtlasFrame";
+import { beginHeroAction, getFishingIdleFrame, getHeroAction, interruptFishingIdle } from "./heroActionVisual";
+import { drawStrikeTarget, type StrikeStore } from "./drawStrikeTarget";
 // Фигуры поверх местности: замок, выбранная цель маршрута, доступные ходы
 // и сам герой. Местность рисует betaCanvasDraw.
 import { formatEnergyCost } from "@/lib/shipRules";
 import { R, hexPath, hexPath2D } from "./hexGeometry";
 import { COLOR, type DrawScene } from "./betaCanvasScene";
+
+/** Красный «не дойти» — тот же, что у красных стрелок маршрута. */
+const SHORT = "#d04646";
 
 /**
  * Замок в центре карты — точка отсчёта и цель возврата.
@@ -67,21 +74,39 @@ function drawStepCost(scene: DrawScene, p: { x: number; y: number }, cost: numbe
   g.restore();
 }
 
-/** Подсветка выбранной цели маршрута + цена в энергии. */
+/**
+ * Подсветка выбранной цели маршрута + цена в энергии. Энергии до цели не
+ * хватает (reach < steps) — рамка красная и крестик, как в «Героях 3».
+ */
 export function drawPendingTarget(
   scene: DrawScene,
-  target: { q: number; r: number; cost: number },
+  target: { q: number; r: number; cost: number; steps?: number; reach?: number },
 ): void {
   const { g, toPixel } = scene;
   const p = toPixel(target.q, target.r);
+  const short = target.reach != null && target.steps != null && target.reach < target.steps;
+  const color = short ? SHORT : COLOR.gold;
   hexPath(g, p.x, p.y);
-  g.fillStyle = "rgba(245, 179, 1, 0.2)";
+  g.fillStyle = short ? "rgba(208, 70, 70, 0.2)" : "rgba(245, 179, 1, 0.2)";
   g.fill();
   hexPath(g, p.x, p.y);
-  g.strokeStyle = COLOR.gold;
+  g.strokeStyle = color;
   g.lineWidth = 3;
   g.stroke();
-  g.fillStyle = COLOR.gold;
+  if (short) {
+    const d = R * 0.32;
+    g.save();
+    g.beginPath();
+    g.moveTo(p.x - d, p.y - d);
+    g.lineTo(p.x + d, p.y + d);
+    g.moveTo(p.x + d, p.y - d);
+    g.lineTo(p.x - d, p.y + d);
+    g.lineWidth = Math.max(3, R * 0.12);
+    g.lineCap = "round";
+    g.stroke();
+    g.restore();
+  }
+  g.fillStyle = color;
   g.font = `bold ${Math.max(10, R * 0.4)}px system-ui`;
   g.textAlign = "center";
   g.textBaseline = "bottom";
@@ -110,6 +135,8 @@ export function drawMovesAndHero(
   scene: DrawScene,
   moves: Array<{ q: number; r: number; cost?: number }>,
   p: { x: number; y: number },
+  heroVisual: { up: boolean; left: boolean; phase: number | null },
+  store?: StrikeStore,
 ): void {
   const { g, toPixel, images } = scene;
   const hex = hexPath2D(); // кэшированный Path2D — один на все ходы
@@ -127,16 +154,112 @@ export function drawMovesAndHero(
   // Герой на своём корабле уже нарисован на палубе — вторая фигурка рядом
   // выглядела бы как два героя на одной клетке.
   const onShip = scene.heroCell && scene.ships.get(`${scene.heroCell.q},${scene.heroCell.r}`)?.mine;
-  if (onShip) return;
+  if (onShip) { interruptFishingIdle(); return; }
 
-  // Иконка героя (рыцарь на лошади). Если картинка ещё не загрузилась —
-  // fallback на прежнюю точку, чтобы герой был виден сразу.
-  const img = images.get("hero");
+  // An action uses the same map anchor as the mounted hero. Left-facing
+  // frames are already mirrored in the exported PNGs.
+  const visual = getHeroAction();
+  const current = visual.action;
+  if (heroVisual.phase !== null) interruptFishingIdle();
+  if (!current && visual.fishingHold && heroVisual.phase === null) {
+    const facing = visual.fishingFacing;
+    const up = facing?.up ?? heroVisual.up;
+    const left = facing?.left ?? heroVisual.left;
+    const idleAtlas = images.get(`hero:fishing-idle:${up ? "back" : "front"}`);
+    if (idleAtlas?.complete && idleAtlas.naturalWidth === 640 && idleAtlas.naturalHeight === 512) {
+      const frame = getFishingIdleFrame(Date.now());
+      if (frame) {
+        const w = R * 2.1;
+        const x = p.x - w / 2;
+        const y = p.y + R * 0.5 - w;
+        if (left) {
+          g.save();
+          g.translate(2 * p.x, 0);
+          g.scale(-1, 1);
+        }
+        g.drawImage(idleAtlas, (frame.index % 5) * 128, Math.floor(frame.index / 5) * 128, 128, 128, x, y, w, w);
+        if (left) g.restore();
+        return;
+      }
+    }
+  }
+  const action = heroVisual.phase === null
+    ? current?.kind ?? (visual.fishingHold ? "fishing-hold" : null)
+    : null;
+  if (action) {
+    const target = current?.target ? toPixel(current.target.q, current.target.r) : null;
+    // The server may remove the resource before the strike finishes; keep its
+    // original art (at its map size) visible for the three-second visual.
+    const hit = current?.target;
+    if (hit?.decorId) drawStrikeTarget(scene, store, { ...hit, decorId: hit.decorId });
+    const fishing = action === "fish" || action === "fishing-hold";
+    const up = target ? target.y < p.y : fishing ? visual.fishingFacing?.up ?? heroVisual.up : heroVisual.up;
+    const left = target ? target.x < p.x : fishing ? visual.fishingFacing?.left ?? heroVisual.left : heroVisual.left;
+    const direction = `${left ? "left" : "right"}-${up ? "up" : "down"}`;
+    const key = current ? `hero:action:${action}:${direction}` : `hero:hold:${direction}`;
+    const image = images.get(key);
+    if (image?.complete && image.naturalWidth >= (current ? 512 : 128) && image.naturalHeight >= 128) {
+      if (current) beginHeroAction();
+      const w = R * 2.1;
+      const x = p.x - w / 2;
+      const y = p.y + R * 0.5 - w;
+      if (current) {
+        const elapsed = Date.now() - (current.startedAt ?? Date.now());
+        const frame = heroActionFrame(action, elapsed);
+        drawActionAtlasFrame(g, image, images.get(`hero:action:${action}:right-${up ? "up" : "down"}`), frame, x, y, w);
+      } else {
+        g.drawImage(image, x, y, w, w);
+      }
+      return;
+    }
+    if (current) {
+      const foot = images.get("hero:foot") ?? images.get("hero:gallop");
+      if (foot?.complete && foot.naturalWidth >= 384 && foot.naturalHeight >= 384) {
+        const w = R * 2.1;
+        const x = p.x - w / 2;
+        const y = p.y + R * 0.5 - w;
+        const sx = up ? 0 : 128;
+        if (left) {
+          g.save();
+          g.translate(2 * p.x, 0);
+          g.scale(-1, 1);
+        }
+        g.drawImage(foot, sx, 256, 128, 128, x, y, w, w);
+        if (left) g.restore();
+        return;
+      }
+    }
+  }
+
+  // Атлас выбранного коня: нижний левый кадр — остановка спиной,
+  // нижний средний — остановка лицом к игроку.
+  const atlas = images.get("hero:gallop");
+  const useAtlas = !!atlas?.complete && atlas.naturalWidth >= 384 && atlas.naturalHeight >= 384;
+  const img = useAtlas ? atlas : images.get("hero");
   if (img && img.complete && img.naturalWidth > 0) {
     const w = R * 2.1;
-    const h = w * (img.naturalHeight / img.naturalWidth);
+    const h = useAtlas ? w : w * (img.naturalHeight / img.naturalWidth);
     // Якорь снизу — рыцарь «стоит» на клетке, крупнее гекса и выступает вверх.
-    g.drawImage(img, p.x - w / 2, p.y + R * 0.5 - h, w, h);
+    const x = p.x - w / 2;
+    const y = p.y + R * 0.5 - h;
+    const drawHero = () => {
+      if (useAtlas) {
+        const sx = heroVisual.phase == null ? (heroVisual.up ? 0 : 128) : heroVisual.phase * 128;
+        const sy = heroVisual.phase == null ? 256 : (heroVisual.up ? 128 : 0);
+        g.drawImage(img, sx, sy, 128, 128, x, y, w, h);
+      } else {
+        g.drawImage(img, x, y, w, h);
+      }
+    };
+    if (heroVisual.left) {
+      g.save();
+      g.translate(2 * p.x, 0);
+      g.scale(-1, 1);
+      drawHero();
+      g.restore();
+    } else {
+      drawHero();
+    }
     return;
   }
   g.beginPath();
@@ -199,3 +322,5 @@ export function drawGenSelected(scene: DrawScene, cells: Set<string>): void {
   }
   g.restore();
 }
+
+

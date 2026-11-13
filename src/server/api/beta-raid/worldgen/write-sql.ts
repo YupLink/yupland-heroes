@@ -21,6 +21,8 @@ import { sqlStr } from "@/server/api/raid-shared";
 export const ROWS_PER_INSERT = 400;
 
 const lit = (v: string | null): string => (v === null ? "NULL" : sqlStr(v));
+const num = (v: number | null | undefined): string =>
+  typeof v === "number" && Number.isFinite(v) ? String(v) : "NULL";
 const json = (v: unknown): string =>
   v === null || v === undefined ? "NULL" : `${sqlStr(JSON.stringify(v))}::jsonb`;
 
@@ -58,7 +60,9 @@ const CONFLICT: Record<CellMode, string> = {
      road_id = EXCLUDED.road_id, object_id = EXCLUDED.object_id,
      object_config = EXCLUDED.object_config, decoration_id = EXCLUDED.decoration_id,
      building_id = EXCLUDED.building_id, building_config = EXCLUDED.building_config,
-     building_skin_id = EXCLUDED.building_skin_id, saved_at = now()`,
+     building_skin_id = EXCLUDED.building_skin_id,
+     group_id = COALESCE(EXCLUDED.group_id, c.group_id),
+     icon_scale = COALESCE(EXCLUDED.icon_scale, c.icon_scale), saved_at = now()`,
 };
 
 export function cellsSql(mapId: string, cells: readonly WorldCell[]): string[] {
@@ -70,12 +74,14 @@ export function cellsSql(mapId: string, cells: readonly WorldCell[]): string[] {
           (c) =>
             `(${sqlStr(mapId)}, ${c.q}, ${c.r}, ${lit(c.terrainId)}, ${lit(c.roadId)}, ` +
             `${lit(c.objectId)}, ${json(c.objectConfig)}, ${lit(c.decorationId)}, ` +
-            `${lit(c.buildingId)}, ${lit(c.buildingSkinId)}, ${json(c.buildingConfig)}, now())`,
+            `${lit(c.buildingId)}, ${lit(c.buildingSkinId)}, ${json(c.buildingConfig)}, ` +
+            `${lit(c.groupId ?? null)}, ${num(c.iconScale)}, now())`,
         )
         .join(",\n");
       out.push(
         `INSERT INTO yuplink.raid_map_cells AS c (map_id, q, r, terrain_id, road_id, object_id,
-           object_config, decoration_id, building_id, building_skin_id, building_config, saved_at)
+           object_config, decoration_id, building_id, building_skin_id, building_config,
+           group_id, icon_scale, saved_at)
          VALUES ${values}
          ${CONFLICT[mode]};`,
       );

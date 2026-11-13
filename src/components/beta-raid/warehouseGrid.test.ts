@@ -5,15 +5,15 @@ import { buildCells, ownCellItems } from "./warehouseGrid";
 import { CELL_SIZE } from "@/lib/warehouseCells";
 
 describe("buildCells", () => {
-  it("20,79 → две плитки: 20 и 0,79, без хвоста", () => {
+  it("ячейка и 0,79 → две плитки: полная и 0,79, без хвоста", () => {
     const cells = buildCells(
-      [{ stackKey: "custom:x", name: "Огурцы", image: null, count: 20.79, cells: 2 }],
+      [{ stackKey: "custom:x", name: "Огурцы", image: null, count: CELL_SIZE + 0.79, cells: 2 }],
       2,
     );
     expect(cells.map((c) => c?.units)).toEqual([CELL_SIZE, 0.79]);
   });
 
-  it("крошка 0,000455 — не «0/20»: плитка несёт настоящее количество", () => {
+  it("крошка 0,000455 — не «0/N»: плитка несёт настоящее количество", () => {
     const tiny = Number("0.000454660540250266");
     const [c] = buildCells(
       [{ stackKey: "custom:soda", name: "Газировка", image: null, count: tiny, cells: 1 }],
@@ -29,7 +29,7 @@ describe("buildCells", () => {
           stackKey: "custom:soda",
           name: "Газировка",
           image: null,
-          count: 27.738083231472352,
+          count: CELL_SIZE + 7.738083231472352,
           cells: 2,
         },
       ],
@@ -45,8 +45,8 @@ describe("buildCells", () => {
 });
 
 describe("ownCellItems", () => {
-  it("20,79 на полке → [20, 0,79]; «зреет» только на последней", () => {
-    const out = ownCellItems([{ stackKey: "custom:x", whole: 20.79, frac: 0.3 }]);
+  it("ячейка и 0,79 на полке → [полная, 0,79]; «зреет» только на последней", () => {
+    const out = ownCellItems([{ stackKey: "custom:x", whole: CELL_SIZE + 0.79, frac: 0.3 }]);
     expect(out.map((c) => c.whole)).toEqual([CELL_SIZE, 0.79]);
     expect(out.map((c) => c.frac)).toEqual([0, 0.3]);
   });

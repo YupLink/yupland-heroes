@@ -14,6 +14,10 @@ import {
 } from "@/server/api/likes";
 import { cn } from "@/lib/utils";
 import { humanError } from "@/lib/humanError";
+import { TICKET_SPEND_GOLD, goldForTicketPrice } from "@/lib/ticketGold";
+
+// Цена пакета лайков — в ЗОЛОТЕ (ПРАВИЛА §8.61); в базе прежнее tickets = золото / 500, целое.
+const toTickets = (gold: number) => Math.max(1, Math.round(gold / TICKET_SPEND_GOLD));
 
 export function SettingsPanel({ initial, onSaved }: { initial: Awaited<ReturnType<typeof adminGetLikeSettings>>; onSaved: () => void }) {
   const [s, setS] = useState(initial);
@@ -87,10 +91,10 @@ export function SettingsPanel({ initial, onSaved }: { initial: Awaited<ReturnTyp
 function PackagesPanel() {
   const qc = useQueryClient();
   const offers = useQuery({ queryKey: ["admin-like-offers"], queryFn: () => adminListLikeShopOffers() });
-  const [draft, setDraft] = useState({ tickets: 1, likes: 1, priceStars: 0, sortOrder: 99 });
+  const [draft, setDraft] = useState({ gold: TICKET_SPEND_GOLD, likes: 1, priceStars: 0, sortOrder: 99 });
   const create = useMutation({
-    mutationFn: () => adminCreateLikeShopOffer({ data: { ...draft, priceStars: draft.priceStars > 0 ? draft.priceStars : null } }),
-    onSuccess: () => { toast.success("Пакет добавлен"); qc.invalidateQueries({ queryKey: ["admin-like-offers"] }); setDraft({ tickets: 1, likes: 1, priceStars: 0, sortOrder: 99 }); },
+    mutationFn: () => adminCreateLikeShopOffer({ data: { tickets: toTickets(draft.gold), likes: draft.likes, sortOrder: draft.sortOrder, priceStars: draft.priceStars > 0 ? draft.priceStars : null } }),
+    onSuccess: () => { toast.success("Пакет добавлен"); qc.invalidateQueries({ queryKey: ["admin-like-offers"] }); setDraft({ gold: TICKET_SPEND_GOLD, likes: 1, priceStars: 0, sortOrder: 99 }); },
     onError: (e: Error) => toast.error(humanError(e)),
   });
   const update = useMutation({
@@ -106,17 +110,17 @@ function PackagesPanel() {
 
   return (
     <div className="space-y-3">
-      <div className="text-[11px] text-muted-foreground">Обмен билетов на лайки. Большие пакеты — выгоднее.</div>
+      <div className="text-[11px] text-muted-foreground">Обмен золота на лайки (цена кратна {TICKET_SPEND_GOLD}). Большие пакеты — выгоднее.</div>
       <div className="space-y-2">
         {(offers.data ?? []).map((o) => (
-          <PackageRow key={o.id} offer={o} onSave={(patch) => update.mutate({ id: o.id, ...patch })} onDelete={() => { if (confirm(`Удалить пакет ${o.tickets} билетов → ${o.likes} лайков?`)) del.mutate(o.id); }} saving={update.isPending && update.variables?.id === o.id} deleting={del.isPending && del.variables === o.id} />
+          <PackageRow key={o.id} offer={o} onSave={(patch) => update.mutate({ id: o.id, ...patch })} onDelete={() => { if (confirm(`Удалить пакет ${goldForTicketPrice(o.tickets)} золота → ${o.likes} лайков?`)) del.mutate(o.id); }} saving={update.isPending && update.variables?.id === o.id} deleting={del.isPending && del.variables === o.id} />
         ))}
         {(offers.data ?? []).length === 0 && <div className="rounded-xl border border-dashed border-border/60 bg-secondary/20 p-4 text-center text-xs text-muted-foreground">Пока нет пакетов.</div>}
       </div>
       <div className="space-y-2 rounded-xl border border-gold/30 bg-gold/5 p-3">
         <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground"><Plus className="h-3 w-3" /> Пакет</div>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Билетов" value={draft.tickets} onChange={(v) => setDraft((p) => ({ ...p, tickets: v }))} />
+          <Field label="Золота" value={draft.gold} onChange={(v) => setDraft((p) => ({ ...p, gold: v }))} hint={`кратно ${TICKET_SPEND_GOLD}`} />
           <Field label="Лайков" value={draft.likes} onChange={(v) => setDraft((p) => ({ ...p, likes: v }))} />
           <Field label="★ звёзды" value={draft.priceStars} onChange={(v) => setDraft((p) => ({ ...p, priceStars: v }))} hint="0 = не за звёзды" />
           <Field label="Сортировка" value={draft.sortOrder} onChange={(v) => setDraft((p) => ({ ...p, sortOrder: v }))} hint="Меньше = выше" />
@@ -128,15 +132,15 @@ function PackagesPanel() {
 }
 
 function PackageRow({ offer, onSave, onDelete, saving, deleting }: { offer: Awaited<ReturnType<typeof adminListLikeShopOffers>>[number]; onSave: (patch: { tickets?: number; likes?: number; priceStars?: number | null; sortOrder?: number; active?: boolean }) => void; onDelete: () => void; saving: boolean; deleting: boolean }) {
-  const [tickets, setTickets] = useState(offer.tickets);
+  const [gold, setGold] = useState(goldForTicketPrice(offer.tickets));
   const [likes, setLikes] = useState(offer.likes);
   const [priceStars, setPriceStars] = useState(offer.priceStars ?? 0);
   const [sortOrder, setSortOrder] = useState(offer.sortOrder);
-  const dirty = tickets !== offer.tickets || likes !== offer.likes || priceStars !== (offer.priceStars ?? 0) || sortOrder !== offer.sortOrder;
+  const dirty = toTickets(gold) !== offer.tickets || likes !== offer.likes || priceStars !== (offer.priceStars ?? 0) || sortOrder !== offer.sortOrder;
   return (
     <div className={cn("rounded-2xl border border-border/50 bg-card p-3 transition hover:border-border/80", !offer.active && "opacity-60")}>
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Билетов" value={tickets} onChange={setTickets} />
+        <Field label="Золота" value={gold} onChange={setGold} hint={`кратно ${TICKET_SPEND_GOLD}`} />
         <Field label="Лайков" value={likes} onChange={setLikes} />
         <Field label="★ звёзды" value={priceStars} onChange={setPriceStars} hint="0 = нет" />
         <Field label="Сортировка" value={sortOrder} onChange={setSortOrder} />
@@ -145,7 +149,7 @@ function PackageRow({ offer, onSave, onDelete, saving, deleting }: { offer: Awai
         <label className="flex items-center gap-1.5 text-[11px]"><input type="checkbox" checked={offer.active} onChange={(e) => onSave({ active: e.target.checked })} /> Активен</label>
         <div className="flex items-center gap-1.5">
           <button type="button" onClick={onDelete} disabled={deleting} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/50 bg-secondary/40 text-muted-foreground transition hover:border-rose-500/40 hover:text-rose-400 disabled:opacity-50" title="Удалить пакет" aria-label="Удалить пакет"><Trash2 className="h-4 w-4" /></button>
-          <button type="button" onClick={() => onSave({ tickets, likes, priceStars: priceStars > 0 ? priceStars : null, sortOrder })} disabled={!dirty || saving} className="rounded-lg bg-gold px-3 py-2 text-xs font-bold text-gold-foreground transition disabled:opacity-40">{saving ? "…" : "Сохранить"}</button>
+          <button type="button" onClick={() => onSave({ tickets: toTickets(gold), likes, priceStars: priceStars > 0 ? priceStars : null, sortOrder })} disabled={!dirty || saving} className="rounded-lg bg-gold px-3 py-2 text-xs font-bold text-gold-foreground transition disabled:opacity-40">{saving ? "…" : "Сохранить"}</button>
         </div>
       </div>
     </div>

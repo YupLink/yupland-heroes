@@ -41,23 +41,18 @@ const caps: Cap[] = [
     132,
     "8% 0,85% 0,90% 3%,93% 12%,100% 87%,98% 96%,94% 100%,5% 100%,1% 96%,0 12%,2% 4%",
   ],
-  [
-    "rules-button",
-    93,
-    820,
-    149,
-    90,
-    "9% 0,91% 0,98% 8%,100% 89%,95% 98%,7% 100%,0 94%,1% 14%,5% 4%",
-  ],
+  // «Авто» — в нарисованном гнезде между «Макс» и «Крутить».
   [
     "auto-button",
-    804,
-    820,
-    118,
-    89,
-    "9% 0,91% 0,98% 8%,100% 89%,95% 98%,7% 100%,0 94%,1% 14%,5% 4%",
+    519,
+    487,
+    152,
+    112,
+    "11% 0,90% 0,96% 4%,99% 13%,97% 90%,92% 99%,4% 100%,0 94%,1% 83%,5% 14%",
   ],
 ];
+/** Колпачок без гнезда в картинке: стоит в ряду линий, рамку и крой задаёт CSS (.line-rules). */
+const looseCaps = ["rules-button"];
 export function setupControls(root: HTMLElement, get: () => CabinetApi) {
   const q = <T extends HTMLElement = HTMLElement>(s: string) =>
     root.querySelector<T>(s)!;
@@ -80,7 +75,7 @@ export function setupControls(root: HTMLElement, get: () => CabinetApi) {
               node.scrollWidth +
             "px";
       });
-  for (const [id] of caps) {
+  for (const id of [...caps.map(([id]) => id), ...looseCaps]) {
     const b = q("#" + id);
     b.classList.add("physical-key");
     const s = document.createElement("span");
@@ -119,8 +114,9 @@ export function setupControls(root: HTMLElement, get: () => CabinetApi) {
   };
   root.querySelectorAll<HTMLElement>(".action-row .arcade").forEach((b, i) =>
     Object.assign(b.style, {
-      left: [6.3, 28.6, 69.5][i] + "%",
-      width: [18, 18, 25][i] + "%",
+      // Ставка, Макс, Авто, Крутить
+      left: [6.3, 28.6, 49.6, 69.5][i] + "%",
+      width: [18, 18, 16.5, 25][i] + "%",
       top: "0",
       height: "100%",
       bottom: "auto",
@@ -148,6 +144,31 @@ export function setupControls(root: HTMLElement, get: () => CabinetApi) {
       if (a.state.auto) a.dispatch({ type: "toggle-auto" });
       void a.act({ type: "risk-start" });
     } else a.dispatch({ type: "next-bet" });
+  });
+  // Нажатие видно и на коротком тапе: на телефоне :active почти не успевает
+  // показаться, поэтому нажатый вид (.is-down) держится не меньше 140 мс.
+  root.querySelectorAll<HTMLButtonElement>(".arcade").forEach((b) => {
+    let since = 0,
+      timer = 0;
+    const up = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(
+        () => b.classList.remove("is-down"),
+        Math.max(0, 140 - (performance.now() - since)),
+      );
+    };
+    b.addEventListener(
+      "pointerdown",
+      () => {
+        if (b.disabled) return;
+        window.clearTimeout(timer);
+        since = performance.now();
+        b.classList.add("is-down");
+      },
+      { signal },
+    );
+    for (const type of ["pointerup", "pointercancel", "pointerleave"])
+      b.addEventListener(type, up, { signal });
   });
   on("#max-button", () => get().dispatch({ type: "max-bet" }));
   on("#auto-button", () => get().dispatch({ type: "toggle-auto" }));

@@ -3,6 +3,7 @@
 // видом 'field' в журнале счёта. Сеттл и зачисление на склад — настоящие; база
 // и запись полки — подмены.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const s = vi.hoisted(() => ({
   sql: [] as string[],
@@ -59,6 +60,8 @@ const cfgOf = (reward: FieldConfig["reward"]): FieldConfig => ({
 const wheat = { kind: "item" as const, itemId: "cst_wheat", name: "Пшеница", image: null };
 const gold = { kind: "resource" as const, resource: "gold" as const, token: null };
 const flat = (x: string) => x.replace(/\s+/g, " ");
+/** Личная полка склада — две ячейки. */
+const OWN = 2 * CELL_SIZE;
 
 beforeEach(() => {
   s.sql = [];
@@ -76,20 +79,20 @@ describe("урожай грядки → «с грядок»", () => {
   });
 
   it("не влезшее в личное уходит на общую полку — уже ничьё, без метки", async () => {
-    s.units = 50;
+    s.units = OWN + 10;
     await settleFieldPayout("m1", 30, 90, cfgOf(wheat));
     expect(s.upserts).toEqual([
-      { scope: "own", qty: 40, origin: { mob: 0, mine: 0, field: 40, loot: 0 } },
+      { scope: "own", qty: OWN, origin: { mob: 0, mine: 0, field: OWN, loot: 0 } },
       { scope: "shared", qty: 10, origin: undefined },
     ]);
   });
 
   it("журнал сделок: личные ячейки — «пришло на счёт» (take), общая полка — put", async () => {
-    s.units = 50;
+    s.units = OWN + 10;
     await settleFieldPayout("m1", 30, 90, cfgOf(wheat));
     const rows = s.shelf.map((o) => [o.source, o.side ?? "put", o.qty, o.account]);
     expect(rows).toEqual([
-      ["field", "take", 40, "acc_1"],
+      ["field", "take", OWN, "acc_1"],
       ["field", "put", 10, "acc_1"],
     ]);
     expect(String(s.shelf[0].ref)).toMatch(/:own$/);

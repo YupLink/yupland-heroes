@@ -9,6 +9,8 @@ import { getMiningState, saveMiningState, settleMiningSlots } from "./chips-mint
 import { CRAFT_RULES } from "./chips-craft";
 import { nanoid } from "nanoid";
 import { planUpgrade, toPlanPool, type PoolRow } from "./chips-upgrade-plan";
+import { craftGoldMult } from "./craft-gold-price";
+import { accountGold, payCraftGold, refundCraftGold } from "./craft-gold-pay";
 
 // Планировщик живёт в chips-upgrade-plan (общий с пакетной проверкой);
 // реэкспорт — для прежних импортов через chips-craft / chips.
@@ -34,12 +36,13 @@ async function buildAutoUpgradePlan(baseChipId: string, wallet: string) {
     .eq("status", "owned");
   const pool = toPlanPool((rawRows ?? []) as PoolRow[], baseChipId, Date.now());
 
-  const { computeTickets } = await import("./user");
-  const tix = await computeTickets(wallet);
+  // Золото аккаунта и ОДИН множитель цены на весь план.
+  const [haveGold, mult] = await Promise.all([accountGold(account), craftGoldMult()]);
   const plan = planUpgrade(
     { id: baseChipId, level: base.level, template: base.template_id },
     pool,
-    tix.availableRaw,
+    haveGold,
+    mult,
   );
   return { ...plan, account, collectionId: base.collection_id };
 }
@@ -56,23 +59,33 @@ export const previewAutoUpgradeChip = createServerFn({ method: "POST" })
       targetLevel: plan.targetLevel,
       burnChips: plan.burnChips,
       burnCount: plan.burnChips.length,
-      totalTickets: plan.totalTickets,
-      haveTickets: plan.haveTickets,
-      ticketShortfall: plan.ticketShortfall,
+      totalGold: plan.totalGold,
+      haveGold: plan.haveGold,
+      goldShortfall: plan.goldShortfall,
       shortfall: plan.shortfall,
       missReason: plan.missReason,
     };
   });
 
 export const autoUpgradeChip = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => z.object({ baseChipId: z.string().min(1) }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        baseChipId: z.string().min(1),
+        // Сколько золота показали игроку: план дороже показанного — отказ.
+        expectGold: z.number().min(0).max(1e9),
+      })
+      .parse(d),
+  )
   .handler(async ({ data }) => {
     requireFreshClient();
     const wallet = requireWallet();
     const plan = await buildAutoUpgradePlan(data.baseChipId, wallet);
     if (!plan.feasibleChips) throw new Error("Не хватает фишек для авто-улучшения");
-    if (plan.ticketShortfall > 0)
-      throw new Error(`Не хватает билетов: нужно ${plan.totalTickets}, у тебя ${plan.haveTickets}`);
+    // Цена и баланс — ДО любых движений (снятия с майнинга, списания).
+    if (plan.totalGold > data.expectGold + 0.5) throw new Error("Цена изменилась — обнови окно");
+    if (plan.goldShortfall > 0)
+      throw new Error(`Не хватает золота: нужно ${plan.totalGold}, у тебя ${plan.haveGold}`);
 
     const burnedIds = new Set<string>([...plan.burnChips.map((c) => c.id), data.baseChipId]);
     const stPre = await getMiningState(wallet);
@@ -88,28 +101,17 @@ export const autoUpgradeChip = createServerFn({ method: "POST" })
     // Сначала ДЕНЬГИ, потом товар (см. chips-craft.ts): id итоговой фишки
     // известен только после RPC, поэтому ключ идемпотентности — по операции.
     const upgradeRef = `upgrade-op:${nanoid(12)}`;
-    if (plan.totalTickets > 0) {
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({ wallet, delta: -plan.totalTickets, kind: "craft", ref: upgradeRef });
-    }
-    const undoUpgradeDebit = async () => {
-      if (plan.totalTickets <= 0) return;
-      const { moveTickets } = await import("./tickets-ledger");
-      await moveTickets({
-        wallet,
-        delta: plan.totalTickets,
-        kind: "refund",
-        ref: `upgrade-undo:${upgradeRef}`,
-      }).catch((e: unknown) => console.error(`[upgrade] возврат не прошёл ${wallet}:`, e));
-    };
+    await payCraftGold(plan.account, plan.totalGold, upgradeRef);
 
     const { data: rpcRows, error: rpcErr } = await sb.rpc("auto_craft_chip_atomic", {
       p_wallet: wallet,
       p_owner_wallets: [plan.account],
-      p_steps: plan.steps,
+      // cost = 0: билеты больше не берутся, иначе функция запишет «трату
+      // билетов» (chip_craft_ticket_spend). Золото уже списано выше.
+      p_steps: plan.steps.map((st) => ({ ...st, cost: 0 })),
     });
     if (rpcErr) {
-      await undoUpgradeDebit();
+      await refundCraftGold(plan.account, plan.totalGold, upgradeRef);
       const msg = rpcErr.message || String(rpcErr);
       if (msg.includes("sacrifices_must_be_identical"))
         throw new Error("Нужны фишки одного вида — их не хватило");
@@ -131,6 +133,6 @@ export const autoUpgradeChip = createServerFn({ method: "POST" })
       newChipId: row.final_chip_id,
       newLevel: Number(row.final_level),
       burned: plan.burnChips.length,
-      spentTickets: plan.totalTickets,
+      spentGold: plan.totalGold,
     };
   });

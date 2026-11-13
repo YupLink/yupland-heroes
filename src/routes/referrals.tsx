@@ -8,7 +8,7 @@ export const Route = createFileRoute("/referrals")({
       { title: "YupLink" },
       {
         name: "description",
-        content: "Приглашай друзей: за каждого, кто погасит NFT, получаешь +1 билет на клейм.",
+        content: "Приглашай друзей: Bonus Box за этапы приглашений и 10–20 % золотом с их покупок.",
       },
     ],
   }),

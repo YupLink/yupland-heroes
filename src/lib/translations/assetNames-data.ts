@@ -223,11 +223,12 @@ export const ASSET_NAME_EN: Record<string, string> = {
   "Страж Сокровища (80 Lv)": "Treasure Guardian (80 Lv)",
   "Чайка (3 Lv)": "Seagull (3 Lv)",
   "Чертенок  (5 Lv)": "Little Imp (5 Lv)",
+  Шаман: "Shaman",
   "Ядовитый Гриб (15 Lv)": "Poisonous Mushroom (15 Lv)",
   "Ящерица (1 Lv)": "Lizard (1 Lv)",
   // — raid_location: локации классического рейда —
   "Адские места": "Hellish Lands",
-  "Болото": "Swamp",
+  Болото: "Swamp",
   "Гиблое место": "Cursed Place",
   "Дремучий Лес": "Deep Forest",
   "Зимний лес": "Winter Forest",
@@ -237,4 +238,12 @@ export const ASSET_NAME_EN: Record<string, string> = {
   "Призрачные горы": "Ghostly Mountains",
   "Пустыная Сказка": "Desert Tale",
   "Пустыня Смерти": "Desert of Death",
+  // — raid_custom_item: заготовки шахт Архитектора (migrations/minev2-10) —
+  "Заготовка: Лесопилка": "Blueprint: Sawmill",
+  "Заготовка: Каменная шахта": "Blueprint: Stone Mine",
+  "Заготовка: Золотая шахта": "Blueprint: Gold Mine",
+  "Заготовка: Алмазная шахта": "Blueprint: Diamond Mine",
+  // — гриб DARAI (бывшая DARAI-шахта): стопка рюкзака и облик на карте (lib/daraiMine) —
+  "DARAI-шахта": "DARAI mine",
+  "Гриб DARAI": "DARAI Mushroom",
 };

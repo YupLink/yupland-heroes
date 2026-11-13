@@ -32,6 +32,10 @@ const RARITY_COLOR: Record<string, string> = {
  * игрок увидел бы прежнего героя до перезагрузки страницы.
  */
 
+/** Ключ плитки: экземпляр, иначе копия спящего, иначе шаблон (старый ответ). */
+const heroKey = (h: { id: string | null; itemId?: string | null; templateId: string }): string =>
+  h.id ?? h.itemId ?? h.templateId;
+
 export function TavernModal({ q, r, onClose }: { q: number; r: number; onClose: () => void }) {
   const qc = useQueryClient();
   const t = useT();
@@ -54,7 +58,7 @@ export function TavernModal({ q, r, onClose }: { q: number; r: number; onClose: 
 
   const swap = useMutation({
     // У спящего героя экземпляра ещё нет — его заводит сервер по шаблону.
-    mutationFn: (hero: { heroId?: string; templateId?: string }) =>
+    mutationFn: (hero: { heroId?: string; itemId?: string; templateId?: string }) =>
       swapHeroInTavern({ data: { ...hero, q, r } }),
     onSuccess: (res) => {
       toast.success(t("braid.tavern_swapped_toast", { hero: res.heroName, n: res.paid }));
@@ -138,8 +142,8 @@ export function TavernModal({ q, r, onClose }: { q: number; r: number; onClose: 
             <div className="grid grid-cols-3 gap-2">
               {(data?.heroes ?? []).map((h) => {
                 // Спящий герой (нулевой уровень, экземпляра нет) опознаётся по
-                // шаблону: раньше он в таверне не показывался вовсе.
-                const key = h.id ?? h.templateId;
+                // копии: у двух копий одного шаблона ключ шаблона совпадал.
+                const key = heroKey(h);
                 const chosen = pending === key;
                 const color = RARITY_COLOR[h.rarity] ?? "#9aa4bd";
                 // Отдыхающий (снят с грядки издалека) и батрачащий основным
@@ -212,8 +216,15 @@ export function TavernModal({ q, r, onClose }: { q: number; r: number; onClose: 
           <button
             type="button"
             onClick={() => {
-              const h = (data?.heroes ?? []).find((x) => (x.id ?? x.templateId) === pending);
-              if (h) swap.mutate(h.id ? { heroId: h.id } : { templateId: h.templateId });
+              const h = (data?.heroes ?? []).find((x) => heroKey(x) === pending);
+              if (h)
+                swap.mutate(
+                  h.id
+                    ? { heroId: h.id }
+                    : h.itemId
+                      ? { itemId: h.itemId }
+                      : { templateId: h.templateId },
+                );
             }}
             disabled={!pending || poor || spent || swap.isPending}
             className="flex w-full items-center justify-center gap-1.5 rounded-2xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-50"

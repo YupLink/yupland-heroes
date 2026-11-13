@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Castle } from "lucide-react";
 import { useAppStore } from "@/lib/store";
@@ -7,7 +8,7 @@ import { useAppStore } from "@/lib/store";
  * Подпись «Внутрянка», а не «Замок»: в HUD рейда уже есть кружок замка —
  * он везёт камеру к замку НА КАРТЕ, а эта кнопка открывает интерьер.
  */
-export function RaidCastleButton({ onClick }: { onClick?: () => void } = {}) {
+function RaidCastleButtonView({ onClick }: { onClick?: () => void } = {}) {
   const ru = useAppStore((s) => s.lang) === "ru";
   // Рейд открыт из замка (вход админа) — возврат в замок, а не в редактор.
   if (onClick)
@@ -34,3 +35,7 @@ export function RaidCastleButton({ onClick }: { onClick?: () => void } = {}) {
     </Link>
   );
 }
+
+// memo: экран рейда перерисовывается на каждый шаг героя, а этому компоненту
+// шаг ни при чём — без memo он с иконками шёл следом (замер 06.11.2026).
+export const RaidCastleButton = memo(RaidCastleButtonView);

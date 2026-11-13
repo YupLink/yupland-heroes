@@ -49,25 +49,24 @@ export const dict: Record<string, Entry> = {
     en: "The mine isn't set up yet",
   },
   // Пендинг-модель: перехват останавливает секундомер прежнего, целые часы
-  // начисляются ему сразу (SQL raid_mine_capture). Прежний текст про «теряет
-  // накопленное» остался от крон-эпохи, и игроки читали его как правило игры.
+  // ждут его «Забрать» в «Добыче» (владелец, 23.10.2026; minecap-01).
   "mine.reseize_hint": {
-    ru: "Перехват останавливает секундомер прежнего хозяина — целые часы начислятся ему сразу, минуты сгорят.",
-    en: "Seizing stops the old owner's stopwatch — whole hours are credited to them at once, minutes are lost.",
+    ru: "Перехват останавливает секундомер прежнего хозяина — целые часы ждут его в «Добыче», минуты сгорят.",
+    en: "Seizing stops the old owner's stopwatch — whole hours wait for them in Harvest, minutes are lost.",
   },
   "mine.you_have": { ru: "У тебя: {n} {res}", en: "You have: {n} {res}" },
+  // Замок шахтёра (§8.123, lib/mineWard.ts).
+  "mine.ward_put": { ru: "Замок на 3 ч · {n} ⚡", en: "Lock for 3 h · {n} ⚡" },
+  "mine.ward_done": { ru: "Замок на 3 ч · −{n} ⚡", en: "Locked for 3 h · −{n} ⚡" },
+  "mine.ward_locked": { ru: "Шахта под замком", en: "The mine is locked" },
+  "mine.ward_active": { ru: "Замок уже стоит", en: "Already locked" },
+  "mine.ward_not_yours": {
+    ru: "Замок — только на свою шахту",
+    en: "Only your own mine can be locked",
+  },
+  "mine.ward_need_miner": { ru: "Замок ставит только Шахтёр", en: "Only a Miner can lock a mine" },
 
-  // ────────── «Шахты отбили» в окне «Добыча» ──────────
-  "mine.captured_notice_title": { ru: "Шахты отбили · {n}", en: "Mines seized · {n}" },
-  "mine.captured_notice_row": {
-    ru: "начислено {n} {res} за {h} ч",
-    en: "{n} {res} credited for {h} h",
-  },
-  "mine.captured_notice_zero": {
-    ru: "накопленного не было (меньше часа)",
-    en: "nothing accrued (under an hour)",
-  },
-  "mine.captured_notice_ok": { ru: "Понятно", en: "Got it" },
+  // «Отбитые шахты» в окне «Добыча» — translations/mine-lost.ts.
 
   // ────────── причины отказа (приходят с сервера ключом) ──────────
   "braid.mine_not_grown": {
@@ -81,8 +80,8 @@ export const dict: Record<string, Entry> = {
   "braid.mine_yours": { ru: "Шахта уже твоя", en: "The mine is already yours" },
   // Сбор из устаревшего окна шахты, которую уже отбили (SQL raid_mine_claim).
   "braid.mine_not_owner": {
-    ru: "Шахта уже не твоя — накопленное начислено при перехвате",
-    en: "The mine isn't yours anymore — the accrued yield was credited on seizure",
+    ru: "Шахта уже не твоя — накопленное ждёт в «Добыче»",
+    en: "The mine isn't yours anymore — the accrued yield is waiting in Harvest",
   },
   "braid.mine_guarded": {
     ru: "Шахту стережёт босс — сначала победи его",

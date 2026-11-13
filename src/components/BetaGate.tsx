@@ -12,7 +12,10 @@ import { BetaScreen } from "./BetaScreen";
 // ссылку кому угодно).
 // /archive — открытый архив картинок игры: скачать может кто угодно.
 // /storage — отдельный сервис со своим подключением кошелька, сессия не нужна.
+// /privacy — политика конфиденциальности: её адрес проверяет Google (вход через Google).
 const ALLOW_PREFIXES = [
+  "/privacy",
+  "/crown",
   "/wallet",
   "/roadmap",
   "/screens",

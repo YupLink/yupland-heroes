@@ -40,6 +40,7 @@ export function SpellPillarAction({
 
       <button
         type="button"
+        data-spell-pillar-open
         onClick={() => setOpen(true)}
         disabled={!extra.can}
         className="flex w-full items-center justify-center gap-1.5 rounded-2xl gradient-gold px-4 py-3 text-sm font-bold text-gold-foreground disabled:opacity-50"
@@ -63,3 +64,4 @@ export function SpellPillarAction({
     </div>
   );
 }
+

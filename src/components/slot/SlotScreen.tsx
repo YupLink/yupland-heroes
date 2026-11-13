@@ -12,10 +12,13 @@ import { BonusNotice, BonusEnd } from "./cabinet/BonusNotice";
 import { DigScene } from "./cabinet/DigScene";
 import { CaveScene } from "./cabinet/CaveScene";
 import { RiskScene } from "./cabinet/RiskScene";
+import { CasinoTransition, useCasinoTransition } from "./CasinoTransition";
+import { SlotMusic } from "./music/SlotMusic";
 
 export function SlotScreen({ onClose }: { onClose?: () => void } = {}) {
   const ru = useLang() === "ru",
     navigate = useNavigate();
+  const transition = useCasinoTransition();
   const game = useSlotGame({ manualPresentation: true });
   const [statsOpen, setStatsOpen] = useState(false);
   const [bonusReceipt, setBonusReceipt] = useState<number | undefined>();
@@ -44,11 +47,17 @@ export function SlotScreen({ onClose }: { onClose?: () => void } = {}) {
       }))
     )
       return;
-    if (onClose) onClose();
-    else void navigate({ to: "/chips" });
+    transition.exit(() => {
+      if (onClose) onClose();
+      else void navigate({ to: "/chips" });
+    });
   };
+  useEffect(() => { if (game.error) transition.setAudioReady(true); }, [game.error, transition.setAudioReady]);
   return (
     <>
+      {!game.loading && !game.error && <SlotMusic state={game.state} ru={ru} transition={transition.stage} onReady={transition.setAudioReady} />}
+      {transition.stage !== "playing" && <CasinoTransition leaving={transition.stage === "leaving"} reveal={transition.reveal} ru={ru} />}
+      <div inert={transition.stage !== "playing" ? true : undefined}>
       <SlotCabinet
         api={{
           ...game,
@@ -61,21 +70,24 @@ export function SlotScreen({ onClose }: { onClose?: () => void } = {}) {
         retry={() => void game.retry()}
         onStats={session.data?.isAdmin ? () => setStatsOpen(true) : undefined}
       >
-        {game.state.phase === "bonus-won" && <BonusNotice {...props} />}
-        {game.state.phase === "bonus" && game.state.bonus && (
+        {transition.stage === "playing" && game.state.phase === "bonus-won" && <BonusNotice {...props} />}
+        {transition.stage === "playing" && game.state.phase === "bonus" && game.state.bonus && (
           <DigScene {...props} />
         )}
-        {game.state.phase === "super" && game.state.superGame && (
+        {transition.stage === "playing" && game.state.phase === "super" && game.state.superGame && (
           <CaveScene {...props} />
         )}
-        {game.state.phase === "risk" && game.state.risk && (
+        {transition.stage === "playing" && game.state.phase === "risk" && game.state.risk && (
           <RiskScene {...props} />
         )}
-        {game.state.phase === "bonus-end" && <BonusEnd {...props} />}
+        {transition.stage === "playing" && game.state.phase === "bonus-end" && <BonusEnd {...props} />}
       </SlotCabinet>
-      {session.data?.isAdmin && (
+      </div>
+      {transition.stage === "playing" && session.data?.isAdmin && (
         <SlotAdminStats open={statsOpen} onClose={() => setStatsOpen(false)} />
       )}
     </>
   );
 }
+
+

@@ -7,6 +7,7 @@ import { BossRewardPool } from "@/components/raid/RaidRewards";
 import { ChipSquadPicker, type LineChip } from "@/components/game/ChipSquadPicker";
 import { BetaAbilityBadges } from "./BetaAbilityBadges";
 import { BetaEncounterTop } from "./BetaEncounterTop";
+import { IslandBossDrops } from "./IslandBossDrops";
 import { serverBadgeLabel } from "./objectKind";
 import { useLang, useT } from "@/lib/i18n";
 import { localizeAssetName } from "@/lib/translations/assetNames";
@@ -135,6 +136,7 @@ export function BetaEncounterModal({
 
             <BetaAbilityBadges abilities={data.abilities ?? []} />
 
+            {data.islandDrops && <IslandBossDrops ru={lang === "ru"} />}
             {data.rewardConfig && (
               <BossRewardPool
                 cfg={data.rewardConfig as unknown as RewardCfg}

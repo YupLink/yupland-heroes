@@ -11,13 +11,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { requireAdmin } from "../../auth";
-import { godMapId } from "./god-map";
 import { dropMapBase, mapBase } from "./map-base";
 import { publishRaid } from "../../raidLive";
+import { requireGodAdmin } from "@/server/api/beta-raid/island/island-editor-auth";
 
 export const adminRebuildMap = createServerFn({ method: "POST" }).handler(async () => {
-  requireAdmin();
-  const mapId = await godMapId();
+  const { mapId } = await requireGodAdmin();
 
   // Сироты HP: объект с клетки убрали, а строка здоровья осталась. На саму
   // игру не влияет, но растёт и утяжеляет каждый снимок карты.

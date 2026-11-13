@@ -8,7 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { mcpExec } from "../db/mcpClient";
 import { RESOURCE_LIST } from "@/lib/resourceIcons";
-import { HERO_KNIGHT_SRC, HERO_SPRITES, heroSpriteSrc } from "@/lib/gameArt";
+import { HERO_KNIGHT_SRC, HERO_SPRITES, SHIP_BLASTED_SRC, heroSpriteSrc } from "@/lib/gameArt";
 import { skinDisplayName } from "@/lib/skinName";
 import type { ArchiveCat, ArchiveItem } from "@/lib/mediaArchive";
 
@@ -72,6 +72,14 @@ function staticItems(): ArchiveItem[] {
       url: `/ships/big-${look}.webp`,
     });
   }
+  // Подбитый динамитом — один арт на малый и большой (dynamite-08).
+  out.push({
+    key: "sprite:ship-blasted",
+    cat: "sprite",
+    sub: null,
+    name: "Корабль — подбитый",
+    url: SHIP_BLASTED_SRC,
+  });
   return out;
 }
 
@@ -82,6 +90,7 @@ async function dbItems(): Promise<ArchiveItem[]> {
        SELECT kind AS cat, NULL::text AS sub, name, image_url AS url, id, NULL::text AS base
          FROM yuplink.mystic_item_template WHERE active
           AND kind IN ('terrain','road','building','decoration','chest','hero','artifact')
+          AND coalesce(meta->>'crafted', '') = ''
        UNION ALL
        SELECT 'skin', g.name, s.name, s.image, s.id, t.name
          FROM yuplink.raid_building_skin s

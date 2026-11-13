@@ -7,9 +7,12 @@
 //
 // Под кораблём — полоска запаса хода: пока она есть, судно ходит; кончилась —
 // довозит капитана до берега и встаёт до починки (см. lib/shipHealth.ts).
+//
+// Пятый облик — подбитый синим динамитом (dynamite-08): свой арт на малый и большой,
+// без полоски — его не чинят, через час он исчезает (lib/shipBlasted).
 import { R } from "./hexGeometry";
 import type { DrawScene } from "./betaCanvasScene";
-import { shipArtSrc, bigShipArtSrc } from "@/lib/gameArt";
+import { shipArtSrc, bigShipArtSrc, SHIP_BLASTED_SRC } from "@/lib/gameArt";
 
 const SHIP_W = R * 1.7;
 /** Большой корабль крупнее обычного — своим галеоном. */
@@ -32,6 +35,10 @@ export type ShipMark = {
   mineBig: boolean;
   /** Сколько судов разбито: жизни кончились, экипаж сошёл. */
   broken: number;
+  /** Сколько из разбитых подбиты синим динамитом — не чинятся и держат клетку. */
+  blasted?: number;
+  /** Когда подбит последний из них (мс): клетка освободится через час. */
+  blastedAt?: number | null;
   /** Запас хода видимого борта и его потолок — для полоски. */
   hp: number;
   hpMax: number;
@@ -40,19 +47,28 @@ export type ShipMark = {
 /**
  * Какой облик показать. Свой корабль важнее всего — он же наша фигурка;
  * дальше свободный (видно, что причал открыт), и только потом чужой занятый.
+ * Целых нет — подбитый важнее просто разбитого: он держит клетку.
  */
-export function shipLook(ship: ShipMark): "mine" | "other" | "free" | "dead" {
+export function shipLook(ship: ShipMark): "mine" | "other" | "free" | "dead" | "blasted" {
   if (ship.mine) return "mine";
   if (ship.free > 0) return "free";
   if (ship.busy > 0) return "other";
+  if ((ship.blasted ?? 0) > 0) return "blasted";
   // Целых не осталось: показываем то, что есть на самом деле — разбитый борт.
   return ship.broken > 0 ? "dead" : "free";
 }
 
-export const shipImageSrc = (ship: ShipMark): string =>
-  ship.big ? bigShipArtSrc(shipLook(ship)) : shipArtSrc(shipLook(ship));
+export function shipImageSrc(ship: ShipMark): string {
+  const look = shipLook(ship);
+  if (look === "blasted") return SHIP_BLASTED_SRC;
+  return ship.big ? bigShipArtSrc(look) : shipArtSrc(look);
+}
 
-const shipImageKey = (ship: ShipMark): string => `ship-${ship.big ? "big-" : ""}${shipLook(ship)}`;
+/** Ключ арта в кэше картинок карты (gameArt.MAP_PRELOAD). */
+export function shipImageKey(ship: ShipMark): string {
+  const look = shipLook(ship);
+  return look === "blasted" ? "ship-blasted" : `ship-${ship.big ? "big-" : ""}${look}`;
+}
 
 export function drawShip(scene: DrawScene, p: { x: number; y: number }, ship: ShipMark): void {
   const { g } = scene;
@@ -68,7 +84,8 @@ export function drawShip(scene: DrawScene, p: { x: number; y: number }, ship: Sh
     g.fillStyle = ship.mine ? "#4fd6e0" : ship.busy > 0 ? "#7f1d1d" : "#8a6a3a";
     g.fill();
   }
-  drawHpBar(scene, p, ship, w);
+  // Подбитому полоска ни к чему: его не чинят, и ноль под ним только путает.
+  if (shipLook(ship) !== "blasted") drawHpBar(scene, p, ship, w);
   drawShipCount(scene, p, ship);
 }
 

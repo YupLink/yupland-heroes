@@ -8,9 +8,11 @@ import { useEffect, useRef, useState } from "react";
 import { useLang } from "@/lib/i18n";
 import { ProfileTreasuryEntry } from "./ProfileTreasuryEntry";
 import { CastleAccount } from "./CastleAccount";
+import { useMyName } from "@/lib/hooks/useMyName";
 import "./castle-profile.css";
 import { CastleReferrals } from "./CastleReferrals";
 import { CastleAchievements } from "./CastleAchievements";
+import { ReferralRewardDot } from "@/components/referrals/ReferralRewardDot";
 import trophyImage from "@/assets/harvest/trophy.webp";
 import yupikPackImage from "@/assets/quests/yupik-pack.webp";
 export type PlayerLevelProgress = { level: number | null; progressPct: number | null };
@@ -36,6 +38,8 @@ export function CastleProfile({
 }) {
   const ru = useLang() === "ru";
   const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
+  // Своё имя из профиля — так игрока видят другие (lib/playerName).
+  const myName = useMyName(!!session.data?.wallet);
   const hero = useQuery({ queryKey: ["my-selected-hero"], queryFn: () => getMySelectedHero() });
   // Награды портала — теперь «Ачивки» игры: старые перенесены в аккаунт (§8.57).
   const [rewardsOpen, setRewardsOpen] = useState(false);
@@ -83,7 +87,9 @@ export function CastleProfile({
                 </div>
                 <h2>{ru ? "Игрок" : "Player"}</h2>
                 <p className="text-muted-foreground">
-                  {session.data?.telegramUsername
+                  {myName.data?.name
+                    ? myName.data.name
+                    : session.data?.telegramUsername
                     ? `@${session.data.telegramUsername}`
                     : session.isPending
                       ? ru
@@ -151,6 +157,7 @@ export function CastleProfile({
                     onClick={() => setTab(id)}
                   >
                     {id === "account" ? (ru ? "Настройки" : "Settings") : ru ? "Друзья" : "Friends"}
+                    {id === "referrals" && <ReferralRewardDot className="ml-1.5 align-middle" />}
                   </button>
                 ))}
               </div>

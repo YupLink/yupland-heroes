@@ -92,7 +92,8 @@ describe("мешочки во «втором обзоре»", () => {
     drop("f", 11, 9);
     explore("w1", "11,9");
     expect(await near()).toEqual(["11,9"]);
-    for (const b of db.bags.values()) if (b.q === 11 && b.r === 9) b.items.forEach((i) => (i.count = 0));
+    for (const b of db.bags.values())
+      if (b.q === 11 && b.r === 9) b.items.forEach((i) => (i.count = 0));
     expect(await near()).toEqual([]);
   });
 
@@ -117,10 +118,15 @@ describe("мешочки во «втором обзоре»", () => {
 });
 
 describe("окно клетки", () => {
-  type View = { shovel: boolean; bags: Array<{ items: Array<{ stackKey: string; count: number; leftMs: number }> }> };
+  type View = {
+    shovel: boolean;
+    bags: Array<{ items: Array<{ stackKey: string; count: number; leftMs: number }> }>;
+  };
   const at = (q: number, r: number) => {
     who.wallet = "w1";
-    return (read.getLootBagsAt as unknown as (a: { data: object }) => Promise<View>)({ data: { q, r } });
+    return (read.getLootBagsAt as unknown as (a: { data: object }) => Promise<View>)({
+      data: { q, r },
+    });
   };
 
   it("только вплотную: соседняя клетка — да, через одну — «подойди»", async () => {

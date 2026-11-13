@@ -7,8 +7,14 @@ type Entry = Record<Lang, string>;
 export const dict: Record<string, Entry> = {
   // ────────── рейд-локации ──────────
   "raid.title": { ru: "Рейд", en: "Raid" },
-  "raid.pick_week_location": { ru: "Выбери локацию на эту неделю", en: "Pick a location for this week" },
-  "raid.no_locations": { ru: "Нет активных локаций. Создай их в админке (Рейд-локации).", en: "No active locations. Create them in the admin panel (Raid locations)." },
+  "raid.pick_week_location": {
+    ru: "Выбери локацию на эту неделю",
+    en: "Pick a location for this week",
+  },
+  "raid.no_locations": {
+    ru: "Нет активных локаций. Создай их в админке (Рейд-локации).",
+    en: "No active locations. Create them in the admin panel (Raid locations).",
+  },
   "raid.no_active_locations": { ru: "Нет активных локаций.", en: "No active locations." },
   "raid.back": { ru: "Назад", en: "Back" },
   "raid.forward": { ru: "Вперёд", en: "Forward" },
@@ -22,7 +28,10 @@ export const dict: Record<string, Entry> = {
   "raid.here_btn": { ru: "Ты здесь", en: "You are here" },
   "raid.fork_leads_to": { ru: "развилка ведёт в:", en: "fork leads to:" },
   "raid.fork_choose": { ru: "Развилка — выбери локацию", en: "Fork — choose a location" },
-  "raid.fork_branch_here": { ru: "Развилка — здесь ветвление на локации", en: "Fork — the location branches here" },
+  "raid.fork_branch_here": {
+    ru: "Развилка — здесь ветвление на локации",
+    en: "Fork — the location branches here",
+  },
   "raid.no_paths": { ru: "Пути пока не настроены.", en: "Paths aren't set up yet." },
   "raid.on_location": { ru: "На локации: {n}", en: "On location: {n}" },
   "raid.go": { ru: "Перейти", en: "Go" },
@@ -47,10 +56,16 @@ export const dict: Record<string, Entry> = {
     en: "Pool splits between top {n} by damage",
   },
   "raid.tournament": { ru: "Турнир", en: "Tournament" },
-  "raid.nobody_fought_boss": { ru: "Пока никто не бил этого босса.", en: "Nobody has fought this boss yet." },
+  "raid.nobody_fought_boss": {
+    ru: "Пока никто не бил этого босса.",
+    en: "Nobody has fought this boss yet.",
+  },
   "raid.you_suffix": { ru: " · ты", en: " · you" },
   "raid.defeated_bosses": { ru: "Побеждённые", en: "Defeated" },
-  "raid.defeated_empty": { ru: "Здесь появятся побеждённые боссы локации — твои места и награды.", en: "Defeated location bosses will appear here — your places and rewards." },
+  "raid.defeated_empty": {
+    ru: "Здесь появятся побеждённые боссы локации — твои места и награды.",
+    en: "Defeated location bosses will appear here — your places and rewards.",
+  },
   "raid.not_fought": { ru: "не бил", en: "not fought" },
   "raid.no_reward": { ru: "награды нет", en: "no rewards" },
   "raid.chest": { ru: "Сундук", en: "Chest" },
@@ -66,7 +81,10 @@ export const dict: Record<string, Entry> = {
   "raid.fight_error": { ru: "Ошибка боя", en: "Fight error" },
   "raid.boss_defeated_excl": { ru: "Босс повержен!", en: "Boss defeated!" },
   "raid.fight_over": { ru: "Бой окончен", en: "Fight over" },
-  "raid.go_forward_hint": { ru: "Иди вперёд — дальше по цепочке", en: "Move forward — onward down the chain" },
+  "raid.go_forward_hint": {
+    ru: "Иди вперёд — дальше по цепочке",
+    en: "Move forward — onward down the chain",
+  },
   "raid.damage_dealt": { ru: "Нанесённый урон", en: "Damage dealt" },
   "raid.ok": { ru: "Ок", en: "OK" },
   "raid.claiming": { ru: "Забираю…", en: "Claiming…" },
@@ -84,7 +102,10 @@ export const dict: Record<string, Entry> = {
     ru: "Одну награду выдать не удалось — она осталась в очереди",
     en: "One reward could not be delivered — it stays in the queue",
   },
-  "raid.no_damage_yet": { ru: "Пока никто не бил в этой локации.", en: "Nobody has fought in this location yet." },
+  "raid.no_damage_yet": {
+    ru: "Пока никто не бил в этой локации.",
+    en: "Nobody has fought in this location yet.",
+  },
 
   // ── восстановлено после декомпозиции (потерялись при разбиении) ──
   "raid.loc_tournament_hint": {

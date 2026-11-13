@@ -10,6 +10,7 @@
 //
 // Содержимое мешочка — порции (вид, срок, штуки, метки), как в
 // raid_loot_bag_item: срок 24 часа с попадания, у бугорка — с закапывания.
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { createHash } from "node:crypto";
 import {
   ORIGINS,
@@ -126,7 +127,7 @@ export const packOf = (heroId: string): Map<string, Stack> => {
   return p;
 };
 const cellsOf = (p: Map<string, Stack>) =>
-  [...p.values()].reduce((s, x) => s + Math.ceil(Math.max(0, x.count) / 20), 0);
+  [...p.values()].reduce((s, x) => s + Math.ceil(Math.max(0, x.count) / CELL_SIZE), 0);
 export const livePortion = (p: Portion): boolean => p.count > 0 && p.expiresAt > db.now;
 export const alive = (b: FakeBag | undefined): b is FakeBag => !!b && b.items.some(livePortion);
 /** Сколько вида stackKey живо в мешочке (сумма порций). */
@@ -165,7 +166,7 @@ export function deposit(o: {
   const cur = pack.get(o.stackKey);
   const occ = cellsOf(pack);
   const was = cur?.count ?? 0;
-  const next = occ - Math.ceil(was / 20) + Math.ceil((was + o.qty) / 20);
+  const next = occ - Math.ceil(was / CELL_SIZE) + Math.ceil((was + o.qty) / CELL_SIZE);
   if (next > Math.max(o.capacity, occ)) {
     throw new Error(`market.backpack_need:${next - occ}:${Math.max(0, o.capacity - occ)}`);
   }

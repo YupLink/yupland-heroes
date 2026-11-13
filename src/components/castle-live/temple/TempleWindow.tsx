@@ -5,9 +5,11 @@ import { getCastleTemple } from "@/server/api/castle-temple";
 import { TEMPLE_KEY } from "./templeUi";
 import { TemplePrayer } from "./TemplePrayer";
 import { TempleUpgrade } from "./TempleUpgrade";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
 export function TempleWindow({ ru }: { ru: boolean }) {
   const q = useQuery({ queryKey: TEMPLE_KEY, queryFn: () => getCastleTemple(), staleTime: 15_000 });
+  const stars = useEntryRules().stars;
   if (q.isPending) return <p role="status" className="py-8 text-center text-sm">{ru ? "Загрузка…" : "Loading…"}</p>;
   if (q.isError || !q.data) {
     return (
@@ -35,6 +37,7 @@ export function TempleWindow({ ru }: { ru: boolean }) {
         prayAt={t.prayAt}
         atCastle={t.atCastle}
         extendStars={t.extendStars}
+        stars={stars}
       />
       <TempleUpgrade ru={ru} level={t.level} maxLevel={t.maxLevel} cost={t.cost} resources={t.resources} />
     </div>

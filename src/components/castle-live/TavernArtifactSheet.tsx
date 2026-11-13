@@ -16,6 +16,10 @@ import { equipArtifact, getOwnedHeroGear } from "@/server/api/heroes-gear";
 import { getMySelectedHero } from "@/server/api/heroes-select";
 import type { GearItemView } from "@/server/api/heroes-gear-read";
 import { TavernDialog } from "./TavernDialog";
+import { ArtWearBar } from "@/components/ArtWearBar";
+import { useArtLocked } from "@/lib/hooks/useArtBroken";
+import { humanError } from "@/lib/humanError";
+import { EnchantMark } from "@/components/EnchantMark";
 
 const finite = (value: number) => Number.isFinite(value) ? value : 0;
 const number = (value: number, ru: boolean) => new Intl.NumberFormat(ru ? "ru" : "en", { maximumFractionDigits: 2 }).format(finite(value));
@@ -27,9 +31,11 @@ function ItemFace({ item, status, ru }: { item: Item | GearItemView; status: "se
     <div data-compare-image style={{ borderColor: color }}>
       {imageUrl ? <img src={thumb(imageUrl, 180)} alt="" /> : <GearSlotIcon slot={item.slot ?? "Голова"} />}
       <span data-compare-sticker={status}>{status === "equipped" ? (ru ? "Надето" : "Equipped") : (ru ? "Выбрано" : "Selected")}</span>
+      <ArtWearBar durability={item.durability} className="rounded-b-[7px]" />
     </div>
     <strong>{stripStatSuffix(item.name)}</strong>
     <span style={{ color }}>{metaLabel(item.rarity, ru ? "ru" : "en")}</span>
+    <EnchantMark pct={item.enchantPct} show="text" className="mt-0.5 text-[11px]" />
   </div>;
 }
 
@@ -39,6 +45,8 @@ export function TavernArtifactSheet({ artifact, heroId, heroName, canEquip, onCl
   const ru = useLang() === "ru";
   const qc = useQueryClient();
   const [slotKey, setSlotKey] = useState<string | null>(null);
+  // Сломанный при запущенной механике не надевается (§8.63 п.3) — кнопка неактивна.
+  const broken = useArtLocked()(artifact.durability);
   const gear = useQuery({
     queryKey: ["my-hero-gear", "view", heroId],
     queryFn: () => getOwnedHeroGear({ data: { heroId: heroId! } }),
@@ -104,7 +112,7 @@ export function TavernArtifactSheet({ artifact, heroId, heroName, canEquip, onCl
     {!candidate && rawFacts.length > 0 && <div data-compare-breakdown><h4>{ru ? "Характеристики предмета" : "Item attributes"}</h4>{rawFacts.map((fact, index) => <p key={`${index}-${fact}`}>{fact}</p>)}</div>}
     {!heroId && <p data-compare-note>{ru ? "Выбери героя, чтобы сравнить предметы." : "Select a hero to compare items."}</p>}
     {heroId && gear.isSuccess && !candidate && <p data-compare-note>{ru ? "Для этого героя расчёт предмета сейчас недоступен." : "This item's calculation is unavailable for this hero."}</p>}
-    {!wornSlot && candidate && chosenSlot && canEquip && <button data-compare-equip data-game-button="primary" type="button" disabled={equip.isPending} onClick={() => equip.mutate()}>{equip.isPending ? (ru ? "Надеваем…" : "Equipping…") : `${ru ? "Надеть" : "Equip"} ${stripStatSuffix(artifact.name)}`}</button>}
-    {equip.isError && <p role="alert" data-compare-note>{equip.error instanceof Error ? equip.error.message : (ru ? "Не удалось надеть предмет." : "Could not equip item.")}</p>}
+    {!wornSlot && candidate && chosenSlot && canEquip && <button data-compare-equip data-game-button="primary" type="button" disabled={equip.isPending || broken} data-art-locked={broken ? "1" : undefined} onClick={() => equip.mutate()}>{equip.isPending ? (ru ? "Надеваем…" : "Equipping…") : `${ru ? "Надеть" : "Equip"} ${stripStatSuffix(artifact.name)}`}</button>}
+    {equip.isError && <p role="alert" data-compare-note>{equip.error instanceof Error ? humanError(equip.error) : (ru ? "Не удалось надеть предмет." : "Could not equip item.")}</p>}
   </TavernDialog>;
 }

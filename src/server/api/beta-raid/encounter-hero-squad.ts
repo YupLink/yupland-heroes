@@ -9,6 +9,7 @@
 // по умолчанию выключен: вызывающий, который про него не знает, получает
 // squad: null и идёт прежней веткой resolveLineup.
 import { loadHeroPower, type HeroPowerInfo } from "./hero-power";
+import { withStrip } from "./hero-strip";
 import { resolveHeroSquadLineup, type HeroSquadLineup } from "./encounter-lineup-squad";
 
 export type HeroSide = { hero: HeroPowerInfo | null; squad: HeroSquadLineup | null };
@@ -25,8 +26,9 @@ export async function loadHeroSide(
   },
 ): Promise<HeroSide> {
   // Герой приходит уже ослабленным: пункты снимает loadHeroPower (hero-power),
-  // одной точкой на бой, карту и окно героя.
-  const hero = await loadHeroPower(wallet);
+  // одной точкой на бой, карту и окно героя. Снятие иммунитетов — только для
+  // боя, поэтому здесь (hero-strip): оба боя рейда собирают героя этой функцией.
+  const hero = await withStrip(wallet, await loadHeroPower(wallet));
   if (!hero) return { hero: null, squad: null };
   if (!opts?.squadFallback) return { hero, squad: null };
 

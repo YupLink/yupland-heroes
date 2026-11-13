@@ -8,7 +8,7 @@
 // т.е. в худшем случае как было, без поломки картинок.
 import { createFileRoute } from "@tanstack/react-router";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { createHash } from "node:crypto";
 
 const UPLOADS_DIR =
@@ -25,6 +25,18 @@ const ALLOWED_HOST_SUFFIX = [
   "dweb.link",
   "service.yupland.io",
 ];
+
+const FULL_WIDTHS = new Set([1024, 1536]);
+// Ширины и качество — из короткого списка (аудит 11.11.2026): раньше каждая
+// ширина 32…640 и каждое качество давали свой файл в кэше — диск можно было
+// забить подбором параметров. Просили между — берём ближайшую большую.
+const WIDTHS = [32, 48, 64, 96, 128, 160, 192, 256, 320, 384, 512, 640];
+const QUALITIES = [40, 50, 60, 72, 82, 85, 90];
+/** Больше — не картинка для превью: не качаем. */
+const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+const snapUp = (list: number[], v: number) => list.find((x) => x >= v) ?? list[list.length - 1];
+const snapNear = (list: number[], v: number) =>
+  list.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
 
 function webp(buf: Buffer, status = 200): Response {
   return new Response(new Uint8Array(buf), {
@@ -43,22 +55,41 @@ export const Route = createFileRoute("/api/img")({
         const url = new URL(request.url);
         const u = url.searchParams.get("u");
         if (!u) return new Response("no url", { status: 400 });
-        const w = Math.min(
-          640,
-          Math.max(32, parseInt(url.searchParams.get("w") ?? "256", 10) || 256),
-        );
-        const q = Math.min(90, Math.max(40, parseInt(url.searchParams.get("q") ?? "72", 10) || 72));
+        // Обычно до 640; газета читается с увеличением — ей полный размер (только эти
+        // ширины, чтобы кэш не плодился на каждую).
+        const wAsked = parseInt(url.searchParams.get("w") ?? "256", 10) || 256;
+        const w = FULL_WIDTHS.has(wAsked) ? wAsked : snapUp(WIDTHS, wAsked);
+        const q = snapNear(QUALITIES, parseInt(url.searchParams.get("q") ?? "72", 10) || 72);
         // cut=white — вырезать near-white фон (боссы на белом).
         // cut=black — вырезать чёрный фон у JPEG-ассетов: часть артефактов
         // залита в JPEG, где прозрачности нет, и на карте давала чёрный круг.
         const cutParam = url.searchParams.get("cut");
         const cut = cutParam === "white" ? "white" : cutParam === "black" ? "black" : "";
-        // Фолбэк — отдать оригинал (в худшем случае как было).
-        const fallback = () => new Response(null, { status: 302, headers: { location: u } });
+        // Фолбэк — отдать оригинал (в худшем случае как было): свой /uploads или
+        // http(s)-адрес (картинки NFT с чужих хостов идут сюда же). Иные схемы — нет.
+        const fallback = () =>
+          u.startsWith("/uploads/") || /^https?:\/\//i.test(u)
+            ? new Response(null, { status: 302, headers: { location: u } })
+            : new Response("bad url", { status: 400 });
+        const allowed = (host: string) =>
+          ALLOWED_HOST_SUFFIX.some((h) => host === h || host.endsWith("." + h));
 
         try {
           // Ключ кэша.
-          const key = createHash("sha1").update(`${u}|${w}|${q}|${cut}`).digest("hex") + ".webp";
+          // Один файл — один ключ (аудит 11.11.2026): путь — тот же, что читаем с
+          // диска; у внешнего адреса — без «?…» и «#…» (шлюзам IPFS они не нужны).
+          let norm = u;
+          if (u.startsWith("/uploads/")) {
+            norm = `/uploads/${posix.normalize(u.slice("/uploads/".length).replace(/\.\.+/g, ""))}`;
+          } else {
+            try {
+              const pu = new URL(u);
+              norm = `${pu.protocol}//${pu.host.toLowerCase()}${pu.pathname}`;
+            } catch {
+              /* не адрес — ниже уйдёт в фолбэк */
+            }
+          }
+          const key = createHash("sha1").update(`${norm}|${w}|${q}|${cut}`).digest("hex") + ".webp";
           const cachePath = join(CACHE_DIR, key);
           try {
             const cached = await readFile(cachePath);
@@ -79,19 +110,32 @@ export const Route = createFileRoute("/api/img")({
             } catch {
               return fallback();
             }
-            const ok = ALLOWED_HOST_SUFFIX.some((h) => host === h || host.endsWith("." + h));
-            if (!ok) return fallback();
+            if (!allowed(host)) return fallback();
             // Наш домен + /uploads → читаем файл напрямую (без сетевого хопа).
             const pu = new URL(u);
             if (host === "service.yupland.io" && pu.pathname.startsWith("/uploads/")) {
               const rel = pu.pathname.slice("/uploads/".length).replace(/\.\.+/g, "");
               input = await readFile(join(UPLOADS_DIR, rel));
             } else {
-              const r = await fetch(u, {
-                signal: AbortSignal.timeout(8000),
-              });
-              if (!r.ok) return fallback();
+              // Переходы — только на разрешённые хосты (шлюзы IPFS уводят на свой
+              // поддомен), иначе разрешённый хост увёл бы запрос на внутренний адрес.
+              let next = u;
+              let r: Response | null = null;
+              for (let hop = 0; hop < 4; hop++) {
+                r = await fetch(next, { signal: AbortSignal.timeout(8000), redirect: "manual" });
+                if (r.status < 300 || r.status >= 400) break;
+                const loc = r.headers.get("location");
+                const to = loc ? new URL(loc, next) : null;
+                if (!to || to.protocol !== "https:" || !allowed(to.hostname.toLowerCase())) {
+                  return fallback();
+                }
+                next = to.href;
+                r = null;
+              }
+              if (!r || !r.ok) return fallback();
+              if (Number(r.headers.get("content-length")) > MAX_SOURCE_BYTES) return fallback();
               input = Buffer.from(await r.arrayBuffer());
+              if (input.length > MAX_SOURCE_BYTES) return fallback();
             }
           } else {
             return fallback();

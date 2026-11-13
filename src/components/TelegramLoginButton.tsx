@@ -1,30 +1,25 @@
 // Кнопка «Войти через Telegram» для ВЕБА (браузер вне Telegram).
 //
-// Рендерит официальный Telegram Login Widget: Телеграм подписывает личность
+// С 09.11.2026 кнопка своя (lib/auth/tgOauth): видна сразу и меняет язык без
+// перезагрузки; нажатие открывает то же окно входа Telegram, что и виджет.
+// Телеграм подписывает личность
 // (HMAC ботом @yuplink_bot, домен привязан в BotFather), сервер проверяет
 // подпись (loginViaTelegramWidget) и сажает сессию — БЕЗ кошелька. Это и есть
 // «вход без коша»: Telegram = сама личность (identity-курс).
 //
 // В мини-апке виджет не нужен (там вход по initData через NearConnectorBridge) —
 // поэтому внутри Telegram кнопку не показываем.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Send } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLang } from "@/lib/i18n";
 import { toast } from "sonner";
 import { useAppStore } from "@/lib/store";
 import { loginViaTelegramWidget } from "@/server/api/user-telegram";
-
-const BOT = "yuplink_bot";
-
-interface TgUser {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
+import { getTgLoginBotId } from "@/server/api/tg-login-bot";
+import { openTgOauth, parseTgAuthHash, type TgAuthData } from "@/lib/auth/tgOauth";
+import "./auth/login-buttons.css";
 
 function currentRef(): string | undefined {
   if (typeof window === "undefined") return undefined;
@@ -38,22 +33,20 @@ function isInTelegram(): boolean {
 }
 
 export function TelegramLoginButton() {
-  const host = useRef<HTMLDivElement | null>(null);
   const setWallet = useAppStore((s) => s.setWallet);
   const qc = useQueryClient();
   const lang = useLang();
   const [busy, setBusy] = useState(false);
   const [inTelegram] = useState(isInTelegram);
-  // Виджет рисует Telegram со своего сервера — и при смене языка его надо
-  // пересобрать заново. Секунд пять кнопки нет вовсе; вместо дырки в экране
-  // держим её место заглушкой.
-  const [ready, setReady] = useState(false);
+  const bot = useQuery({
+    queryKey: ["tg-login-bot"],
+    queryFn: () => getTgLoginBotId(),
+    enabled: !inTelegram,
+    staleTime: Infinity,
+  });
 
-  useEffect(() => {
-    if (inTelegram) return;
-    const w = window as unknown as { onYupTelegramAuth?: (u: TgUser) => void };
-    // Глобальный колбэк, который вызывает виджет Telegram после авторизации.
-    w.onYupTelegramAuth = async (user: TgUser) => {
+  const login = useCallback(
+    async (user: TgAuthData) => {
       setBusy(true);
       try {
         const res = await loginViaTelegramWidget({ data: { ...user, ref: currentRef() } });
@@ -68,50 +61,36 @@ export function TelegramLoginButton() {
       } finally {
         setBusy(false);
       }
-    };
-    const el = host.current;
-    if (!el) return;
-    el.innerHTML = "";
-    setReady(false);
-    const seen = new MutationObserver(() => {
-      if (el.childElementCount > 1) setReady(true);
-    });
-    seen.observe(el, { childList: true });
-    const s = document.createElement("script");
-    s.async = true;
-    s.src = "https://telegram.org/js/telegram-widget.js?22";
-    s.setAttribute("data-telegram-login", BOT);
-    // Надпись на кнопке рисует сам Telegram: без data-lang он берёт язык
-    // браузера, и у русского телефона кнопка оставалась русской посреди
-    // английского экрана.
-    s.setAttribute("data-lang", lang);
-    s.setAttribute("data-size", "large");
-    s.setAttribute("data-radius", "14");
-    s.setAttribute("data-onauth", "onYupTelegramAuth(user)");
-    el.appendChild(s);
-    return () => {
-      seen.disconnect();
-      el.innerHTML = "";
-      delete w.onYupTelegramAuth;
-    };
-  }, [inTelegram, setWallet, qc, lang]);
+    },
+    [setWallet, qc],
+  );
+
+  // Окно входа открылось переходом (телефон без всплывающих окон) — Telegram вернул
+  // сюда с #tgAuthResult=…: забрать данные и убрать их из адреса.
+  useEffect(() => {
+    if (inTelegram) return;
+    const data = parseTgAuthHash(window.location.hash);
+    if (!data) return;
+    history.replaceState(null, "", window.location.href.replace(/#.*$/, ""));
+    void login(data);
+  }, [inTelegram, login]);
 
   if (inTelegram) return null;
-
+  const botId = bot.data?.botId ?? null;
   return (
-    <div className="relative flex w-full flex-col items-center">
-      {!ready && (
-        <div className="h-[46px] w-[238px] animate-pulse rounded-[14px] bg-[#54a9eb]/30" />
-      )}
-      <div
-        ref={host}
-        className={[
-          busy ? "pointer-events-none opacity-60" : "",
-          ready ? "" : "absolute opacity-0",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      />
+    <div className="flex h-[46px] w-full items-center justify-center">
+      <button
+        type="button"
+        className="tg-login-btn"
+        aria-busy={busy}
+        onClick={() => {
+          if (!botId || busy) return;
+          openTgOauth(botId, lang, (d) => d && void login(d));
+        }}
+      >
+        <Send aria-hidden="true" />
+        {lang === "ru" ? "Войти через Telegram" : "Log in with Telegram"}
+      </button>
     </div>
   );
 }

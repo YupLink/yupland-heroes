@@ -80,7 +80,8 @@ export const adminGiftEnergyToActive = createServerFn({ method: "POST" })
     const recipients = players.filter((p) => gotIt.has(p.accountId) && p.telegramId);
 
     // Письма шлём после записи: молчаливый подарок игрок просто не заметит.
-    const { tgSendIfEnabled } = await import("../tg");
+    // От игрового бота с кнопкой в игру (владелец 20.10).
+    const { gameBotSendIfEnabled, gamePlayButton } = await import("../tgGameBot");
     const { getUserLang } = await import("../userLang");
     const { tFor } = await import("@/lib/i18n");
     const writeTo = async (p: (typeof recipients)[number]): Promise<boolean> => {
@@ -92,7 +93,9 @@ export const adminGiftEnergyToActive = createServerFn({ method: "POST" })
         "",
         tFor(lang, "bot.gift_footer"),
       ].join("\n");
-      return tgSendIfEnabled(p.telegramId as number, text).catch(() => false);
+      return gameBotSendIfEnabled(p.telegramId as number, text, gamePlayButton(tFor(lang, "bot.game_play"))).catch(
+        () => false,
+      );
     };
 
     let notified = 0;

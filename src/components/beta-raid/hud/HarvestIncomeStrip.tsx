@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Clock3, Gem, Mountain, Sprout, TreePine, Wheat } from "lucide-react";
+import { ChevronRight, Clock3, Gem, MapPin, Mountain, Sprout, TreePine, Wheat } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { formatQty } from "@/lib/formatQty";
-import { livePendingAmount } from "@/lib/minePending";
+import { mineRowReady, lostMarkKey } from "@/lib/mineLost";
 import type { MineRow } from "@/server/api/beta-raid/mine-pendings";
 import type { HarvestField } from "@/server/api/beta-raid/harvest-fields";
 import logsArt from "@/assets/harvest/logs.webp";
@@ -113,16 +113,15 @@ export function HarvestIncomeStrip({
                         field?.reward.resource ?? "custom",
                         field?.reward.token ?? null,
                       );
-                const rate = mine?.yield ?? field?.perHour ?? 0;
+                // Алмаз острова платит раз в сутки — выход тоже в сутки.
+                const perDay = mine?.stepHours === 24;
+                const rate = perDay
+                  ? (mine?.yield ?? 0) * 24
+                  : (mine?.yield ?? field?.perHour ?? 0);
                 const hasShelfStock = (field?.stored ?? 0) > 0;
+                // Отнятая шахта (§8.71) — сумма её строки журнала, выхода нет.
                 const accrued = mine
-                  ? livePendingAmount(
-                      mine.capturedAt,
-                      mine.claimedHours,
-                      mine.yield,
-                      now,
-                      mine.maxHours,
-                    )
+                  ? mineRowReady(mine, now)
                   : hasShelfStock
                     ? (field?.stored ?? 0)
                     : (field?.ready ?? 0);
@@ -150,7 +149,10 @@ export function HarvestIncomeStrip({
                               (/пшениц|wheat/i.test(field.reward.name) ? wheatArt : null))
                             : null;
                 return (
-                  <div key={`${entry.kind}-${entry.q}-${entry.r}`} className="flex">
+                  <div
+                    key={mine?.lost?.id ?? `${entry.kind}-${entry.q}-${entry.r}`}
+                    className="flex"
+                  >
                     {index > 0 && (
                       <div data-harvest-divider className="my-2 w-px bg-[#9c8460]/45" />
                     )}
@@ -169,9 +171,23 @@ export function HarvestIncomeStrip({
                         />
                       )}
                       <div className="min-w-0 leading-tight">
-                        <span className="inline-block rounded-full border border-[#735631]/45 bg-[#59452b]/25 px-2 py-0.5 text-[10px] text-[#c8ae88]">
-                          {t(isMine ? "harvest.mine_singular" : "harvest.field_singular")}
-                        </span>
+                        <div data-harvest-heading className="flex items-center gap-1">
+                          <span className="inline-block rounded-full border border-[#735631]/45 bg-[#59452b]/25 px-2 py-0.5 text-[10px] text-[#c8ae88]">
+                            {t(isMine ? "harvest.mine_singular" : "harvest.field_singular")}
+                          </span>
+                          {onShowCell && (
+                            <button
+                              data-harvest-show-cell
+                              type="button"
+                              title={t("harvest.show_on_map")}
+                              aria-label={`${name}: ${t("harvest.show_on_map")}, ${t("harvest.cell", { q: entry.q, r: entry.r })}`}
+                              onClick={() => onShowCell(entry.q, entry.r)}
+                              className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#d9b979] hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e8bd6b]"
+                            >
+                              <MapPin aria-hidden className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                         <div
                           className="mt-1 min-w-0 break-words text-sm font-semibold text-[#f0e8db]"
                           style={{ overflowWrap: "anywhere" }}
@@ -179,8 +195,9 @@ export function HarvestIncomeStrip({
                           {name.charAt(0).toLocaleUpperCase() + name.slice(1)}
                         </div>
                         <div data-harvest-rate className="tabular-nums">
-                          {formatQty(rate)}
-                          {t("harvest.rate_suffix")}
+                          {mine?.lost
+                            ? t(lostMarkKey(mine.lost.kind))
+                            : `${formatQty(rate)}${t(perDay ? "mine2.day_suffix" : "harvest.rate_suffix")}`}
                         </div>
                         <div
                           data-harvest-amount
@@ -198,16 +215,6 @@ export function HarvestIncomeStrip({
                           </span>
                           <strong>{formatQty(accrued)}</strong>
                         </div>
-                        {onShowCell && (
-                          <button
-                            data-game-button="text"
-                            type="button"
-                            onClick={() => onShowCell(entry.q, entry.r)}
-                            className="mt-1 flex min-h-11 items-center text-[10px] text-[#bea582] underline decoration-dotted underline-offset-2"
-                          >
-                            {t("harvest.cell", { q: entry.q, r: entry.r })}
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>

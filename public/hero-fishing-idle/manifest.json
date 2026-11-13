@@ -1,0 +1,104 @@
+{
+  "frameSize": 128,
+  "columns": 5,
+  "rows": 4,
+  "views": [
+    "front",
+    "back"
+  ],
+  "left": "canvas mirror",
+  "order": [
+    "standing-hold",
+    "standing-stretch",
+    "standing-weight",
+    "standing-boot",
+    "standing-head",
+    "standing-rear",
+    "standing-swat",
+    "standing-line",
+    "seated-hold",
+    "seated-foot",
+    "seated-recline",
+    "seated-head",
+    "seated-rear",
+    "seated-swat",
+    "seated-weight",
+    "seated-boot",
+    "sit-careful",
+    "sit-plop",
+    "stand-slow",
+    "stand-quick"
+  ],
+  "files": [
+    {
+      "path": "bee/back.png",
+      "bytes": 248741,
+      "sha256": "bdd7ce87af2872ad5b4c95e647121d08cca981f97338619995e34f45d44b5fb2"
+    },
+    {
+      "path": "bee/front.png",
+      "bytes": 233319,
+      "sha256": "ab6a38920f8080c28a989ff9849fd9ae6539761292b04516b2e24a18fa293763"
+    },
+    {
+      "path": "boar/back.png",
+      "bytes": 235686,
+      "sha256": "6f9df80141e52a6b58c99f9a60ab2081af546646edecf51b4e120d80ba8f66b6"
+    },
+    {
+      "path": "boar/front.png",
+      "bytes": 234723,
+      "sha256": "f6b4de4ee54e890fe6674192fe47b7a6ff5bced1e5e30c8ed78e8a1b21ef5d5c"
+    },
+    {
+      "path": "dracat/back.png",
+      "bytes": 255269,
+      "sha256": "1874612b98d9559ee4890f260f18d88fa9dd448596051b3110339820e32ee01b"
+    },
+    {
+      "path": "dracat/front.png",
+      "bytes": 240600,
+      "sha256": "d83873d22f9afb6cfcd69f3d34561c0b6b34691ac3dd7deb1e71ea9e69fcffcc"
+    },
+    {
+      "path": "dragon/back.png",
+      "bytes": 255766,
+      "sha256": "29b7594416efbd326e0fbbf276fedec2f0d5782ae0d18916da13ac6edb0589c5"
+    },
+    {
+      "path": "dragon/front.png",
+      "bytes": 279495,
+      "sha256": "00eae93f1906ce78c715e0d6ec53cfa0832821611d8da159634c99e21750ad44"
+    },
+    {
+      "path": "knight/back.png",
+      "bytes": 247181,
+      "sha256": "aa7cdbadccc4c134a61ee19cc4587994f05be8f3a82bc93512123055de95318c"
+    },
+    {
+      "path": "knight/front.png",
+      "bytes": 246349,
+      "sha256": "0497a2b6d7dfdbc22f4f8ece862b52c2acd9661e48651c0d0e45ab387eda0c8a"
+    },
+    {
+      "path": "unicorn/back.png",
+      "bytes": 260887,
+      "sha256": "6ba090454f01ff179495daf2b287b3f69bd1a81054d7e47890aa49f55e48222b"
+    },
+    {
+      "path": "unicorn/front.png",
+      "bytes": 267682,
+      "sha256": "a2562c121bcf8d6e2062be716a895405af7c56b1969c3ec1acd0c6710b5c787e"
+    },
+    {
+      "path": "yupik/back.png",
+      "bytes": 284218,
+      "sha256": "8f8c932649810e90a3907dd8bc83f7401f623397836295be0dc25ca7807389c9"
+    },
+    {
+      "path": "yupik/front.png",
+      "bytes": 245913,
+      "sha256": "a96256bbc62dfcd0b2ed49d5257693df7170b65f2a74409a5178982d1e5a72bb"
+    }
+  ]
+}

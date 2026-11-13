@@ -8,6 +8,8 @@
 // - Лопата — копать, закопать и выкопать, износ как у топора (§8.21, §8.24).
 // - Удочка — рыбачить у воды, износ за поимку (§8.35).
 // - Карта — целая штука у выбранного героя открывает карту мира (§8.32).
+// - Бинокль — «Применить»: обзор 40 клеток на 3 минуты за штуку (§8.121).
+// - Лестница — «Применить»: перелезть через непроходимую клетку (§8.121).
 
 export type CustomKinds = {
   isPotion: boolean;
@@ -16,6 +18,8 @@ export type CustomKinds = {
   isShovel: boolean;
   isRod: boolean;
   isMap: boolean;
+  isBinocular: boolean;
+  isLadder: boolean;
 };
 
 const ROWS: ReadonlyArray<{ key: keyof CustomKinds; label: string }> = [
@@ -25,6 +29,8 @@ const ROWS: ReadonlyArray<{ key: keyof CustomKinds; label: string }> = [
   { key: "isShovel", label: "Лопата" },
   { key: "isRod", label: "Удочка" },
   { key: "isMap", label: "Карта" },
+  { key: "isBinocular", label: "Бинокль" },
+  { key: "isLadder", label: "Лестница" },
 ];
 
 export function CustomKindChecks({

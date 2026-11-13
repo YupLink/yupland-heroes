@@ -5,6 +5,7 @@
 // таблицы под слоты мы не заводили. Отсюда главное свойство загрузчика — он
 // обязан пережить висячий id. Предмет сожгли, продали или увели на другой
 // кошелёк: бонуса нет, бой из-за этого не падает.
+import { heroAbilityOf, type HeroAbility } from "@/lib/hero/heroAbilities";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { raidOwner } from "./owner";
@@ -13,6 +14,9 @@ import type { GearPiece } from "@/lib/hero/heroStatSources";
 import { parseSkills, type HeroSkills } from "@/lib/hero/heroSkills";
 import type { SquadEntry } from "@/lib/heroSquadMatch";
 import { achievementBonus, parseAchCounts, type AchBonus } from "@/lib/achievements/tracks";
+import { artDisabled } from "@/lib/hero/artWear";
+import { withEnchant } from "@/lib/enchant/enchantGear";
+import { enchantPctSql } from "@/server/api/beta-raid/enchant/enchant-sql";
 
 /** Надетый артефакт: числа для статов плюс данные для карточки слота. */
 export type LoadedGearPiece = GearPiece & {
@@ -28,6 +32,12 @@ export type LoadedGearPiece = GearPiece & {
   dupTotal?: number;
   /** Человеческое имя земли из шаблона местности (id в карточке нечитаем). */
   landName?: string | null;
+  /** Износ, % снятого (user_game_item.wear): 100 — сломан; даёт ли что-то — artDisabled. */
+  wear?: number;
+  /** Вид коня (meta.mount шаблона, §8.84); не конь — пусто. */
+  mount?: string | null;
+  /** Зачарование экземпляра, % (item_enchant): числа выше уже умножены (withEnchant). */
+  enchantPct?: number | null;
 };
 
 export type LoadedHero = {
@@ -42,13 +52,17 @@ export type LoadedHero = {
   skills: HeroSkills;
   /** Как лежит в базе: слот → id предмета. Висячие id тоже здесь. */
   equipped: Record<string, string>;
-  /** Только предметы, которые реально нашлись у игрока. */
+  /** Рабочие надетые предметы, что нашлись у игрока. Сломанный — тоже, пока нет штрафа. */
   gear: LoadedGearPiece[];
+  /** Надетые, но выключенные поломкой (artDisabled): в слоте, статов не дают. До ремонта — пусто. */
+  broken?: LoadedGearPiece[];
   squad: SquadEntry[];
   /** Сытость (hero_instance.satiety): пусто — шкала полная (lib/hero/satiety). */
   satiety?: number | null;
   /** Прибавки ачивок аккаунта (§8.57) — постоянные, всем героям аккаунта. */
   achBonus?: AchBonus;
+  /** Способность шаблона (meta.ability, lib/hero/heroAbilities); нет — null. */
+  ability?: HeroAbility | null;
 };
 
 /** numeric из БД приходит и числом, и строкой — приводим руками. */
@@ -66,6 +80,7 @@ type HeroSqlRow = {
   image_url: Str;
   race: Str;
   specialization: Str;
+  ability?: Str;
   ach?: unknown;
 };
 /**
@@ -122,7 +137,8 @@ async function loadGear(
             t.stat_amount::float8 AS "statAmount", t.race, t.race_amount::float8 AS "raceAmount",
             t.specialization, t.spec_amount::float8 AS "specAmount",
             t.land, t.land_amount::float8 AS "landAmount", t.immunities,
-            COALESCE(t.fish_bonus_pct, 0)::float8 AS "fishBonusPct"
+            COALESCE(t.fish_bonus_pct, 0)::float8 AS "fishBonusPct", u.wear::float8 AS wear,
+            ${enchantPctSql()} AS "enchantPct"
        FROM yuplink.user_game_item u
        JOIN yuplink.mystic_item_template t ON t.id = u.template_id
       WHERE u.id IN (${ids}) AND u.account_id IN (${list});`,
@@ -131,7 +147,8 @@ async function loadGear(
     if (strict) throw error;
     return [];
   })) as GearSqlRow[];
-  return rows ?? [];
+  // Зачарованный экземпляр (лавка зачарования) — статы × (1 + pct/100) вверх.
+  return (rows ?? []).map(withEnchant);
 }
 
 /** Выбранный герой аккаунта. */
@@ -151,7 +168,7 @@ async function loadHero(wallet: string, heroId?: string): Promise<LoadedHero | n
   const list = await walletList(wallet);
   const rows = (await mcpExec(
     `SELECT h.id, h.level, h.rarity, h.skills, h.equipped, h.squad, h.satiety,
-            t.name, t.image_url, t.race, t.specialization,
+            t.name, t.image_url, t.race, t.specialization, t.meta->>'ability' AS ability,
             (SELECT jsonb_object_agg(a.track, a.count) FROM yuplink.account_achievement a
               WHERE a.account_id = h.account_id) AS ach
        FROM yuplink.hero_instance h
@@ -168,6 +185,10 @@ async function loadHero(wallet: string, heroId?: string): Promise<LoadedHero | n
   if (!row) return null;
 
   const equipped = parseEquipped(row.equipped);
+  // Статы, иммунитеты, рыбалка/торговля/алхимия считаются от gear, поэтому
+  // выключенный поломкой делим здесь, в одной точке. Пока ремонта нет, штрафа
+  // нет (BROKEN_ART_PENALTY, владелец 23.10): сломанный работает как целый.
+  const pieces = await loadGear(Object.values(equipped), list, !!heroId);
   return {
     heroId: row.id,
     name: row.name ?? "Герой",
@@ -178,9 +199,11 @@ async function loadHero(wallet: string, heroId?: string): Promise<LoadedHero | n
     rarity: row.rarity ?? "common",
     skills: parseSkills(row.skills),
     equipped,
-    gear: await loadGear(Object.values(equipped), list, !!heroId),
+    gear: pieces.filter((p) => !artDisabled(p.wear)),
+    broken: pieces.filter((p) => artDisabled(p.wear)),
     squad: parseSquad(row.squad),
     satiety: row.satiety == null ? null : Number(row.satiety),
     achBonus: achievementBonus(parseAchCounts(row.ach)),
+    ability: heroAbilityOf({ ability: row.ability }),
   };
 }

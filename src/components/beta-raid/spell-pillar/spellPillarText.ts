@@ -10,7 +10,13 @@ import { priceText } from "../portalPriceText";
 type TFn = (key: string, params?: Record<string, string | number>) => string;
 
 /** Вид заклинания — техническому эффекты не нужны, он и так понятен. */
-type Kind = "boost" | "summon_ship" | "teleport_town" | "create_ship" | "repair_ship";
+type Kind =
+  | "boost"
+  | "summon_ship"
+  | "teleport_town"
+  | "create_ship"
+  | "repair_ship"
+  | "create_big_ship";
 
 /** «45 мин», «4 ч», «1 ч 30 мин», «без отката». Минуты — то, что даёт сервер. */
 export function cooldownText(minutes: number, t: TFn): string {
@@ -34,6 +40,7 @@ export function giftText(
   if (spell.kind === "summon_ship") return t("spellpillar.kind_ship");
   if (spell.kind === "teleport_town") return t("spellpillar.kind_teleport");
   if (spell.kind === "create_ship") return t("spellpillar.kind_ship_create");
+  if (spell.kind === "create_big_ship") return t("spellpillar.kind_big_ship_create");
   if (spell.kind === "repair_ship") return t("spellpillar.kind_ship_repair");
   return spell.effects.length > 0 ? boostListText(spell.effects, lang) : "";
 }

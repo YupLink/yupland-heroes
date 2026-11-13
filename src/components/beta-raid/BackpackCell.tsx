@@ -7,13 +7,19 @@
 // жило в title-подсказке кнопки, а на телефоне подсказку не увидеть вовсе —
 // игрок жал «Использовать» вслепую. Строка короткая, полный разбор и описание
 // открываются нажатием на саму клетку.
-import { Apple, Package, Dumbbell, Hand, MapPinPlus, Trash2 } from "lucide-react";
+import { Apple, Bomb, Package, Dumbbell, Hand, MapPinPlus, Trash2 } from "lucide-react";
 import { useLang, useT } from "@/lib/i18n";
 import { thumb } from "@/lib/image";
 import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { qtyText } from "@/lib/qtyPick";
 import { shownDurability } from "@/lib/raid/mainTool";
 import type { Cell } from "./backpackCellList";
+import { dmineNameOr, isDaraiMineKey } from "@/lib/daraiMine";
+import { isRockStackKey, isTreeStackKey, treeNameOr } from "@/lib/treePlant";
+import { isDynamiteKey } from "@/lib/dynamite";
+import { isLandStackKey } from "@/lib/landPlace";
+import { isVeinStackKey, veinNameOr } from "@/lib/veinPlace";
+import { DaraiMineTimer } from "./dmine/DaraiMineTimer";
 
 export function FilledCell({
   cell,
@@ -22,6 +28,7 @@ export function FilledCell({
   onInfo,
   giftLine,
   onPlace = null,
+  heroId = null,
 }: {
   cell: Cell;
   onTrash: (() => void) | null;
@@ -33,11 +40,22 @@ export function FilledCell({
   giftLine?: string;
   /** Магический сундук: поставить на клетку, где стоит герой. */
   onPlace?: (() => void) | null;
+  /** Чей рюкзак: таймер гриба — этого героя (нет — выбранного). */
+  heroId?: string | null;
 }) {
   const t = useT();
   const lang = useLang();
   // Еда (сытость) — значок яблока, как у шкалы сытости.
   const food = !!cell.boost?.some((e) => e.stat === "satiety");
+  const dmine = isDaraiMineKey(cell.stackKey);
+  // Дерево (lib/treePlant) — «Посадить», динамит — «Бросить», прочее (и камень) — «Поставить».
+  const dynamite = isDynamiteKey(cell.stackKey);
+  const tree = isTreeStackKey(cell.stackKey) && !isRockStackKey(cell.stackKey);
+  // Земля мира строителей (lib/landPlace) и жила (lib/veinPlace) — «Положить».
+  const land = isLandStackKey(cell.stackKey) || isVeinStackKey(cell.stackKey);
+  const placeLabel = tree ? (lang === "ru" ? "Использовать" : "Use") : t(
+    dynamite ? "dynamite.throw" : tree ? "tree.plant" : land ? "land.put" : "chest.place",
+  );
   return (
     <div className="relative aspect-square overflow-hidden rounded-xl border border-gold/30 bg-secondary/40">
       {cell.image ? (
@@ -60,8 +78,16 @@ export function FilledCell({
       {/* Имя внизу поверх затемнения — читается на любой картинке. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1 pb-1 pt-3">
         <div className="truncate text-[9px] font-semibold leading-tight text-white">
-          {cell.name}
+          {/* Гриб — имя своего вида (DARAI / золотой / алмазный) на языке игрока. */}
+          {/* Жила — имя своего вида (золотая / алмазная) на языке игрока. */}
+          {veinNameOr(
+            cell.stackKey,
+            treeNameOr(cell.stackKey, dmineNameOr(cell.stackKey, cell.name, lang), lang),
+            lang,
+          )}
         </div>
+        {/* Гриб: сколько ему лежать до выпадения (встанет сам или умрёт). */}
+        {dmine && <DaraiMineTimer stackKey={cell.stackKey} heroId={heroId} />}
         {giftLine && (
           <div className="truncate text-[8px] font-bold leading-tight text-gold">{giftLine}</div>
         )}
@@ -82,7 +108,7 @@ export function FilledCell({
           </div>
         )}
       </div>
-      {/* N/20 — сколько единиц вида в ячейке. Дробь с наград печаталась
+      {/* N/CELL_SIZE — сколько единиц вида в ячейке. Дробь с наград печаталась
           целиком (0.2356088130679914/20): теперь тем же qtyText, что окно
           выброса, до сотых — чтобы счётчик на телефоне не уходил под корзину. */}
       <span className="pointer-events-none absolute left-1 top-1 rounded-full bg-black/75 px-1 py-0.5 text-[9px] font-extrabold text-gold">
@@ -116,11 +142,11 @@ export function FilledCell({
         <button
           type="button"
           onClick={onPlace}
-          title={t("chest.place")}
-          aria-label={t("chest.place")}
+          title={placeLabel}
+          aria-label={placeLabel}
           className={`absolute bottom-1 ${onUse ? "right-8" : "right-1"} grid h-6 w-6 place-items-center rounded-full bg-gold text-gold-foreground`}
         >
-          <MapPinPlus className="h-3.5 w-3.5" />
+          {dynamite ? <Bomb className="h-3.5 w-3.5" /> : <MapPinPlus className="h-3.5 w-3.5" />}
         </button>
       )}
     </div>
@@ -134,3 +160,4 @@ export function EmptyCell() {
     </div>
   );
 }
+

@@ -7,6 +7,8 @@ export const dict: Record<string, Entry> = {
   "ach.column": { ru: "Ачивки", en: "Achiev." },
   "ach.gives": { ru: "+{n} {stat}", en: "+{n} {stat}" },
   "ach.stat.trade": { ru: "Торговля", en: "Trade" },
+  "ach.stat.refpct": { ru: "% с друзей", en: "% from friends" },
+  "ach.gives_pct": { ru: "{n} % с покупок друзей", en: "{n}% of friends' purchases" },
   "ach.stat.alchemy": { ru: "Алхимия", en: "Alchemy" },
   "ach.back": { ru: "Профиль", en: "Profile" },
   "ach.loading": { ru: "Загрузка ачивок…", en: "Loading achievements…" },
@@ -20,12 +22,12 @@ export const dict: Record<string, Entry> = {
     en: "Chop oaks. No axe — by hand (⚡10 and 30 satiety); an axe is in the forge for a plank.",
   },
   "island.ach.miner": {
-    ru: "Кирка — в кузнице (бревно + руда), руда — с боссов. Кристаллы отрастают за час.",
-    en: "Pickaxe — in the forge (log + ore); ore drops from bosses. Crystals regrow in an hour.",
+    ru: "Кирка — в кузнице (бревно + руда), руда — с боссов. Камни отрастают за час.",
+    en: "Pickaxe — in the forge (log + ore); ore drops from bosses. Stones regrow in an hour.",
   },
   "island.ach.hunter": {
-    ru: "Бей боссов: «В бой» → «Атаковать». Простые возрождаются через 20 минут. Каждый даёт лайки на корабль.",
-    en: "Fight bosses: «Fight» → «Attack». Plain ones respawn in 20 minutes. Each gives likes for the ship.",
+    ru: "Бей боссов: «В бой» → «Атаковать». Встают снова через 20 минут. Каждый даёт лайки, иногда — пак, артефакт или золото.",
+    en: "Fight bosses: «Fight» → «Attack». They respawn in 20 minutes. Each gives likes, sometimes a pack, an artifact or gold.",
   },
   "island.ach.digger": {
     ru: "Лопата — в кузнице. Бугорки на острове — клады: подойди и «Выкопать».",
@@ -44,8 +46,8 @@ export const dict: Record<string, Entry> = {
     en: "Walk around the island — every cell you pass counts.",
   },
   "island.ach.minelord": {
-    ru: "Захвати лесопилку (10 энергии): 1 дерево в час, не дольше недели. Собирай в «Добыче».",
-    en: "Capture the sawmill (10 energy): 1 wood per hour, for up to a week. Collect it in «Harvest».",
+    ru: "Четыре шахты стоят сломанными. Почини — и 7 дней она добывает: лесопилка и каменная — за 20 золота, золотая — за 1 алмаз, алмазная — за 100 дерева и 100 камня. Собирай в «Добыче».",
+    en: "Four mines stand broken. Repair one and it works for 7 days: the sawmill and the stone mine for 20 gold, the gold mine for 1 diamond, the diamond mine for 100 wood and 100 stone. Collect in «Harvest».",
   },
   "island.tab_guide": { ru: "Обучение", en: "Tutorial" },
   "ach.none": { ru: "Не начато", en: "Not started" },
@@ -87,6 +89,22 @@ export const dict: Record<string, Entry> = {
     ru: "Ходи пешком — каждая пройденная клетка.",
     en: "Walk — every cell you pass.",
   },
+  "ach.track.gambler": { ru: "Лудоман", en: "Gambler" },
+  "ach.track.gambler.how": {
+    ru: "Крути автомат в казино — в счёт идёт каждое поставленное золото.",
+    en: "Spin the casino slot — every gold coin you bet counts.",
+  },
+  "ach.track.friends": { ru: "Много друзей", en: "Many friends" },
+  "ach.track.friends.how": {
+    ru: "Друзья по твоей ссылке, которые потратили в игре от $10.",
+    en: "Friends from your link who spent $10 or more in the game.",
+  },
+  "ach.track.friendbuy": { ru: "Покупки друзей", en: "Friends' purchases" },
+  "ach.track.friendbuy.how": {
+    ru: "Сколько золота купили твои друзья (подписка — $1 = 1 000 золота).",
+    en: "How much gold your friends bought (a subscription counts $1 = 1,000 gold).",
+  },
+  "ach.bonus_off": { ru: "Награда пока не включена", en: "Reward not active yet" },
   "ach.track.minelord": { ru: "Хозяин шахт", en: "Mine lord" },
   "ach.track.minelord.how": {
     ru: "Собирай добычу своих шахт.",

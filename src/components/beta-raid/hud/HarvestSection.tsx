@@ -13,7 +13,7 @@ export function HarvestSection({
   defaultOpen = true,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   /** Число в заголовке: видно, есть ли смысл разворачивать. */
   count: number;
   defaultOpen?: boolean;

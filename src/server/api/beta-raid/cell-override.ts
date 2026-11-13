@@ -13,6 +13,7 @@ import type { EncounterTarget } from "./encounter-target";
 import { parseBossSnapshot, type BossSnapshot } from "./boss-snapshot";
 import { CELL_LAYER, RUNNER_LAYER, deadHpSql, type ObjectLayer } from "./runners";
 import { WATER_SQL } from "./cell-sql";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
 
 /** Что можно переопределить на клетке. Всё необязательно. */
 export type CellOverride = {
@@ -116,7 +117,7 @@ export async function loadCellOverride(
   return (await loadCellObject(mapId, q, r)).override;
 }
 
-function parseOverride(raw: unknown): CellOverride | null {
+export function parseOverride(raw: unknown): CellOverride | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
 
@@ -154,6 +155,18 @@ export function applyCellOverride(
     badgeLabel: ov.badgeLabel ?? target.badgeLabel,
     rewardConfig: ov.rewardConfig ?? target.rewardConfig,
   };
+}
+
+/**
+ * Цена входа на карте игрока: на острове — в 10 раз (island/energy). Через неё
+ * идут и бой, и подбор, и карточка цели — показанное совпадает со списанным.
+ * Всегда КОПИЯ: applyCellOverride может вернуть сам объект шаблона, и правка
+ * на месте задела бы чужие карты. В мире цель возвращается как есть.
+ */
+export function priceOnMap(target: EncounterTarget, mapId: string): EncounterTarget {
+  const m = energyMultOf(mapId);
+  if (m === 1) return target;
+  return { ...target, interactionCost: scaleEnergy(target.interactionCost, m) };
 }
 
 /**

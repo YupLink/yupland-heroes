@@ -37,8 +37,9 @@ export async function accountBoughtPack(wallet: string): Promise<boolean> {
 }
 
 /**
- * Покупатель купил пак — значит его пригласивший, если такой есть, дозрел до
- * награды. Пересчитываем тир инвайтера; ошибки не пробрасываем, покупка важнее.
+ * Покупатель купил пак, подписку или золото (или прошёл обучение, island-exit) —
+ * его пригласивший, если такой есть, мог дозреть до награды. Пересчитываем вехи инвайтера (бонус-боксы) и «Много
+ * друзей»; ошибки не пробрасываем, покупка важнее.
  */
 export async function noteReferralPurchase(buyerWallet: string): Promise<void> {
   try {
@@ -50,8 +51,8 @@ export async function noteReferralPurchase(buyerWallet: string): Promise<void> {
       .limit(1);
     const inviter = ((data ?? []) as Array<{ inviter_wallet: string }>)[0]?.inviter_wallet;
     if (!inviter) return;
-    const { grantReferralTierTicketsIfDue } = await import("./referralTiers");
-    await grantReferralTierTicketsIfDue(inviter);
+    const { grantReferralBoxesIfDue } = await import("./referralTiers");
+    await grantReferralBoxesIfDue(inviter);
   } catch (err) {
     console.warn("[referralQualify] пересчёт после покупки не удался:", err);
   }

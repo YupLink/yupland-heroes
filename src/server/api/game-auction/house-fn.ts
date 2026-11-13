@@ -27,6 +27,7 @@ LANGUAGE plpgsql AS $fn$
 DECLARE v_level integer; v_res text; v_amt numeric;
 BEGIN
   IF p_account IS NULL OR p_account = '' OR p_op IS NULL OR p_op = '' THEN RAISE EXCEPTION 'house_bad_args'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtext('townhall:' || p_account));
   PERFORM pg_advisory_xact_lock(hashtext('auchouse:' || p_account));
   INSERT INTO yuplink.castle_auction_house(account_id) VALUES (p_account) ON CONFLICT (account_id) DO NOTHING;
   SELECT h.level INTO v_level FROM yuplink.castle_auction_house h WHERE h.account_id = p_account FOR UPDATE;
@@ -35,6 +36,7 @@ BEGIN
   END IF;
   IF v_level <> p_from THEN RAISE EXCEPTION 'house_level_moved:%', v_level; END IF;
   IF v_level >= ${HOUSE_MAX_LEVEL} THEN RAISE EXCEPTION 'house_max_level'; END IF;
+  IF v_level = 0 THEN PERFORM yuplink.castle_assert_purchase_slot(p_account); END IF;
   FOR v_res IN SELECT unnest(ARRAY['wood','stone','gold','diamonds']) LOOP
     v_amt := COALESCE((p_cost->>v_res)::numeric, 0);
     IF v_amt < 0 THEN RAISE EXCEPTION 'house_bad_cost'; END IF;

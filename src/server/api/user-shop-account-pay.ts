@@ -20,6 +20,7 @@ import { assertNotMaintenance } from "../maintenance";
 import { accAccountId } from "./currency/move";
 import { moneyGate } from "../rateGate";
 import { requireAccountUser } from "./account-rollout";
+import { refuseTicketPurchase } from "./tickets-shop-closed";
 
 export const buyTicketsFromAccount = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -40,6 +41,8 @@ export const buyTicketsFromAccount = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    // Магазина билетов больше нет (§8.61): отказ до любых проверок и списаний.
+    refuseTicketPurchase();
     assertNotMaintenance();
     const wallet = await requireAccountUser();
     await moneyGate("shop-acc", wallet);

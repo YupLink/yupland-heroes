@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getSession } from "@/server/api/user-auth";
 import { applyClientLang } from "@/lib/store";
+import { enterMobileFullscreen, type TgFullscreenApi } from "@/lib/telegram/mobileFullscreen";
 
 // Если кошелёк подключён, но Telegram не привязан — выкидываем юзера на
 // страницу с TelegramVerify-блоком. Раньше это была '/', теперь лендинг
@@ -31,13 +32,15 @@ export function TgGuard() {
   // Telegram Mini App: раскрыть на ПОЛНУЮ высоту при старте. На iPhone мини-апп
   // открывается наполовину, и юзеру приходится тянуть вручную — expand() тянет
   // до максимума; disableVerticalSwipes (Bot API 7.7+) не даёт свайпу вниз
-  // сворачивать. НЕ requestFullscreen — тот прячет шапку Telegram и ломает
-  // safe-area/раскладку. Вне Telegram window.Telegram нет → no-op (браузер).
+  // сворачивать. Телефон и планшет (iOS/Android): рамки Telegram или весь экран —
+  // выбор в профиле («Рамки Telegram»); по умолчанию телефон с рамками, планшет
+  // во весь экран, иначе игра в окошке размером с телефон (mobileFullscreen.ts).
+  // Вне Telegram window.Telegram нет → no-op (браузер).
   useEffect(() => {
     const tg = (
       window as unknown as {
         Telegram?: {
-          WebApp?: {
+          WebApp?: TgFullscreenApi & {
             ready?: () => void;
             expand?: () => void;
             disableVerticalSwipes?: () => void;
@@ -50,6 +53,7 @@ export function TgGuard() {
       tg.ready?.();
       tg.expand?.();
       tg.disableVerticalSwipes?.();
+      enterMobileFullscreen(tg);
     } catch {
       /* старый клиент Telegram — метода нет */
     }

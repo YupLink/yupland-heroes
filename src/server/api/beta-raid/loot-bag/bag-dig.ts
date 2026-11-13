@@ -29,6 +29,7 @@ import { digFenceSql, digSql, type DigRow } from "@/server/api/beta-raid/loot-ba
 import { NEED_SHOVEL, chargeShovel } from "@/server/api/beta-raid/loot-bag/bag-shovel";
 import { payDig } from "@/server/api/beta-raid/loot-bag/bag-dig-pay";
 import { markDigHole } from "@/server/api/beta-raid/main-tool/dig-hole";
+import { requireNotOnMine } from "@/server/api/beta-raid/mine-dig-gate";
 import { bumpDugBag } from "@/server/api/achievements/bump";
 
 /** Прежний исход нажатия (ответ потерялся) — свежим чтением ключа. */
@@ -49,7 +50,7 @@ const input = z.object({
 async function flip(
   bury: boolean,
   data: z.infer<typeof input>,
-): Promise<{ ok: true; buried: boolean }> {
+): Promise<{ ok: true; buried: boolean; empty?: true }> {
   const a = await bagActor(bury ? "bag-bury" : "bag-dig");
   const op = `bag${bury ? "bury" : "dig"}:${a.account}:${data.op}`;
   // Повтор нажатия, чей ответ потерялся: тот же исход, без второго списания.
@@ -57,10 +58,12 @@ async function flip(
   const bag = await bagNear(a, data.bagId);
   // Уже в нужном виде — отказ до денег и лопаты: за пустое нажатие не снимаем.
   if (bag.buried === bury) throw new Error(bury ? "bag.buried" : "bag.not_buried");
+  // Шахта — ни закопать, ни выкопать (§8.59 п. 9); под прочим зданием — только выкопать.
+  await requireNotOnMine(a.mapId, bag.q, bag.r);
   if (bury) await requireNotUnderBuilding(a.mapId, bag.q, bag.r);
   const bp = await resolveBackpack(a.wallet);
   if (!bp) throw new Error(NEED_SHOVEL);
-  const pay = await payDig(a.wallet);
+  const pay = await payDig(a.wallet, a.mapId);
   const tool = await chargeShovel(a.wallet, bp.heroId, op).catch(async (e: unknown) => {
     await pay.refund();
     throw e;
@@ -90,11 +93,16 @@ async function flip(
   await tool.done();
   // Выкопали — на клетке ямка на час (02.10); видна, когда мешочек уйдёт.
   if (!bury) await markDigHole({ mapId: a.mapId, q: bag.q, r: bag.r });
-  // Ачивка «Кладоискатель» (§8.57): своя попытка, не повтор чужого нажатия.
-  if (!bury && row.mine !== false) bumpDugBag(a.account, bag.id);
+  // Ачивка «Кладоискатель» (§8.57): своя попытка, не повтор чужого нажатия;
+  // кучка из пустой ямки (§8.24 п. 6б) — не клад.
+  if (!bury && row.mine !== false && row.empty !== true) bumpDugBag(a.account, bag.id);
   // Бугорок вместо мешочка (или наоборот) — у всех, кто рядом, без F5.
   publishRaid({ mapId: a.mapId, type: "bags", cells: [`${bag.q},${bag.r}`] });
-  return { ok: true as const, buried: bury };
+  return {
+    ok: true as const,
+    buried: bury,
+    ...(row.empty === true ? { empty: true as const } : {}),
+  };
 }
 
 export const buryLootBag = createServerFn({ method: "POST" })

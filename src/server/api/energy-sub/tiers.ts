@@ -3,6 +3,7 @@
 // Выключатель `energy_sub:enabled`: пока он не 'true', подписку видят и
 // покупают только админы — как энергопаки до запуска (energyShop:enabled).
 import { createServerFn } from "@tanstack/react-start";
+import { createHash } from "node:crypto";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { getCurrentWallet, isAdminWallet } from "../../auth";
@@ -23,8 +24,10 @@ export type SubTier = {
   sort: number;
   /** Пока подписка действует, энергия не тает (у «Эксперта», esub-05). */
   noDecay: boolean;
-  /** Лицензия банка на время подписки (esub-06); банк пока у админов — остальным null. */
+  /** Лицензия банка на время подписки (esub-06; ступени с 25.10 — esub-07). */
   licenseTier: LicenseTierId | null;
+  /** Доп. вывод DARAI в месяц, пока подписка действует (wd-08; у аккаунта — самый большой). */
+  withdrawBonus: number;
   boxName: string | null;
   boxImage: string | null;
 };
@@ -39,6 +42,7 @@ type TierRow = {
   boxes_per_day: number | string;
   no_decay: boolean | null;
   license_tier: string | null;
+  withdraw_bonus: number | string | null;
   days: number | string;
   active: boolean;
   sort: number | string;
@@ -50,7 +54,7 @@ const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 const tierSql = (where = "") => `
   SELECT t.id, t.name, t.name_en, t.price_usd, t.energy_per_day, t.box_pack_id,
-         t.boxes_per_day, t.days, t.active, t.sort, t.no_decay, t.license_tier,
+         t.boxes_per_day, t.days, t.active, t.sort, t.no_decay, t.license_tier, t.withdraw_bonus,
          p.name AS box_name, p.cover_image_url AS box_image
     FROM yuplink.energy_sub_tier t
     LEFT JOIN yuplink.chip_packs p ON p.id = t.box_pack_id
@@ -68,6 +72,7 @@ function toTier(r: TierRow): SubTier {
     boxesPerDay: num(r.boxes_per_day),
     noDecay: r.no_decay === true,
     licenseTier: licenseTier(r.license_tier)?.id ?? null,
+    withdrawBonus: num(r.withdraw_bonus),
     days: num(r.days) || 30,
     active: r.active === true,
     sort: num(r.sort),
@@ -103,13 +108,17 @@ export async function canUseSubs(wallet: string | null): Promise<boolean> {
   return subsEnabled();
 }
 
-export type SubOffer = SubTier & { prices: Record<SubToken, number | null> };
+export type SubOffer = SubTier & {
+  prices: Record<SubToken, number | null>;
+  /** По одной каждого вида (esub-10): своя такого вида действует — до какого момента эту не купить. */
+  blockedUntil?: string | null;
+};
 
 /** Цены тарифа во всех валютах по текущему курсу. */
-export function offerOf(t: SubTier, rate: number | null): SubOffer {
+export function offerOf(t: SubTier, rate: number | null, blockedUntil: string | null = null): SubOffer {
   const prices = {} as Record<SubToken, number | null>;
   for (const tok of SUB_TOKENS) prices[tok] = priceIn(t.priceUsd, tok, rate);
-  return { ...t, prices };
+  return { ...t, prices, blockedUntil };
 }
 
 export type MySub = {
@@ -150,24 +159,28 @@ export async function mySubs(account: string): Promise<MySub[]> {
 export const getEnergySubOffers = createServerFn({ method: "GET" }).handler(async () => {
   const wallet = getCurrentWallet();
   if (!(await canUseSubs(wallet))) {
-    return { visible: false as const, tiers: [] as SubOffer[], mine: [] as MySub[] };
+    return { visible: false as const, tiers: [] as SubOffer[], mine: [] as MySub[], analyticsId: null as string | null };
   }
   const [rate, tiers] = await Promise.all([daraiPerUsd(), loadTiers()]);
-  // Банк пока только у админов: остальным лицензию в составе подписки не обещаем.
-  const admin = !!wallet && isAdminWallet(wallet);
-  const offers = tiers
-    .filter((t) => t.active)
-    .map((t) => offerOf(admin ? t : { ...t, licenseTier: null }, rate?.rate ?? null));
   let mine: MySub[] = [];
+  let locks: Record<string, string> = {};
+  let analyticsId: string | null = null;
   if (wallet) {
     const { accAccountId } = await import("../currency/move");
     const account = await accAccountId(wallet).catch(() => null);
     if (account) {
+      // Единый псевдоним аккаунта для A/B-теста: sister-кошельки дают один ID.
+      // Ни адрес кошелька, ни Telegram ID в аналитику не отправляются.
+      analyticsId = createHash("sha256").update(`yuplink-sub-v1:${account}`).digest("hex");
       // Наступившие дни выдаём прямо сейчас: игрок открыл витрину — подарок дня уже ждёт.
       const { grantDueForAccount } = await import("./grant");
       await grantDueForAccount(account).catch((e) => console.warn("[esub] выдача дней:", e));
-      mine = await mySubs(account);
+      const { tierLocks } = await import("./buy-sql");
+      [mine, locks] = await Promise.all([mySubs(account), tierLocks(account)]);
     }
   }
-  return { visible: true as const, tiers: offers, mine };
+  // Лицензия в составе подписки — всем: банк открыт игрокам с 20.10 (§8.60).
+  const offers = tiers.filter((t) => t.active).map((t) => offerOf(t, rate?.rate ?? null, locks[t.id] ?? null));
+  return { visible: true as const, tiers: offers, mine, analyticsId };
 });
+

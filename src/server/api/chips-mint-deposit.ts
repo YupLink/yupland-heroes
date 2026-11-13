@@ -8,6 +8,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pg } from "../db/pg";
 import { getCurrentWallet } from "../auth";
+import { googleOnlyWallet } from "@/lib/auth/entryRules";
 import { CHIP_MINT_RECIPIENT } from "./chips-mint-helpers";
 import {
   claimNftInputTx,
@@ -34,6 +35,8 @@ export const depositNftAsChip = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Нужно подключить кошелёк");
+    // «Только Google» (§8.127): «Ввести NFT» нет — кошелька у аккаунта нет и не будет.
+    if (googleOnlyWallet(wallet)) throw new Error("google.noNft");
 
     const check = await checkNftInputTx({
       wallet,

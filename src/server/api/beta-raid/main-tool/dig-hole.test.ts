@@ -1,20 +1,24 @@
 // Ямки от лопаты и мои бугорки (владелец, 02.10.2026): SQL записи и чтения.
 import { describe, expect, it } from "vitest";
 import { holeMarkSql, holesNearSql, myMoundsSql } from "@/server/api/beta-raid/main-tool/dig-hole";
+import { DIG_HOLE_MINUTES } from "@/lib/digHole";
+
+const LIFE = `interval '${DIG_HOLE_MINUTES} minutes'`;
 
 const near = { account: "acc_1", activeMapId: "map_a", admin: false };
 
 describe("ямка от лопаты", () => {
-  it("запись: час заново на той же клетке, просроченные — прочь, кроме этой", () => {
+  it("запись: срок заново на той же клетке, просроченные — прочь, кроме этой", () => {
     const sql = holeMarkSql({ mapId: "map_a", q: 3, r: -2 });
     expect(sql).toContain("ON CONFLICT (map_id, q, r) DO UPDATE SET dug_at = now()");
-    expect(sql).toContain("interval '60 minutes'");
+    // Строка ямки живёт, пока жива ямка (час): шанс клетки к ней больше не привязан.
+    expect(sql).toContain(`dug_at < now() - ${LIFE}`);
     expect(sql).toContain("AND NOT (map_id = 'map_a' AND q = 3 AND r = -2)");
   });
 
-  it("чтение: только живые час, в круге, без декора, постройки, мешочка и сундука", () => {
+  it("чтение: только живые (час), в круге, без декора, постройки, мешочка и сундука", () => {
     const sql = holesNearSql(near);
-    expect(sql).toContain("h.dug_at > now() - interval '60 minutes'");
+    expect(sql).toContain(`h.dug_at > now() - ${LIFE}`);
     expect(sql).toContain("c.decoration_id IS NULL");
     expect(sql).toContain("c.building_id IS NULL");
     expect(sql).toContain("yuplink.raid_loot_bag b");

@@ -1,5 +1,5 @@
 // Цена ворот словами и строкой плашки: ресурс с картинкой — только число,
-// токен/билеты/товар — словами, как в окне портала.
+// токен/товар — словами, как в окне портала. Билеты — золотом ×500 (§8.61).
 import { describe, expect, it } from "vitest";
 import { priceRow, priceText } from "./portalPriceText";
 import type { PortalPrice } from "@/lib/portal";
@@ -18,14 +18,18 @@ describe("priceRow", () => {
     });
   });
 
-  it("токен, билеты и товар — без картинки, словами", () => {
+  it("цена в билетах — золотом ×500: картинка золота и число", () => {
+    expect(priceRow({ resource: "tickets", amount: 3 }, t)).toEqual({
+      icon: "/resources/gold.webp",
+      label: "1500",
+    });
+    expect(priceText([{ resource: "tickets", amount: 1 }], t)).toBe("500 [market.res.gold]");
+  });
+
+  it("токен и товар — без картинки, словами", () => {
     expect(priceRow({ resource: "token", token: "Darai", amount: 1000 }, t)).toEqual({
       icon: null,
       label: "1000 Darai",
-    });
-    expect(priceRow({ resource: "tickets", amount: 3 }, t)).toEqual({
-      icon: null,
-      label: "3 [market.res.tickets]",
     });
     const apple: PortalPrice = {
       resource: "item",

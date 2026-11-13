@@ -16,8 +16,11 @@ import { CELL_COST_JOIN, CELL_COST_SQL, WATER_SQL, OCEAN_SQL, decorBlocksSql } f
 import { VOID_SQL } from "./voidCells";
 import { canIgnoreVoid } from "./voidGate";
 import { objectKnownSql } from "./boss-snapshot";
+import { MINE_BLOCKED, mineCellSql } from "./mine-cell-sql";
+import { blastedHereSql } from "./ship-blasted";
 import { buildingEffect, isBuilt } from "@/lib/buildingEffect";
 import { isDoor, portalConfig, type PortalConfig } from "@/lib/portal";
+import { bridgeAxes, type BridgeAxes } from "@/lib/raid/bridgeTransit";
 
 /** Причал на клетке: сколько судов и сколько из них с экипажем. */
 export type BerthFacts = { ships: number; busy: number; crew: string[] };
@@ -25,6 +28,7 @@ export type BerthFacts = { ships: number; busy: number; crew: string[] };
 export type StepFacts = {
   terrainId: string | null;
   decorationId: string | null;
+  bridge?: BridgeAxes | null;
   /** Декор держит клетку. См. Row.decoration_blocks. */
   decorationBlocks: boolean;
   objectId: string | null;
@@ -42,8 +46,14 @@ export type StepFacts = {
   ocean: boolean;
   /** Цена шага на эту клетку без надбавок и скидок. */
   cost: number;
+  /** На клетке шахта (mineCellSql) — сквозь неё не пройти (§8.59 п. 9). */
+  mine: boolean;
+  /** На клетке постройка: лестница через неё не перелезает и на неё не ставит (§8.121). */
+  building?: boolean;
   /** null — судов на клетке нет (раньше это был «не нашли клетку в списке»). */
   berth: BerthFacts | null;
+  /** Подбитый корабль на клетке (dynamite-08): судну сюда хода нет (ship-blasted). */
+  blasted?: boolean;
   /**
    * Дверь-шлагбаум на клетке: настройка портала группы 0 у достроенной
    * постройки. Едет в тех же фактах, что и всё остальное про клетку, —
@@ -63,6 +73,7 @@ export type GateFacts = {
 type Row = {
   terrain_id: string | null;
   decoration_id: string | null;
+  bridge: unknown;
   /**
    * Держит ли декор клетку (decorBlocksSql): шаблон ЕСТЬ и не проходим.
    * meta.walkable=true в шаблоне пускает игрока на клетку (таблички, знаки,
@@ -79,8 +90,11 @@ type Row = {
   water: boolean | null;
   ocean: boolean | null;
   cost: number | string | null;
+  mine: boolean | null;
+  has_building?: boolean | null;
   ships: number | null;
   busy: number | null;
+  blasted: boolean | null;
   crew: unknown;
   building_config: unknown;
   building_name: string | null;
@@ -106,11 +120,12 @@ export async function loadStepFacts(
   r: number,
 ): Promise<StepFacts | null> {
   const rows = (await mcpExec(
-    `SELECT c.terrain_id, c.decoration_id, c.object_id, ${VOID_SQL} AS void_fog,
+    `SELECT c.terrain_id, c.decoration_id, dk.meta->'bridge' AS bridge, c.object_id, ${VOID_SQL} AS void_fog,
             ${objectKnownSql("c")} AS object_known,
             (hp.found IS TRUE) AS hp_found, hp.current_hp AS hp_value,
             ${WATER_SQL} AS water, ${OCEAN_SQL} AS ocean, ${CELL_COST_SQL} AS cost,
-            berth.ships, berth.busy, berth.crew,
+            ${mineCellSql("c")} AS mine, (c.building_id IS NOT NULL) AS has_building,
+            berth.ships, berth.busy, berth.crew, ${blastedHereSql("c")} AS blasted,
             ${decorBlocksSql("c")} AS decoration_blocks,
             c.building_config, bt.name AS building_name,
             bt.meta->>'effect' AS building_effect,
@@ -119,6 +134,7 @@ export async function loadStepFacts(
             COALESCE(bs.tier, 0) AS building_tier
        FROM yuplink.raid_map_cells c
        LEFT JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
+       LEFT JOIN yuplink.mystic_item_template dk ON dk.id = c.decoration_id
        ${CELL_COST_JOIN}
        LEFT JOIN LATERAL (
          SELECT h.current_hp, true AS found
@@ -151,6 +167,7 @@ export async function loadStepFacts(
   return {
     terrainId: row.terrain_id ?? null,
     decorationId: row.decoration_id ?? null,
+    bridge: row.water ? bridgeAxes(row.bridge) : null,
     decorationBlocks: !!row.decoration_blocks,
     objectId: row.object_id ?? null,
     objectKnown: !!row.object_known,
@@ -160,6 +177,8 @@ export async function loadStepFacts(
     water: !!row.water,
     ocean: !!row.ocean,
     cost: Number(row.cost) || 1,
+    mine: !!row.mine,
+    building: !!row.has_building,
     berth:
       ships > 0
         ? {
@@ -168,6 +187,7 @@ export async function loadStepFacts(
             crew: Array.isArray(row.crew) ? row.crew.map(String) : [],
           }
         : null,
+    blasted: !!row.blasted,
     gate: gateOf(row),
   };
 }
@@ -194,8 +214,8 @@ function gateOf(row: Row): GateFacts | null {
 }
 
 /**
- * Почему на клетку нельзя (null — можно). Порядок отказов ровно тот, что был в
- * helpers.isValidMove: местность → глухой туман → декор → живой объект.
+ * Почему на клетку нельзя (null — можно). Порядок отказов: местность → глухой
+ * туман → декор → шахта → живой объект.
  *
  * Глухой туман — стена, но только для игрока: админ ходит по своей зоне ногами,
  * иначе её нечем проверить. Отвечаем КЛЮЧОМ словаря: текст игрок увидит на
@@ -210,7 +230,10 @@ export function stepBlockedReason(facts: StepFacts | null, wallet: string | null
   // подойти к кораблю сквозь неё». И — как у объекта ниже — только пока
   // шаблон ЕСТЬ: мёртвую ссылку декора решает SQL (decorBlocksSql), здесь
   // она уже «не держит».
-  if (facts.decorationBlocks) return "Здесь преграда — пройти нельзя";
+  if (facts.decorationBlocks && !facts.bridge) return "Здесь преграда — пройти нельзя";
+  // Шахта — стена для всех (владелец, 20.10). Только ВХОД: стоящий на шахте
+  // сходит с неё как обычно — здесь спрашивают про целевую клетку.
+  if (facts.mine) return MINE_BLOCKED;
   // Объект держит клетку, только пока ЖИВ. Повержённый (HP = 0) проход не
   // закрывает — иначе разбитый сундук навсегда перекрывал дорогу.
   //

@@ -15,6 +15,8 @@
  * (07.10.2026): ступени в $, платят USDT / DARAI / Stars со счёта по курсу
  * (lib/usdTariff.ts), счётчик покупок у тарифа один на все три валюты.
  */
+// Вид tickets — игровая цена: ступень «в билетах», с 20.10.2026 платится
+// золотом ×500 (§8.61, ветка 'gold' buy_energy_pack_atomic).
 export type PayKind =
   | { kind: "tickets" }
   | { kind: "darai" }
@@ -39,9 +41,9 @@ export function payKey(p: PayKind): string {
   return p.kind === "token" ? `token:${p.symbol}` : p.kind;
 }
 
-/** Человеческая подпись валюты. */
+/** Человеческая подпись валюты. Ступени вида tickets платятся золотом ×500 (§8.61). */
 export function payName(p: PayKind): string {
-  if (p.kind === "tickets") return "билеты";
+  if (p.kind === "tickets") return "золото";
   if (p.kind === "darai") return "DARAI";
   if (p.kind === "usd") return "$";
   return p.symbol;

@@ -8,6 +8,7 @@ import { pg } from "../db/pg";
 import { mcpExec } from "../db/mcpClient";
 import { sqlStr } from "./chips-utils";
 import type { CycleBinding } from "@/lib/nftCycle";
+import { secureRandomInt } from "@/lib/secureRandom";
 
 /**
  * Свободный serial в коллекции.
@@ -29,7 +30,7 @@ export async function pickFreeSerial(collectionId: string): Promise<number> {
   }
   const free: number[] = [];
   for (let i = 1; i <= supply; i++) if (!used.has(i)) free.push(i);
-  if (free.length > 0) return free[Math.floor(Math.random() * free.length)];
+  if (free.length > 0) return free[secureRandomInt(0, free.length)];
   throw new Error(
     `В коллекции «${col?.name ?? collectionId}» не осталось свободных номеров тиража — ввод NFT невозможен`,
   );

@@ -1,3 +1,4 @@
+import {useTownHallPurchaseSuccess} from './TownHallPurchaseSuccess';
 // Ратуша замка → «Аукционный дом» (владелец, 14.10.2026): постройка и улучшение
 // до 10-го уровня ресурсами. Облик здания на площади замка меняется с каждым
 // уровнем (modularAuctionHouse): здесь — нынешний и следующий. Комиссия
@@ -5,6 +6,7 @@
 // Торговля (выставить лот) — в окне аукционов.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { humanError } from "@/lib/humanError";
 import { ArrowRight, Hammer, Loader2 } from "lucide-react";
 import { getAuctionHouse, upgradeAuctionHouse } from "@/server/api/game-auction";
 import type { HouseCost } from "@/lib/auctionHouse";
@@ -19,6 +21,7 @@ const RES: Array<{ key: keyof HouseCost; icon: string }> = [
 ];
 
 export function TownHallAuctionHouse({ ru }: { ru: boolean }) {
+ const purchaseSuccess=useTownHallPurchaseSuccess();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: HOUSE_KEY, queryFn: () => getAuctionHouse() });
   const h = q.data;
@@ -26,6 +29,7 @@ export function TownHallAuctionHouse({ ru }: { ru: boolean }) {
     mutationFn: () =>
       upgradeAuctionHouse({ data: { fromLevel: h?.level ?? 0, opId: crypto.randomUUID() } }),
     onSuccess: (r) => {
+      if(r.level===1)purchaseSuccess({kind:'building',id:'auction'});
       toast.success(
         r.level === 1
           ? ru
@@ -38,7 +42,8 @@ export function TownHallAuctionHouse({ ru }: { ru: boolean }) {
       refreshAuctionData(qc);
     },
     onError: (e: unknown) => {
-      toast.error(e instanceof Error ? e.message : String(e));
+      // Отказ ключом (нет места в лимите Ратуши, §8.64) — словом; фраза — как есть.
+      toast.error(humanError(e));
       refreshAuctionData(qc);
     },
   });
@@ -105,3 +110,4 @@ export function TownHallAuctionHouse({ ru }: { ru: boolean }) {
     </section>
   );
 }
+

@@ -7,6 +7,7 @@
 // Обе цены живут ЗДЕСЬ и только здесь: клиент рисует их на клетках и на
 // кнопке, сервер по ним списывает. Разъедутся числа — игрок увидит одно, а
 // заплатит другое.
+import { scaleEnergy } from "@/lib/raid/island/energy";
 
 /** Посадка на корабль: забраться на борт стоит как гребок по воде. */
 export const SHIP_BOARD_ENERGY = 3;
@@ -64,6 +65,29 @@ export function isOceanName(name: string | null | undefined): boolean {
 }
 
 /**
+ * Множитель хода. Число — один на всё (остров новичка 0,1, мир 1). Пара — погода
+ * карты (владелец, 26.10.2026): ход героя (суша, сход на берег) × step, ход судна
+ * (посадка и гребок — «идёт судно, а не герой») × ship; уже вместе с множителем карты.
+ */
+export type MoveMult = number | { step: number; ship: number };
+
+/** Множитель ветки хода: судно (посадка, гребок) или ноги. */
+export const moveMultFor = (m: MoveMult | undefined, ship: boolean): number =>
+  m == null ? 1 : typeof m === "number" ? m : ship ? m.ship : m.step;
+
+/** Множитель карты × погода; погода не влияет (оба 1) — прежнее число. */
+export function moveMultOf(mapMult: number, w?: { step: number; ship: number } | null): MoveMult {
+  const step = Number.isFinite(w?.step) ? Number(w?.step) : 1;
+  const ship = Number.isFinite(w?.ship) ? Number(w?.ship) : 1;
+  if (step === 1 && ship === 1) return mapMult;
+  return { step: mapMult * step, ship: mapMult * ship };
+}
+
+/** Одинаковые множители (кэш цен маршрута сравнивает по числам). */
+export const sameMoveMult = (a: MoveMult, b: MoveMult): boolean =>
+  moveMultFor(a, false) === moveMultFor(b, false) && moveMultFor(a, true) === moveMultFor(b, true);
+
+/**
  * Цена ОДНОГО хода — единственная формула на клиент и сервер.
  *
  * Замедление дорожит любой ход: и шаг по суше, и гребок по воде, и посадку на
@@ -96,7 +120,20 @@ export function stepEnergyCost(opts: {
   slowExtra?: number;
   /** Скидка героя за скорость, в ПРОЦЕНТАХ. Нет героя — нет поля. */
   heroStepDiscountPct?: number;
+  /**
+   * Множитель карты (energyMultOf): остров — 0,1, мир — 1 (по умолчанию); с погодой —
+   * пара (MoveMult): ноги × step, посадка и гребок × ship.
+   */
+  mult?: MoveMult;
 }): number {
+  // Множитель — один раз к ИТОГУ хода (после скорости и замедления), тем же
+  // scaleEnergy, что и все цены острова: до сотых, платное не дешевле 0,01. При
+  // множителе 1 — число как было.
+  const ship = !!(opts.boarding || opts.sailing);
+  return scaleEnergy(baseStepCost(opts), moveMultFor(opts.mult, ship));
+}
+
+function baseStepCost(opts: Parameters<typeof stepEnergyCost>[0]): number {
   const slow = Math.max(0, opts.slowExtra ?? 0);
   // Два знака после запятой — ровно та точность, с которой энергия живёт в
   // базе (ROUND(..., 2) внутри touch_energy_atomic). Без округления клиент

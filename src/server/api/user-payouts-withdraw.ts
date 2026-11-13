@@ -1,13 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { pg, type PgRedemption } from "../db/pg";
-import { getCurrentWallet } from "../auth";
+import { getCurrentWallet, getSessionTgId } from "../auth";
+import { isWalletTg } from "@/lib/auth/googleTg";
 import { assertNotMaintenance } from "../maintenance";
 import { requireLinkedTelegram } from "./user-claims-inventory";
 import { getSisterWallets } from "./user-claims-core";
 import { resolveStuckProcessing } from "./user-payouts-resolver";
 import { type RowMeta, type TokenGroup } from "./user-payouts-lock";
 import { processPayment } from "./user-payouts-execute";
+import { assertAccountWithdrawOpen } from "./google-login/noWithdraw";
 
 export const withdrawTokens = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
@@ -32,6 +34,8 @@ export const withdrawTokens = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     assertNotMaintenance();
+    // Кошелёк со ссылки «Короны» (08.11) — только DARAI со счёта; остальным — как было.
+    await assertAccountWithdrawOpen(data.symbol ?? "");
     const wallet = getCurrentWallet();
     if (!wallet) throw new Error("Кошелёк не подключён");
     await requireLinkedTelegram(wallet);
@@ -132,7 +136,9 @@ export const withdrawTokens = createServerFn({ method: "POST" })
       };
     });
 
-    const filtered = data.symbol ? rows.filter((r) => r.rewardToken === data.symbol) : rows;
+    // Вход по кошельку без Telegram выводит только заявку со счёта (лимит «введённое + 10 %»).
+    const own = isWalletTg(getSessionTgId()) ? rows.filter((r) => r.contractId === "acct") : rows;
+    const filtered = data.symbol ? own.filter((r) => r.rewardToken === data.symbol) : own;
     const payable = filtered.filter((r) => r.ftContract != null && r.decimals != null);
     if (payable.length === 0) {
       // Если заявка со счёта не завелась — говорим ПОЧЕМУ. «Нет ожидающих

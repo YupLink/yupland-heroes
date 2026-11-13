@@ -9,9 +9,9 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useT } from "@/lib/i18n";
+import { useLang, useT } from "@/lib/i18n";
 import { newOpId } from "@/lib/opId";
-import { formatQty } from "@/lib/formatQty";
+import { useStorageMove } from "../useStorageMove";
 import { serverErrorText } from "@/lib/serverErrorText";
 import { getPlainChest } from "@/server/api/beta-raid/plain-chest/pchest-read";
 import { putToPlainChest } from "@/server/api/beta-raid/plain-chest/pchest-put";
@@ -37,7 +37,7 @@ export function usePlainChestView(q: number, r: number) {
   });
 }
 
-export type PlainMove = { stackKey: string; qty: number };
+export type PlainMove = { stackKey: string; qty: number; requested: number; sourceTotal: number };
 
 /** Закопать сундук (обычный — любой, магический — любой, но без живой охраны). */
 export function useBuryChest(q: number, r: number, onDone: () => void) {
@@ -68,25 +68,31 @@ export function usePlainChestActions(
   const t = useT();
   const fail = (e: Error) => toast.error(serverErrorText(e, t));
 
-  const put = useMutation({
-    mutationFn: (v: PlainMove) => putToPlainChest({ data: { q, r, ...v, op: newOpId() } }),
-    onSuccess: (res) => {
-      toast.success(t("chest.stored_toast", { n: formatQty(Number(res.qty) || 0) }));
-      o.onMoved();
-    },
-    onError: fail,
-    onSettled: () => refreshPlain(qc),
-  });
-
-  const take = useMutation({
-    mutationFn: (v: PlainMove) => takeFromPlainChest({ data: { q, r, ...v, op: newOpId() } }),
-    onSuccess: (res) => {
-      toast.success(t("bag.took", { n: formatQty(Number(res.qty) || 0) }));
-      o.onMoved();
-    },
-    onError: fail,
-    onSettled: () => refreshPlain(qc),
-  });
+  const lang = useLang();
+  const [side, setSide] = useState<'put' | 'take'>('put');
+  const refreshMoves = async () => {
+    refreshPlain(qc);
+    await Promise.all([
+      qc.refetchQueries({ queryKey: plainChestKey(q, r), type: 'active' }, { throwOnError: true }),
+      qc.refetchQueries({ queryKey: ['my-hero-backpack'], type: 'active' }, { throwOnError: true }),
+    ]);
+  };
+  const move = useStorageMove(lang, refreshMoves, e => serverErrorText(e, t), false);
+  const start = (v: PlainMove, put: boolean) => {
+    if (move.pending || move.blocked) return;
+    setSide(put ? 'put' : 'take');
+    void move.run({
+      requested: v.requested, sourceTotal: v.sourceTotal, source: put ? 'backpack' : 'chest',
+      send: async () => {
+        const call = put ? putToPlainChest : takeFromPlainChest;
+        const res = await call({ data: { q, r, stackKey: v.stackKey, qty: v.qty, op: newOpId() } });
+        return res.qty;
+      },
+      done: o.onMoved,
+    });
+  };
+  const put = { mutate: (v: PlainMove) => start(v, true), isPending: move.pending && side === 'put' };
+  const take = { mutate: (v: PlainMove) => start(v, false), isPending: move.pending && side === 'take' };
 
   // «Забрать сундук»: ключ — на окно, подтверждение — отпечатком цифр.
   const pickOp = useRef(newOpId());
@@ -112,10 +118,11 @@ export function usePlainChestActions(
   return {
     put,
     take,
+    move,
     pickup,
     bury,
     confirming,
     cancelConfirm: () => setConfirming(false),
-    busy: put.isPending || take.isPending || pickup.isPending || bury.isPending,
+    busy: move.pending || move.blocked || pickup.isPending || bury.isPending,
   };
 }

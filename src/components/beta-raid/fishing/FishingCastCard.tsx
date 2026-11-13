@@ -45,7 +45,7 @@ export function FishingCastCard({
         <div className="mb-3 flex items-center justify-between gap-2">
           <h3 className="flex min-w-0 items-center gap-1.5 truncate font-display text-lg font-bold">
             <img
-              src="/resources/raid-hud-art-fish.png"
+              src="/resources/raid-hud-art-fish.webp"
               alt=""
               className="raid-fishing-dialog__fish"
             />
@@ -108,7 +108,7 @@ export function FishingCastCard({
               {busy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <img src="/resources/raid-hud-art-fish.png" alt="" />
+                <img src="/resources/raid-hud-art-fish.webp" alt="" />
               )}
               {t("fish.cast_for", { n: Math.max(1, Math.min(max, minutes)) })}
             </button>

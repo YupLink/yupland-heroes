@@ -4,6 +4,7 @@
 // Возвращает процент удара по всем — от него зависит, кому достанется ответ.
 import { type AbilityCfg, isWeakenKind, rollChance, rollValue } from "./abilities";
 import { type HeroResist, resistedChance, resistedMinutes } from "./encounter-hero-apply";
+import { rollStripImmune } from "./encounter-strip";
 import type { FieldChip, SimResult, SimSideEffects } from "./encounter-sim-types";
 // Потолки побочек живут в effect-caps.ts: те же числа режут продление в базе.
 import { MAX_BURN_ENERGY, MAX_WEAKEN_VALUE } from "./effect-caps";
@@ -15,7 +16,7 @@ import { MAX_BURN_ENERGY, MAX_WEAKEN_VALUE } from "./effect-caps";
  * ПОЧЕМУ отдельно: раньше числитель взвешивался по НЕобрезанным минутам, а
  * знаменатель — по обрезанному потолку. После четвёртого прока 100%-способности
  * каждый раунд прибавлял +25 % к силе: шаблон обещал weak_luck 40, игрок
- * получал −158 (player09, 20.09). Знаменатель обязан быть той же суммой, что и
+ * получал −158 (жалоба игрока 20.09). Знаменатель обязан быть той же суммой, что и
  * веса, — тогда среднее не выходит за границы бросков, и потолок силы нужен
  * только как страховка от мусора в настройке.
  */
@@ -53,9 +54,12 @@ export function applyTargetAbilities(opts: {
   const chipMinutesOf = (a: AbilityCfg): number => minutesOf(a);
   // 3. Способности цели — каждая катится отдельно раз в раунд.
   let cleavePct = 0;
+  // Снятие иммунитетов — первым: сработало, и остальные этого же раунда уже
+  // ложатся без иммунитетов (encounter-strip.ts). Нет его — список тот же.
+  const rest = rollStripImmune({ abilities, round, side, abilityLog, resist });
   // Сначала решаем, будет ли в этом раунде удар по всем: от этого зависит,
   // одной фишке достанется яд/оглушение или всей передовой.
-  const procs = abilities.filter((a) =>
+  const procs = rest.filter((a) =>
     rollChance(resist ? resistedChance(a.kind, a.chance, resist) : a.chance),
   );
   for (const a of procs) {

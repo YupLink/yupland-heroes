@@ -21,6 +21,7 @@ import { isUsdt } from "@/lib/usdtBanned";
 import { ChipImage } from "@/components/ChipImage";
 import { cn } from "@/lib/utils";
 import { humanError } from "@/lib/humanError";
+import { TICKET_SPEND_GOLD } from "@/lib/ticketGold";
 
 const STAR_OPTIONS: Array<{ value: 3 | 3.5 | 4 | 4.5 | 5; label: string }> = [
   { value: 3, label: "от 3⭐" },
@@ -52,7 +53,7 @@ export function ChipDropPanel() {
   const [token, setToken] = useState<string>("GDarai");
   const [freeClaim, setFreeClaim] = useState<boolean>(true);
   // Минимум 1 — пустая строка / 0 запрещены (юзер просил).
-  const [ticketCost, setTicketCost] = useState<string>("1");
+  const [ticketCost, setTicketCost] = useState<string>(String(TICKET_SPEND_GOLD));
   // Количество паков (сколько клеймов доступно)
   const [quantity, setQuantity] = useState<string>("");
 
@@ -100,7 +101,7 @@ export function ChipDropPanel() {
           rewardToken: token,
           rewardMin: rewardParsed!.min,
           rewardMax: rewardParsed!.max,
-          ticketCost: freeClaim ? 0 : Math.max(1, Number(ticketCost) || 1),
+          ticketCost: freeClaim ? 0 : Math.min(10, Math.max(1, Math.round((Number(ticketCost) || 0) / TICKET_SPEND_GOLD) || 1)),
           freeClaim,
           maxTotalPool: quantity ? Number(quantity) : null,
         },
@@ -320,7 +321,6 @@ export function ChipDropPanel() {
         </div>
       </div>
 
-      {/* Free / ticket cost */}
       <div className="flex flex-wrap items-center gap-3">
         <label className="inline-flex items-center gap-2 text-xs">
           <input
@@ -328,18 +328,18 @@ export function ChipDropPanel() {
             checked={freeClaim}
             onChange={(e) => {
               setFreeClaim(e.target.checked);
-              if (e.target.checked) setTicketCost("1");
+              if (e.target.checked) setTicketCost(String(TICKET_SPEND_GOLD));
             }}
           />
           Бесплатный клейм (free)
         </label>
         {!freeClaim && (
           <label className="inline-flex items-center gap-2 text-xs">
-            Стоимость в билетах:
+            Стоимость в золоте:
             <input
               type="number"
-              min={1}
-              step="1"
+              min={TICKET_SPEND_GOLD} max={TICKET_SPEND_GOLD * 10} // золото; в базу — /500 (§8.61)
+              step={TICKET_SPEND_GOLD}
               value={ticketCost}
               onChange={(e) => setTicketCost(e.target.value)}
               className="w-20 rounded-md border border-border bg-background/40 px-2 py-1 text-xs"

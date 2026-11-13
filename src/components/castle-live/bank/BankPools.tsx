@@ -1,20 +1,22 @@
-// Пулы банка (только админ): пары с курсом (по запасам, пул пуст — стартовый) и
-// комиссией, запас, «Пополнить» и форма нового пула. Пустой пул можно удалить.
+// Пулы банка (только админ): пары с курсом словами (по запасам, пул пуст — стартовый)
+// и комиссией, запас, «Изменить» (комиссия; курс — у пустого), «Пополнить» и форма
+// нового пула. Пустой пул можно удалить.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, Trash2 } from "lucide-react";
 import { deleteBankPool, listBankPools } from "@/server/api/bank/bank-pools";
-import { tokenLabel, type BankPool } from "@/lib/castleBank";
-import { poolPrice } from "@/lib/bankSwap";
+import type { BankPool } from "@/lib/castleBank";
 import { BankPoolForm } from "./BankPoolForm";
+import { BankPoolEdit } from "./BankPoolEdit";
 import { BankFund } from "./BankFund";
 import { BANK_POOLS_KEY, TokenBadge, fmtNum } from "./bankUi";
+import { poolRateText } from "./bankPoolRate";
 
 function PoolRow({ pool, ru }: { pool: BankPool; ru: boolean }) {
   const qc = useQueryClient();
   const empty = pool.reserveA === 0 && pool.reserveB === 0;
-  const [funding, setFunding] = useState(false);
+  const [panel, setPanel] = useState<"edit" | "fund" | null>(null);
   const del = useMutation({
     mutationFn: () => deleteBankPool({ data: { id: pool.id } }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: BANK_POOLS_KEY }),
@@ -22,15 +24,14 @@ function PoolRow({ pool, ru }: { pool: BankPool; ru: boolean }) {
   });
   return (
     <li className="border-b border-[#ffffff14] py-3 last:border-0">
-     <div className="flex items-center gap-3">
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <TokenBadge token={pool.tokenA} ru={ru} />
           <span className="text-[#bd9865]">⇄</span>
           <TokenBadge token={pool.tokenB} ru={ru} />
         </div>
         <p className="text-sm text-[#d8ccb5]">
-          1 {tokenLabel(pool.tokenA, ru)} = {fmtNum(poolPrice(pool), ru)} {tokenLabel(pool.tokenB, ru)}
+          {poolRateText(pool, ru)}
           {" · "}
           {ru ? "комиссия" : "fee"} {pool.feePct} %
         </p>
@@ -38,25 +39,30 @@ function PoolRow({ pool, ru }: { pool: BankPool; ru: boolean }) {
           {ru ? "Запас" : "Reserve"}: {fmtNum(pool.reserveA, ru)} / {fmtNum(pool.reserveB, ru)}
         </p>
       </div>
-      {empty && (
-        <button
-          type="button"
-          data-game-button="icon"
-          aria-label={ru ? "Удалить пул" : "Delete pool"}
-          className="grid h-10 w-10 place-items-center rounded-full border border-[#94703c] text-[#e9b9a5]"
-          disabled={del.isPending}
-          onClick={() => del.mutate()}
-        >
-          {del.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-        </button>
+      {panel === null && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button type="button" className="auction-secondary" onClick={() => setPanel("edit")}>
+            {ru ? "Изменить" : "Edit"}
+          </button>
+          <button type="button" className="auction-secondary" onClick={() => setPanel("fund")}>
+            {ru ? "Пополнить" : "Fund"}
+          </button>
+          {empty && (
+            <button
+              type="button"
+              data-game-button="icon"
+              aria-label={ru ? "Удалить пул" : "Delete pool"}
+              className="ml-auto grid h-10 w-10 place-items-center rounded-full border border-[#94703c] text-[#e9b9a5]"
+              disabled={del.isPending}
+              onClick={() => del.mutate()}
+            >
+              {del.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
       )}
-      {!funding && (
-        <button type="button" className="auction-secondary" onClick={() => setFunding(true)}>
-          {ru ? "Пополнить" : "Fund"}
-        </button>
-      )}
-     </div>
-      {funding && <BankFund pool={pool} ru={ru} onDone={() => setFunding(false)} />}
+      {panel === "edit" && <BankPoolEdit pool={pool} ru={ru} onDone={() => setPanel(null)} />}
+      {panel === "fund" && <BankFund pool={pool} ru={ru} onDone={() => setPanel(null)} />}
     </li>
   );
 }

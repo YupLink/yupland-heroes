@@ -22,7 +22,9 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useLang, useT } from "@/lib/i18n";
 import { metaLabel, stripStatSuffix } from "@/components/heroMeta";
+import { artifactSlotCount } from "@/lib/hero/heroSlots";
 import { BestGearButton } from "../BestGearButton";
+import { EnchantMark } from "@/components/EnchantMark";
 import { GearPresets } from "../gear/GearPresets";
 import { GearSlotDetails } from "./GearSlotDetails";
 import { GearSlotGrid } from "./GearSlotGrid";
@@ -102,7 +104,7 @@ export function CastleGearTab({ castle, atCastle, paperDoll = false, race, onNav
           сбоем, а не наградой за редкость. */}
       {!paperDoll && <p className="text-[10px] text-muted-foreground">
         {t("braid.gear_slots_count", {
-          n: slots.length,
+          n: artifactSlotCount(slots),
           rarity: metaLabel(gear.rarity, lang),
         })}
       </p>}
@@ -152,6 +154,7 @@ export function CastleGearTab({ castle, atCastle, paperDoll = false, race, onNav
             {noSlot.map((i) => (
               <li key={i.itemId} className="truncate text-[10px] text-muted-foreground">
                 {stripStatSuffix(i.name)}
+                <EnchantMark pct={i.enchantPct} className="ml-0.5" />
                 {i.count > 1 ? ` ×${i.count}` : ""} —{" "}
                 {i.blocked === "unknown_slot"
                   ? t("braid.gear_unknown_slot", { slot: i.slot ?? "" })

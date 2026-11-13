@@ -6,6 +6,7 @@ import { pg } from "../db/pg";
 import { getCurrentWallet } from "../auth";
 import { accountOf } from "./user";
 import { heroStatsAt } from "@/lib/heroStats";
+import { secureRandom, secureRandomInt } from "@/lib/secureRandom";
 import {
   convertRuleForChipLevel,
   nextLevelCost,
@@ -13,10 +14,12 @@ import {
   type HeroRarity,
 } from "@/lib/heroLevels";
 import { requireHeroConvert, spendLikes, type HeroRow } from "./heroes-shared";
+import { rarityOfTemplateLevel } from "./heroes-list-dormant";
 
 /**
- * Превратить фишку в героя. Цена и редкость — от уровня фишки
- * (3/3.5★ → rare 50, 4/4.5★ → epic 1000, 5★ → legendary 5000).
+ * Превратить фишку в героя. Цена и ярус шаблона — от уровня фишки
+ * (3/3.5★ → rare 50, 4/4.5★ → epic 1000, 5★ → legendary 5000); записанная
+ * редкость — по ярусу выпавшего шаблона (rarityOfTemplateLevel).
  * Фишка сгорает, герой роллится из пула коллекции (chip_collection_hero).
  */
 export const convertChipToHero = createServerFn({ method: "POST" })
@@ -49,11 +52,16 @@ export const convertChipToHero = createServerFn({ method: "POST" })
           .eq("kind", "hero")
           .eq("active", true)
           .eq("race", cfg.race ?? "");
-    let candidates = (poolRows ?? []) as Array<{
-      id: string;
-      specialization: string | null;
-      level: number | null;
-    }>;
+    // Обычных (ярус 1–2) из фишек не делают: это стартовые герои на выбор
+    // расы, а раса коллекции подтягивает и их (владелец, 22.10.2026: «обычные
+    // герои всегда обычные» — за фишку от 3★ обычного не выдаём).
+    let candidates = (
+      (poolRows ?? []) as Array<{
+        id: string;
+        specialization: string | null;
+        level: number | null;
+      }>
+    ).filter((c) => rarityOfTemplateLevel(c.level) !== "common");
     if (candidates.length === 0) {
       throw new Error("Шаблоны героев не найдены — задай пул или расу в настройках коллекции");
     }
@@ -74,7 +82,7 @@ export const convertChipToHero = createServerFn({ method: "POST" })
     if (weights.length > 0) {
       const total = weights.reduce((s, w) => s + Math.max(0, w.weight), 0);
       if (total > 0) {
-        let roll = Math.random() * total;
+        let roll = secureRandom() * total;
         let picked: string | null = null;
         for (const w of weights) {
           roll -= Math.max(0, w.weight);
@@ -107,7 +115,11 @@ export const convertChipToHero = createServerFn({ method: "POST" })
       )!;
     }
 
-    const tpl = candidates[Math.floor(Math.random() * candidates.length)];
+    const tpl = candidates[secureRandomInt(0, candidates.length)];
+    // Редкость экземпляра — по ярусу шаблона, как у пробуждения и прокачки
+    // (rarityOfTemplateLevel). Обычно это и есть ярус фишки (выбор идёт по
+    // ярусу), а запасной выбор из соседнего яруса не даёт герою чужую редкость.
+    const rarity = rarityOfTemplateLevel(tpl.level);
 
     // Фишка сгорает ПЕРВОЙ и условно: она же и есть замок операции. Раньше
     // сначала списывались лайки, и проигравший в гонке за одну фишку оставался
@@ -153,7 +165,7 @@ export const convertChipToHero = createServerFn({ method: "POST" })
       wallet,
       template_id: tpl.id,
       item_id: ugiId,
-      rarity: rule.rarity,
+      rarity,
       level: 0,
       likes_spent: rule.likes,
       equipped: {},
@@ -171,7 +183,7 @@ export const convertChipToHero = createServerFn({ method: "POST" })
     return {
       ok: true,
       heroId: id,
-      rarity: rule.rarity,
+      rarity,
       spentLikes: rule.likes,
       likesLeft,
       name: tplFull?.name ?? "Герой",

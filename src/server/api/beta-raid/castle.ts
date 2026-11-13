@@ -7,7 +7,6 @@ import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { activeBetaMapId, myMapId, ownCell, type Cell } from "./encounter-where";
 import { getCastlePosition, hexDistance } from "./helpers";
-import { isIslandMapId } from "@/lib/raid/island/ids";
 
 /**
  * Насколько близко надо подойти. Ровно на клетку замка встать нельзя, если
@@ -98,11 +97,13 @@ export async function isAtCastle(wallet: string): Promise<boolean> {
   const pos = await ownCell(wallet).catch(() => null);
   if (!pos) return false;
   // Замок стоит в главном мире: на другом этаже те же координаты — чужая
-  // земля, а не порог замка.
+  // земля, а не порог замка. Но ратуша любого мира — замок (§8.47 остров,
+  // 26.10.2026 «войти в северном замке»): в замок у неё пускает статус входа
+  // (home-castle.ts), значит и дела внутри — смена героя, отряд — работают там
+  // же. Раньше здесь пропускали только остров: вошёл в замок у ратуши Асгарда,
+  // а «Сделать активным» отвечало «дойди до замка» (владелец, 04.11.2026).
   const [mine, main] = await Promise.all([myMapId(wallet), activeBetaMapId()]);
   if (mine !== main) {
-    // Свой остров новичка: замок — у его ратуши (§8.47), остальные этажи — нет.
-    if (!isIslandMapId(mine)) return false;
     const { islandTownHere } = await import("./home-castle-core");
     return (await islandTownHere(mine, pos)) !== null;
   }

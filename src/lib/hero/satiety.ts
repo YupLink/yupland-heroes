@@ -8,7 +8,7 @@
 // был до сытости, стартуют сытыми, а потолок сам растёт с редкостью).
 import { normalizeSpec } from "./heroStatSources";
 
-type Rarity = "common" | "rare" | "epic" | "legendary";
+type Rarity = "common" | "rare" | "epic" | "legendary" | "unique";
 
 /** Потолок по редкости — у всех, кроме ассасина. */
 const MAX_BY_RARITY: Record<Rarity, number> = {
@@ -16,6 +16,7 @@ const MAX_BY_RARITY: Record<Rarity, number> = {
   rare: 1500,
   epic: 2500,
   legendary: 4000,
+  unique: 4000,
 };
 /** Ассасин. Коммон-ассасина владелец не задавал — как у остальных коммонов. */
 const MAX_ASSASSIN: Record<Rarity, number> = {
@@ -23,6 +24,7 @@ const MAX_ASSASSIN: Record<Rarity, number> = {
   rare: 2000,
   epic: 3000,
   legendary: 4500,
+  unique: 4500,
 };
 
 /** Сколько стоит действие. Подобрать золото — как шаг. Рубка руками — §8.56. */
@@ -40,7 +42,7 @@ export const SATIETY_COST = {
 export const HUNGER_FACTOR = 0.5;
 
 const rarityOf = (r: string | null | undefined): Rarity =>
-  r === "rare" || r === "epic" || r === "legendary" ? r : "common";
+  r === "rare" || r === "epic" || r === "legendary" || r === "unique" ? r : "common";
 
 export function satietyMax(
   rarity: string | null | undefined,

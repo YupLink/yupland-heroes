@@ -11,6 +11,7 @@ import {
   resourceOfKind,
   rewardKindImage,
   rewardKindLabelKey,
+  rewardShownAmount,
 } from "@/lib/rewardKinds";
 import { RESOURCE_LABELS_RU } from "@/lib/marketItem";
 import { dict } from "@/lib/translations";
@@ -99,5 +100,21 @@ describe("справочник админки", () => {
     // Селект в редакторе наград берёт подписи отсюда: молчащий undefined
     // выглядел бы как пустой пункт списка.
     for (const code of REWARD_RESOURCES) expect(RESOURCE_LABELS_RU[code]).toBeTruthy();
+  });
+});
+
+describe("награда билетами (ПРАВИЛА §8.61: билетов нет, выдаётся золото)", () => {
+  it("видна как золото: подпись и спрайт золота", () => {
+    expect(resourceOfKind("tickets")).toBe("gold");
+    expect(rewardKindLabelKey("tickets")).toBe(rewardKindLabelKey("gold"));
+    expect(rewardKindImage("tickets")).toBe(rewardKindImage("gold"));
+  });
+
+  it("сумма — золотом ×100, прочие виды как есть", () => {
+    expect(rewardShownAmount("tickets", 3)).toBe(300);
+    expect(rewardShownAmount("tickets", 0.29)).toBe(29);
+    expect(rewardShownAmount("gold", 250)).toBe(250);
+    expect(rewardShownAmount("likes", 7)).toBe(7);
+    expect(rewardShownAmount(null, 5)).toBe(5);
   });
 });

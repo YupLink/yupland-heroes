@@ -6,6 +6,7 @@
 // (src/test/warehouseFake.ts), который считает присваивания и RETURNING тем же
 // SQL, что уйдёт в Postgres.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 import { dec } from "@/test/numeric";
 import { K, db, item, resetDb, shelf } from "@/test/warehouseFake";
 import { invariantBroken, totalMarks } from "@/test/warehouseFakeOps";
@@ -44,7 +45,10 @@ const m = (mob: string, mine: string, field: string, loot = "0") => ({
   loot: dec(loot),
 });
 /** Личная полка занята другим товаром на одну ячейку из двух. */
-const ownHalfFull = () => db.shelves.push({ ...shelf("own", "acc1", "20"), key: "custom:milk" });
+const ownHalfFull = () =>
+  db.shelves.push({ ...shelf("own", "acc1", `${CELL_SIZE}`), key: "custom:milk" });
+/** На свободную ячейку личной полки и ещё 10 сверху. */
+const OVER = CELL_SIZE + 10;
 
 beforeEach(() => {
   resetDb();
@@ -55,9 +59,9 @@ beforeEach(() => {
 describe("положить на склад", () => {
   it("всё: метки уезжают на полку; личной — помеченное первым, общей — безымянное", async () => {
     ownHalfFull();
-    db.bp.set(K, item("30", { mob: "10", mine: "3", field: "5" }));
-    const res = await put({ qty: 30 });
-    expect(res).toMatchObject({ own: 20, shared: 10 });
+    db.bp.set(K, item(`${OVER}`, { mob: "10", mine: "3", field: "5" }));
+    const res = await put({ qty: OVER });
+    expect(res).toMatchObject({ own: CELL_SIZE, shared: 10 });
     expect(db.bp.has(K)).toBe(false);
     const own = db.shelves.find((x) => x.key === K && x.scope === "own");
     const shared = db.shelves.find((x) => x.key === K && x.scope === "shared");
@@ -88,11 +92,11 @@ describe("положить на склад", () => {
   it("личная легла, общая нет — назад только не легшая часть, метки не удваиваются", async () => {
     ownHalfFull();
     db.upsertPlan = [true, false];
-    db.bp.set(K, item("30", { mob: "10" }));
-    const res = await put({ qty: 30 });
-    expect(res).toMatchObject({ own: 20, shared: 0, rejected: 10 });
+    db.bp.set(K, item(`${OVER}`, { mob: "10" }));
+    const res = await put({ qty: OVER });
+    expect(res).toMatchObject({ own: CELL_SIZE, shared: 0, rejected: 10 });
     const own = db.shelves.find((x) => x.key === K);
-    expect(own).toMatchObject({ count: dec("20"), ...m("10", "0", "0") });
+    expect(own).toMatchObject({ count: dec(`${CELL_SIZE}`), ...m("10", "0", "0") });
     expect(db.bp.get(K)).toMatchObject({ count: dec("10"), ...m("0", "0", "0") });
     expect(totalMarks()).toEqual(m("10", "0", "0"));
     expect(invariantBroken()).toBeNull();
@@ -177,14 +181,15 @@ describe("сбои и соседи", () => {
   it("общая часть упала с ошибкой — назад только она, со своими метками", async () => {
     ownHalfFull();
     db.upsertPlan = [true, "throw"];
-    db.bp.set(K, item("30", { mob: "10", field: "12" }));
-    await expect(put({ qty: 30 })).rejects.toThrow("MCP POST 502");
+    // Меток на 2 больше, чем влезает в свободную ячейку личной полки.
+    db.bp.set(K, item(`${OVER}`, { mob: "10", field: `${CELL_SIZE - 8}` }));
+    await expect(put({ qty: OVER })).rejects.toThrow("MCP POST 502");
     expect(db.shelves.find((x) => x.key === K)).toMatchObject({
-      count: dec("20"),
-      ...m("10", "0", "10"),
+      count: dec(`${CELL_SIZE}`),
+      ...m("10", "0", `${CELL_SIZE - 10}`),
     });
     expect(db.bp.get(K)).toMatchObject({ count: dec("10"), ...m("0", "0", "2") });
-    expect(totalMarks()).toEqual(m("10", "0", "12"));
+    expect(totalMarks()).toEqual(m("10", "0", `${CELL_SIZE - 8}`));
     expect(invariantBroken()).toBeNull();
   });
 
@@ -199,9 +204,9 @@ describe("сбои и соседи", () => {
   it("личная не легла, общая легла — помеченное вернулось в рюкзак, на общей безымянное", async () => {
     ownHalfFull();
     db.upsertPlan = [false, true];
-    db.bp.set(K, item("30", { mob: "10" }));
-    expect(await put({ qty: 30 })).toMatchObject({ own: 0, shared: 10, rejected: 20 });
-    expect(db.bp.get(K)).toMatchObject({ count: dec("20"), ...m("10", "0", "0") });
+    db.bp.set(K, item(`${OVER}`, { mob: "10" }));
+    expect(await put({ qty: OVER })).toMatchObject({ own: 0, shared: 10, rejected: CELL_SIZE });
+    expect(db.bp.get(K)).toMatchObject({ count: dec(`${CELL_SIZE}`), ...m("10", "0", "0") });
     expect(db.shelves.find((x) => x.key === K)).toMatchObject({
       scope: "shared",
       count: dec("10"),

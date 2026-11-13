@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+import { goldForTicketPrice } from "@/lib/ticketGold";
 import { isValidNearAccountForPayout } from "@/lib/nearAccountValidate";
 import { myClaimHistory } from "@/server/api/user-claim-history";
 import {
@@ -25,7 +26,8 @@ export type PendingNftItem = {
 type SisterWallet = { wallet: string; isActive: boolean };
 
 /**
- * История клеймов за билеты: последние 50 платных клеймов, что выпало.
+ * История платных клеймов: последние 50, что выпало. Цена — в золоте
+ * (билеты ×500, ПРАВИЛА §8.61), даже у клеймов до 20.10.2026.
  * Свёрнута по умолчанию — раскрывается по клику.
  */
 export function ClaimHistorySection() {
@@ -77,11 +79,9 @@ export function ClaimHistorySection() {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}{" "}
-                  · {r.ticketCost === 1
-                    ? t("mynfts.tickets_one", { n: r.ticketCost })
-                    : r.ticketCost < 5
-                      ? t("mynfts.tickets_few", { n: r.ticketCost })
-                      : t("mynfts.tickets_many", { n: r.ticketCost })}
+                  · {t("mynfts.tickets_many", {
+                    n: goldForTicketPrice(r.ticketCost).toLocaleString("ru-RU"),
+                  })}
                 </div>
               </div>
               <span
@@ -111,12 +111,15 @@ export function PendingNftsSection({
   sessionWallet,
   onWithdraw,
   isPending,
+  canWithdraw = true,
 }: {
   items: PendingNftItem[];
   sisters: SisterWallet[];
   sessionWallet: string | null;
   onWithdraw: (recipient: string) => void;
   isPending: boolean;
+  /** Белый список вывода (§8.127): нет — список призов без кнопки вывода. */
+  canWithdraw?: boolean;
 }) {
   const t = useT();
   // Из списка убираем всё, что нельзя отправить в цепь. tg<telegram_id> —
@@ -195,6 +198,7 @@ export function PendingNftsSection({
         )}
       </div>
 
+      {canWithdraw && <>
       <div className="mb-2 space-y-1.5">
         <label className="block text-[11px] font-medium text-muted-foreground">
           {t("mynfts.where_to_withdraw")}
@@ -256,6 +260,7 @@ export function PendingNftsSection({
         )}
         {isPending ? t("mynfts.sending_short") : t("mynfts.withdraw")}
       </button>
+      </>}
     </section>
   );
 }

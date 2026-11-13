@@ -4,7 +4,7 @@ import { TavernDialog } from "@/components/castle-live/TavernDialog";
 import { thumb } from "@/lib/image";
 import "./main-hand-control.css";
 
-export type HandTool = { stackKey: string; name: string; image?: string | null; count: number; durability?: number | null; tool?: boolean; shovel?: boolean | null; rod?: boolean | null };
+export type HandTool = { stackKey: string; name: string; image?: string | null; count: number; durability?: number | null; tool?: boolean; shovel?: boolean | null; rod?: boolean | null; /** Подпись слота вместо прочности (земля в руке: «×19»). */ label?: string };
 type Props = {
   ru: boolean; main: HandTool | null; stacks: HandTool[];
   loading?: boolean; failed?: boolean; busy?: boolean;
@@ -30,7 +30,7 @@ export function MainHandControl({ ru, main, stacks, loading, failed, busy, onRet
   return <>
     <button type="button" className={`raid-main-hand${main?.rod ? " raid-main-hand--rod" : main?.image ? " raid-main-hand--equipped-image" : ""}`} aria-haspopup="dialog" aria-label={`${title}: ${main?.name ?? (ru ? "пусто" : "empty")}`} onClick={() => { setError(false); setOpen(true); }}>
       {main?.image ? <img src={thumb(main.image, 80, "black")} alt="" /> : <Hand aria-hidden="true" />}
-      <span>{main && main.durability != null ? `${durability(main.durability)}%` : ru ? "Рука" : "Hand"}</span>
+      <span>{main?.label ?? (main && main.durability != null ? `${durability(main.durability)}%` : ru ? "Рука" : "Hand")}</span>
     </button>
     {open && <TavernDialog title={title} onClose={() => setOpen(false)} locked={!!locked} className="raid-hand-picker" overlayClassName="fixed inset-0 z-[140] flex items-center justify-center bg-black/50 p-3">
       <div className="raid-hand-picker__header"><h2>{title}</h2><button type="button" disabled={!!locked} aria-label={ru ? "Закрыть" : "Close"} onClick={() => setOpen(false)}><X /></button></div>

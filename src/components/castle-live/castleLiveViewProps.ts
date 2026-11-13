@@ -8,10 +8,12 @@ export type CastleLiveViewProps = {
   cells: CellMap;
   assets: Asset[];
   onEdit: () => void;
-  onCity?: () => void;
+  onCity?: (target?: { q: number; r: number }) => void;
   /** Вышел из аккаунта: сессии редактора больше нет — уводим со страницы. */
   onSignedOut?: () => void;
   entry?: "editor" | "game";
+  /** Warm cached castle scenes must release music while the raid is visible. */
+  musicActive?: boolean;
   profileWalletStatus?: "connected" | "disconnected";
   profileWalletName?: string;
   onPreviewWalletChange?: (connected: boolean, name?: string) => void;

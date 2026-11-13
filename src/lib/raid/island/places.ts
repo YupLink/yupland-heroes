@@ -4,11 +4,12 @@
 //
 // Задание ведёт игрока от старта у берега напротив города: рядом сундук и
 // первые дубы, дальше первый слизень и мастерская у города, за ними шахта и
-// первые кристаллы, в дальнем конце — разрушенный портал с кладом рядом. Прочие
-// слабые боссы (их число — от сида), дубы, кристаллы и клады разбросаны по
-// острову врозь; артефакт и тренировочный пак — у двух случайных боссов, не у
-// первого. Лодка — на мелководье у берега, поближе к старту.
-import { BOSS_COUNT, ISLAND_COUNTS } from "@/lib/raid/island/catalog";
+// первые камни, в дальнем конце — разрушенный портал с кладом рядом. Прочие
+// слабые боссы, дубы, камни и клады разбросаны по острову врозь; часть кладов
+// — под дубами и камнями. Закреплённых призов у боссов нет (с 20.10 дроп
+// бросает сервер). Верфь — на суше у мелководья, поближе к старту. Шахты
+// камня, золота и алмазов (20.10) — последними: раскладка прочего от сида та же.
+import { BOSS_COUNT, ISLAND_COUNTS, ISLAND_EXTRA_MINES } from "@/lib/raid/island/catalog";
 import { ISLAND_LAND_R } from "@/lib/raid/island/shape";
 import { DIRS, hashCell, hexDist, keyOf } from "@/lib/raid/zonegen/town/hex";
 import type { Cell } from "@/lib/raid/worldgen/geo";
@@ -51,6 +52,9 @@ export type PlaceInput = {
   town: Cell;
   hall: Cell | null;
   seed: number;
+  startAtHall?: boolean;
+  /** Занятые клетки (блоки шаблона города): сюда задание не ставится. */
+  taken?: ReadonlySet<string>;
 };
 
 export function pickPlaces(inp: PlaceInput): IslandPlaces {
@@ -59,7 +63,13 @@ export function pickPlaces(inp: PlaceInput): IslandPlaces {
   const land = (c: Cell) => byKey.has(keyOf(c)) && !inp.water.has(keyOf(c));
   const coastal = (c: Cell) => DIRS.some(([dq, dr]) => !land({ q: c.q + dq, r: c.r + dr }));
   const free = inp.cells.filter(
-    (c) => land(c) && !c.buildingId && !c.roadId && !c.objectId && !inp.water.has(keyOf(c)),
+    (c) =>
+      land(c) &&
+      !c.buildingId &&
+      !c.roadId &&
+      !c.objectId &&
+      !inp.water.has(keyOf(c)) &&
+      !inp.taken?.has(keyOf(c)),
   );
   const wild = free.filter((c) => hexDist(c, inp.town) > TOWN_KEEP);
   const roll = (c: Cell, salt: number) => hashCell(inp.seed ^ salt, c.q, c.r);
@@ -105,7 +115,7 @@ export function pickPlaces(inp: PlaceInput): IslandPlaces {
     return out;
   };
 
-  const spawn = take(wild, (c) => hexDist(c, inp.town), 1, inland);
+  const spawn = inp.startAtHall && inp.hall ? inp.hall : take(wild, (c) => hexDist(c, inp.town), 1, inland);
   const chest = take(wild, near(spawn, 2), 2);
   const trees = many(ISLAND_COUNTS.treesNearStart, () =>
     plant(take(wild, near(spawn, 3), 3, (c) => hexDist(c, chest) > 1 && lone(c))),
@@ -127,10 +137,6 @@ export function pickPlaces(inp: PlaceInput): IslandPlaces {
       take(wild, (c) => apart(c) + Math.min(hexDist(c, spawn), 5) / 4, 20 + monsters.length, deep),
     );
   }
-  // Призы — двум разным случайным боссам, кроме первого.
-  const rest = monsters.slice(1);
-  const a = roll(spawn, 12) % rest.length;
-  const b = (a + 1 + (roll(spawn, 13) % (rest.length - 1))) % rest.length;
   const workshop = take(
     free,
     (c) => -hexDist(c, spawn) - 3 * Math.abs(hexDist(c, inp.town) - 3),
@@ -147,7 +153,28 @@ export function pickPlaces(inp: PlaceInput): IslandPlaces {
   // Клады — врозь от старта и от главного клада; можно и у берега, клетка
   // под кладом расчищается (features) — декором задания не считается.
   const anyCell = () => true;
-  const digs = spread(ISLAND_COUNTS.digs, [spawn, treasure], 50, anyCell, (c) => c);
+  // Часть кладов — под дубами и камнями (владелец, 20.10: «где возможно — под
+  // дубами или камнями»): мешочек под декором не виден, пока его не срубят.
+  // Первые дубы у старта и камни у шахты — для задания, под ними кладов нет.
+  const covers = [
+    ...trees.slice(ISLAND_COUNTS.treesNearStart),
+    ...crystals.slice(ISLAND_COUNTS.crystalsNearMine),
+  ];
+  const under = covers
+    .map((c, i) => ({ c, k: roll(c, 70 + i) }))
+    .sort((x, y) => x.k - y.k)
+    .slice(0, ISLAND_COUNTS.digsUnderDecor)
+    .map((x) => x.c);
+  const digs = [
+    ...under,
+    ...spread(
+      ISLAND_COUNTS.digs - under.length,
+      [spawn, treasure, ...under],
+      50,
+      anyCell,
+      (c) => c,
+    ),
+  ];
   // Верфь (владелец, 17.10.2026: «игрок должен построить себе корабль») —
   // свободная суша у мелководья (корабль спускается на соседнюю воду), ближе
   // к старту; по возможности — у большого куска мелководья (у рамки рвётся).
@@ -161,19 +188,32 @@ export function pickPlaces(inp: PlaceInput): IslandPlaces {
   const roomy = free.filter((c) => beside(c, BOAT_WATER));
   const yard = roomy.length > 0 ? roomy : free.filter((c) => beside(c, 1));
   const shipyard = yard.length > 0 ? take(yard, (c) => -hexDist(c, spawn), 60) : null;
+  // Шахта — стена (§8.59): вглубь суши и не вплотную к дубам, камням, боссам,
+  // сундуку и другой шахте — кольцо соседей проходимо или прорубается, шахта
+  // не запирает ни клетки. Врозь друг от друга и от лесопилки.
+  const walls = [...decor, ...monsters, chest, mine];
+  const mines: Cell[] = [];
+  while (mines.length < ISLAND_EXTRA_MINES.length) {
+    const ring = (c: Cell) => [...walls, ...mines].every((w) => hexDist(c, w) > 1);
+    const apart = (c: Cell) => Math.min(far(6), ...[mine, ...mines].map((m) => hexDist(c, m)));
+    mines.push(take(wild, apart, 80 + mines.length, (c) => inland(c) && ring(c)));
+  }
   return {
     spawn,
     chest,
     workshop,
     trees,
     monsters,
-    artifact: rest[a],
-    pack: rest[b],
+    artifact: null,
+    pack: null,
     crystals,
     mine,
+    mines,
     treasure,
     digs,
     shipyard,
+    // Подарок в сундуке — решает generateIsland (раз на аккаунт).
+    gift: true,
     portal,
     hall: inp.hall,
   };

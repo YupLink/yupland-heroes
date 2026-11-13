@@ -4,6 +4,7 @@ import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
 import { WATER_SQL } from "./cell-sql";
 import { RUNNER_HERE } from "./runners";
+import { mobGroundSql } from "./mob-ground";
 import { SCATTER_SEED_MAX } from "@/lib/raid/scatterPlan";
 
 export type CellRef = { q: number; r: number };
@@ -14,8 +15,10 @@ const cellRows = (rows: unknown[]): Array<{ q: number; r: number }> =>
 /**
  * «Сюда объект поставить можно» — в терминах клетки `c`.
  *
- * Дорога (road_id) в списке запретов не участвует намеренно: объект на дороге
- * законен, по ней к нему и ходят. Всё остальное — занято: земли нет, лежит
+ * Дорога (road_id) в списке запретов не участвует намеренно: сундук на дороге
+ * законен, по ней к нему и ходят. Мобу, боссу и убегающему существу — нельзя ни
+ * дорогу, ни жилу (владелец, 22.10.2026): это отдельное условие mob-ground
+ * поверх этого. Всё остальное — занято: земли нет, лежит
  * декорация-преграда, стоит постройка, стоит другой объект, накрыто глухим
  * туманом, под клеткой прячется беглец (runners.ts), на ней стоит игрок или
  * лежит живой мешочек (ПРАВИЛА §8.21) или стоит сундук (и его бугорок,
@@ -92,14 +95,17 @@ export async function pickAnyLand(
   seed?: number | null,
   /** Только эти местности (уровень местности у боссов); null — любая суша. */
   terrains?: readonly string[] | null,
+  /** Котёл мобов: без дорог и жил (mob-ground). */
+  mob = false,
 ): Promise<CellRef[]> {
   if (need <= 0 || (terrains && terrains.length === 0)) return [];
   const only = terrains ? `AND c.terrain_id IN (${terrains.map(sqlStr).join(",")})` : "";
+  const ground = mob ? `AND ${mobGroundSql("c")}` : "";
   const skip = new Set(taken.map(cellKey));
   const rows = await mcpExec(
     `SELECT c.q, c.r
        FROM yuplink.raid_map_cells c
-      WHERE c.map_id = ${sqlStr(mapId)} AND ${FREE_CELL} AND ${DRY_LAND} ${only}
+      WHERE c.map_id = ${sqlStr(mapId)} AND ${FREE_CELL} AND ${DRY_LAND} ${only} ${ground}
       ORDER BY ${cellOrder(seed, "c")} LIMIT ${Math.floor(need) + skip.size};`,
     { wrapJson: true },
   );

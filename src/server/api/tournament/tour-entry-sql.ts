@@ -173,19 +173,27 @@ const ledger = (table: string, kind: string) => (key: string) =>
 /** Ключ операции в raid_backpack_op (pay-once.payOp). */
 const op = (key: string) => seen("raid_backpack_op", `op = ${sqlStr(`pay:${key}`)}`);
 const res = [ledger("res_ledger", TOUR_FEE_KIND), ledger("res_ledger", TOUR_FEE_REFUND_KIND)];
+const either =
+  (a: (key: string) => string, b: (key: string) => string) =>
+  (key: string): string =>
+    `(${a(key)} OR ${b(key)})`;
 
 /**
  * Где строка цены оставляет след по ключу: списание (ключ строки) и возврат
- * (`ключ:back`). Ресурсы, билеты, токен — журналы res_move, ticket_move,
- * acc_move; энергия и товар — ключи операции (плата keyed, pay-once). Лайков
- * здесь нет: их списание ключа не помнит.
+ * (`ключ:back`). Ресурсы, токен — журналы res_move, acc_move; энергия и товар —
+ * ключи операции (плата keyed, pay-once). Лайков здесь нет: их списание ключа не
+ * помнит. Строка «в билетах» с 20.10.2026 платится золотом ×500 тем же ключом
+ * (§8.61) — след в res_ledger; запись, оплаченная до выката, — в ticket_ledger.
  */
 const TRAIL: Partial<Record<TourEntryPrice["resource"], ReadonlyArray<(key: string) => string>>> = {
   gold: res,
   stone: res,
   wood: res,
   diamonds: res,
-  tickets: [ledger("ticket_ledger", "building"), ledger("ticket_ledger", "raid_reward")],
+  tickets: [
+    either(res[0], ledger("ticket_ledger", "building")),
+    either(res[1], ledger("ticket_ledger", "raid_reward")),
+  ],
   token: [ledger("acc_ledger", "acc_spend"), ledger("acc_ledger", "acc_reward")],
   energy: [op, op],
   item: [op, op],

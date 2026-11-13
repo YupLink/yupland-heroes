@@ -5,6 +5,7 @@
 // рисуется вовсе: пустое место честнее прочерка.
 import { Link } from "@tanstack/react-router";
 import { useAccountBalance } from "@/lib/hooks/useAccountBalances";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
 export function AccountBalanceBadge({
   token,
@@ -15,6 +16,8 @@ export function AccountBalanceBadge({
   need?: number;
 }) {
   const balance = useAccountBalance(token);
+  // «Только Google» не пополняет счёт (§8.127) — ссылки «пополнить» нет.
+  const canTopUp = !useEntryRules().googleOnly;
   if (balance === null || !token) return null;
 
   const short = need != null && balance < need;
@@ -29,7 +32,7 @@ export function AccountBalanceBadge({
       }`}
     >
       на счету {shown} {token}
-      {short && (
+      {short && canTopUp && (
         <Link to="/wallet" className="font-semibold text-gold underline-offset-2 hover:underline">
           пополнить
         </Link>

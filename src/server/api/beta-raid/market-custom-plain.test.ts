@@ -39,8 +39,8 @@ describe("сундук — галочка своего товара", () => {
     // Валидатор в тесте не зовётся — умолчания zod задаём сами.
     const data = { ...base, plainChest: true, magicChest: false, isShovel: false, toolWear: null };
     expect((await call(mod.createCustomItem, data)).plainChest).toBe(true);
-    expect(s.sql[0]).toContain("is_potion, plain_chest, magic_chest, is_shovel, tool_wear)");
-    expect(s.sql[0]).toMatch(/false, true, false, false, NULL\);$/);
+    expect(s.sql[0]).toContain("is_potion, plain_chest, magic_chest, is_shovel, tool_wear, is_binocular, is_ladder)");
+    expect(s.sql[0]).toMatch(/false, true, false, false, NULL,\n\s+false, false\);$/);
   });
 
   it("правка: задана — пишется; старая вкладка без поля — колонку не трогаем", async () => {

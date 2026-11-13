@@ -26,6 +26,10 @@ export const dict: Record<string, Entry> = {
     ru: "Город голодает: лавка только принимает еду",
     en: "The town is starving: the shop only accepts food",
   },
+  "town.shop_starving_portal": {
+    ru: "Город голодает: лавка принимает только еду, а продаёт только дерево, камень и алмазы на портал",
+    en: "The town is starving: the shop accepts only food and sells only wood, stone and diamonds for the portal",
+  },
 
   // ── лавки города ──
   "town.not_traded": { ru: "Город этим не торгует", en: "The town doesn't trade this" },
@@ -36,4 +40,6 @@ export const dict: Record<string, Entry> = {
   "market.will_get": { ru: "Получишь:", en: "You'll get:" },
   // Особый спрос: запас сутки на НЗ и ниже — город скупает до НЗ по ×4 вместо ×2.
   "market.town_rush": { ru: "Особый спрос ×2", en: "Special demand ×2" },
+  // «/шт» при 2+ шт. — средняя по кривой за всё количество (владелец, 04.11.2026).
+  "market.avg_price": { ru: "ср. цена", en: "avg price" },
 };

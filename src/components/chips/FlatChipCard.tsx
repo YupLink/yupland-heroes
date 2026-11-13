@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useLang, useT } from "@/lib/i18n";
 import { chipBusyView } from "./chipBusy";
 
+import { thumb } from "@/lib/image";
 export type FlatChip = {
   id: string;
   serialNo: number | null;
@@ -55,7 +56,7 @@ export function FlatChipCard({
     >
       <div className="relative p-2">
         <ChipImage
-          src={chip.imageUrl}
+          src={thumb(chip.imageUrl, 320)}
           level={chip.level}
           alt={chip.templateName}
           className={cn(

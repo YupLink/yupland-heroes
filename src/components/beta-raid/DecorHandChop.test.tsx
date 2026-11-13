@@ -1,4 +1,4 @@
-// «Срубить руками» (§8.56): цена 10 энергии и 30 сытости на кнопке; мало
+// «Срубить руками» (§8.56): цена (здесь 10 энергии) и 30 сытости на кнопке; мало
 // сытости или энергии — неактивна с причиной; чисел нет — активна.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -8,6 +8,7 @@ const ui = vi.hoisted(() => ({
   lang: "ru" as "ru" | "en",
   energy: 50 as number | undefined,
   satiety: 100 as number | null,
+  satMult: 1,
 }));
 vi.mock("@/lib/i18n", () => ({
   useT: () => (key: string, vars?: Record<string, string | number>) =>
@@ -21,13 +22,23 @@ vi.mock("./SatietyBar", () => ({
     ui.satiety === null ? null : { now: ui.satiety, max: 1000, hungry: ui.satiety <= 0 },
 }));
 
+vi.mock("./useEnergyMult", () => ({ useSatietyMult: () => ui.satMult }));
+
 const { DecorHandChop } = await import("./DecorHandChop");
 const html = (busy = false) =>
-  renderToStaticMarkup(<DecorHandChop busy={busy} onChop={() => {}} />);
+  renderToStaticMarkup(<DecorHandChop busy={busy} onChop={() => {}} cost={10} />);
 
-beforeEach(() => Object.assign(ui, { lang: "ru", energy: 50, satiety: 100 }));
+beforeEach(() => Object.assign(ui, { lang: "ru", energy: 50, satiety: 100, satMult: 1 }));
 
 describe("DecorHandChop", () => {
+  it("остров новичка (21.10): сытость −3, хватает и 5", () => {
+    Object.assign(ui, { satMult: 0.1, satiety: 5 });
+    const out = renderToStaticMarkup(<DecorHandChop busy={false} onChop={() => {}} cost={1} />);
+    expect(out).toContain("−1</span>");
+    expect(out).toContain("−3</span>");
+    expect(out).not.toContain(`disabled=""`);
+  });
+
   it("хватает всего — активна, цена −10 и −30", () => {
     const out = html();
     expect(out).toContain("Срубить руками");
@@ -56,6 +67,20 @@ describe("DecorHandChop", () => {
     expect(html()).not.toContain(`disabled=""`);
   });
 
+  it("издалека (13.11): в кнопке дорога ⚡ — «Дорога: ⚡1.5»; рядом (0) — нет", () => {
+    const far = renderToStaticMarkup(
+      <DecorHandChop busy={false} onChop={() => {}} cost={10} walk={1.5} />,
+    );
+    expect(far).toContain(`title="Дорога: ⚡1.5"`);
+    expect(far).toContain("−1.5</span>");
+    for (const walk of [0, null, undefined]) {
+      const near = renderToStaticMarkup(
+        <DecorHandChop busy={false} onChop={() => {}} cost={10} walk={walk} />,
+      );
+      expect(near).not.toContain("Дорога");
+    }
+  });
+
   it("ru и en заведены для всех ключей рубки руками", () => {
     for (const k of [
       "braid.decor_hand",
@@ -63,6 +88,7 @@ describe("DecorHandChop", () => {
       "braid.decor_hand_no",
       "braid.decor_hand_low_satiety",
       "braid.decor_hand_low_energy",
+      "braid.decor_walk",
     ]) {
       expect(dict[k]?.ru).toBeTruthy();
       expect(dict[k]?.en).toBeTruthy();

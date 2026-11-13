@@ -7,7 +7,7 @@ import { z } from "zod";
 import { sb } from "../../db/pg";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { freeArtifactStat } from "../beta-raid/art-stock";
+import { freeAuctionArtCount } from "./lot-arts";
 import { ensureAuctionSchema, AUCTION_DURATIONS } from "./schema";
 import { takeEscrow, type EscrowInfo, type EscrowLot } from "./escrow";
 import { settlePlayerLot } from "./settle-player";
@@ -21,6 +21,8 @@ import {
 } from "@/lib/auctionHouse";
 import { isWholeOnlyCurrency } from "@/lib/auctionCurrency";
 import { isWalletLinked } from "@/lib/walletLinked";
+import { parseArtLotRef } from "@/lib/auctionArtRef";
+import { googleOnlyWallet } from "@/lib/auth/entryRules";
 
 const RESOURCES = ["gold", "stone", "wood", "diamonds"];
 
@@ -48,10 +50,15 @@ export const createPlayerLot = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { wallet, account } = await who();
+    // Должник: золото за монеты не продаёт (§8.129), только за ресурсы.
+    if (data.kind === "resource" && data.ref === "gold" && !data.currency.startsWith("res:"))
+      await (await import("../debt/debt-read")).assertNoDebt(account, "debt.goldSwapClosed");
     await ensureAuctionSchema();
     // Валюта — по уровню дома (владелец, 14.10): золото с 1-го … USDT с 10-го.
     const level = await houseLevel(account);
     if (level < 1) throw new Error(humanHouseError("house_needed"));
+    // «Только Google» (§8.127): продаёт только за золото.
+    if (googleOnlyWallet(wallet) && data.currency !== "res:gold") throw new Error("google.goldOnly");
     if (!houseCurrencies(level, isWalletLinked(wallet)).includes(data.currency)) {
       if (data.currency === "STARS" && isWalletLinked(wallet)) {
         throw new Error("Звёзды — для игроков без кошелька");
@@ -73,8 +80,12 @@ export const createPlayerLot = createServerFn({ method: "POST" })
       if (data.currency === `res:${data.ref}`)
         throw new Error("Ресурс за тот же ресурс не продаётся");
     } else if (data.kind === "artifact") {
-      const free = await freeArtifactStat(account, data.ref);
-      if (!free || free.count < data.qty) throw new Error("Нет столько свободных артефактов");
+      // Группа пикера — шаблон и износ: в залог и победителю уходят такие же.
+      const art = parseArtLotRef(data.ref);
+      const free = await freeAuctionArtCount(account, art);
+      if (free < data.qty) throw new Error("Нет столько свободных артефактов");
+      prizeRef = art.templateId;
+      escrow = { wear: art.wear, enchant: art.enchantPct };
     } else {
       const bag = await sellableGoods(wallet);
       const g = bag.goods.find((x) => x.stackKey === data.ref);

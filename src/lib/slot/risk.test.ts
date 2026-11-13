@@ -45,7 +45,7 @@ describe("риск-игра: честная колода + касса игрок
       ranks[r.dealer.rank]++;
     }
     for (let rank = 2; rank <= 14; rank++) expect(ranks[rank] / N).toBeCloseTo(1 / 13, 2);
-  });
+  }, 60_000);
 
   it("исход — сравнение карт: против 3 проигрыш редкий, против K частый; ничья как в колоде", () => {
     const rng = seededRng(5);

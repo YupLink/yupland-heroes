@@ -25,9 +25,10 @@
 // Без обёртки wrapJson: изменяющие CTE — только на верхнем уровне.
 // Комментарии внутри SQL — только блочные.
 import { sqlStr } from "@/server/api/raid-shared";
-import { WATER_SQL, OCEAN_SQL } from "@/server/api/beta-raid/cell-sql";
+import { WATER_SQL, OCEAN_SQL, bridgeCellSql } from "@/server/api/beta-raid/cell-sql";
 import { SHIP_ASHORE_HP, SHIP_STEP_HP_OCEAN, SHIP_STEP_HP_WATER } from "@/lib/shipHealth";
 import { satietyMoveSql } from "@/server/api/beta-raid/hero-satiety-sql";
+import { ladderCtes } from "@/server/api/beta-raid/move-step-ladder-sql";
 
 type Cell = { q: number; r: number };
 
@@ -52,11 +53,18 @@ export type StepGuard = {
   cost: number;
   /** Ключ нажатия (у каждого запроса шага свой): метка «этот шаг записан». */
   op: string;
+  /** Full durability cost of an atomic sail beneath a multi-cell bridge. */
+  sailHpCost?: number;
   /**
    * Сытость выбранного героя: −1 за шаг, −2 по воде, −4 по океану. Тем же
    * оператором и только за применённый шаг. Героя нет — поля нет.
    */
   satiety?: { heroId: string; max: number; cost: number };
+  /**
+   * Лестница (§8.121): шаг пишется, только если в рюкзаке этого героя есть
+   * лестница, и она тратится тем же оператором (ladderCtes).
+   */
+  ladder?: { heroId: string };
 };
 
 /**
@@ -70,7 +78,7 @@ export const waterCell = (mapId: string, q: number, r: number): string =>
   `EXISTS (SELECT 1 FROM yuplink.raid_map_cells c
              JOIN yuplink.mystic_item_template t ON t.id = c.terrain_id
             WHERE c.map_id = ${sqlStr(mapId)} AND c.q = ${q} AND c.r = ${r}
-              AND ${WATER_SQL})`;
+              AND ${WATER_SQL} AND NOT ${bridgeCellSql("c")})`;
 
 /** Океан под килем — гребок туда дороже (и пускает только большое судно). */
 export const oceanCell = (mapId: string, q: number, r: number): string =>
@@ -108,9 +116,19 @@ export const upsertPos = (from: string): string =>
  * heroMapState (состояние рейда), и первый шаг не должен на этом спотыкаться.
  * Строка уже где-то ещё (шаг из пачки опередил) — ноль строк.
  */
-export function casPos(acc: string, q: number, r: number, from: Cell, mapId: string): string {
+export function casPos(
+  acc: string,
+  q: number,
+  r: number,
+  from: Cell,
+  mapId: string,
+  /** Доп. условие строки-источника (лестница: «есть что тратить»). */
+  when = "true",
+): string {
+  // Обычный шаг — прежний текст (VALUES); с условием — строка-источник под WHERE.
+  const row = `${acc}, ${q}, ${r}, now(), ${sqlStr(mapId)}`;
   return `INSERT INTO yuplink.beta_raid_positions AS p (account_id, q, r, updated_at, map_id)
-     VALUES (${acc}, ${q}, ${r}, now(), ${sqlStr(mapId)})
+     ${when === "true" ? `VALUES (${row})` : `SELECT ${row} WHERE ${when}`}
      ON CONFLICT (account_id) DO UPDATE
        SET q = EXCLUDED.q, r = EXCLUDED.r, updated_at = now(), map_id = EXCLUDED.map_id
        WHERE p.q = ${Math.trunc(from.q)} AND p.r = ${Math.trunc(from.r)} AND ${POS_ON_MAP}
@@ -173,13 +191,17 @@ export function stepSql(o: {
       ? ` AND q = ${Math.trunc(guard.from.q)} AND r = ${Math.trunc(guard.from.r)}`
       : "";
     return `WITH sh AS (
-           UPDATE yuplink.beta_raid_ship
+           UPDATE yuplink.beta_raid_ship ship_m
               SET q = ${q}, r = ${r}, updated_at = now(),
                   /* Гребок стоит судну запаса хода: обычная вода дешевле океана. */
-                  hp = hp - (CASE WHEN ${oceanCell(mapId, q, r)}
-                                  THEN ${SHIP_STEP_HP_OCEAN} ELSE ${SHIP_STEP_HP_WATER} END)
+                  hp = hp - ${guard?.sailHpCost ?? `(CASE WHEN ${oceanCell(mapId, q, r)}
+                                  THEN ${SHIP_STEP_HP_OCEAN} ELSE ${SHIP_STEP_HP_WATER} END)`}
             WHERE crew_account = ${acc} AND map_id = ${sqlStr(mapId)}
               AND ${waterCell(mapId, q, r)}${shipFrom}
+              ${guard?.sailHpCost !== undefined ? `AND NOT EXISTS (
+                SELECT 1 FROM yuplink.beta_raid_ship occupied
+                 WHERE occupied.map_id = ${sqlStr(mapId)} AND occupied.q = ${q} AND occupied.r = ${r}
+                   AND occupied.id <> ship_m.id)` : ""}
            RETURNING id),
          pos AS (${upsertPos(`SELECT ${acc}, ${q}, ${r}, now(), ${m} FROM sh`)})${spend}
          ${counts}`;
@@ -205,10 +227,14 @@ export function stepSql(o: {
            ${counts}`;
   }
 
+  const lad = guard?.ladder ? ladderCtes(guard.ladder.heroId, acc, guard.op) : null;
   const pos = guard
-    ? casPos(acc, q, r, guard.from, mapId)
+    ? casPos(acc, q, r, guard.from, mapId, lad ? "EXISTS (SELECT 1 FROM lsrc)" : "true")
     : upsertPos(`VALUES (${acc}, ${q}, ${r}, now(), ${m})`);
-  return `WITH sh AS (SELECT 1 WHERE false),
-           pos AS (${pos})${spend}
-           ${counts}`;
+  return `${lad ? `${lad.lock}
+           ` : ""}WITH sh AS (SELECT 1 WHERE false),${lad ? `
+           ${lad.src},` : ""}
+           pos AS (${pos})${spend}${lad ? `,
+           ${lad.take}` : ""}
+           ${lad ? counts.replace(/;$/, ",\n         (SELECT count(*) FROM lgold)::int AS gold;") : counts}`;
 }

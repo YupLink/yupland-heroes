@@ -1,0 +1,150 @@
+@font-face{font-family:"Station Russo";src:url("../../../assets/tavern/RussoOne.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Station Golos";src:url("../../../assets/tavern/GolosText.woff2") format("woff2");font-weight:400 900;font-display:swap}
+.weather-station{position:fixed;z-index:115;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;background:#050708c9;color:#f3ead9;font:400 16px/1.3 "Station Golos",sans-serif}
+.weather-station *{box-sizing:border-box}
+.weather-station__shell{width:min(100%,760px);max-height:calc(100dvh - 24px);margin:0 auto;border:1px solid #66523b;border-radius:15px;overflow-y:auto;overscroll-behavior:contain;background:radial-gradient(ellipse at 50% 0,#1c1e1e 0,#121516 50%,#101213 100%)}
+.weather-station__header{position:relative;display:flex;align-items:flex-start;gap:14px;min-height:170px;padding:15px 22px 20px;border-bottom:1px solid #66523b;background:radial-gradient(ellipse 320px 75px at 28% 20%,#090c0ea8,transparent 95%),url("/weather-station/header.webp") 35% center/cover no-repeat}
+.weather-station__back{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:4px 6px;border:0;background:none;color:#e5d9c7;text-decoration:none;white-space:nowrap;font-size:16px;text-shadow:0 1px 5px #000;cursor:pointer}
+.weather-station__back:hover{color:#ffe2a3}
+.weather-station__header h1{display:flex;align-items:center;min-width:0;min-height:44px;margin:0;color:#ffe2a3;font:400 clamp(25px,4vw,35px)/1.05 "Station Russo",sans-serif;text-shadow:0 2px 8px #000,0 0 8px #000}
+.weather-station__shaman-call{position:absolute;left:22px;bottom:0;display:block;width:220px;aspect-ratio:392/84;padding:0;border:0;background:none;cursor:pointer}
+.weather-station__shaman-call img{display:block;width:100%;height:100%;object-fit:fill}
+.weather-station__shaman-call:hover{filter:brightness(1.09)}
+.weather-station__shaman-dialog{width:min(380px,calc(100% - 24px));max-height:calc(100dvh - 24px);margin:auto;padding:18px;overflow-y:auto;border:1px solid #8c714e;border-radius:14px;background:radial-gradient(ellipse at 50% 0,#1c1e1e,#101213);box-shadow:0 18px 45px #000b;color:#f3ead9;font-family:"Station Golos",sans-serif}
+.weather-station__shaman-dialog::backdrop{background:#050708bb}
+.weather-station__shaman-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px}
+.weather-station__shaman-dialog h2{margin:0 0 3px;color:#f4ddad;font:400 21px "Station Russo",sans-serif}
+.weather-station__shaman-dialog-head p{margin:0;color:#afa99e;font-size:13px}
+.weather-station__shaman-close{flex:none;width:38px;height:38px;padding:0;border:1px solid #665c4e;border-radius:8px;background:#202321;color:#d6ccb9;font:400 26px/1 "Station Golos",sans-serif;cursor:pointer}
+.weather-station__shaman-option{display:grid;grid-template-columns:52px minmax(0,1fr) 24px;align-items:center;gap:11px;width:100%;min-height:76px;padding:8px 12px;border:1px solid #55534c;border-radius:10px;background:linear-gradient(145deg,#171a1b,#111415);color:#f2eadb;text-align:left;cursor:pointer}
+.weather-station__shaman-option[aria-pressed="true"]{border-color:#d0a154;background:linear-gradient(145deg,#30281d,#171919)}
+.weather-station__shaman-option img{width:49px;height:58px;object-fit:contain;image-rendering:pixelated}
+.weather-station__shaman-option strong,.weather-station__shaman-option small{display:block}
+.weather-station__shaman-option strong{font:400 18px "Station Russo",sans-serif}
+.weather-station__shaman-option small{margin-top:3px;color:#afa99e;font-size:13px}
+.weather-station__shaman-bonus{display:block;margin-top:5px;color:#eac77f;font-size:12px;line-height:1.25}
+.weather-station__shaman-bonus b{font-size:14px;white-space:nowrap}
+.weather-station__shaman-check{display:grid;place-items:center;width:22px;height:22px;border:1px solid #a18b63;border-radius:50%;color:#21180d;font-size:15px;font-weight:900}
+.weather-station__shaman-option[aria-pressed="true"] .weather-station__shaman-check{background:#e8bb69;border-color:#e8bb69}
+.weather-station__shaman-confirm{width:100%;min-height:44px;margin-top:14px;border:1px solid #c4a06a;border-radius:9px;background:#392c1d;color:#ffe1a3;font:700 16px "Station Golos",sans-serif;cursor:pointer}
+.weather-station__shaman-empty{margin:0;padding:16px;border:1px solid #53504a;border-radius:10px;background:#111415;color:#c7bba8;text-align:center}
+.weather-station__shaman-status{margin:0 0 11px;padding:8px 11px;border:1px solid #685a41;border-radius:8px;background:#1c1e1a;color:#e9cb90;font-size:13px}
+.weather-station__ritual{text-align:center;color:#e9cf9d}
+.weather-station__ritual-scene{width:100%;aspect-ratio:512/240;margin:3px auto 9px;overflow:hidden;border:1px solid #62543f;border-radius:12px;background:#121516 url("/weather-station/ritual-frames.webp") center top/100% auto no-repeat;image-rendering:pixelated;animation:weather-ritual-frame-in .16s ease-out both}
+.weather-station__ritual-scene[data-frame="1"]{background-position:center 47%}
+.weather-station__ritual-scene[data-frame="2"]{background-position:center 96%}
+.weather-station__ritual>p{margin:0 0 5px;font-size:14px}
+.weather-station__ritual-success{text-align:center}
+.weather-station__ritual-success>strong{display:block;color:#ffe0a0;font:400 19px "Station Russo",sans-serif}
+.weather-station__ritual-success>p{margin:9px 0 3px;color:#e5dac6;font-size:14px;line-height:1.4}
+.weather-station__ritual-success>p b{color:#f2c878}
+@keyframes weather-ritual-frame-in{from{opacity:.72}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.weather-station__ritual-scene{animation:none}}
+.weather-station__body{padding:17px 20px 20px}
+.weather-station__world{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,152px);align-items:center;gap:12px;margin-bottom:12px;color:#c7bba8;font-size:16px}
+.weather-station__current-world{display:flex;min-width:0;align-items:center;gap:7px;white-space:nowrap}
+.weather-station__current-world strong{min-width:0;overflow:hidden;color:#f6eddf;font-weight:700;text-overflow:ellipsis}
+.weather-station__current-world small{flex:none;color:#edc87c;font-size:11px;font-weight:600}
+.weather-station__world-select{position:relative;display:block}
+.weather-station__world-trigger{display:block;width:100%;min-height:36px;padding:5px 38px 5px 11px;border:1px solid #826849;border-radius:8px;background:#111719;color:#f6eddf;font:700 16px "Station Golos",sans-serif;text-align:left;cursor:pointer}
+.weather-station__world-trigger span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.weather-station__world-select svg{position:absolute;right:12px;top:50%;width:16px;height:10px;transform:translateY(-50%);fill:none;stroke:#edc87c;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.weather-station__world-menu{position:absolute;z-index:10;top:calc(100% + 2px);right:0;left:0;padding:5px;overflow:hidden;border:1px solid #8d714d;border-radius:10px;background:#111719;box-shadow:0 12px 24px #0009}
+.weather-station__world-menu [role="option"]{display:flex;width:100%;min-height:42px;align-items:center;justify-content:space-between;gap:5px;padding:8px 10px;border:0;border-left:4px solid transparent;border-radius:8px;background:transparent;color:#f6eddf;font:500 16px "Station Golos",sans-serif;text-align:left;cursor:pointer}
+.weather-station__world-menu [role="option"] span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.weather-station__world-menu [role="option"] small{flex:none;color:#edc87c;font-size:11px}
+.weather-station__world-menu [role="option"][aria-selected="true"]{border-left-color:#f2c44e;background:#2b281e;color:#f2c44e}
+.weather-station__world-menu [role="option"][aria-selected="true"]:focus-visible{outline:0}
+.weather-station__world-menu [role="option"][aria-selected="false"]:is(:hover,:focus-visible,[data-highlighted="true"]){background:#202322;color:#f6eddf}
+.weather-station__card{position:relative;display:flex;min-width:0;min-height:152px;padding:0;overflow:hidden;border:1px solid #5e554a;border-radius:11px;background:linear-gradient(145deg,#171a1b,#101314);color:#f6eddf;text-align:left;cursor:pointer}
+.weather-station__card[data-selected="true"]{border-color:#d0a154;box-shadow:inset 0 0 0 1px #806039}
+.weather-station__card-art{position:absolute;inset:0 48% 0 0;background-position:left center;background-size:cover;opacity:1}
+.weather-station__card-art:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,#11171944 40%,#111719d9 66%,#111719 85%)}
+.weather-station__card-content{position:relative;display:flex;flex-direction:column;justify-content:center;gap:5px;width:64%;min-width:0;margin-left:auto;padding:11px 11px 11px 3px}
+.weather-station__card-label{color:#f2ca81;font:400 14px "Station Russo",sans-serif}
+.weather-station__card-main{display:flex;flex-direction:column;gap:0}
+.weather-station__card-main strong{font:400 22px "Station Russo",sans-serif}
+.weather-station__card-main b{color:#f3ce85;font:400 29px "Station Russo",sans-serif;white-space:nowrap}
+.weather-station__card-time{color:#c6bdb0;font-size:12px;line-height:1.2}
+.weather-station__effects{margin-top:18px}
+.weather-station__effects h2{margin:0;color:#f6ebd8;font:400 clamp(19px,3vw,23px) "Station Russo",sans-serif}
+.weather-station__effects ul{display:grid;gap:5px;margin:0;padding:0;list-style:none}
+.weather-station__effects li{display:grid;grid-template-columns:31px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:42px;padding:4px 10px;border:1px solid #3f4747;border-radius:8px;background:linear-gradient(145deg,#171a1b,#101314)}
+.weather-station__effect-icon{display:block;width:27px;height:27px;background-image:url("/weather-station/impact-icons.webp");background-repeat:no-repeat;background-size:500% 100%}
+.weather-station__effect-icon[data-icon="0"]{background-position:0 50%}
+.weather-station__effect-icon[data-icon="1"]{background-position:25% 50%}
+.weather-station__effect-icon[data-icon="2"]{background-position:50% 50%}
+.weather-station__effect-icon[data-icon="3"]{background-position:75% 50%}
+.weather-station__effect-icon[data-icon="4"]{background-position:100% 50%}
+.weather-station__effects li strong{color:#a9a49b;font-size:14px;text-align:right;white-space:nowrap}
+.weather-station__dialog-backdrop{position:fixed;z-index:1;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;background:#050708bb}
+.weather-station__dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:16px}
+.weather-station__dialog-head p{margin:0;color:#afa99e;font-size:13px}
+.weather-station__targets{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.weather-station__targets button{min-height:36px;padding:5px 10px;border:1px solid #655944;border-radius:7px;background:#151919;color:#ecddc3;font:600 13px "Station Golos",sans-serif;cursor:pointer}
+.weather-station__targets button[aria-checked="true"]{border-color:#d3a859;background:#392c1d;color:#ffdf9b}
+.weather-station__target-label{margin:13px 0 3px;color:#c9bca5;font-size:13px}
+.weather-station__shaman-confirm:disabled{opacity:.55;cursor:default}
+.weather-station__ritual-error{margin:8px 0 0;color:#f08782;font-size:13px}
+.weather-station__admin{margin-bottom:10px}
+.weather-station__card{width:100%;cursor:default}
+.weather-station__next{margin-top:9px;padding:14px 15px 12px;border:1px solid #665a49;border-radius:12px;background:linear-gradient(145deg,#171a1b,#101314)}
+.weather-station__next-heading{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.weather-station__next-heading h2{margin:0;color:#ffe0a4;font:400 23px/1.1 "Station Russo",sans-serif}
+.weather-station__next-heading>span{flex:none;color:#c4b8a7;font-size:13px}
+.weather-station__next-weather{position:relative;min-height:146px;overflow:hidden;border:1px solid #695b49;border-radius:10px;background:#111719}
+.weather-station__next-weather .weather-station__card-art{inset:0 43% 0 0}
+.weather-station__next-weather .weather-station__card-art:after{background:linear-gradient(90deg,transparent 0%,#11171955 52%,#111719 84%)}
+.weather-station__next-weather-content{position:relative;width:61%;min-width:0;margin-left:auto;padding:11px 10px 10px 2px}
+.weather-station__next h3{margin:0;color:#f2ca81;font:400 16px "Station Russo",sans-serif}
+.weather-station__next-odds{display:grid;gap:5px;margin-top:9px}
+.weather-station__next-odd{display:flex;align-items:center;justify-content:space-between;gap:5px;min-height:34px;padding:4px 7px;border-radius:7px;background:#202322dc;color:#f1e8d8;font-size:15px}
+.weather-station__next-odd[data-leading="true"]{font-weight:700}
+.weather-station__next-odd span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.weather-station__next-odd b{flex:none;color:#f2c878;font-size:16px}
+.weather-station__next-temps{margin-top:11px;padding-top:10px;border-top:1px solid #575047}
+.weather-station__next-temp-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.weather-station__next-temp-list>div{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;padding:8px 7px;border-radius:7px;background:#202322;font-size:14px}
+.weather-station__next-temp-list>div[data-leading="true"]{font-weight:700}
+.weather-station__next-temp-list span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.weather-station__next-temp-list b{flex:none;color:#f2c878;font-size:15px}
+.weather-station__next-empty{color:#b9ad9b;font-size:13px}
+.weather-station__effects h2{margin-bottom:8px}
+.weather-station__effects li strong[data-tone="active"]{color:#f0c77b}
+.weather-station__effects li strong[data-tone="bad"]{color:#f08782}
+.weather-station__state{margin:0;padding:30px 14px;border:1px solid #4c4943;border-radius:10px;background:#111415;color:#d6cbbb;text-align:center}
+.weather-station :is(button,select,a):focus-visible{outline:2px solid #f6d185;outline-offset:2px}
+@media(max-width:600px){
+  .weather-station{padding:0}
+  .weather-station__shell{min-height:100vh;border-left:0;border-right:0;border-radius:0}
+  .weather-station__dialog-backdrop{align-items:flex-end;padding:0}
+  .weather-station__header{min-height:148px;gap:8px;padding:9px 13px 14px}
+  .weather-station__header h1{font-size:clamp(24px,7vw,29px)}
+  .weather-station__back{font-size:14px}
+  .weather-station__shaman-call{left:8px;width:196px}
+  .weather-station__shaman-dialog{inset:auto 0 0;width:100%;max-width:420px;max-height:calc(100dvh - 20px);margin:0 auto;padding:18px 16px calc(18px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0}
+  .weather-station__body{padding:10px 12px 18px}
+  .weather-station__world{margin-bottom:10px}
+  .weather-station__world-menu{right:0;left:auto;width:min(220px,calc(100vw - 24px))}
+  .weather-station__card{min-height:116px}
+  .weather-station__card-content{width:65%;gap:3px;padding:7px 9px 7px 3px}
+  .weather-station__card-main{flex-direction:row;align-items:baseline;justify-content:space-between;gap:5px}
+  .weather-station__card-main strong{font-size:20px}
+  .weather-station__card-main b{font-size:23px}
+  .weather-station__next{padding:11px 10px}
+  .weather-station__next-heading h2{font-size:19px}
+  .weather-station__next-heading>span{font-size:11px}
+  .weather-station__next-weather{min-height:133px}
+  .weather-station__next-weather-content{width:65%;padding:10px 7px 8px 0}
+  .weather-station__next-odd{min-height:30px;font-size:14px}
+  .weather-station__next-temp-list>div{flex-direction:column;gap:1px;padding:6px 3px}
+  .weather-station__effects{margin-top:12px}
+}
+@media(max-width:365px){
+  .weather-station__header h1{font-size:23px}
+  .weather-station__back{font-size:14px}
+  .weather-station__card-main strong{font-size:18px}
+  .weather-station__card-main b{font-size:20px}
+  .weather-station__effects li{gap:6px;padding-right:7px}
+  .weather-station__effects li strong{font-size:13px}
+}

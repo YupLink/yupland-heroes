@@ -12,6 +12,7 @@ export function RaidFightResult({
   showForwardHint = true,
   /** Слой окна: в бета-рейде итог ложится ПОВЕРХ открытого окна боя. */
   overlayZ = "z-50",
+  actions,
 }: {
   autoResult: {
     killed: boolean;
@@ -25,6 +26,8 @@ export function RaidFightResult({
   overlayZ?: string;
   /** Доп. блок под цифрами — бета-рейд кладёт сюда итоги способностей. */
   children?: React.ReactNode;
+  /** Свои кнопки вместо «ОК» — карта рейда кладёт «Атаковать снова» и «Закрыть». */
+  actions?: React.ReactNode;
 }) {
   const t = useT();
   return (
@@ -33,7 +36,9 @@ export function RaidFightResult({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-3xl border border-gold/30 bg-card p-5 shadow-card animate-float-up"
+        // Раскрытые раунды + кнопки на телефоне 360×640 выше экрана — тогда
+        // окно листается само, а не обрезается сверху и снизу.
+        className="max-h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl border border-gold/30 bg-card p-5 shadow-card animate-float-up"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center">
@@ -66,12 +71,14 @@ export function RaidFightResult({
           </div>
         </div>
         {children}
-        <button
-          onClick={onClose}
-          className="mt-4 w-full rounded-xl gradient-gold px-4 py-2.5 font-bold text-gold-foreground"
-        >
-          {t("raid.ok")}
-        </button>
+        {actions ?? (
+          <button
+            onClick={onClose}
+            className="mt-4 w-full rounded-xl gradient-gold px-4 py-2.5 font-bold text-gold-foreground"
+          >
+            {t("raid.ok")}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
 // Храм замка (владелец, 07.10.2026): чтение, улучшение (до 100), молитва.
 // Правила — lib/castleTemple.ts; деньги и баффы двигают SQL-функции под замком
 // аккаунта (migrations/temple-01). Игровые действия доступны вошедшим игрокам.
+// С 22.10.2026 Храм покупается в Ратуше (§8.64, castle_building kind 'temple');
+// улучшать и молиться — только владельцу. Альфа-тестерам, улучшавшим храм,
+// он выдан миграцией townhall-01. Владение не отнимается — проверка до вызова
+// функции базы гонок не даёт.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { sb } from "../db/pg";
@@ -8,6 +12,7 @@ import { mcpExec } from "../db/mcpClient";
 import { requireWallet } from "../auth";
 import { sqlStr } from "./raid-shared";
 import { raidOwner } from "./beta-raid/owner";
+import { TEMPLE_KIND } from "@/lib/townHallCatalog";
 import {
   COOLDOWN_HOURS,
   EXTEND_STARS,
@@ -19,19 +24,29 @@ import {
   upgradeCost,
 } from "@/lib/castleTemple";
 
-type Row = { level: number; last_prayer_at: string | null };
+type Row = { level: number | null; last_prayer_at: string | null; owned: boolean };
+type TempleRow = { level: number; lastPrayer: number | null; owned: boolean };
 
-async function loadRow(account: string): Promise<{ level: number; lastPrayer: number | null }> {
+async function loadRow(account: string): Promise<TempleRow> {
+  const a = sqlStr(account);
   const rows = (await mcpExec(
-    `SELECT level, last_prayer_at FROM yuplink.castle_temple WHERE account_id = ${sqlStr(account)};`,
+    `SELECT t.level, t.last_prayer_at,
+            EXISTS (SELECT 1 FROM yuplink.castle_building b
+                     WHERE b.account_id = ${a} AND b.kind = ${sqlStr(TEMPLE_KIND)}) AS owned
+       FROM (SELECT 1) one
+       LEFT JOIN yuplink.castle_temple t ON t.account_id = ${a};`,
     { wrapJson: true },
   )) as Row[];
   const r = rows?.[0];
   return {
     level: Math.min(MAX_LEVEL, Math.max(1, Number(r?.level ?? 1))),
     lastPrayer: r?.last_prayer_at ? Date.parse(r.last_prayer_at) : null,
+    owned: r?.owned === true,
   };
 }
+
+/** Храм не куплен — ни улучшить, ни помолиться. */
+const NOT_OWNED = "Храма нет — купи его в Ратуше замка";
 
 async function loadResources(account: string): Promise<Record<string, number>> {
   const rows = (await mcpExec(
@@ -72,6 +87,8 @@ export const getCastleTemple = createServerFn({ method: "GET" }).handler(async (
     import("./beta-raid/home-castle").then((m) => m.homeCastleStatus(wallet)).catch(() => null),
   ]);
   return {
+    /** Храм куплен (или выдан альфа-тестеру); нет — окно предлагает купить. */
+    owned: row.owned,
     level: row.level,
     maxLevel: MAX_LEVEL,
     /** Сила каждого бонуса при выборе: уровень × базовое значение за очко. */
@@ -94,6 +111,7 @@ export const upgradeCastleTemple = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { account } = await who();
+    if (!(await loadRow(account)).owned) throw new Error(NOT_OWNED);
     const cost = upgradeCost(data.fromLevel);
     if (!cost) throw new Error(`Храм уже ${MAX_LEVEL}-го уровня — это потолок`);
     const { error, data: rows } = await sb.rpc("castle_temple_upgrade", {
@@ -121,6 +139,7 @@ export const prayCastleTemple = createServerFn({ method: "POST" })
     const home = await import("./beta-raid/home-castle").then((m) => m.homeCastleStatus(wallet));
     if (!home.here) throw new Error("Молиться можно, когда герой в замке");
     const row = await loadRow(account);
+    if (!row.owned) throw new Error(NOT_OWNED);
     const plan = prayerPlan(data.stats, levelPoints(row.level), data.extend);
     if (plan.bonuses.length === 0) throw new Error("Выбери бонус");
     if (plan.bonuses.length > slotsAt(row.level)) {

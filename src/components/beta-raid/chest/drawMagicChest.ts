@@ -14,6 +14,7 @@ import type { DrawScene } from "@/components/beta-raid/betaCanvasScene";
 import type { SceneCell } from "@/components/beta-raid/mapIndex";
 import { SPRITE_MAX_BUCKET } from "@/components/beta-raid/drawObject";
 import type { ChestMark } from "@/lib/magicChest";
+import { guardImageKey } from "@/components/beta-raid/mine/guardArt";
 
 /** Ниже этого зума деталей не видно: сундук — цветной квадрат (ПРАВИЛА §9.2). */
 export const CHEST_LOD_SCALE = 0.5;
@@ -89,8 +90,8 @@ function drawChestFlag(scene: DrawScene, x: number, top: number, mine: boolean):
 }
 
 /**
- * Охранник сундука: тот же кружок с красным кольцом, что у шахты (картинка
- * "mg:<q,r>" грузится вместе с охраной шахт). Спрайт печём не выше
+ * Охранник сундука: тот же кружок с красным кольцом, что у шахты (картинка —
+ * по адресу, mine/guardArt, грузится с охраной шахт). Спрайт печём не выше
  * SPRITE_MAX_BUCKET: вблизи он чуть мягче, зато без обрезки кругом в кадре.
  */
 function drawChestGuard(scene: DrawScene, c: SceneCell): void {
@@ -101,7 +102,7 @@ function drawChestGuard(scene: DrawScene, c: SceneCell): void {
   const cx = c.x;
   const cy = c.y - R * 0.28;
   const rad = R * 0.46;
-  const img = scene.images.get("mg:" + key);
+  const img = guard.image ? scene.images.get(guardImageKey(guard.image)) : undefined;
   if (img && img.complete && img.naturalWidth > 0 && scene.sprites) {
     const d = rad * 2 + 4;
     const bucket = Math.min(scene.bucket, SPRITE_MAX_BUCKET);

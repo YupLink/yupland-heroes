@@ -1,0 +1,83 @@
+name: Buckwheat sync
+# «Корона гречневого королевства» — код Кайлани напрямую из её репозитория
+# (kaylani-vibe/yupland-heroes-buckwheat-match3, ветка main): minigames/buckwheat
+# заменяется её деревом, коммит в main уходит на прод обычным выкатом.
+# Зовёт Repo hygiene после пуша в main, если её ветка сдвинулась; можно и вручную.
+# Расписания нет: минут Actions на бесплатном тарифе мало. Как устроено — minigames/README.md.
+#
+# Две задачи: её код исполняется (тесты правил, сборка) только в check — без права
+# записи и без сохранённого токена. push её код не запускает: заново переносит тот же
+# коммит скриптом (git clone и копирование файлов) и пишет в main.
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: buckwheat-sync
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
+      sha: ${{ steps.sync.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Take Kaylani's main
+        id: sync
+        run: node scripts/buckwheat-sync.mjs >> "$GITHUB_OUTPUT"
+      # vitest в package.json нет (деплой ставит только нужное игре) — ставим тут же, той версии, что у нас.
+      - name: Install locked dependencies and vitest
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          npm ci --no-audit --no-fund
+          npm i --no-save --no-audit --no-fund --legacy-peer-deps vitest@5.0.3
+      # Не прошло — обновление не уходит: правила сервера и деньги (вход 100, корона 50), сборка игры.
+      - name: Gate — server rules, payouts, build
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          npx vitest run src/server/api/buckwheat
+          node scripts/build-minigames.mjs
+  push:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Take the same commit again and push it to main
+        env:
+          TESTED: ${{ needs.check.outputs.sha }}
+        run: |
+          node scripts/buckwheat-sync.mjs > sync.out
+          SHA=$(sed -n 's/^sha=//p' sync.out)
+          SUBJECT=$(sed -n 's/^subject=//p' sync.out)
+          rm sync.out
+          if [ "$SHA" != "$TESTED" ]; then
+            echo "Ветка Кайлани сдвинулась после проверки ($TESTED → $SHA) — возьмёт следующий запуск"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A minigames/buckwheat minigames/buckwheat.upstream src/server/api/buckwheat/engines
+          git commit -q -m "«Корона»: код Кайлани ${SHA:0:7} — ${SUBJECT}"
+          node scripts/check-repo-hygiene.mjs --range HEAD~1..HEAD
+          for i in 1 2 3; do
+            git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0
+            sleep 10
+          done
+          exit 1

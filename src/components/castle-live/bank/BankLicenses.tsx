@@ -1,38 +1,27 @@
-// Лицензии банка на продажу золота за DARAI (пока только админ): статус текущей
-// (купленной или по подписке на энергию), балансы, три ступени. Платить можно DARAI,
-// долларами (USDT со счёта) или алмазами; цены фиксированные (lib/bankLicense).
-// Покупка — двумя нажатиями, с ценой с экрана (не совпала — сервер откажет). Та же
-// ступень — продление купленной, другая — замена с этой минуты. Оформление — окна аукциона.
+// The player chooses a tier first, then sees its price and payment method.
+// Purchase still uses the existing server API and explicit confirmation.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, ScrollText, ShieldCheck, ShieldOff } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { buyBankLicense, getBankLicense } from "@/server/api/bank/bank-license";
 import {
-  LICENSE_DAYS,
-  LICENSE_TIERS,
-  licenseActive,
-  licenseTier,
-  purchaseKind,
-  type LicenseCurrency,
-  type LicenseTier,
+  LICENSE_CURRENCIES, LICENSE_DAYS, LICENSE_TIERS, licenseActive, licenseTier, purchaseKind,
+  type LicenseCurrency, type LicenseTier,
 } from "@/lib/bankLicense";
-import { ACC_BALANCES_KEY } from "@/lib/hooks/useAccountBalances";
-import { RESOURCES_KEY } from "@/lib/hooks/useResources";
-import { CASTLE_BANK_KEY } from "@/components/castle-live/useWithBank";
 import { fmtNum } from "./bankUi";
+import { BANK_LICENSE_KEY, refreshBank } from "./bankKeys";
+import { useEntryRules } from "@/hooks/useEntryRules";
 
-export const BANK_LICENSE_KEY = ["bank-license"] as const;
-
-const TIER_TONE: Record<LicenseTier["id"], string> = {
-  small: "auction-rarity--common",
-  medium: "auction-rarity--rare",
-  large: "auction-rarity--legendary",
-};
+export { BANK_LICENSE_KEY };
 
 type Pick = { tier: LicenseTier["id"]; currency: LicenseCurrency; price: number };
+const tierArt: Record<LicenseTier["id"], string> = {
+  small: "/resources/bank/license-small.webp",
+  medium: "/resources/bank/license-medium.webp",
+  large: "/resources/bank/license-large.webp",
+};
 
-/** 1 алмаз, 2 алмаза, 5 алмазов; en — diamond(s). */
 function diamondsWord(n: number, ru: boolean): string {
   if (!ru) return n === 1 ? "diamond" : "diamonds";
   const a = Math.abs(n) % 100;
@@ -44,170 +33,97 @@ function diamondsWord(n: number, ru: boolean): string {
 export function BankLicenses({ ru }: { ru: boolean }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: BANK_LICENSE_KEY, queryFn: () => getBankLicense() });
+  const stars = useEntryRules().stars; // §8.127: звёзды — только с Telegram
+  const [tierId, setTierId] = useState<LicenseTier["id"] | null>(null);
+  const [currency, setCurrency] = useState<LicenseCurrency>("Darai");
   const [confirm, setConfirm] = useState<Pick | null>(null);
   const loc = ru ? "ru-RU" : "en-US";
-  const compact = (n: number) =>
-    n >= 1e6 ? `${(n / 1e6).toLocaleString(loc, { maximumFractionDigits: 1 })} ${ru ? "млн" : "M"}` : fmtNum(n, ru);
   const usd = (n: number) => `$${n.toLocaleString(loc, { maximumFractionDigits: 2 })}`;
-  const gems = (n: number) => `${fmtNum(n, ru)} ${diamondsWord(n, ru)}`;
-  const money = (p: Pick) =>
-    p.currency === "USDT" ? `${usd(p.price)} USDT` : p.currency === "diamonds" ? gems(p.price) : `${fmtNum(p.price, ru)} DARAI`;
+  const money = (p: Pick) => p.currency === "USDT"
+    ? `${usd(p.price)} USDT`
+    : p.currency === "STARS"
+      ? `${fmtNum(p.price, ru)} ⭐`
+      : p.currency === "diamonds"
+        ? `${fmtNum(p.price, ru)} ${diamondsWord(p.price, ru)}`
+        : `${fmtNum(p.price, ru)} DARAI`;
   const buy = useMutation({
-    mutationFn: (p: Pick) =>
-      buyBankLicense({ data: { tier: p.tier, currency: p.currency, expectPrice: p.price, opId: crypto.randomUUID() } }),
+    mutationFn: (p: Pick) => buyBankLicense({ data: { tier: p.tier, currency: p.currency, expectPrice: p.price, opId: crypto.randomUUID() } }),
     onSuccess: () => toast.success(ru ? "Лицензия куплена" : "License bought"),
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
-    onSettled: () => {
-      setConfirm(null);
-      for (const key of [BANK_LICENSE_KEY, ACC_BALANCES_KEY, RESOURCES_KEY, CASTLE_BANK_KEY])
-        void qc.invalidateQueries({ queryKey: key });
-    },
+    onSettled: () => { setConfirm(null); void refreshBank(qc); },
   });
 
-  const title = (
-    <h2 id="bank-license-title" className="mb-3 font-['Auction_Russo'] text-lg text-[#fff0c7]">
-      {ru ? "Лицензия на продажу золота" : "Gold selling license"}
-    </h2>
-  );
-  // Ответ старой формы (до 17.10, из кэша на устройстве) — как загрузка, пока не перечитается.
+  const title = <h2 id="bank-license-title">{ru ? "Лицензия на продажу золота" : "Gold selling license"}</h2>;
   const stale = !!q.data && (typeof q.data.diamonds !== "number" || typeof q.data.prices?.small?.Darai !== "number");
-  if (q.isPending || q.isError || stale) {
-    return (
-      <section className="auction-ledger" aria-labelledby="bank-license-title">
-        {title}
-        {q.isPending || stale ? (
-          <p className="auction-loading" role="status">{ru ? "Загрузка…" : "Loading…"}</p>
-        ) : (
-          <p role="alert">{q.error instanceof Error ? q.error.message : String(q.error)}</p>
-        )}
-      </section>
-    );
-  }
+  if (q.isPending || q.isError || stale) return <section className="bank-player__panel bank-player__licenses" aria-labelledby="bank-license-title">
+    {title}
+    {q.isPending || stale ? <p role="status">{ru ? "Загрузка…" : "Loading…"}</p> : <p role="alert">{q.error instanceof Error ? q.error.message : String(q.error)}</p>}
+  </section>;
 
   const d = q.data;
-  // Статус — действующая лицензия (старшая из купленной и подписочной);
-  // «продление / замена» — только про купленную.
   const cur = d.license;
-  const bySub = !!cur && !!d.sub && cur.tier === d.sub.tier && cur.endsAt === d.sub.endsAt;
   const active = licenseActive(cur);
-  const curTier = cur ? licenseTier(cur.tier) : undefined;
-  const daysLeft = active ? Math.ceil((Date.parse(cur!.endsAt) - Date.now()) / 86_400_000) : 0;
-  const until = cur ? new Date(cur.endsAt).toLocaleDateString(loc, { day: "numeric", month: "long" }) : "";
+  // Сложенная лицензия (владелец 30.10): «Малая + Средняя · 30 000 золота в сутки».
+  const kinds = (cur?.kinds ?? (cur ? [cur.tier] : [])).map((k) => licenseTier(k)).filter((t) => !!t);
+  const bySub = !!cur && !d.paid.some((l) => licenseActive(l));
+  const selected = tierId ? LICENSE_TIERS.find((t) => t.id === tierId) : null;
+  // Звёзды без курса — цены нет (null): такую оплату не показываем.
+  const price = (selected ? d.prices[selected.id][currency] : 0) ?? 0;
+  const balance = currency === "Darai" ? d.darai : currency === "USDT" ? d.usdt
+    : currency === "diamonds" ? d.diamonds : d.stars;
+  const affordable = selected !== null && price > 0 && balance >= price;
+  const kind = selected ? purchaseKind(d.paid, selected.id) : "new";
+  const balanceText = currency === "Darai" ? `${fmtNum(balance, ru)} DARAI`
+    : currency === "USDT" ? `${usd(balance)} USDT`
+      : currency === "diamonds" ? `${fmtNum(balance, ru)} ${diamondsWord(balance, ru)}`
+        : `${fmtNum(balance, ru)} ⭐`;
 
-  return (
-    <section className="auction-ledger" aria-labelledby="bank-license-title">
-      {title}
-      <div className={`mb-3 flex items-center gap-3 rounded-xl border p-3 ${active ? "border-[#3f8f63] bg-[#10261c]" : "border-[#ffffff1f] bg-[#0d1b2b]"}`}>
-        {active ? <ShieldCheck className="h-7 w-7 shrink-0 text-[#8df0b6]" aria-hidden="true" /> : <ShieldOff className="h-7 w-7 shrink-0 text-[#8a8173]" aria-hidden="true" />}
-        <div className="min-w-0">
-          {active && curTier ? (
-            <>
-              <p className="flex flex-wrap items-center gap-2 font-bold text-[#fbeccb]">
-                {ru ? curTier.ru : curTier.en}
-                <span className="auction-chip auction-chip--live">{ru ? "действует" : "active"}</span>
-                {bySub && <span className="auction-kind">{ru ? "по подписке" : "by subscription"}</span>}
-              </p>
-              <p className="auction-lot__meta">
-                {ru ? "до" : "up to"} {fmtNum(cur!.dailyLimit, ru)} {ru ? "золота в сутки" : "gold a day"} · {ru ? "до" : "until"} {until} ({ru ? `ещё ${daysLeft} дн.` : `${daysLeft} d left`})
-              </p>
-            </>
-          ) : (
-            <p className="font-bold text-[#cdb791]">{ru ? "Лицензии нет" : "No license"}</p>
-          )}
-        </div>
-      </div>
-
-      <p className="mb-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#b9a885]">
-        <span>{ru ? "На счёте" : "On account"}:</span>
-        <b className="text-[#fff0c7]">{fmtNum(d.darai, ru)} DARAI</b>
-        <b className="text-[#fff0c7]">{usd(d.usdt)} USDT</b>
-        <b className="text-[#fff0c7]">{gems(d.diamonds)}</b>
-      </p>
-      {(d.buyback.pendingDarai > 0 || d.buyback.doneDarai > 0) && (
-        <p className="mb-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[#b9a885]">
-          <span>{ru ? "Откуп золота" : "Gold buyback"}:</span>
-          {d.buyback.pendingDarai > 0 && (
-            <b className="text-[#ffd773]">{ru ? "ждёт пула" : "awaiting pool"} {compact(d.buyback.pendingDarai)} DARAI</b>
-          )}
-          {d.buyback.doneDarai > 0 && (
-            <b className="text-[#fff0c7]">
-              {ru ? "выкуплено" : "bought"} {fmtNum(d.buyback.goldOut, ru)} {ru ? "золота за" : "gold for"} {compact(d.buyback.doneDarai)} DARAI
-            </b>
-          )}
-        </p>
-      )}
-
-      <ul>
-        {LICENSE_TIERS.map((t) => {
-          const price = d.prices[t.id];
-          const kind = purchaseKind(d.paid, t.id);
-          const asking = confirm?.tier === t.id ? confirm : null;
-          return (
-            <li key={t.id} className="auction-lot">
-              <div className="auction-lot__top">
-                <span className={`auction-lot__media ${TIER_TONE[t.id]}`} aria-hidden="true">
-                  <ScrollText />
-                </span>
-                <div className="auction-lot__info">
-                  <p className="auction-lot__title flex flex-wrap items-center gap-2">
-                    {ru ? t.ru : t.en}
-                    {kind !== "new" && (
-                      <span className="auction-kind">
-                        {kind === "extend" ? (ru ? "продление" : "extend") : ru ? "замена текущей" : "replaces current"}
-                      </span>
-                    )}
-                  </p>
-                  <p className="auction-lot__meta">
-                    {ru ? "до" : "up to"} {fmtNum(t.dailyGold, ru)} {ru ? "золота в сутки" : "gold a day"} · {LICENSE_DAYS} {ru ? "дней" : "days"}
-                  </p>
-                </div>
-              </div>
-              {asking ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <p className="flex-1 text-sm text-[#fbeccb]">
-                    {ru ? "Оплатить" : "Pay"} <b>{money(asking)}</b>?
-                  </p>
-                  <button type="button" className="auction-secondary" onClick={() => setConfirm(null)}>
-                    {ru ? "Отмена" : "Cancel"}
-                  </button>
-                  <button type="button" className="auction-primary" disabled={buy.isPending} onClick={() => buy.mutate(asking)}>
-                    {buy.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {ru ? "Оплатить" : "Pay"}
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    className="auction-primary"
-                    disabled={buy.isPending || d.darai < price.Darai}
-                    onClick={() => setConfirm({ tier: t.id, currency: "Darai", price: price.Darai })}
-                  >
-                    {compact(price.Darai)} DARAI
-                  </button>
-                  <button
-                    type="button"
-                    className="auction-secondary"
-                    disabled={buy.isPending || d.usdt < price.USDT}
-                    onClick={() => setConfirm({ tier: t.id, currency: "USDT", price: price.USDT })}
-                  >
-                    {usd(price.USDT)} USDT
-                  </button>
-                  <button
-                    type="button"
-                    className="auction-secondary inline-flex items-center justify-center gap-1"
-                    disabled={buy.isPending || d.diamonds < price.diamonds}
-                    onClick={() => setConfirm({ tier: t.id, currency: "diamonds", price: price.diamonds })}
-                  >
-                    <img src="/resources/crystal.webp" alt="" className="h-4 w-4 object-contain" aria-hidden="true" />
-                    {gems(price.diamonds)}
-                  </button>
-                </div>
-              )}
-            </li>
-          );
+  return <section className="bank-player__panel bank-player__licenses" aria-labelledby="bank-license-title">
+    {title}
+    <p className="bank-player__license-status">
+      {active && kinds.length
+        ? `${ru ? "Действует" : "Active"}: ${kinds.map((t) => (ru ? t!.ru : t!.en)).join(" + ")} · ${kinds.length > 1
+          ? `${fmtNum(cur!.dailyLimit, ru)} ${ru ? "золота в сутки" : "gold per day"}`
+          : `${ru ? "до" : "until"} ${new Date(cur!.endsAt).toLocaleDateString(loc, { day: "numeric", month: "long" })}`}${bySub ? (ru ? " · по подписке" : " · by subscription") : ""}`
+        : ru ? "Лицензии пока нет" : "No active license"}
+    </p>
+    <div className="bank-player__license-list-head">
+      <h3>{ru ? "Выбери лимит" : "Choose a limit"}</h3>
+      <p><small>{ru ? "В наличии" : "Available"}</small><strong>{balanceText}</strong></p>
+    </div>
+    <div className="bank-player__tier-list">
+      {LICENSE_TIERS.map((t) => <button key={t.id} type="button" aria-pressed={tierId === t.id} onClick={() => { setTierId(t.id); setCurrency("Darai"); setConfirm(null); }}>
+        <img src={tierArt[t.id]} alt="" aria-hidden="true" />
+        <span className="bank-player__tier-name">{ru ? t.ru : t.en}</span>
+        <span className="bank-player__tier-limit">{fmtNum(t.dailyGold, ru)} <small>/ {ru ? "сутки" : "day"}</small></span>
+        <span className="bank-player__tier-check" aria-hidden="true">{tierId === t.id ? "✓" : ""}</span>
+      </button>)}
+    </div>
+    {selected && <div className="bank-player__license-purchase">
+      <h3>{ru ? `Покупка: ${selected.ru}` : `Purchase: ${selected.en}`}</h3>
+      <p>{ru ? `На ${LICENSE_DAYS} дней · до ${fmtNum(selected.dailyGold, ru)} золота в сутки` : `For ${LICENSE_DAYS} days · up to ${fmtNum(selected.dailyGold, ru)} gold per day`}</p>
+      {kind === "extend" && <p>{ru ? "Продление текущей лицензии" : "Extends current license"}</p>}
+      <div className="bank-player__payment-list" role="group" aria-label={ru ? "Способ оплаты" : "Payment method"}>
+        {LICENSE_CURRENCIES.map((c) => {
+          const cost = d.prices[selected.id][c];
+          if (cost == null || (c === "STARS" && !stars)) return null;
+          return <button key={c} type="button" aria-pressed={currency === c} onClick={() => { setCurrency(c); setConfirm(null); }}>
+            <span>{c === "Darai" ? "DARAI" : c === "USDT" ? "USDT" : c === "diamonds" ? (ru ? "Алмазы" : "Diamonds") : ru ? "Звёзды" : "Stars"}</span>
+            <b>{money({ tier: selected.id, currency: c, price: cost })}</b>
+            <i aria-hidden="true">{currency === c ? "✓" : ""}</i>
+          </button>;
         })}
-      </ul>
-    </section>
-  );
+      </div>
+      {!affordable && <p className="bank-player__error" role="alert">{ru ? "Недостаточно средств на счёте" : "Insufficient balance"}</p>}
+      {confirm ? <div className="bank-player__license-confirm" role="alertdialog" aria-label={ru ? "Подтверждение покупки лицензии" : "Confirm license purchase"}>
+        <p>{ru ? "Оплатить" : "Pay"} <strong>{money(confirm)}</strong>?</p>
+        <div><button type="button" onClick={() => setConfirm(null)}>{ru ? "Отмена" : "Cancel"}</button><button type="button" disabled={buy.isPending} onClick={() => buy.mutate(confirm)}>{buy.isPending && <Loader2 className="h-4 w-4 animate-spin" />}{ru ? "Подтвердить" : "Confirm"}</button></div>
+      </div> : <button type="button" className="bank-player__primary" disabled={!affordable || buy.isPending} onClick={() => setConfirm({ tier: selected.id, currency, price })}>{ru ? "Купить лицензию" : "Buy license"}</button>}
+      <small className="bank-player__license-footnote">{ru ? "По одной лицензии каждого вида — лимиты складываются; та же ступень продлит срок." : "One license of each tier — limits stack; the same tier extends it."}</small>
+    </div>}
+    {(d.buyback.pendingDarai > 0 || d.buyback.doneDarai > 0) && <p className="bank-player__buyback">
+      {ru ? "Откуп золота" : "Gold buyback"}: {d.buyback.pendingDarai > 0 && `${ru ? "ждёт пула" : "awaiting pool"} ${fmtNum(d.buyback.pendingDarai, ru)} DARAI`}
+      {d.buyback.doneDarai > 0 && ` · ${ru ? "выкуплено" : "bought"} ${fmtNum(d.buyback.goldOut, ru)} ${ru ? "золота за" : "gold for"} ${fmtNum(d.buyback.doneDarai, ru)} DARAI`}
+    </p>}
+  </section>;
 }

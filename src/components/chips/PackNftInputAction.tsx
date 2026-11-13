@@ -1,12 +1,18 @@
 import { useRef, useState } from "react";
 import { Gem } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { isWalletLinked } from "@/lib/walletLinked";
 import { NftInputModal } from "./NftInputModal";
 import "./pack-nft-input-action.css";
 
-/** The same NFT entry in every owned-packs screen. The existing modal owns the transfer. */
+/**
+ * The same NFT entry in every owned-packs screen. The existing modal owns the transfer.
+ * Без подключённого кошелька (вход Telegram/Google, адрес tg<id>) кнопки нет — вносить нечем
+ * (владелец, 29.10.2026).
+ */
 export function PackNftInputAction() {
   const ru = useAppStore((state) => state.lang) === "ru";
+  const linked = isWalletLinked(useAppStore((state) => state.walletAddress));
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const close = () => {
@@ -16,6 +22,7 @@ export function PackNftInputAction() {
     });
   };
 
+  if (!linked) return null;
   return <>
     <button
       ref={trigger}

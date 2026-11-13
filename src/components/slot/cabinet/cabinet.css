@@ -1,7 +1,6 @@
 @font-face {
   font-family: "Casino UI";
-  src: url("/slot/cabinet/assets/fonts/RobotoCondensed-Variable.ttf")
-    format("truetype");
+  src: url("/slot/cabinet/assets/fonts/RobotoCondensed-Variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -66,25 +65,6 @@
     center -42.97cqw/100% auto no-repeat;
   mask-image: linear-gradient(to bottom, transparent, #000 3cqw);
   pointer-events: none;
-}
-.casino-ui .integrated-deck-art::after {
-  content: "";
-  position: absolute;
-  left: 47.8515625%;
-  top: 2.9284375cqw;
-  width: 20.3125%;
-  height: 17.578125cqw;
-  background: url("/slot/cabinet/assets/control-deck-three-actions-2026-10-16.webp") -47.8515625cqw -45.8984375cqw/100cqw
-    auto no-repeat;
-  pointer-events: none;
-  -webkit-mask-image:
-    linear-gradient(to right, transparent, #000 1%, #000 99%, transparent),
-    linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
-  mask-image:
-    linear-gradient(to right, transparent, #000 1%, #000 99%, transparent),
-    linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent);
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
 }
 .casino-ui .header-art {
   position: absolute;
@@ -269,13 +249,19 @@
 .casino-ui .line-row {
   position: absolute;
   top: 0;
-  left: 9.5%;
-  width: 81%;
+  left: 2.5%;
+  width: 95%;
   height: 37%;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
+  justify-content: center;
   align-items: center;
-  justify-items: center;
+}
+/* «Правила» и 1–9 — одна группа по центру между латунными рамками пульта (их край ~15 % и ~85 %
+   ширины на высоте ряда): ничего не заходит на рамку. Кнопки вплотную — в картинке поля ~7 % с боков. */
+.casino-ui .line-row .arcade.round {
+  width: 11.8cqw;
+  min-width: 0;
+  margin-inline: -0.45cqw;
 }
 .casino-ui .line-caption,
 .casino-ui .line-row {
@@ -298,39 +284,97 @@
   width: 100%;
   height: 43%;
 }
-.casino-ui .utility-row {
-  position: absolute;
-  top: 95.3%;
-  left: 0;
-  width: 100%;
-  height: 9.2%;
-  min-height: 44px;
-  z-index: 3;
+/* «Правила» — первой в группе линий: рамка и колпачок вырезаны из картинки пульта
+   (рамка 78,812 · 186×124; колпачок 93,820 · 149×90 — в пикселях картинки 1024), --k — масштаб. */
+.casino-ui .line-row .arcade.line-rules {
+  --k: 0.72;
+  --key-label-travel: 1px;
+  position: relative;
+  margin-right: 1cqw;
+  width: calc(186cqw / 10.24 * var(--k));
+  height: calc(124cqw / 10.24 * var(--k));
+  aspect-ratio: auto;
+  background: url("/slot/cabinet/assets/control-deck-approved-blank-buttons-2026-10-14.webp") no-repeat;
+  background-size: calc(100cqw * var(--k)) auto;
+  background-position: calc(-78cqw / 10.24 * var(--k)) calc(-812cqw / 10.24 * var(--k));
 }
-.casino-ui .utility-row .rules {
-  left: 7.8%;
-  top: 0;
-  width: 17.3%;
-  height: 100%;
+.casino-ui .line-row .arcade.line-rules .key-surface {
+  --key-contour: polygon(9% 0, 91% 0, 98% 8%, 100% 89%, 95% 98%, 7% 100%, 0 94%, 1% 14%, 5% 4%);
+  left: calc(15cqw / 10.24 * var(--k));
+  top: calc(8cqw / 10.24 * var(--k));
+  width: calc(149cqw / 10.24 * var(--k));
+  height: calc(90cqw / 10.24 * var(--k));
 }
-.casino-ui .utility-row .auto {
-  left: 77.3%;
-  top: 0;
-  width: 14.5%;
-  height: 100%;
+.casino-ui .line-row .arcade.line-rules .key-cap {
+  background-size: calc(100cqw * var(--k)) auto;
+  background-position: calc(-93cqw / 10.24 * var(--k)) calc(-820cqw / 10.24 * var(--k));
 }
-.casino-ui .utility-row .face {
-  display: none;
-}
-.casino-ui .utility-row .button-label {
+.casino-ui .line-row .arcade.line-rules .button-label {
   left: 50%;
   top: 40%;
   transform: translate(-50%, -50%);
-  width: 86%;
-  font: 700 clamp(11.5px, 2.9cqw, 30px)/1 var(--font-ui);
+  width: 100%;
+  font: 700 clamp(9.5px, 2.4cqw, 25px)/1 var(--font-ui);
   color: var(--text-main);
   text-shadow: var(--text-shadow);
   letter-spacing: 0;
+}
+/* «Авто» стоит в оранжевом гнезде пульта — свой цвет, чтобы не спутать с «Макс». */
+.casino-ui .action-row .auto .key-surface {
+  filter: hue-rotate(150deg) saturate(1.1);
+}
+/* Заплатки из дерева той же картинки: закрывают старые места «Правил», «Авто»
+   и нарисованные круглые гнёзда, из-под которых выглядывали сдвинутые кнопки 1–9.
+   Слой совпадает с .integrated-deck-art: его верх — строка 440 картинки. */
+.casino-ui .deck-patches {
+  position: absolute;
+  top: 71.6%;
+  left: 0;
+  width: 100%;
+  height: 107.03cqw;
+  z-index: 1;
+  pointer-events: none;
+}
+.casino-ui .deck-patches > span {
+  position: absolute;
+  background-image: url("/slot/cabinet/assets/control-deck-approved-blank-buttons-2026-10-14.webp");
+  background-repeat: no-repeat;
+  background-size: 100cqw auto;
+}
+.casino-ui .patch-rules {
+  left: 6.8359cqw;
+  top: 35.6445cqw;
+  width: 19.5312cqw;
+  height: 13.6719cqw;
+  background-position: -29.2969cqw -78.6133cqw;
+}
+.casino-ui .patch-auto {
+  left: 76.1719cqw;
+  top: 35.6445cqw;
+  width: 16.7969cqw;
+  height: 13.6719cqw;
+  background-position: -54.6875cqw -78.6133cqw;
+}
+.casino-ui .patch-lines-top {
+  left: 15.625cqw;
+  top: -14.6484cqw;
+  width: 68.8477cqw;
+  height: 4.4922cqw;
+  background-position: -15.625cqw -39.8438cqw;
+}
+.casino-ui .patch-lines-mid {
+  left: 15.625cqw;
+  top: -10.1562cqw;
+  width: 68.8477cqw;
+  height: 4.4922cqw;
+  background-position: -15.625cqw -39.8438cqw;
+}
+.casino-ui .patch-lines-bottom {
+  left: 15.625cqw;
+  top: -5.6641cqw;
+  width: 68.8477cqw;
+  height: 3.9062cqw;
+  background-position: -15.625cqw -39.8438cqw;
 }
 .casino-ui .arcade {
   position: relative;
@@ -367,21 +411,21 @@
   pointer-events: none;
 }
 .casino-ui .round .face {
-  background-image: url("/slot/cabinet/assets/button-line-3states-2026-10-13.webp");
+  background-image: url("/slot/cabinet/assets/button-line-3states-2026-10-13-lite-v1.webp");
 }
 .casino-ui .round[aria-pressed="true"] .face {
-  background-image: url("/slot/cabinet/assets/button-line-selected-3states-2026-10-13.webp");
+  background-image: url("/slot/cabinet/assets/button-line-selected-3states-2026-10-13-lite-v1.webp");
 }
 .casino-ui .rect .face {
   background-image: var(--sprite);
   background-size: 300% 100%;
 }
 .casino-ui .rules {
-  --sprite: url("/slot/cabinet/assets/button-rules-3states-2026-10-13.webp");
+  --sprite: url("/slot/cabinet/assets/button-rules-3states-2026-10-13-lite-v1.webp");
   aspect-ratio: 677/773;
 }
 .casino-ui .auto {
-  --sprite: url("/slot/cabinet/assets/button-auto-3states-2026-10-13.webp");
+  --sprite: url("/slot/cabinet/assets/button-auto-3states-2026-10-13-lite-v1.webp");
   aspect-ratio: 677/773;
 }
 .casino-ui .projection-guides {
@@ -659,7 +703,7 @@
   width: 23cqw;
   aspect-ratio: 1;
   translate: -50% -100%;
-  background: url("/slot/cabinet/assets/yupik-card-dealer-2026-10-18.webp")
+  background: url("/slot/cabinet/assets/yupik-card-dealer-2026-10-18-lite-v1.webp")
     var(--risk-host-frame, 0%) 0/300% 100% no-repeat;
   filter: drop-shadow(0 3px 3px #170b0340);
 }
@@ -1226,11 +1270,11 @@
   flex: 1;
   max-width: 56px;
   aspect-ratio: 1;
-  background: url("/slot/cabinet/assets/button-line-3states-2026-10-13.webp") 0
+  background: url("/slot/cabinet/assets/button-line-3states-2026-10-13-lite-v1.webp") 0
     0/300% 100% no-repeat;
 }
 .casino-ui .tutorial-line.is-selected {
-  background-image: url("/slot/cabinet/assets/button-line-selected-3states-2026-10-13.webp");
+  background-image: url("/slot/cabinet/assets/button-line-selected-3states-2026-10-13-lite-v1.webp");
 }
 .casino-ui .tutorial-line b {
   position: absolute;
@@ -1321,7 +1365,7 @@
   display: block;
   width: 17%;
   aspect-ratio: 554/373;
-  background: url("/slot/cabinet/assets/dig-mounds-atlas-2026-10-16.webp")
+  background: url("/slot/cabinet/assets/dig-mounds-atlas-2026-10-16-lite-v1.webp")
     5.857143% 22.474461%/226.353791% 336.193029% no-repeat;
   filter: brightness(0.8);
 }
@@ -1451,7 +1495,7 @@
 .casino-ui .tutorial-yupik {
   width: clamp(70px, 22cqw, 130px);
   aspect-ratio: 1;
-  background: url("/slot/cabinet/assets/yupik-card-dealer-2026-10-18.webp") 0
+  background: url("/slot/cabinet/assets/yupik-card-dealer-2026-10-18-lite-v1.webp") 0
     0/300% 100% no-repeat;
 }
 .casino-ui .tutorial-hand {
@@ -1606,7 +1650,7 @@
   top: var(--frame-top, 4.444444%);
   width: var(--frame-width, 92.222222%);
   height: var(--frame-height, 87.777778%);
-  background-image: url("/slot/cabinet/assets/yupik-dig-actions-2026-10-16.webp");
+  background-image: url("/slot/cabinet/assets/yupik-dig-actions-2026-10-16-lite-v1.webp");
   background-size: var(--frame-size, 377.710843% 396.835443%);
   background-position: var(--frame-position, 0% 0%);
   background-repeat: no-repeat;
@@ -1646,7 +1690,7 @@
   bottom: 0;
   width: 100%;
   aspect-ratio: var(--sprite-ratio);
-  background-image: url("/slot/cabinet/assets/dig-mounds-atlas-2026-10-16.webp");
+  background-image: url("/slot/cabinet/assets/dig-mounds-atlas-2026-10-16-lite-v1.webp");
   background-size: var(--sprite-size);
   background-position: var(--sprite-position);
   background-repeat: no-repeat;
@@ -1834,7 +1878,7 @@
 .casino-ui .find-art {
   display: block;
   aspect-ratio: 1;
-  background-image: url("/slot/cabinet/assets/bonus-finds-bear-2026-10-17.webp");
+  background-image: url("/slot/cabinet/assets/bonus-finds-bear-2026-10-17-lite-v1.webp");
   background-size: 400% 200%;
   background-repeat: no-repeat;
   background-position: 0 0;
@@ -1961,10 +2005,41 @@
   height: max(100cqh, 150cqw);
   translate: -50% -50%;
   display: block;
-  background:
-    linear-gradient(#08101a22, #140a0433),
-    url("/slot/cabinet/assets/bonus-caves-2026-10-12.webp") center/100% 100%
-      no-repeat;
+}
+.casino-ui .cave-backdrop,
+.casino-ui .cave-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.casino-ui .cave-backdrop {
+  display: block;
+  object-fit: fill;
+}
+.casino-ui .cave-shade {
+  background: linear-gradient(#08101a22, #140a0433);
+}
+.casino-ui .cave-art-status {
+  position: absolute;
+  z-index: 4;
+  left: 10%;
+  top: 38%;
+  width: 80%;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  background: #17100bf5;
+  color: #ffe7ad;
+  font-size: clamp(16px, 3.2cqw, 28px);
+}
+.casino-ui .cave-art-status button {
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px 24px;
+  border: 1px solid #e9ba65;
+  border-radius: 8px;
 }
 .casino-ui .cave-choice {
   position: absolute;
@@ -2207,7 +2282,8 @@
     min-height: 44px;
   }
 }
-@media (min-aspect-ratio: 4/3) {
+/* Планшет в портрете — тоже по высоте экрана, иначе низ автомата уходит за край. */
+@media (min-aspect-ratio: 4/3), (orientation: portrait) and (min-width: 600px) and (min-aspect-ratio: 2/3) {
   .casino-ui .machine {
     width: min(100%, 66.667dvh);
     margin: auto;
@@ -2581,7 +2657,7 @@
 .casino-ui .cabinet-stage > .deck-side-rails,
 .casino-ui .cabinet-stage > .integrated-deck-art,
 .casino-ui .cabinet-stage > .controls,
-.casino-ui .cabinet-stage > .utility-row {
+.casino-ui .cabinet-stage > .deck-patches {
   translate: 0 var(--control-drop);
 }
 .casino-ui #reel-mount *,
@@ -2612,3 +2688,4 @@
     animation: none !important;
   }
 }
+

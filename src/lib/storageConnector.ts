@@ -6,6 +6,7 @@
 // darai_collection.near — и всё приложение оказалось бы под ним. Поэтому у
 // этого коннектора свой префикс и в хранилище, и в id кошельков.
 import type { NearConnector as NearConnectorType, WalletManifest } from "@hot-labs/near-connect";
+import { pageNonce } from "@/lib/csp/pageNonce";
 
 const PREFIX = "yl-storage";
 
@@ -53,6 +54,7 @@ export async function getStorageConnector(): Promise<NearConnectorType | null> {
           network: "mainnet",
           // Кошелёк из рамки Telegram подключился бы сам — здесь только по кнопке.
           autoConnect: false,
+          cspNonce: pageNonce(),
           storage,
           manifest: {
             version: m.version,

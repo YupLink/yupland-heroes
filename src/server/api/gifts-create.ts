@@ -33,6 +33,10 @@ export type NewGift = {
   createdBy?: string | null;
   /** Не сгорает (оплаченное: набор, выигрыш аукциона). */
   expiresNever?: boolean;
+  /** Артефакт с износом (лот игрока на аукционе): player_gift.item_wear. */
+  itemWear?: number | null;
+  /** Зачарование выигранных артефактов (лот игрока, 31.10.2026): player_gift.item_enchant. */
+  itemEnchant?: Array<{ pct: number; spellId: string | null; spellName: string | null }> | null;
 };
 
 const val = (v: string | null | undefined): string => (v ? sqlStr(v) : "NULL");
@@ -44,13 +48,18 @@ const val = (v: string | null | undefined): string => (v ? sqlStr(v) : "NULL");
  */
 export async function createGifts(list: NewGift[], opts: CreateOpts = {}): Promise<string[]> {
   if (list.length === 0) return [];
+  // Колонку износа пишем только когда он есть: остальные подарки её не касаются.
+  const worn = list.some((g) => g.itemWear != null);
+  const ench = list.some((g) => g.itemEnchant?.length);
+  const enchSql = (g: NewGift): string =>
+    g.itemEnchant?.length ? `${sqlStr(JSON.stringify(g.itemEnchant))}::jsonb` : "NULL";
   const values = list
     .map(
       (g) =>
         `(${sqlStr(`gft_${nanoid(12)}`)}, ${sqlStr(g.accountId)}, ${sqlStr(g.kind)},
           ${Number(g.amount) || 0}, ${val(g.refId)}, ${val(g.title)}, ${val(g.image)},
           ${val(g.note)}, 'pending', ${val(g.sourceRef)}, ${val(g.createdBy)},
-          ${g.expiresNever ? "NULL" : GIFT_TTL_SQL})`,
+          ${g.expiresNever ? "NULL" : GIFT_TTL_SQL}${worn ? `, ${g.itemWear != null ? Number(g.itemWear) || 0 : "NULL"}` : ""}${ench ? `, ${enchSql(g)}` : ""})`,
     )
     .join(",\n");
   // Срок пишем явно, хотя у колонки есть такой же default: наш путь не должен
@@ -59,7 +68,7 @@ export async function createGifts(list: NewGift[], opts: CreateOpts = {}): Promi
   const rows = (await mcpExec(
     `INSERT INTO yuplink.player_gift
        (id, account_id, kind, amount, ref_id, title, image, note, status, source_ref, created_by,
-        expires_at)
+        expires_at${worn ? ", item_wear" : ""}${ench ? ", item_enchant" : ""})
      VALUES ${values}
      ON CONFLICT (source_ref) WHERE source_ref IS NOT NULL DO NOTHING
      RETURNING account_id;`,

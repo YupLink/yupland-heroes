@@ -6,8 +6,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { requireAdmin } from "../../auth";
 import type { ItemCategory } from "@/lib/itemCategories";
+import { requireDesigner } from "@/server/api/beta-raid/island/island-editor-auth";
+import { requireCatalogEditor } from "@/server/api/catalog-auth";
 
 const nameInput = z.string().trim().min(1).max(60);
 
@@ -22,7 +23,7 @@ function explainDuplicate(e: unknown): never {
 
 export const listItemCategories = createServerFn({ method: "GET" }).handler(
   async (): Promise<ItemCategory[]> => {
-    requireAdmin();
+    await requireDesigner();
     const rows = (await mcpExec(
       `SELECT k.id, k.name, k.pos,
               (SELECT count(*) FROM yuplink.raid_custom_item c WHERE c.category_id = k.id) AS n
@@ -42,7 +43,7 @@ export const listItemCategories = createServerFn({ method: "GET" }).handler(
 export const createItemCategory = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ name: nameInput }).parse(d))
   .handler(async ({ data }): Promise<ItemCategory> => {
-    requireAdmin();
+    await requireCatalogEditor();
     const id = `icat_${Math.random().toString(36).slice(2, 10)}`;
     // Новая — в конец списка: порядок старых не сдвигается.
     const rows = (await mcpExec(
@@ -59,7 +60,7 @@ export const createItemCategory = createServerFn({ method: "POST" })
 export const renameItemCategory = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().min(1), name: nameInput }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     await mcpExec(
       `UPDATE yuplink.raid_item_category SET name = ${sqlStr(data.name)}
         WHERE id = ${sqlStr(data.id)};`,
@@ -71,7 +72,7 @@ export const renameItemCategory = createServerFn({ method: "POST" })
 export const deleteItemCategory = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     await mcpExec(`DELETE FROM yuplink.raid_item_category WHERE id = ${sqlStr(data.id)};`, {
       wrapJson: false,
     });
@@ -89,7 +90,7 @@ export const setItemsCategory = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    requireAdmin();
+    await requireCatalogEditor();
     const ids = data.ids.map(sqlStr).join(", ");
     // Категория должна существовать: иначе внешний ключ уронит запрос
     // невнятной ошибкой, а здесь — понятный отказ.

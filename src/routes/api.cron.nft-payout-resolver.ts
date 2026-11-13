@@ -18,6 +18,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { pg } from "@/server/db/pg";
 import { fetchSendlerNftUserHistory } from "@/server/sendler";
 import { writePayoutError } from "@/server/payoutSafety";
+import { cronDenied } from "@/server/cronAuth";
 
 const NFT_PRIZE_OWNER = "darai_gdrop.near";
 const MIN_AGE_MS = 10 * 60_000;
@@ -28,13 +29,8 @@ export const Route = createFileRoute("/api/cron/nft-payout-resolver")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const secret = process.env.CRON_SECRET;
-        if (secret) {
-          const auth = request.headers.get("authorization");
-          if (auth !== `Bearer ${secret}`) {
-            return new Response("unauthorized", { status: 401 });
-          }
-        }
+        const denied = await cronDenied(request);
+        if (denied) return denied;
         try {
           const result = await runNftPayoutResolver();
           return new Response(JSON.stringify({ ok: true, ...result }), {

@@ -153,7 +153,9 @@ export function useNftBurn() {
       else toast.success(t("burn.done", { n: tokenIds.length }));
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
-      if (m === "PIN_REQUIRED" || m.includes("Неверный PIN")) {
+      if (m === "APP_PWD_SETUP") {
+        toast.error(t("wvault.need_setup"));
+      } else if (m === "PIN_REQUIRED" || m.includes("Неверный PIN")) {
         setNeedPin(true);
         toast.error(t("burn.pin"));
       } else if (m === "APP_PWD_REQUIRED" || m === "APP_LOCKED") {

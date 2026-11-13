@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ackIsland, getMyIsland, type IslandView } from "@/server/api/beta-raid/island/island-api";
-import { ISLAND_STEP_IDS, isAckStep, type ACK_STEPS } from "@/lib/raid/island/steps";
+import { isAckStep, type ACK_STEPS } from "@/lib/raid/island/steps";
 import { useT } from "@/lib/i18n";
 
 export const ISLAND_KEY = ["beta-raid-island"] as const;
@@ -23,17 +23,33 @@ export function useIsland(enabled: boolean, onIslandMap: boolean) {
 }
 
 type Ack = (typeof ACK_STEPS)[number] | "final";
+type MyIsland = Awaited<ReturnType<typeof getMyIsland>>;
+
+/** Засчитанный шаг — в кэш острова (без повторов). */
+export function withAck(old: MyIsland | undefined, step: string): MyIsland | undefined {
+  const island = old?.island;
+  if (!old || !island || island.done.includes(step)) return old;
+  return { ...old, island: { ...island, done: [...island.done, step] } };
+}
 
 /** «Понятно» на шаге: засчитать и перечитать остров. */
 export function useIslandAck() {
   const qc = useQueryClient();
   const ack = useMutation({
-    mutationFn: (step: Ack) => ackIsland({ data: { step } }),
-    onSettled: () => qc.invalidateQueries({ queryKey: ISLAND_KEY }),
+    mutationFn: (data: { step: Ack; mapId?: string }) => ackIsland({ data }),
+    onSettled: (result, _e, vars) => {
+      if (result?.recorded === false) return;
+      // Вне острова запрос выключен (IslandLayer), перечитка его не тронет: окно
+      // «ты в основном мире» висело бы до перезагрузки — шаг кладём в кэш сами.
+      if (result) qc.setQueryData<MyIsland>(ISLAND_KEY, (old) => withAck(old, vars.step));
+      return qc.invalidateQueries({ queryKey: ISLAND_KEY });
+    },
   });
   const mutate = ack.mutate;
-  const onAck = useCallback((step: string) => mutate(step as Ack), [mutate]);
-  return { onAck, busy: ack.isPending };
+  const mutateAsync = ack.mutateAsync;
+  const onAck = useCallback((step: string) => mutate({ step: step as Ack }), [mutate]);
+  const onViewAck = useCallback((step: "hero" | "chest_backpack", mapId: string) => mutateAsync({ step, mapId }), [mutateAsync]);
+  return { onAck, onViewAck, busy: ack.isPending };
 }
 
 /** Тост на каждый шаг, засчитанный по факту (объяснения засчитывает сам игрок). */
@@ -46,7 +62,8 @@ export function useStepToasts(island: IslandView | null | undefined) {
     const before = seen.current;
     seen.current = done;
     if (!before) return;
-    for (const id of ISLAND_STEP_IDS) {
+    for (const { id, skipped } of island.steps) {
+      if (skipped) continue;
       if (isAckStep(id) || id === "leave" || !done.has(id) || before.has(id)) continue;
       toast.success(t("island.step_done", { title: t(`island.${id}.title`) }));
     }
@@ -64,3 +81,4 @@ export function useIslandRefresh() {
     void qc.invalidateQueries({ queryKey: ["my-hero-backpack"] });
   };
 }
+

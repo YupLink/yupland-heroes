@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { pg } from "../db/pg";
-import { computeTickets, invalidateTicketsCache } from "./user-claims-tickets";
+import { invalidateTicketsCache } from "./user-claims-tickets";
+import { claimBudget, debitClaim } from "./claim-ticket-debit";
 import { buildOwnedIndex, getOwnedByTitle } from "./user-claims-inventory";
 import { parseRewardTiers, pickWeightedReward, rollReward } from "../random";
 
@@ -39,7 +40,7 @@ export async function processChipDrop(
 ) {
   if (hasEnergyTier) {
     throw new Error(
-      "Награду-энергию для «за фишку»-дропов пока нельзя — сделай простым дропом."
+      "Награду-энергию и товар для «за фишку»-дропов пока нельзя — сделай простым дропом."
     );
   }
   const STORE = "yuplandshop.mintbase1.near";
@@ -103,18 +104,11 @@ export async function processChipDrop(
     throw new Error("Нет полного набора NFT-фишек для этого дропа");
   }
 
+  // Цена сета в билетах, платится золотом ×500 (§8.61, claim-ticket-debit).
   const chipTicketCost = drop.free_claim ? 0 : (drop.ticket_cost ?? 1);
   let cappedChip = false;
   if (!drop.free_claim) {
-    const tickets = await computeTickets(wallet);
-    if (tickets.available < chipTicketCost) {
-      throw new Error(
-        chipTicketCost === 1
-          ? "Нет доступных клеймов. Пригласи друга или купи билеты."
-          : `Нужно ${chipTicketCost} билетов за комбо, у тебя ${tickets.available}.`
-      );
-    }
-    const maxAffordable = Math.floor(tickets.available / chipTicketCost);
+    const maxAffordable = await claimBudget(wallet, chipTicketCost);
     if (maxAffordable < N) {
       N = maxAffordable;
       cappedChip = true;
@@ -162,21 +156,11 @@ export async function processChipDrop(
           redeemed_at: nowIsoChip,
         });
       }
-      // Платный сет-дроп: билеты проверялись выше, но НЕ списывались —
-      // клеймы уходили бесплатно. ref — id записи участия.
-      if (chipTicketCost > 0) {
-        const { moveTickets } = await import("./tickets-ledger");
-        // Билетов не хватило — набор не выдаём и снимаем свои строки выплат.
-        const paid = await moveTickets({
-          wallet,
-          delta: -chipTicketCost,
-          kind: "redemption",
-          ref: `chipdrop:${redIdChip}`,
-        }).catch(() => ({ applied: false }) as { applied: boolean });
-        if (!paid.applied) {
-          await Promise.all(chipRows.map((id) => pg.redemptions.delete({ id }).catch(() => undefined)));
-          continue;
-        }
+      // Платный сет-дроп: ref — id записи участия. Золота не хватило —
+      // набор не выдаём и снимаем свои строки выплат.
+      if (!(await debitClaim({ wallet, cost: chipTicketCost, ref: `chipdrop:${redIdChip}` }))) {
+        await Promise.all(chipRows.map((id) => pg.redemptions.delete({ id }).catch(() => undefined)));
+        continue;
       }
       claimedChip++;
       totalAmountChip += pickedAmount;

@@ -1,4 +1,5 @@
 import type { NearConnector as NearConnectorType } from "@hot-labs/near-connect";
+import { pageNonce } from "@/lib/csp/pageNonce";
 
 let instance: Promise<NearConnectorType> | null = null;
 
@@ -11,7 +12,10 @@ let instance: Promise<NearConnectorType> | null = null;
 export async function getConnector(): Promise<NearConnectorType | null> {
   if (typeof window === "undefined") return null;
   instance ??= import("@hot-labs/near-connect")
-    .then(({ NearConnector }) => new NearConnector({ network: "mainnet", autoConnect: true }))
+    .then(
+      ({ NearConnector }) =>
+        new NearConnector({ network: "mainnet", autoConnect: true, cspNonce: pageNonce() }),
+    )
     .catch((e: unknown) => {
       instance = null; // упавшая подгрузка не должна залипать навсегда
       throw e;
@@ -71,3 +75,36 @@ export async function connectForSigning(): Promise<void> {
 }
 
 export const isSigningOnlyConnect = (): boolean => signingOnly > 0;
+
+type SignedMessage = { accountId: string; publicKey: string; signature: string };
+
+/**
+ * Подключить кошелёк и в том же окне кошелька подписать сообщение (NEP-413). Одно
+ * окно вместо двух: отдельную подпись после подключения Safari блокирует как
+ * всплывающее окно без нажатия — вход по ссылке «Короны» стоял (08.11.2026).
+ * Кошелёк вошёл без подписи — просим её отдельно (прежний путь).
+ */
+export async function connectAndSignMessage(p: {
+  message: string;
+  recipient: string;
+  nonce: Uint8Array;
+}): Promise<SignedMessage> {
+  const c = await getConnector();
+  if (!c) throw new Error("NEAR-кошелёк недоступен");
+  signingOnly++;
+  const got: { m: SignedMessage | null } = { m: null };
+  const onSigned = (e: { accounts?: Array<{ signedMessage?: SignedMessage }> }) => {
+    got.m = e.accounts?.[0]?.signedMessage ?? null;
+  };
+  c.on("wallet:signInAndSignMessage", onSigned);
+  try {
+    await c.disconnect().catch(() => {});
+    const wallet = await c.connect({ signMessageParams: p });
+    return got.m ?? (await wallet.signMessage(p));
+  } finally {
+    c.off("wallet:signInAndSignMessage", onSigned);
+    setTimeout(() => {
+      signingOnly--;
+    }, 5000);
+  }
+}

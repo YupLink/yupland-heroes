@@ -10,14 +10,18 @@ import { gameInfoToast } from "@/lib/gameInfoToast";
 import { betaRaidAttack } from "@/server/api/beta-raid/encounter-attack";
 import { applyReveal, type Reveal } from "./applyReveal";
 import type { LineChip } from "@/components/game/ChipSquadPicker";
+import { rememberLineup } from "@/components/beta-raid/useRememberedLineup";
 import { rewardsLine } from "./lootLabels";
 import { serverBadgeLabel } from "./objectKind";
-import { markCellDefeated } from "./markDefeated";
+import { markCellDefeated, shownRunnerAt } from "./markDefeated";
 import { attackRefreshKeys } from "./attackRefresh";
+import { encounterKey, encounterTopKey, patchEncounterCard, spendEnergyLocally } from "./fight/fightCachePatch";
 import { humanError } from "@/lib/humanError";
 import { invalidateBackpack, invalidateRaidMap } from "@/lib/query";
 import { announceDropped } from "./loot-bag/lootBagLive";
 import { useT } from "@/lib/i18n";
+import { takeArtBreaks } from "@/lib/hooks/useArtBroken";
+import type { ArtBreakNote } from "@/lib/hero/artBroken";
 
 export type AttackResult = {
   kind: "boss" | "chest" | "mine" | "artifact";
@@ -47,8 +51,12 @@ export type AttackResult = {
   rounds?: number;
   wiped?: boolean;
   burnedEnergy?: number;
+  /** Списано за удар вместе с выжженным — цена «Атаковать снова» (fightControl.hitCost). */
+  spentEnergy?: number;
   slowed?: { extraCost: number; minutes: number } | null;
   chipEffects?: Array<{ kind: "poison" | "stun"; minutes: number; chip?: string | null }>;
+  /** Удар изменил фишки игрока (оглушение) — перечитать инвентарь (attackRefresh). */
+  chipsChanged?: boolean;
   /** Забрали без боя — итогового окна не нужно. */
   pickup?: boolean;
   /**
@@ -67,9 +75,12 @@ export type AttackResult = {
   };
   /** Отряд героя: сколько записей и сколько из них осталось дома. */
   heroSquad?: { total: number; busy: number; gone: number };
+  /** Сломалось и слетело с героя этим ударом (§8.63 п.3) — плашка над героем. */
+  artBroken?: ArtBreakNote[];
 };
 
 type Target = { objectId: string; q: number; r: number };
+export const ATTACK_KEY = ["beta-raid-attack"];
 
 export function useBetaEncounter() {
   const t = useT();
@@ -80,6 +91,8 @@ export function useBetaEncounter() {
   const [collecting, setCollecting] = useState<string | null>(null);
 
   const attack = useMutation({
+    // По ключу удар тапом видит «уже летит» сразу, не дожидаясь ререндера.
+    mutationKey: ATTACK_KEY,
     mutationFn: (args: Target & { lineup?: LineChip[] }) =>
       betaRaidAttack({
         data: {
@@ -97,36 +110,48 @@ export function useBetaEncounter() {
           })),
         },
       }),
-    onSuccess: (res, args) => {
+    // Слой цели — по карте в момент удара: бьём показанного беглеца или объект клетки.
+    onMutate: (args) => ({ runner: shownRunnerAt(qc, args.q, args.r, args.objectId) }),
+    onSuccess: (res, args, sent) => {
       const r = res as AttackResult;
+      const reveal = (r as { reveal?: Reveal | null }).reveal;
       setCollecting(null);
+      // Фишки не были выбраны — сервер взял самые сильные: запоминаем их как отряд.
+      const auto = (res as { autoLineup?: Array<{ templateId: string; level: number }> }).autoLineup;
+      if (Array.isArray(auto) && auto.length > 0) rememberLineup(auto);
       // Цель жива — остаёмся в окне боя: бить дальше, не открывая её заново.
       if (r.killed) setEncounter(null);
       // Опустошённую клетку гасим точечно: перекачивать всю карту ради одной
-      // монетки незачем.
-      if (r.killed) markCellDefeated(qc, args.q, args.r);
+      // монетки незачем. Гасим добитый слой: открылся беглец — добит был
+      // объект клетки над ним, и беглеца (зайца под мобом) не трогаем.
+      if (r.killed) markCellDefeated(qc, args.q, args.r, sent?.runner === true && !reveal);
       // Под забранным объектом мог прятаться беглец — открываем его на карте
       // сразу, иначе гриб «исчезал» вместе с укрытием до перечитывания карты.
-      applyReveal(qc, (r as { reveal?: Reveal | null }).reveal);
+      applyReveal(qc, reveal);
       // Подбор проходит без окна — только тост с добычей.
       if (!r.pickup) setFightResult(r);
 
-      // Лёгкое — всегда и даже неактивным; тяжёлое — только если удар его
-      // менял и только у открытых экранов (attackRefresh.ts).
+      // Перечитываем только то, что удар МОГ изменить (attackRefresh.ts);
+      // меняющееся в каждом ударе (HP цели, энергия) — из ответа (fightCachePatch).
       const refresh = attackRefreshKeys(r);
       for (const key of refresh.all) qc.invalidateQueries({ queryKey: key, refetchType: "all" });
       for (const key of refresh.active) qc.invalidateQueries({ queryKey: key });
-      // Карту и раскладку тоже: markCellDefeated — только оптимистичный
-      // патч, а как только карта перечитается по соседнему поводу (SSE
-      // built/restored, шаг игрока), сервер вернёт объект живым до
-      // dead-sweep. Без этой инвалидации убитый босс «воскресал» на клиенте
-      // до F5 — жаловались 14.09 и Гермес, и админ.
-      invalidateRaidMap(qc);
-      // Карточку перечитываем только ТЕКУЩЕЙ цели: прочие в кэше — давно
-      // ушедшие цели, им сервер ответил бы «Объект не найден» (02.10).
-      const encKey = ["beta-encounter", args.objectId, args.q, args.r];
-      if (r.killed) qc.removeQueries({ queryKey: encKey });
-      else void qc.invalidateQueries({ queryKey: encKey });
+      if (!r.pickup) spendEnergyLocally(qc, r.spentEnergy);
+      // Сломанный слетел с героя — плашка над героем и перечит снаряжения.
+      takeArtBreaks(qc, r.artBroken);
+      // Карту и раскладку — когда цель добита (или под ней открылся беглец):
+      // markCellDefeated — только оптимистичный патч, и без перечитывания
+      // убитый босс «воскресал» до F5 (14.09). Недобитая цель на карте не
+      // меняется — HP в карте нет.
+      if (r.killed || reveal) invalidateRaidMap(qc);
+      // Карточка ТЕКУЩЕЙ цели: неизменное (шаблон, картинка, способности,
+      // награды) уже в окне — правим только HP; добитую убираем. Топ вклада —
+      // только её же и только открытый (прочие цели этим ударом не менялись).
+      if (r.killed) qc.removeQueries({ queryKey: encounterKey(args) });
+      else if (!r.pickup) {
+        patchEncounterCard(qc, args, r);
+        void qc.invalidateQueries({ queryKey: encounterTopKey(args), exact: true });
+      }
       // Замедление, выжигание и урон яда видно в сводке боя — тостами их не
       // дублируем. Отдельно говорим только про оглушение: игрок должен сразу
       // понять, почему отряд поредел, не открывая итог.
@@ -178,9 +203,11 @@ export function useBetaEncounter() {
         );
       }
     },
-    onError: (e: Error) => {
+    onError: (e: Error, args) => {
       setCollecting(null);
       toast.error(humanError(e));
+      // Отказ (цель добили другие, отошёл) — карточку цели сверяем с сервером.
+      void qc.invalidateQueries({ queryKey: encounterKey(args), exact: true });
     },
   });
 

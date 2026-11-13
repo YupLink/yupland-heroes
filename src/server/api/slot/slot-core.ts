@@ -7,6 +7,7 @@ import { sqlStr } from "../raid-shared";
 import { initialSlotState, type SlotState } from "@/lib/slot/state";
 import { publicView } from "@/lib/slot/publicView";
 import { totalBet } from "@/lib/slot/bets";
+import { bumpAchievement } from "@/server/api/achievements/bump";
 import {
   SlotRefused,
   cryptoRng,
@@ -96,5 +97,8 @@ export async function slotActFor(
     version?: number;
     gold?: number;
   } | null;
+  // Ачивка «Удачливый лудоман» (§8.57): оборот — поставленное золото спина.
+  if (action.type === "spin")
+    bumpAchievement(account, "gambler", totalBet(action.lines, action.bet));
   return view(stored, Number(res?.gold) || 0, Number(res?.version) || cur.version + 1);
 }

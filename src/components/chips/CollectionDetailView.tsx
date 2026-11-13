@@ -5,6 +5,7 @@ import { labelForLevel } from "@/components/chips/levelLabel";
 import { useT } from "@/lib/i18n";
 import { getChipCollectionDetail } from "@/server/api/chips-stake";
 
+import { thumb } from "@/lib/image";
 function fmtBurnedPct(p: number): string {
   const n = Number(p) || 0;
   if (n <= 0) return "0%";
@@ -40,7 +41,7 @@ function TemplateTile({
     >
       <div className="relative">
         <ChipImage
-          src={template.imageUrl}
+          src={thumb(template.imageUrl, 640)}
           level={hasAny ? template.maxLevel : 1}
           alt={template.name}
           className="w-full"

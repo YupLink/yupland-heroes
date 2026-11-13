@@ -7,6 +7,64 @@ type Entry = Record<Lang, string>;
 export const dict: Record<string, Entry> = {
   // ────────── общие ──────────
   // Тосты сбоев (humanError): выкатка и обрыв связи — разные беды.
+  // Отказы крафта за золото и банка (§8.60) — сервер бросает русской фразой.
+  "err.price_changed": {
+    ru: "Цена изменилась — обнови окно",
+    en: "The price has changed — reopen the window",
+  },
+  "err.no_gold": {
+    ru: "Не хватает золота",
+    en: "Not enough gold",
+  },
+  "err.market_closed": {
+    ru: "Маркет фишек закрыт",
+    en: "The chip market is closed",
+  },
+  "err.sum_changed": {
+    ru: "Сумма изменилась — открой окно заново",
+    en: "The amount has changed — reopen the window",
+  },
+  "err.reload_gold": {
+    ru: "Обнови страницу — цены теперь в золоте",
+    en: "Reload the page — prices are now in gold",
+  },
+  "err.no_bank": {
+    ru: "Сначала построй банк в замке",
+    en: "Build a bank in your castle first",
+  },
+  // Магазина билетов нет (§8.61) — отказ покупки билетов.
+  "err.tickets_gone": {
+    ru: "Билетов больше нет — в игре золото",
+    en: "Tickets are gone — the game uses gold now",
+  },
+  // Ключ операции уже проведён (повтор старого нажатия) — оплаты нет, действия нет.
+  "err.op_reused": {
+    ru: "Это нажатие уже оплачено — нажми ещё раз",
+    en: "This action was already paid for — press again",
+  },
+  // Продажа тренировочной фишки (обмен прихожей) — золотом, 100 за билет (§8.61).
+  // Здесь, а не в chips.ts: тот словарь за пределом 250 строк.
+  "chips.training_sell_hint": {
+    ru: "Продать можно за {n} золота.",
+    en: "Can be sold for {n} gold.",
+  },
+  "chips.training_sell_for": {
+    ru: "Продать за {n} золота",
+    en: "Sell for {n} gold",
+  },
+  "chips.training_sold_gold": {
+    ru: "Продано за {n} золота — на баланс",
+    en: "Sold for {n} gold — added to your balance",
+  },
+  // Счётчик новых лотов аукциона (game-auction/seen.ts): отказы ручек — ключами.
+  "err.auction_seen_login": {
+    ru: "Сначала войди через Telegram",
+    en: "Sign in with Telegram first",
+  },
+  "err.auction_seen_failed": {
+    ru: "Не удалось обновить новые лоты",
+    en: "Couldn't update new lots",
+  },
   "err.updating": {
     ru: "Сервис обновляется — повтори через минуту",
     en: "The game is updating — try again in a minute",

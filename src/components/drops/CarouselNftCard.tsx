@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Lock, Ticket } from "lucide-react";
+import { Lock } from "lucide-react";
+import { ResourceGlyph } from "@/components/ui/ResourceGlyph";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { NftImage } from "@/components/NftImage";
@@ -60,7 +61,7 @@ export const CarouselNftCard = memo(function CarouselNftCard({
             to="/referrals"
             className="mt-1 inline-flex w-full items-center justify-center gap-1 rounded-md border border-border bg-secondary/40 px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-secondary hover:text-foreground"
           >
-            <Ticket className="h-3 w-3" />
+            <ResourceGlyph kind="gold" className="h-3 w-3" />
             {t("mynfts.ticket_needed_short")}
           </Link>
         )}

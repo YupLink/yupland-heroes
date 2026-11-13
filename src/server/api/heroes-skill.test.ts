@@ -57,12 +57,12 @@ beforeEach(() => {
   s.sql = [];
   s.race = null;
   s.invalidated = 0;
-  // Рар 25-го: 5 повышенных + 2 за 25-й = 7 очков, вложено 3.
+  // Рар 25-го: 5 повышенных × 2 + 10 за 25-й = 20 очков (25.10.2026), вложено 3.
   s.hero = { id: "hero_1", account_id: "acc_me", rarity: "rare", level: 25, skills: { atk: 2, trade: 1 } };
 });
 
 describe("spendSkillSql", () => {
-  const sql = mod.spendSkillSql({ heroId: "hero_1", account: "acc_me", skill: "trade", from: 1, earned: 7 });
+  const sql = mod.spendSkillSql({ heroId: "hero_1", account: "acc_me", skill: "trade", from: 1, earned: 20 });
 
   it("CAS по from и владельцу, запись from+1", () => {
     expect(sql).toContain("h.id = 'hero_1' AND h.account_id = 'acc_me'");
@@ -75,14 +75,14 @@ describe("spendSkillSql", () => {
   it("свободное очко проверяется в том же UPDATE: вложено + 1 ≤ заработано", () => {
     expect(sql).toContain("FROM jsonb_each_text(h.skills) v");
     expect(sql).toContain("'alchemy'");
-    expect(sql).toMatch(/\+ 1 <= 7/);
+    expect(sql).toMatch(/\+ 1 <= 20/);
   });
 });
 
 describe("spendSkillPoint", () => {
   it("кладёт очко: один UPDATE, свежие числа, сброс кэша силы", async () => {
     const r = await spend({ data: { heroId: "hero_1", skill: "trade", from: 1 } });
-    expect(r).toEqual({ ok: true, skills: { atk: 2, trade: 2 }, free: 3, earned: 7 });
+    expect(r).toEqual({ ok: true, skills: { atk: 2, trade: 2 }, free: 16, earned: 20 });
     expect(updates()).toHaveLength(1);
     expect(s.invalidated).toBe(1);
   });
@@ -102,7 +102,7 @@ describe("spendSkillPoint", () => {
   });
 
   it("очков нет — hero.skill_no_points, обычный уровень тоже", async () => {
-    s.hero = { ...s.hero!, skills: { atk: 7 } };
+    s.hero = { ...s.hero!, skills: { atk: 20 } };
     await expect(spend({ data: { heroId: "hero_1", skill: "hp", from: 0 } })).rejects.toThrow(
       "hero.skill_no_points",
     );
@@ -122,9 +122,9 @@ describe("spendSkillPoint", () => {
   });
 
   it("гонка: последнее очко ушло в другой навык — hero.skill_no_points", async () => {
-    s.hero = { ...s.hero!, skills: { atk: 6 } };
+    s.hero = { ...s.hero!, skills: { atk: 19 } };
     s.race = (h) => {
-      h.skills = { atk: 7 };
+      h.skills = { atk: 20 };
     };
     await expect(spend({ data: { heroId: "hero_1", skill: "arm", from: 0 } })).rejects.toThrow(
       "hero.skill_no_points",

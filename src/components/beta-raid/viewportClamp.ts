@@ -5,9 +5,18 @@
 // край зашёл ВНУТРЬ экрана и открыл чёрное. Раньше W/H не учитывались, и край
 // доезжал до ЦЕНТРА — на узком экране незаметно, а в полноэкранном (высокий
 // вьюпорт) сверху/снизу зияло чёрное и карта «сворачивалась».
+//
+// Запас за краем — не только пара гексов, но и доля экрана (тестеры, 26.10.2026: «на
+// новых картах карта упирается в лимит, бегу вверх — кнопка „Идти“ залезает под
+// панель; дай чуть заходить за неоткрытое»): герой у края разведанного встаёт ниже
+// верхней панели, плашка маршрута над ним остаётся видна.
 import { R, axialToPixel } from "./hexGeometry";
 
 export type Bounds = { minQ: number; maxQ: number; minR: number; maxR: number } | null;
+
+/** Сколько экрана можно заехать за край разведанного: по ширине и по высоте. */
+export const EDGE_SLACK_X = 0.3;
+export const EDGE_SLACK_Y = 0.35;
 
 /**
  * Ограничить смещение по одной оси. lo/hi — край карты в мировых×scale
@@ -39,11 +48,12 @@ export function clampToBounds(
   ];
   const xs = corners.map((c) => c.x * scale);
   const ys = corners.map((c) => c.y * scale);
-  const pad = R * 2 * scale;
-  const minX = Math.min(...xs) - pad;
-  const maxX = Math.max(...xs) + pad;
-  const minY = Math.min(...ys) - pad;
-  const maxY = Math.max(...ys) + pad;
+  const padX = R * 2 * scale + W * EDGE_SLACK_X;
+  const padY = R * 2 * scale + H * EDGE_SLACK_Y;
+  const minX = Math.min(...xs) - padX;
+  const maxX = Math.max(...xs) + padX;
+  const minY = Math.min(...ys) - padY;
+  const maxY = Math.max(...ys) + padY;
   return {
     x: clampAxis(next.x, minX, maxX, W / 2),
     y: clampAxis(next.y, minY, maxY, H / 2),

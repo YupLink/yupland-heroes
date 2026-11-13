@@ -9,6 +9,7 @@ import type { PlainChestView } from "@/lib/plainChest";
 import { chestMoundId, isChestMound, isPlaceDir, PLACE_DIRS } from "@/lib/plainChest";
 import type { BackpackView } from "@/server/api/beta-raid/market-backpack";
 import { dict } from "@/lib/translations";
+import { CELL_SIZE } from "@/lib/hero/backpackCells";
 
 const v = vi.hoisted(() => ({ lang: "ru" as "ru" | "en" }));
 
@@ -32,7 +33,14 @@ const view: PlainChestView = {
   cells: 10,
   used: 2,
   slots: [
-    { stackKey: "custom:cst_a", kind: "custom", refId: "cst_a", name: "Банан", image: null, count: 25 },
+    {
+      stackKey: "custom:cst_a",
+      kind: "custom",
+      refId: "cst_a",
+      name: "Банан",
+      image: null,
+      count: CELL_SIZE + 5,
+    },
   ],
 };
 const stack = (over: object) => ({
@@ -69,7 +77,7 @@ describe("окно сундука", () => {
     const html = render();
     expect(html).toContain("Сундук · 2/10");
     expect(html).toContain("Лис");
-    // Плитки: яблоко слева, банан (25 = две ячейки) справа.
+    // Плитки: яблоко слева, банан (ячейка и ещё 5 = две ячейки) справа.
     expect(buttons(html)).toBe(3);
     expect(html).toContain("Банан");
   });

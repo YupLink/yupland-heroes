@@ -1,0 +1,46 @@
+hoof-earth.mp3 — soft ground hoof loop, edited for Yupland (2026-10-23).
+Source: ground.mp3 in "Horse gallop on different surfaces", congusbongus.
+https://opengameart.org/content/horse-gallop-on-different-surfaces
+Package license: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+Original recording: "Single Horse Galopp", D4XX (CC0), per the package credits.txt.
+https://freesound.org/people/D4XX/sounds/564628/
+Edits: softened highs, rumble filtering, slower tempo, repeated cycles with
+small gain variation, level calibrated below the approved raid music.
+Retain credit to congusbongus and D4XX and the CC BY 4.0 license reference.
+
+hoof-stone.mp3 — edited blocky.mp3 from the same congusbongus package (CC BY 4.0).
+Original: Horse (Galloping), moodyfingers, CC BY 4.0.
+https://freesound.org/people/moodyfingers/sounds/717604/
+Edits: tempo .88, 110 Hz high pass, 4.2 kHz low pass, loop, level -14 dB RMS below raid music.
+
+oars-water.mp3 — Rowing slowly, Joseph SARDIN / BigSoundBank, CC0.
+https://bigsoundbank.com/rowing-slowly-s1514.html
+https://creativecommons.org/publicdomain/zero/1.0/
+Edits: excerpt, mono 48 kHz, 140 Hz–3.2 kHz bandpass, loop crossfade,
+level -15 dB RMS below raid music, MP3 96 kbps.
+
+
+foot-earth.mp3 — Fantozzi Sand L1/R1/L2/R2, sliced by qubodup, CC0.
+https://opengameart.org/content/fantozzis-footsteps-grasssand-stone
+Edits: four natural sole steps / 1.5 seconds, mono, filters, -31 dBFS RMS.
+
+foot-stone.mp3 — Joseph SARDIN / BigSoundBank 0514, CC0.
+https://bigsoundbank.com/footsteps-shoe-on-concrete-s0514.html
+Edits: continuous excerpt 7.13–8.63s, filtering, -31 dBFS RMS.
+
+axe.mp3 — kheetor, chop-tree-fall.ogg, CC0.
+https://opengameart.org/content/tree-chop-fall-thud
+Edited initial wood transient, softened low resonance, four strikes in 1.95 s.
+pick.mp3 — Kenney Impact Sounds, impactMining_000, CC0.
+https://kenney.nl/assets/impact-sounds
+Four strikes in 1.95 s; level matched to approved effects.
+
+Fishing cast (cast.mp3): 1.85 seconds, approved short reel version.
+Reel: Joseph SARDIN, CC0, https://bigsoundbank.com/sound-1435-moulinet-de-peche-rapide.html
+Splash: Joseph SARDIN, CC0, https://bigsoundbank.com/splash-small-1-s1529.html
+Swish: qubodup, CC0, https://opengameart.org/content/swish-bamboo-stick-weapon-swhoshes
+Edited excerpts, filtering, level matching and fades; no music.
+
+Bare-hand wood strikes (fist.mp3): Blazewasbored, Punch Wood Table, CC0.
+https://freesound.org/people/Blazewasbored/sounds/569495/
+Three softened strikes, 1.40 seconds, shortened resonance tail; approved dry version.

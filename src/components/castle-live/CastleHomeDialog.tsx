@@ -36,8 +36,8 @@ export function CastleHomeDialog({
         <p className="text-sm font-semibold text-gold">
           {offer.cost > 0
             ? ru
-              ? `Переселение — ${offer.cost} билетов`
-              : `Moving costs ${offer.cost} tickets`
+              ? `Переселение — ${offer.cost.toLocaleString("ru-RU")} золота`
+              : `Moving costs ${offer.cost.toLocaleString("en-US")} gold`
             : ru
               ? "Первый выбор — бесплатно"
               : "The first choice is free"}

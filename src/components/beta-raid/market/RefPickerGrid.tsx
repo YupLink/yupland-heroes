@@ -6,11 +6,12 @@
 // показываем только для kind='custom'. Свои товары ещё и идут группами по
 // категориям (refCategoryGroups) — с заголовком над каждой.
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { humanError } from "@/lib/humanError";
 import { deleteCustomItem } from "@/server/api/beta-raid/market-custom";
+import { getSession } from "@/server/api/user-auth";
 import type { MarketKind } from "@/lib/marketItem";
 import { RefThumb } from "./RefThumb";
 import { RARITY_TINT, RARITY_SHORT } from "./artAnyIcon";
@@ -42,6 +43,10 @@ export function RefPickerGrid({
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const lang = useLang();
   const qc = useQueryClient();
+  // Править и удалять свои товары — только админу; право «справочники» —
+  // только создавать (владелец 04.11.2026: «может только выставлять — менять нельзя»).
+  const session = useQuery({ queryKey: ["session"], queryFn: () => getSession() });
+  const admin = session.data?.isAdmin === true;
   const del = useMutation({
     mutationFn: (id: string) => deleteCustomItem({ data: { id } }),
     onSuccess: (_r, id) => {
@@ -80,6 +85,7 @@ export function RefPickerGrid({
         {/* Свои шаблоны можно править и удалять — покупные (герой/пак/босс)
               редактируются в своих админках, не тут. */}
         {kind === "custom" &&
+          admin &&
           (confirmDel === r.id ? (
             <div
               onClick={(e) => e.stopPropagation()}

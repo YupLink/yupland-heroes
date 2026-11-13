@@ -1,0 +1,13 @@
+/* Owner revision: every action slides out below the toggle; four pixel visual gaps. */
+.castle-reward-rail{gap:0}
+.castle-reward-rail__items{position:absolute;top:calc(100% - 1px);right:-9px;display:flex;flex-direction:column;align-items:center;gap:0;max-height:calc(100dvh - max(104px, calc(var(--app-top,env(safe-area-inset-top,0px)) + 96px)) - 100px);overflow-y:auto;scrollbar-width:thin;padding:3px 6px 6px;transform:translateY(-20px);clip-path:inset(0 0 100% 0);opacity:0;visibility:hidden;pointer-events:none;transition:clip-path 220ms ease,transform 220ms ease,opacity 160ms ease,visibility 0s 220ms}
+.castle-reward-rail__items[data-open="true"]{transform:translateY(0);clip-path:inset(0);opacity:1;visibility:inherit;pointer-events:auto;transition:clip-path 220ms ease,transform 220ms ease,opacity 160ms ease,visibility 0s}
+.castle-reward-rail__items>button{flex-shrink:0}
+.castle-reward-rail > button.castle-reward-rail__toggle{display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;border:2px solid #d3a85d;border-radius:50%;background:#101619;color:#ffe3a4;box-shadow:0 2px 6px #0008;cursor:pointer}
+.castle-reward-rail > button.castle-reward-rail__toggle::before{display:none}
+.castle-reward-rail__toggle svg{width:21px;height:21px;stroke-width:2.4;pointer-events:none}
+.castle-reward-rail > button.castle-reward-rail__toggle:focus-visible{outline:2px solid #fff4d8;outline-offset:2px}
+@media(min-width:1024px){.castle-desktop-toolbar .castle-reward-rail{position:relative;top:auto;right:auto}.castle-desktop-toolbar .castle-reward-rail__items{left:50%;right:auto;translate:-50% 0;width:max-content;gap:4px;top:calc(100% + 1px);max-height:calc(100dvh - 140px)}}
+@media(prefers-reduced-motion:reduce){.castle-reward-rail__items,.castle-reward-rail__items[data-open="true"]{transition:none}}
+
+@media(max-width:1023px){.castle-reward-rail,.castle-music-scene .castle-desktop-toolbar .castle-reward-rail:has(.castle-reward-rail__toggle){top:max(88px,calc(var(--app-top,env(safe-area-inset-top,0px)) + 80px))}.castle-reward-rail__items>button{height:48px;min-height:48px}.castle-reward-rail__items>button::before{inset:2px 3px}}

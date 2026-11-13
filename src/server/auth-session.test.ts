@@ -14,9 +14,9 @@ vi.mock("@tanstack/react-start/server", () => ({
 vi.mock("./db/pg", () => ({ pg: {} }));
 
 process.env.SESSION_SECRET = "test-session-secret-0123456789";
-process.env.ADMIN_WALLETS = "owner.example.tg,darai_collection.near";
-process.env.ADMIN_TG_ACCOUNTS = "100000002";
-process.env.PAYOUTS_ADMIN_WALLETS = "owner.example.tg";
+process.env.ADMIN_WALLETS = "owner.tg,darai_collection.near";
+process.env.ADMIN_TG_ACCOUNTS = "700000002";
+process.env.PAYOUTS_ADMIN_WALLETS = "owner.tg";
 
 const auth = await import("./auth");
 const { signCookieValue } = await import("./sessionCookie");
@@ -25,15 +25,15 @@ beforeEach(() => jar.clear());
 
 describe("сессия", () => {
   it("ставится только с Telegram и читается обратно", () => {
-    auth.setCurrentWallet("yupland_nfts.near", 100000002);
+    auth.setCurrentWallet("yupland_nfts.near", 700000002);
     expect(auth.getCurrentWallet()).toBe("yupland_nfts.near");
-    expect(auth.getSessionTgId()).toBe(100000002);
+    expect(auth.getSessionTgId()).toBe(700000002);
     expect(() => auth.setCurrentWallet("x.near", 0)).toThrow(/Telegram/);
   });
 
   it("старая подписанная сессия без Telegram — недействительна, метка аккаунта тоже", () => {
     jar.set("gd_wallet", signCookieValue("darai_collection.near"));
-    jar.set("gd_acc", signCookieValue("acc_player44"));
+    jar.set("gd_acc", signCookieValue("acc_test0001"));
     expect(auth.getCurrentWallet()).toBeNull();
     expect(auth.getSessionTgId()).toBeNull();
     expect(auth.getCurrentAccountId()).toBeNull();
@@ -42,7 +42,7 @@ describe("сессия", () => {
   it("подделанный Telegram в cookie не проходит подпись", () => {
     auth.setCurrentWallet("evil.near", 111);
     const raw = jar.get("gd_wallet")!;
-    jar.set("gd_wallet", raw.replace("#111~", "#100000002~"));
+    jar.set("gd_wallet", raw.replace("#111~", "#700000002~"));
     expect(auth.getCurrentWallet()).toBeNull();
   });
 });
@@ -60,11 +60,11 @@ describe("метка аккаунта", () => {
 
 describe("админка", () => {
   it("кошелёк из списка — админ", () => {
-    expect(auth.isAdminWallet("owner.example.tg")).toBe(true);
+    expect(auth.isAdminWallet("owner.tg")).toBe(true);
   });
 
   it("любой кошелёк сессии Telegram админа — админ, но не выплаты", () => {
-    auth.setCurrentWallet("any_new.near", 100000002);
+    auth.setCurrentWallet("any_new.near", 700000002);
     expect(auth.isAdminWallet("any_new.near")).toBe(true);
     expect(auth.isPayoutsAdminWallet("any_new.near")).toBe(false);
     // чужой кошелёк, о котором спросили в этой сессии, — не админ
@@ -77,7 +77,7 @@ describe("админка", () => {
   });
 
   it("выплаты — только по своему списку", () => {
-    expect(auth.isPayoutsAdminWallet("owner.example.tg")).toBe(true);
+    expect(auth.isPayoutsAdminWallet("owner.tg")).toBe(true);
     expect(auth.isPayoutsAdminWallet("darai_collection.near")).toBe(false);
   });
 });

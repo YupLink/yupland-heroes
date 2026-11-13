@@ -38,6 +38,15 @@ function metrics(g: CanvasRenderingContext2D, own: string, plus: string, shared:
   return m;
 }
 
+/** Бейдж — после тумана, если кадр ведёт очередь; иначе (нет очереди) сразу.
+ *  В очередь кладём ключ и X, а не SceneCell: он один на кадр и к концу обхода
+ *  указывал бы на последнюю клетку — бейджи уезжали в чужую клетку. */
+export function queueWarehouseBadge(scene: DrawScene, c: BadgeAt, top: number): void {
+  if (!scene.warehouseBadges?.[c.key]) return;
+  if (scene.deferredBadges) scene.deferredBadges.push({ key: c.key, x: c.x, top });
+  else drawWarehouseBadge(scene, c, top);
+}
+
 export function drawWarehouseBadge(scene: DrawScene, c: BadgeAt, buildingTop: number): void {
   const b = scene.warehouseBadges?.[c.key];
   if (!b || b.own + b.shared <= 0) return;

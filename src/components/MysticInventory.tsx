@@ -121,7 +121,9 @@ export function MysticInventory() {
           ? `rest|${it.id}`
           : it.kind === "hero"
             ? `${it.templateId}|${(it as { heroLevel?: number | null }).heroLevel ?? 0}`
-            : it.templateId || it.id;
+            : it.kind === "artifact" && it.enchantPct != null
+              ? `ench|${it.id}` // зачарованный — своей плиткой (§8.87)
+              : `${it.templateId || it.id}|${it.durability ?? 100}`; // разная прочность — своя плитка
       const g = m.get(key);
       if (g) g.count++;
       else m.set(key, { key, sample: it, count: 1 });

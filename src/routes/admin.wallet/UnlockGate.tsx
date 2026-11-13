@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Lock, Loader2 } from "lucide-react";
-import { unlockApp } from "@/lib/appLock";
-import { listLocalWallets, removeLocalWallet } from "@/lib/embeddedWallet";
-import { resetAppLockForce } from "@/lib/appLock";
+import { forgotAppPassword, unlockApp } from "@/lib/appLock";
+import { useT } from "@/lib/i18n";
 import { PwdInput } from "./inputs";
 
 export function UnlockGate({ onUnlocked }: { onUnlocked: () => void }) {
+  const t = useT();
   const [pwd, setPwd] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -29,10 +29,10 @@ export function UnlockGate({ onUnlocked }: { onUnlocked: () => void }) {
   const doReset = async () => {
     setBusy(true);
     try {
-      const list = await listLocalWallets();
-      for (const a of list) await removeLocalWallet(a);
-      resetAppLockForce();
-      toast.success("Пароль сброшен — войди по сид-фразе");
+      // Кошельки под паролем удаляются; ещё не перенесённые при открытом прежнем
+      // замке остаются и закроются новым паролем (forgotAppPassword).
+      const kept = (await forgotAppPassword()) === "kept";
+      toast.success(kept ? t("wvault.reset_kept") : "Пароль сброшен — войди по сид-фразе");
       window.location.reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));

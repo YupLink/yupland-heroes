@@ -12,6 +12,7 @@ import {
   adminListChipPacks,
 } from "@/server/api/chips-admin";
 import { adminListItems } from "@/server/api/items";
+import { MysticItemPrizeSelect } from "./MysticItemPrizeSelect";
 import { ImageUploader } from "@/components/ImageUploader";
 import { humanError } from "@/lib/humanError";
 import { KIND_META, type MysticTier } from "@/components/mysticShared";
@@ -149,7 +150,7 @@ function TierEditor({
           <div className="min-w-[200px] flex-1"><ChipPackSelect value={t.packId ?? ""} onChange={(v) => onChange({ packId: v })} /></div>
         )}
         {(t.kind === "artifact" || t.kind === "hero") && (
-          <div className="min-w-[200px] flex-1"><ItemSelect kind={t.kind} value={t.itemTemplateId ?? ""} onChange={(id, name) => onChange({ itemTemplateId: id, itemName: name })} /></div>
+          <div className="min-w-[200px] flex-1"><MysticItemPrizeSelect kind={t.kind} t={t} onChange={onChange} /></div>
         )}
         {t.kind === "resource" && (
           <RewardResourceSelect value={t.resource} onChange={(r) => onChange({ resource: r })} />
@@ -165,7 +166,13 @@ function TierEditor({
         )}
       </div>
       {t.kind === "custom" && (
-        <div className="mt-2"><CustomItemGrid itemId={t.customId} onPick={(id) => onChange({ customId: id, customName: undefined })} /></div>
+        <div className="mt-2 space-y-1.5">
+          {/* «Любой товар» — какой именно, решается при открытии (04.11.2026) */}
+          <button type="button" onClick={() => onChange(t.customAny ? { customAny: undefined } : { customAny: true, customId: undefined, customName: undefined })} className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", t.customAny ? "border-gold bg-gold/15 text-gold" : "border-border text-muted-foreground")}>
+            Любой товар
+          </button>
+          {!t.customAny && <CustomItemGrid itemId={t.customId} onPick={(id) => onChange({ customId: id, customName: undefined })} />}
+        </div>
       )}
     </div>
   );
@@ -192,26 +199,6 @@ function RangeField({
       }}
       className="w-24 rounded-lg border border-border bg-background px-2 py-1 text-xs"
     />
-  );
-}
-
-function ItemSelect({
-  kind, value, onChange,
-}: {
-  kind: "artifact" | "hero";
-  value: string;
-  onChange: (id: string, name: string) => void;
-}) {
-  const items = useQuery({ queryKey: ["admin-items", kind], queryFn: () => adminListItems({ data: { kind } }) });
-  const list = (items.data ?? []).filter((i) => i.active || i.id === value);
-  const noun = kind === "artifact" ? "артефакт" : "героя";
-  const nounPl = kind === "artifact" ? "артефактов" : "героев";
-  const placeholder = items.isLoading ? "загрузка…" : list.length === 0 ? `нет созданных ${nounPl} — создай в разделе` : `— выбери ${noun} —`;
-  return (
-    <select value={value} onChange={(e) => { const it = list.find((x) => x.id === e.target.value); onChange(e.target.value, it?.name ?? ""); }} className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none focus:border-gold/50">
-      <option value="">{placeholder}</option>
-      {list.map((i) => <option key={i.id} value={i.id}>{i.name}{i.rarity ? ` (${i.rarity})` : i.level != null ? ` (${i.level}★)` : ""}</option>)}
-    </select>
   );
 }
 

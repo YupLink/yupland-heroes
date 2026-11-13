@@ -15,4 +15,10 @@ export const dict: Record<string, Entry> = {
     ru: "−1 через {time} · до {max}",
     en: "−1 in {time} · down to {max}",
   },
+  // Отказ сервера: энергопак — только золото, DARAI и звёзды (§8.61).
+  "energy.pay_gold": { ru: "золото", en: "gold" },
+  "energy.pay_only": {
+    ru: "Энергию можно купить только за золото, DARAI и звёзды",
+    en: "Energy can be bought only for gold, DARAI and stars",
+  },
 };

@@ -23,6 +23,8 @@ import { loadHeroView } from "./hero-power";
 import { spellCostFor, spellTemplateMap, type SpellKind, type SpellTpl } from "./spell-tpl";
 import { spellbookSlots } from "@/lib/hero/spellbookSlots";
 import { spellDiscountPercent } from "@/lib/hero/spellPower";
+import { energyMultOf, scaleEnergy } from "@/lib/raid/island/energy";
+import { myMapId } from "./encounter-where";
 import type { BoostEffect } from "@/lib/hero/boost";
 
 /** Герой, которому принадлежит книга. Интеллект — уже с баффами и минусами. */
@@ -136,7 +138,13 @@ export function castRefusal(
   return null;
 }
 
-function entryOf(tpl: SpellTpl, hero: SpellHero, readyAt: string | undefined): SpellBookEntry {
+function entryOf(
+  tpl: SpellTpl,
+  hero: SpellHero,
+  readyAt: string | undefined,
+  /** Множитель карты: на острове цена в 10 раз ниже (island/energy) — как спишет каст. */
+  mult = 1,
+): SpellBookEntry {
   const cost = spellCostFor(tpl, hero.intellect);
   const leftSec = cooldownLeftSec(readyAt);
   const refusal = castRefusal(tpl, hero, leftSec);
@@ -147,7 +155,7 @@ function entryOf(tpl: SpellTpl, hero: SpellHero, readyAt: string | undefined): S
     image: tpl.image,
     kind: tpl.kind,
     effects: tpl.effects,
-    energyCost: cost.energy,
+    energyCost: scaleEnergy(cost.energy, mult),
     cooldownMinutes: cost.cooldownMinutes,
     baseEnergyCost: tpl.energyCost,
     baseCooldownMinutes: tpl.cooldownMinutes,
@@ -167,11 +175,15 @@ export async function spellBookOf(wallet: string): Promise<SpellBookView> {
   if (!hero) {
     return { hero: null, slots: { total: 0, used: 0, free: 0 }, discountPercent: 0, spells: [] };
   }
-  return spellBookFor(hero);
+  return spellBookFor(hero, false, await bookMult(wallet));
 }
 
+/** Множитель цен книги по карте игрока; не узнали карту — мировые цены. */
+const bookMult = async (wallet: string): Promise<number> =>
+  energyMultOf(await myMapId(wallet).catch(() => null));
+
 /** Assemble the book and cooldowns for the same, already-authorized hero. */
-async function spellBookFor(hero: SpellHero, strict = false): Promise<SpellBookView> {
+async function spellBookFor(hero: SpellHero, strict = false, mult = 1): Promise<SpellBookView> {
   const known = await learnedSpellIds(hero.heroId, strict);
   // Шаблоны и откаты не знают друг о друге — тянем разом, а не цепочкой.
   const [tpls, cds] = await Promise.all([
@@ -192,7 +204,7 @@ async function spellBookFor(hero: SpellHero, strict = false): Promise<SpellBookV
     spells: known
       .map((id) => {
         const tpl = tpls.get(id);
-        return tpl ? entryOf(tpl, hero, cds.get(id)) : null;
+        return tpl ? entryOf(tpl, hero, cds.get(id), mult) : null;
       })
       .filter((e): e is SpellBookEntry => e !== null),
   };
@@ -209,7 +221,11 @@ export const getOwnedHeroSpellbook = createServerFn({ method: "GET" })
     const wallet = await requireBetaRaid();
     if (!(await heroPowerEnabled(wallet))) throw new Error("Hero spellbook unavailable");
     const hero = await loadOwnedHero(wallet, data.heroId);
-    const [buffs, weaken] = await Promise.all([loadBuffsFor(wallet), loadWeakenFor(wallet)]);
+    const [buffs, weaken, mult] = await Promise.all([
+      loadBuffsFor(wallet),
+      loadWeakenFor(wallet),
+      bookMult(wallet),
+    ]);
     const info = weakenHero(buffHero(buildHeroPower(hero).info, buffs), weaken);
     return spellBookFor(
       {
@@ -220,5 +236,6 @@ export const getOwnedHeroSpellbook = createServerFn({ method: "GET" })
         intellect: Math.max(0, Math.floor(Number(info.stats.int) || 0)),
       },
       true,
+      mult,
     );
   });

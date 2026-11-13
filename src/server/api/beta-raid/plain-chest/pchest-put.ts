@@ -24,10 +24,13 @@ import { putSql, type MoveRow } from "@/server/api/beta-raid/plain-chest/pchest-
 import { notePlain } from "@/server/api/beta-raid/plain-chest/pchest-note";
 import { requirePass } from "@/server/api/beta-raid/open-pass/pass";
 import { plainTarget } from "@/server/api/beta-raid/open-pass/pass-sql";
+import { isDaraiMineKey } from "@/lib/daraiMine";
 
 export const putToPlainChest = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => moveInput.parse(d))
   .handler(async ({ data }): Promise<{ ok: true; qty: number }> => {
+    // DARAI-шахта живёт в рюкзаке час и выпадает мешочком (lib/daraiMine).
+    if (isDaraiMineKey(data.stackKey)) throw new Error("dmine.stays");
     const a = await pchestActor("pchest-put");
     const chest = await plainNear(a, data.q, data.r);
     // «Положить» и «Забрать» — только внутри оплаченного входа (§8.23).

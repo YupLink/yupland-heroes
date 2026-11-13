@@ -8,6 +8,9 @@ const st = {
   applied: true,
   prev: { paid: "16387044", undone: false } as { paid: string | null; undone: boolean },
   createFails: false,
+  createError: "MCP timeout",
+  /** Своя действующая подписка нового образца — какого тарифа (null — нет). */
+  other: null as string | null,
   created: "es_x" as string | null,
   exists: false,
   rate: 2_601_118 as number | null,
@@ -33,9 +36,10 @@ vi.mock("../../db/mcpClient", () => ({
     const flat = sql.replace(/\s+/g, " ").trim();
     sqls.push(flat);
     if (flat.includes("INSERT INTO yuplink.energy_sub ")) {
-      if (st.createFails) throw new Error("MCP timeout");
+      if (st.createFails) throw new Error(st.createError);
       return [{ _row: { created: st.created, existing: st.created } }];
     }
+    if (flat.includes("GROUP BY tier_id")) return st.other ? [{ tier_id: st.other, until: "2026-11-28T00:00:00Z" }] : [];
     if (flat.includes("SELECT 1 AS ok FROM yuplink.energy_sub")) return st.exists ? [{ ok: 1 }] : [];
     if (flat.includes("kind = 'acc_spend'")) return [st.prev];
     return null;
@@ -64,7 +68,6 @@ vi.mock("./grant", async (orig) => ({ ...(await orig<typeof import("./grant")>()
 vi.mock("./batch", () => ({ runDueBatches: runDue }));
 
 const { buyEnergySub } = await import("./buy");
-const { createSubSql, subIdOf } = await import("./buy-sql");
 
 const buy = (over: Record<string, unknown> = {}) =>
   buyEnergySub({ data: { tierId: "esub_novice", token: "Darai", expected: 16_387_044, opId: "op_12345678", ...over } });
@@ -75,6 +78,8 @@ beforeEach(() => {
     applied: true,
     prev: { paid: "16387044", undone: false },
     createFails: false,
+    createError: "MCP timeout",
+    other: null,
     created: "es_x",
     exists: false,
     rate: 2_601_118,
@@ -149,6 +154,52 @@ describe("покупка подписки", () => {
   });
 });
 
+describe("по одной каждого вида (esub-10)", () => {
+  it("такая же действует — отказ до списания", async () => {
+    st.other = "esub_novice";
+    st.prev = { paid: null, undone: false };
+    await expect(buy()).rejects.toThrow("esub.one_active");
+    expect(pay).not.toHaveBeenCalled();
+    const q = sqls.find((s) => s.includes("GROUP BY tier_id"))!;
+    expect(q).toContain("pay_ref IS DISTINCT FROM 'esub:acc_A:esub_novice:Darai:op_12345678'");
+    // старый образец (до тарифов esub-07) в лимит не входит
+    expect(q).toContain("created_at >= '2026-10-25 00:00:00+00'");
+    expect(refund).not.toHaveBeenCalled();
+  });
+
+  it("действует другого вида — покупка идёт, подписки складываются", async () => {
+    st.other = "esub_expert";
+    await expect(buy()).resolves.toMatchObject({ ok: true });
+    expect(pay).toHaveBeenCalledOnce();
+  });
+
+  it("повтор, чья оплата прошла без подписки, а такая уже действует — деньги назад", async () => {
+    st.other = "esub_novice";
+    st.prev = { paid: "16000000", undone: false };
+    await expect(buy()).rejects.toThrow("esub.one_active");
+    expect(pay).not.toHaveBeenCalled();
+    expect(refund).toHaveBeenCalledWith(expect.objectContaining({ amount: 16_000_000 }));
+  });
+
+  it("повтор, база отказала «одна за раз» — прежнее списание возвращается", async () => {
+    st.applied = false;
+    st.prev = { paid: "16000000", undone: false };
+    st.createFails = true;
+    st.createError = "ERROR: esub_one_active";
+    await expect(buy()).rejects.toThrow("esub.one_active");
+    expect(refund).toHaveBeenCalledWith(expect.objectContaining({ amount: 16_000_000 }));
+  });
+
+  it("два нажатия разом — база отказала второй, деньги вернулись", async () => {
+    st.createFails = true;
+    st.createError = "ERROR: esub_one_active";
+    await expect(buy()).rejects.toThrow("esub.one_active");
+    expect(refund).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 16_387_044, ref: "esub:acc_A:esub_novice:Darai:op_12345678" }),
+    );
+  });
+});
+
 describe("«Эксперт» — энергия не тает", () => {
   it("перед подпиской энергия досчитывается, у подписки флаг no_decay", async () => {
     await buy({ tierId: "esub_expert", token: "USDT", expected: 45 });
@@ -163,54 +214,5 @@ describe("«Эксперт» — энергия не тает", () => {
     await buy();
     expect(sqls.some((x) => x.includes("energy_touch_acc"))).toBe(false);
     expect(sqls.find((x) => x.includes("INSERT INTO yuplink.energy_sub "))).toContain("op_12345678', false");
-  });
-});
-
-describe("SQL подписки", () => {
-  const tier = {
-    id: "esub_novice",
-    name: "Нов'ичок",
-    nameEn: "N",
-    priceUsd: 7,
-    energyPerDay: 500,
-    boxPackId: null,
-    boxesPerDay: 0,
-    days: 30,
-    active: true,
-    sort: 1,
-    boxName: null,
-    boxImage: null,
-    noDecay: false,
-    licenseTier: null,
-  };
-  const base = { subId: subIdOf("r1"), account: "acc_A", wallet: "w1", tier, rate: 2_601_118, payRef: "r1" };
-
-  it("DARAI: 60 % в пул карты, 15/25 % в корзины, всё — только если подписка создана", () => {
-    const sql = createSubSql({ ...base, token: "Darai", amount: 1000 }).replace(/\s+/g, " ");
-    expect(sql).toContain("'sub_burn', 'Darai', 150.00000000");
-    expect(sql).toContain("'sub_dev', 'Darai', 250.00000000");
-    expect(sql).toContain("'map', 'player_spend', 600.00000000");
-    expect(sql).toMatch(/FROM sub, \(VALUES/);
-    expect(sql).toContain("ON CONFLICT (pay_ref) DO NOTHING");
-    expect(sql).toContain("ref = 'r1-undo'");
-    expect(sql).toContain("'Нов''ичок'");
-  });
-
-  it("USDT: без пула карты, всё в корзину $", () => {
-    const sql = createSubSql({ ...base, token: "USDT", amount: 7, rate: null });
-    expect(sql).not.toContain("darai_pool_move");
-    expect(sql).toContain("'sub_usd', 'USDT'");
-  });
-
-  it("лицензия банка тарифа уезжает снимком в подписку (esub-06)", () => {
-    const withLic = createSubSql({ ...base, tier: { ...tier, licenseTier: "medium" as const }, token: "Darai", amount: 1 });
-    expect(withLic).toMatch(/no_decay, license_tier\)/);
-    expect(withLic).toMatch(/false, 'medium'/);
-    expect(createSubSql({ ...base, token: "Darai", amount: 1 })).toMatch(/false, NULL/);
-  });
-
-  it("id подписки стабилен для одного ключа оплаты", () => {
-    expect(subIdOf("r1")).toBe(subIdOf("r1"));
-    expect(subIdOf("r1")).not.toBe(subIdOf("r2"));
   });
 });

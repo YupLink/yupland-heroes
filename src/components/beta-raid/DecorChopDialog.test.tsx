@@ -128,8 +128,30 @@ describe("DecorChopDialog", () => {
         />,
       );
     expect(withHand("none")).toMatch(/Требуется Пила[^]*<i>hand-chop<\/i>/);
-    expect(withHand("ok")).not.toContain("hand-chop");
-    expect(withHand("idle")).not.toContain("hand-chop");
+    // С 29.10 — и при топоре в руках или в рюкзаке: топор тратить не обязательно.
+    expect(withHand("ok")).toMatch(/Срубить[^]*<i>hand-chop<\/i>/);
+    expect(withHand("idle")).toMatch(/Взять[^]*<i>hand-chop<\/i>/);
+  });
+
+  it("издалека (13.11): дорога ⚡ в кнопке «Срубить»; у «Взять» и «Требуется» — нет", () => {
+    const at = (tool: "ok" | "idle" | "none", walk: number | null) =>
+      renderToStaticMarkup(
+        <DecorChopDialog
+          conf={conf}
+          tool={tool}
+          busy={false}
+          onChop={() => {}}
+          onTake={() => {}}
+          onClose={() => {}}
+          walk={walk}
+        />,
+      );
+    expect(at("ok", 2.4)).toMatch(/Срубить \(−1 Пила\)[^]*title="Дорога: ⚡2.4"[^]*<\/button>/);
+    expect(at("ok", null)).not.toContain("Дорога");
+    expect(at("idle", 2.4)).not.toContain("Дорога");
+    expect(at("none", 2.4)).not.toContain("Дорога");
+    ui.lang = "en";
+    expect(at("ok", 1)).toContain(`title="Walk there: ⚡1"`);
   });
 
   it("ru и en заведены для всех ключей окна", () => {

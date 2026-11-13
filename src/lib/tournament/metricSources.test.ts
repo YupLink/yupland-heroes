@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   TOUR_SOURCE,
   TOUR_DAY_MS,
+  farmPlanEndMs,
+  farmSnapClock,
   farmSnapshotsDue,
   isAxeTool,
   isLogItem,
@@ -46,24 +48,52 @@ describe("источники очков", () => {
     expect(isAxeTool(null)).toBe(false);
   });
 
-  it("снимки фарма: каждый день в 23:59 UTC, последний — до конца; неделя = 7", () => {
-    const s = Date.UTC(2026, 9, 5, 0, 0); // ПН 05.10 00:00
-    const e = Date.UTC(2026, 9, 11, 23, 59); // ВС 11.10 23:59
+  it("снимки фарма: каждый день за минуту до конца по UTC; последний — в 09:59 дня конца", () => {
+    // «Король Шахт» на проде: 07.11 18:00 → 10.11 10:00 — снимки 08, 09, 10.11 в 09:59.
+    const s = Date.UTC(2026, 10, 7, 18, 0);
+    const e = Date.UTC(2026, 10, 10, 10, 0);
     const due = (now: number, ends = e) =>
-      farmSnapshotsDue({ startedMs: s, endsMs: ends, nowMs: now });
+      farmSnapshotsDue({ startedMs: s, endsMs: ends, nowMs: now, planEndMs: e });
     expect(due(s)).toBe(0);
-    expect(due(Date.UTC(2026, 9, 5, 23, 58))).toBe(0);
-    expect(due(Date.UTC(2026, 9, 5, 23, 59))).toBe(1);
-    expect(due(Date.UTC(2026, 9, 8, 12, 0))).toBe(3);
-    expect(due(e)).toBe(7);
-    expect(due(e + 30 * TOUR_DAY_MS)).toBe(7);
-    // Остановили в среду днём — снимков столько, сколько 23:59 успело наступить.
-    expect(due(e, Date.UTC(2026, 9, 7, 12, 0))).toBe(2);
-    // Старт после 23:59 — первый снимок на следующий день.
-    const late = Date.UTC(2026, 9, 5, 23, 59, 30);
-    expect(
-      farmSnapshotsDue({ startedMs: late, endsMs: e, nowMs: Date.UTC(2026, 9, 6, 23, 59) }),
-    ).toBe(1);
+    expect(due(Date.UTC(2026, 10, 7, 23, 59))).toBe(0); // старое время — уже не снимок
+    expect(due(Date.UTC(2026, 10, 8, 9, 58, 59))).toBe(0);
+    expect(due(Date.UTC(2026, 10, 8, 9, 59))).toBe(1);
+    expect(due(Date.UTC(2026, 10, 9, 12, 0))).toBe(2);
+    expect(due(Date.UTC(2026, 10, 10, 9, 59))).toBe(3);
+    expect(due(e)).toBe(3);
+    expect(due(e + 30 * TOUR_DAY_MS)).toBe(3);
+    // Остановили 09.11 в 08:00 — время снимков не сдвинулось: только 08.11.
+    const stop = Date.UTC(2026, 10, 9, 8, 0);
+    expect(due(stop, stop)).toBe(1);
+    // Без назначенного конца — от ends_at; неделя ПН 00:00 → ПН 00:00 = 7 снимков в 23:59.
+    const w0 = Date.UTC(2026, 9, 5, 0, 0);
+    const w1 = w0 + 7 * TOUR_DAY_MS;
+    const week = (now: number) => farmSnapshotsDue({ startedMs: w0, endsMs: w1, nowMs: now });
+    expect(week(Date.UTC(2026, 9, 5, 23, 58))).toBe(0);
+    expect(week(Date.UTC(2026, 9, 5, 23, 59))).toBe(1);
+    expect(week(w1)).toBe(7);
+    // Турнир короче минуты — снимков нет.
+    expect(farmSnapshotsDue({ startedMs: s, endsMs: s + 30_000, nowMs: s + 60_000 })).toBe(0);
+  });
+
+  it("назначенный конец: end_at позже начала, иначе начало + дни", () => {
+    const s = Date.UTC(2026, 10, 7, 18, 0);
+    const e = Date.UTC(2026, 10, 10, 10, 0);
+    expect(farmPlanEndMs({ startedMs: s, endAtMs: e, days: 3 })).toBe(e);
+    expect(farmPlanEndMs({ startedMs: s, endAtMs: null, days: 3 })).toBe(s + 3 * TOUR_DAY_MS);
+    expect(farmPlanEndMs({ startedMs: s, endAtMs: s - 1, days: 2 })).toBe(s + 2 * TOUR_DAY_MS);
+  });
+
+  it("время снимка на плашке: конец − 1 мин, UTC", () => {
+    const at = (startAt: string | null, endAt: string | null, startedAt: string | null = null) =>
+      farmSnapClock({ startAt, endAt, startedAt });
+    expect(at("2026-11-07T18:00:00.000Z", "2026-11-10T10:00:00.000Z")).toBe("09:59");
+    // Конца нет — начало + N дней: то же время суток, что у начала.
+    expect(at("2026-11-07T18:00:00.000Z", null)).toBe("17:59");
+    expect(at(null, null, "2026-10-05T00:00:00.000Z")).toBe("23:59");
+    // Ручной старт позже назначенного конца — конец = начало + дни.
+    expect(at(null, "2026-11-01T10:00:00.000Z", "2026-11-07T12:30:00.000Z")).toBe("12:29");
+    expect(at(null, null)).toBeNull();
   });
 });
 

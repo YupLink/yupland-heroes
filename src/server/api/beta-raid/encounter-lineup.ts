@@ -4,17 +4,37 @@
 // передачи (rest_until) или оглушены боссом (chip_effects).
 import { mcpExec } from "../../db/mcpClient";
 import { sqlStr } from "../raid-shared";
-import { FIELD_SLOTS, type SimChip } from "./encounter-sim";
+import type { SimChip } from "./encounter-sim";
 import { raidOwner } from "./owner";
 
 /**
+ * Сколько фишек берёт авто-отряд: поле (FIELD_SLOTS) и запас, который выходит на место
+ * павших (encounter-sim) — столько же, сколько игрок может собрать сам.
+ */
+export const AUTO_LINEUP = 10;
+
+/** Отряд и признак «собран сервером» — окно боя запомнит такой состав у игрока. */
+export type LineupInfo = { lineup: SimChip[]; auto: boolean };
+
+/** Отряд игрока (без признака авто) — для вызывающих, которым он не нужен. */
+export async function resolveLineup(wallet: string, passed: SimChip[]): Promise<SimChip[]> {
+  return (await resolveLineupInfo(wallet, passed)).lineup;
+}
+
+/**
  * Отряд игрока: переданный — с проверкой владения, иначе авто-топ по уровню.
+ *
+ * Фишки не выбраны — либо ни одной из выбранных нет в строю (сгорели, оглушены, в
+ * браузере чужой состав) — в бой идут самые сильные: AUTO_LINEUP старших по уровню
+ * (сила фишки в бою — от уровня, lib/chipStats). Владелец, 24.10.2026: «если фишки не
+ * выбраны — выбирать автоматически самые сильные» (жалоба: удар по нажатию шёл
+ * пустым/одной фишкой, бой проигран, энергия потрачена).
  *
  * Когда включат `hero_squad_battles`, вместо авто-подбора будет браться отряд,
  * закреплённый за основным героем (heroes-squad.ts), и окно выбора фишек в бою
  * станет не нужно. Пока переключатель выключен — поведение прежнее.
  */
-export async function resolveLineup(wallet: string, passed: SimChip[]): Promise<SimChip[]> {
+export async function resolveLineupInfo(wallet: string, passed: SimChip[]): Promise<LineupInfo> {
   const account = await raidOwner(wallet);
   // Оглушённые боссом фишки отсеиваем прямо здесь: иначе авто-отряд собирался
   // бы из них и выходил в бой неполным.
@@ -95,7 +115,8 @@ export async function resolveLineup(wallet: string, passed: SimChip[]): Promise<
     // себя в браузере, и часть состава легко устаревает: фишку скрафтили,
     // продали, она оглушена или отдыхает. Раньше это упиралось в ошибку и
     // игрок вообще не мог атаковать, хотя фишек у него полный инвентарь.
-    if (skipped > 0) {
+    // Не нашлось НИ ОДНОЙ из выбранных — это «не выбраны»: полный авто-отряд ниже.
+    if (skipped > 0 && out.length > 0) {
       const want = Math.min(10, passed.length);
       for (const list of pool.values()) {
         while (out.length < want && list.length > 0) {
@@ -112,10 +133,7 @@ export async function resolveLineup(wallet: string, passed: SimChip[]): Promise<
         if (out.length >= want) break;
       }
     }
-    if (out.length === 0) {
-      throw new Error("Нет фишек для боя — открой пак или дождись отдыха фишек");
-    }
-    return out;
+    if (out.length > 0) return { lineup: out, auto: false };
   }
 
   // ⚠️ Отряд героя приходит без chipId и без проверки оглушения: пока
@@ -126,14 +144,20 @@ export async function resolveLineup(wallet: string, passed: SimChip[]): Promise<
   if (await heroSquadBattlesEnabled()) {
     const squad = await selectedHeroSquad(wallet);
     if (squad.length > 0) {
-      return squad.map((c) => ({ templateId: c.templateId, level: c.level }));
+      return { lineup: squad.map((c) => ({ templateId: c.templateId, level: c.level })), auto: false };
     }
   }
 
-  return owned.slice(0, FIELD_SLOTS).map((r) => ({
-    templateId: r.template_id,
-    level: Number(r.level),
-    chipId: r.id,
-    name: r.name,
-  }));
+  if (owned.length === 0) {
+    throw new Error("Нет фишек для боя — открой пак или дождись отдыха фишек");
+  }
+  return {
+    lineup: owned.slice(0, AUTO_LINEUP).map((r) => ({
+      templateId: r.template_id,
+      level: Number(r.level),
+      chipId: r.id,
+      name: r.name,
+    })),
+    auto: true,
+  };
 }
